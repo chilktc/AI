@@ -34,10 +34,10 @@ TIER 4 (후처리): Personalization / Script Personalizer
 
 | 구분 | 기술 |
 |------|------|
-| LLM | Anthropic Claude (Opus 4.5, Sonnet 4, Haiku) |
+| LLM | Anthropic Claude (Opus 4.5, Sonnet 4, Haiku) / AWS Bedrock |
 | 오케스트레이션 | LangGraph StateGraph |
-| 벡터 DB | Pinecone / pgvector |
-| 관계형 DB | PostgreSQL |
+| 벡터 DB | Pinecone |
+| 관계형 DB | MySQL |
 | 그래프 DB | Neo4j |
 | 캐시 | Redis |
 | 이미지 저장 | S3 / CDN |
