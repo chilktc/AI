@@ -1,0 +1,470 @@
+"""
+BaseAgent — 모든 에이전트의 공통 부모 클래스.
+
+[Shared Infrastructure — 인터페이스 변경 금지]
+기존 public 메서드(process, __call__, call_llm, call_llm_json,
+get_prompt, create_message)의 시그니처와 동작을 변경하지 마시오.
+신규 메서드 추가만 허용. 수정 시 전체 테스트(pytest tests/ -v) 통과 필수.
+
+에이전트마다 반복되는 공통 코드를 한 곳에 모아
+코드 중복을 방지하고 프로토콜 규격 변경에 유연하게 대응한다.
+
+포함 기능:
+    - LLM 클라이언트 자동 초기화
+    - 처리 시간 자동 측정 (audit.processing_time_ms)
+    - 로깅 (에이전트명, TIER 정보)
+    - 메시지 프로토콜 v2.0 엔벨로프 생성
+    - 멀티버전 프롬프트 지원 + A/B 테스트 (v8)
+
+각 에이전트는 이 클래스를 상속하고 process() 메서드만 구현하면 된다.
+"""
+
+from __future__ import annotations
+
+import contextvars
+import hashlib
+import time
+from abc import ABC, abstractmethod
+from typing import Any
+
+from config.loader import get_settings
+from src.agents.shared.llm_client import LLMClient
+from src.agents.shared.prompt_loader import PromptLoader, PromptLoadError, get_prompt_base_dir
+from src.models.agent_state import AgentState
+from src.models.message import (
+    MessageAudit,
+    MessageEnvelope,
+    MessageMetadata,
+    MessageType,
+    Priority,
+)
+from src.utils.logger import get_agent_logger
+
+# A/B 테스트 시 async 태스크별 활성 variant를 격리하는 ContextVar
+# LangGraph 병렬 실행에서 태스크별 독립 버전 선택이 필요하다
+_active_ab_variant: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "active_ab_variant", default=None
+)
+
+
+class BaseAgent(ABC):
+    """
+    모든 에이전트의 기본 클래스.
+
+    Args:
+        name: 에이전트 이름 (예: content_analyzer, batch_validator)
+        tier: TIER 레벨 (0-4, 비동기/독립은 None)
+        model_override: 설정 대신 직접 모델 ID를 지정할 때 사용
+
+    사용 예시:
+        class ContentAnalyzerAgent(BaseAgent):
+            def __init__(self):
+                super().__init__(name="content_analyzer", tier=1)
+
+            async def process(self, state: AgentState) -> dict[str, Any]:
+                # 에이전트 로직 구현
+                return {"content_analysis": {...}}
+    """
+
+    def __init__(
+        self,
+        name: str,
+        tier: int | None = None,
+        model_override: str | None = None,
+    ) -> None:
+        self.name = name
+        self.tier = tier
+        self.logger = get_agent_logger(name)
+        self.llm_client = LLMClient(
+            agent_name=name,
+            model_override=model_override,
+        )
+        # LLM 호출 횟수 추적 (audit용)
+        self._llm_call_count = 0
+        # 프롬프트 로더 초기화 — YAML 파일에서 프롬프트를 로드한다
+        self._prompt_loader = PromptLoader(base_dir=get_prompt_base_dir())
+        self._prompt_mode = self._resolve_mode()
+
+        # --- v8: 멀티버전 + A/B 테스트 ---
+        self._target_version = self._resolve_target_version()
+        self._ab_config = self._resolve_ab_config()
+
+        # 기본 프롬프트 로드 (타겟 버전 사용)
+        self._prompts: dict[str, str] = self._load_prompts()
+        # 프롬프트 버전 — YAML에서 로드 성공 시 SemVer, 실패 시 None
+        self._prompt_version: str | None = self._load_prompt_version()
+
+        # A/B 테스트 활성 시 양쪽 variant 프롬프트를 미리 로드
+        self._ab_prompts: dict[str, dict[str, str]] = {}
+        if self._ab_config is not None:
+            self._preload_ab_variants()
+
+        # 현재 실행에서 선택된 A/B variant (Telemetry 추적용)
+        self._current_ab_variant: str | None = None
+
+    # --- v8: 버전 해석 ---
+
+    def _resolve_target_version(self) -> str | None:
+        """
+        settings.yaml에서 이 에이전트의 타겟 프롬프트 버전을 가져온다.
+
+        해석 우선순위:
+            1. settings.yaml prompts.versions.{agent_name}
+            2. settings.yaml prompts.versions.default
+            3. None (PromptLoader YAML 내부 default_version 사용)
+        """
+        try:
+            settings = get_settings()
+            return settings.get_prompt_version(self.name)
+        except Exception:
+            # settings 로드 실패 시 None (PromptLoader 기본 동작)
+            return None
+
+    def _resolve_ab_config(self) -> dict[str, Any] | None:
+        """
+        settings.yaml에서 A/B 테스트 설정을 가져온다.
+
+        enabled=true인 설정만 반환, 없으면 None.
+        """
+        try:
+            settings = get_settings()
+            return settings.get_ab_test_config(self.name)
+        except Exception:
+            return None
+
+    def _preload_ab_variants(self) -> None:
+        """
+        A/B 테스트 활성 시 양쪽 variant의 프롬프트를 미리 로드한다.
+
+        variant_a와 variant_b 모두 YAML에 존재해야 한다.
+        로드 실패 시 A/B 비활성화 (fallback to default).
+        """
+        if self._ab_config is None:
+            return
+
+        variant_a = str(self._ab_config.get("variant_a", ""))
+        variant_b = str(self._ab_config.get("variant_b", ""))
+
+        try:
+            prompts_a = self._prompt_loader.load_all(
+                self._prompt_mode, self.name, version=variant_a
+            )
+            prompts_b = self._prompt_loader.load_all(
+                self._prompt_mode, self.name, version=variant_b
+            )
+            self._ab_prompts[variant_a] = prompts_a
+            self._ab_prompts[variant_b] = prompts_b
+            self.logger.info(
+                "A/B 테스트 프리로드 완료: %s (A=%s, B=%s)",
+                self.name,
+                variant_a,
+                variant_b,
+            )
+        except PromptLoadError as e:
+            # variant 로드 실패 → A/B 비활성화
+            self.logger.warning(
+                "A/B 테스트 프리로드 실패 → 비활성화: %s — %s",
+                self.name,
+                str(e),
+            )
+            self._ab_config = None
+            self._ab_prompts = {}
+
+    def _resolve_ab_variant(self, session_id: str) -> str:
+        """
+        세션 ID 기반으로 A/B variant를 결정적으로 선택한다.
+
+        동일 session_id + agent_name → 항상 동일한 variant 반환.
+        hash 기반이므로 균등 분포에 가깝다.
+
+        Args:
+            session_id: 세션 ID (AgentState에서 가져옴)
+
+        Returns:
+            선택된 버전 문자열 (variant_a 또는 variant_b)
+        """
+        assert self._ab_config is not None  # noqa: S101
+
+        variant_a = str(self._ab_config["variant_a"])
+        variant_b = str(self._ab_config["variant_b"])
+        traffic_split = float(self._ab_config.get("traffic_split", 0.5))
+        assignment = str(self._ab_config.get("assignment", "session"))
+
+        if assignment == "session":
+            # 결정적 할당 — session_id + agent_name 조합의 hash
+            hash_input = f"{session_id}:{self.name}"
+            hash_value = int(hashlib.md5(hash_input.encode()).hexdigest(), 16)  # noqa: S324
+            ratio = (hash_value % 10000) / 10000.0
+        else:
+            # 요청 단위 랜덤 — time.monotonic 기반 의사 랜덤
+            import random
+
+            ratio = random.random()  # noqa: S311
+
+        return variant_a if ratio < traffic_split else variant_b
+
+    # --- 프롬프트 로딩 ---
+
+    def _load_prompts(self) -> dict[str, str]:
+        """
+        에이전트별 프롬프트를 YAML에서 로드한다.
+
+        v8: settings.yaml에서 지정된 타겟 버전으로 로드한다.
+        프롬프트 파일이 없으면 빈 dict를 반환한다 (하위 호환).
+        """
+        try:
+            return self._prompt_loader.load_all(
+                self._prompt_mode, self.name, version=self._target_version
+            )
+        except PromptLoadError:
+            # 프롬프트 파일이 없는 에이전트도 정상 동작 (다른 개발자 담당 등)
+            self.logger.debug(
+                "프롬프트 YAML 없음: %s/%s — 하드코딩 프롬프트 사용 가능",
+                self._prompt_mode,
+                self.name,
+            )
+            return {}
+
+    def _load_prompt_version(self) -> str | None:
+        """
+        프롬프트 YAML의 버전(SemVer)을 로드한다.
+
+        v8: settings에서 지정된 타겟 버전을 반환한다.
+        프롬프트 파일이 없는 에이전트는 None을 반환한다.
+        """
+        if not self._prompts:
+            return None
+        try:
+            return self._prompt_loader.get_version(
+                self._prompt_mode, self.name, version=self._target_version
+            )
+        except PromptLoadError:
+            return None
+
+    def _resolve_mode(self) -> str:
+        """
+        에이전트가 속한 모드를 추론한다.
+
+        모듈 경로를 검사하여 podcast/conversation/shared를 판별한다.
+        판별 불가 시 "shared"를 기본값으로 반환한다.
+        """
+        module = type(self).__module__ or ""
+        if ".podcast." in module or "podcast" in module:
+            return "podcast"
+        elif ".conversation." in module or "conversation" in module:
+            return "conversation"
+        return "shared"
+
+    @property
+    def prompt_version(self) -> str | None:
+        """
+        현재 로드된 프롬프트의 SemVer 버전을 반환한다.
+
+        YAML 파일이 없는 에이전트는 None을 반환한다.
+        Telemetry Agent 등 외부에서 버전을 추적할 때 사용한다.
+        """
+        return self._prompt_version
+
+    @property
+    def ab_variant(self) -> str | None:
+        """
+        현재 실행에서 선택된 A/B variant를 반환한다.
+
+        A/B 테스트가 비활성이면 None.
+        Telemetry에서 어떤 variant로 실행되었는지 추적할 때 사용한다.
+        """
+        return self._current_ab_variant
+
+    def get_prompt(self, key: str = "system_prompt") -> str:
+        """
+        YAML에서 로드된 프롬프트를 반환한다.
+
+        A/B 테스트 활성 시: contextvars에서 현재 variant를 읽어
+        해당 variant의 프롬프트를 반환한다.
+        A/B 비활성 시: 기본 프롬프트를 반환한다.
+
+        Args:
+            key: 프롬프트 키 (단일 프롬프트: "system_prompt", 다중: "got"/"tot"/"cot" 등)
+
+        Returns:
+            프롬프트 문자열
+
+        Raises:
+            KeyError: 해당 키의 프롬프트가 없을 때
+        """
+        # A/B 테스트 활성 시 — contextvars에서 variant 확인
+        active_variant = _active_ab_variant.get()
+        if active_variant is not None and active_variant in self._ab_prompts:
+            variant_prompts = self._ab_prompts[active_variant]
+            if key not in variant_prompts:
+                raise KeyError(
+                    f"프롬프트 키 '{key}'를 찾을 수 없음 "
+                    f"(에이전트: {self.name}, variant: {active_variant}). "
+                    f"사용 가능한 키: {list(variant_prompts.keys())}"
+                )
+            return variant_prompts[key]
+
+        # 기본 프롬프트 반환
+        if key not in self._prompts:
+            raise KeyError(
+                f"프롬프트 키 '{key}'를 찾을 수 없음 (에이전트: {self.name}). "
+                f"사용 가능한 키: {list(self._prompts.keys())}"
+            )
+        return self._prompts[key]
+
+    @abstractmethod
+    async def process(self, state: AgentState) -> dict[str, Any]:
+        """
+        에이전트 핵심 로직.
+
+        자기 담당 필드만 포함한 dict를 반환한다.
+        LangGraph StateGraph가 반환된 dict를 기존 상태에 자동 merge한다.
+
+        Args:
+            state: 현재 AgentState (전체 상태 읽기 가능)
+
+        Returns:
+            업데이트할 필드만 포함한 dict
+        """
+        ...
+
+    async def __call__(self, state: AgentState) -> dict[str, Any]:
+        """
+        LangGraph 노드 함수로 사용하기 위한 호출 인터페이스.
+
+        v8: A/B 테스트 활성 시 session_id로 variant를 결정하고
+        contextvars에 설정하여 process() 내부의 get_prompt() 호출이
+        올바른 variant 프롬프트를 반환하도록 한다.
+        """
+        tier_label = f"TIER {self.tier}" if self.tier is not None else "ASYNC"
+        version_label = f" (prompt v{self._prompt_version})" if self._prompt_version else ""
+
+        # A/B 테스트 variant 결정
+        ab_label = ""
+        token: contextvars.Token[str | None] | None = None
+        if self._ab_config is not None and self._ab_prompts:
+            session_id = state.get("session_id", "unknown")
+            variant = self._resolve_ab_variant(str(session_id))
+            self._current_ab_variant = variant
+            token = _active_ab_variant.set(variant)
+            ab_label = f" [A/B: {variant}]"
+
+        self.logger.info("[%s] %s 시작%s%s", tier_label, self.name, version_label, ab_label)
+
+        # LLM 호출 카운터 초기화
+        self._llm_call_count = 0
+        start_time = time.monotonic()
+
+        try:
+            result = await self.process(state)
+            elapsed_ms = int((time.monotonic() - start_time) * 1000)
+            self.logger.info(
+                "[%s] %s 완료 (%dms, LLM %d회)%s",
+                tier_label,
+                self.name,
+                elapsed_ms,
+                self._llm_call_count,
+                ab_label,
+            )
+            return result
+
+        except Exception as e:
+            elapsed_ms = int((time.monotonic() - start_time) * 1000)
+            self.logger.error(
+                "[%s] %s 실패 (%dms) — %s: %s",
+                tier_label,
+                self.name,
+                elapsed_ms,
+                type(e).__name__,
+                str(e),
+            )
+            raise
+
+        finally:
+            # contextvars 정리 — 이전 값으로 복원
+            if token is not None:
+                _active_ab_variant.reset(token)
+                self._current_ab_variant = None
+
+    async def call_llm(
+        self,
+        system_prompt: str,
+        user_message: str,
+        **kwargs: Any,
+    ) -> str:
+        """
+        LLM 텍스트 생성 + 호출 횟수 자동 추적.
+
+        process() 내에서 self.llm_client.generate() 대신 이 메서드를 사용하면
+        audit.llm_calls가 자동으로 집계된다.
+        """
+        self._llm_call_count += 1
+        return await self.llm_client.generate(
+            system_prompt=system_prompt,
+            user_message=user_message,
+            **kwargs,
+        )
+
+    async def call_llm_json(
+        self,
+        system_prompt: str,
+        user_message: str,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        """
+        LLM JSON 생성 + 호출 횟수 자동 추적.
+
+        process() 내에서 self.llm_client.generate_json() 대신 이 메서드를 사용하면
+        audit.llm_calls가 자동으로 집계된다.
+        """
+        self._llm_call_count += 1
+        return await self.llm_client.generate_json(
+            system_prompt=system_prompt,
+            user_message=user_message,
+            **kwargs,
+        )
+
+    def create_message(
+        self,
+        receiver: str,
+        message_type: MessageType,
+        payload: dict[str, Any],
+        session_id: str,
+        mode: str = "podcast",
+        priority: Priority = Priority.HIGH,
+    ) -> MessageEnvelope:
+        """
+        다른 에이전트에게 보낼 메시지 엔벨로프를 생성한다.
+
+        독립 에이전트(Memory, Knowledge 등)에 요청을 보낼 때 사용한다.
+        메시지 프로토콜 v2.0 규격을 자동으로 따른다.
+
+        Args:
+            receiver: 수신 에이전트 이름
+            message_type: 메시지 유형 (request, response 등)
+            payload: 요청/응답 데이터
+            session_id: 세션 ID
+            mode: 실행 모드 (conversation / podcast)
+            priority: 메시지 우선순위
+
+        Returns:
+            프로토콜 v2.0 규격의 MessageEnvelope
+        """
+        return MessageEnvelope(
+            sender=self.name,
+            receiver=receiver,
+            message_type=message_type,
+            payload=payload,
+            metadata=MessageMetadata(
+                session_id=session_id,
+                mode=mode,  # type: ignore[arg-type]
+                interaction_unit="episode" if mode == "podcast" else "turn",
+                tier=self.tier,
+                priority=priority,
+            ),
+            audit=MessageAudit(
+                processing_time_ms=0,
+                llm_calls=self._llm_call_count,
+                status="ok",
+            ),
+        )

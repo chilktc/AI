@@ -25,12 +25,12 @@
 - [ ] Batch Validator (팟캐스트)
 - [ ] Script Personalizer (팟캐스트)
 
-## 도메인
+## 담당 개발자
 
-<!-- 자신의 도메인을 선택해주세요 -->
-- [ ] Analysis (Dev-A)
-- [ ] Reasoning (Dev-B)
-- [ ] Validation (Dev-C)
+<!-- 자신의 브랜치 접두사를 선택해주세요 -->
+- [ ] 개발자1 (feature/analysis-*)
+- [ ] 개발자2 (feature/reasoning-*)
+- [ ] 개발자3 (feature/validation-*)
 
 ## Protected Files 변경 여부
 

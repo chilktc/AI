@@ -34,10 +34,10 @@ TIER 4: Personalization / Script Personalizer (최종)
 
 | 구분 | 기술 |
 |------|------|
-| LLM | Anthropic Claude (Opus 4.5, Sonnet 4, Haiku) |
+| LLM | Anthropic Claude (Opus 4.5, Sonnet 4, Haiku) / AWS Bedrock |
 | 오케스트레이션 | LangGraph StateGraph |
-| 벡터 DB | Pinecone / pgvector |
-| 관계형 DB | PostgreSQL |
+| 벡터 DB | Pinecone |
+| 관계형 DB | MySQL |
 | 그래프 DB | Neo4j |
 | 캐시 | Redis |
 | 이미지 저장 | S3 / CDN |
@@ -105,11 +105,12 @@ mind-log/
 
 ## 팀 구성
 
-| 개발자 | 도메인 | 담당 에이전트 |
-|--------|--------|-------------|
-| Dev-A | 분석 (Analysis) | Intent Classifier, Emotion, Context, Content Analyzer |
-| Dev-B | 추론/생성 (Reasoning) | Reasoning, Memory, Knowledge, Synthesis, Script Generator |
-| Dev-C | 검증/부가 (Validation) | Safety, Validator, Personalization, Visualization, Learning, Telemetry |
+| 개발자 | 대화모드 에이전트 | 팟캐스트모드 에이전트 |
+|--------|-----------------|---------------------|
+| 개발자1 | Intent Classifier, Knowledge, Synthesis, Personalization | Script Generator, Script Personalizer |
+| 개발자2 | Safety, Memory, Visualization, Emotion | Episode Memory, Visualization(Podcast) |
+| 개발자3 | Reasoning, Context, Validator, Learning | Podcast Reasoning, Content Analyzer, Batch Validator |
+| 미정 | Telemetry Agent | — (전체 에이전트 완료 후 예정) |
 
 ---
 

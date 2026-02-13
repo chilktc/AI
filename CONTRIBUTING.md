@@ -10,11 +10,12 @@ Mind-Log 프로젝트에 기여하기 위한 가이드입니다.
 
 각 개발자는 자기 도메인의 에이전트만 구현하며, 다른 도메인 코드를 직접 수정하지 않습니다.
 
-| 개발자 | 도메인 | 담당 파일 경로 |
-|--------|--------|---------------|
-| Dev-A | 분석 | `src/agents/conversation/{intent_classifier,emotion,context}.py`, `src/agents/podcast/content_analyzer.py` |
-| Dev-B | 추론/생성 | `src/agents/conversation/{memory,knowledge,reasoning,synthesis}.py`, `src/agents/podcast/{episode_memory,podcast_reasoning,script_generator}.py` |
-| Dev-C | 검증/부가 | `src/agents/conversation/{safety,validator,personalization,visualization,telemetry,learning}.py`, `src/agents/podcast/{batch_validator,script_personalizer,visualization}.py` |
+| 개발자 | 담당 파일 경로 |
+|--------|---------------|
+| 개발자1 | `src/agents/conversation/{intent_classifier,knowledge,synthesis,personalization}.py`, `src/agents/podcast/{script_generator,script_personalizer}.py` |
+| 개발자2 | `src/agents/conversation/{safety,memory,visualization,emotion}.py`, `src/agents/podcast/{episode_memory,visualization}.py` |
+| 개발자3 | `src/agents/conversation/{reasoning,context,validator,learning}.py`, `src/agents/podcast/{podcast_reasoning,content_analyzer,batch_validator}.py` |
+| 미정 | `src/agents/conversation/telemetry.py` (전체 에이전트 완료 후 예정) |
 
 ### Protected Files
 
