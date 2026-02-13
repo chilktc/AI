@@ -10,7 +10,7 @@
 
 - **용도**: 로컬 개발/테스트 전용
 - **목적**: API 키 없이 에이전트의 LLM 호출 흐름과 결과 파싱을 검증
-- **위치**: `dev/` 폴더에 격리 (`.gitignore`로 git push에서 자동 제외)
+- **위치**: `dev/` 폴더에 격리 (운영 배포 시 삭제로 완전 제거)
 - **운영 영향**: 없음 — `dev/` 폴더 삭제로 완전 제거 가능
 
 ### 분리 구조
@@ -20,7 +20,7 @@
 ├── src/agents/shared/llm_client.py   # 운영 코드 — register_provider() 플러그인만 추가
 ├── config/settings.yaml              # 운영 설정 — 변경 없음
 │
-├── dev/                              # ← .gitignore (git push 제외)
+├── dev/                              # ← 로컬 개발 전용 (운영 배포 시 삭제)
 │   ├── ollama_provider.py            # Ollama 프로바이더 구현
 │   ├── ollama_config.yaml            # Ollama 전용 설정 (모델 매핑, URL, 타임아웃)
 │   ├── ollama_bootstrap.py           # LLMClient에 Ollama 프로바이더 등록
@@ -94,7 +94,7 @@ ollama list
 
 ## 4. dev/ 폴더 설정
 
-`dev/` 폴더는 `.gitignore`에 의해 git에서 추적되지 않는다. 처음 세팅 시 다른 개발자에게 받거나, 아래 구조를 직접 생성한다.
+`dev/` 폴더는 로컬 개발 전용이다. 프로젝트 클론 시 자동으로 포함된다.
 
 ### 4.1. 이미 dev/ 폴더가 있는 경우
 
@@ -128,7 +128,7 @@ ollama:
 ### 4.4. .env 설정
 
 ```bash
-# .env 파일에 추가 (이미 .gitignore에 포함)
+# .env 파일에 추가 (.env는 .gitignore에 포함)
 LLM_PROVIDER=ollama
 ```
 
@@ -344,8 +344,8 @@ ollama list
 
 ### git 분리
 
-- `dev/` 폴더는 `.gitignore`에 의해 git push에서 자동 제외된다
-- 다른 개발자와 `dev/` 설정을 공유하려면 별도 채널(Slack, 이메일 등)을 사용한다
+- `dev/` 폴더는 운영 배포 시 삭제로 완전히 제거할 수 있다
+- `dev/` 설정은 git으로 공유되므로 프로젝트 클론 시 자동으로 포함된다
 - `docs/OLLAMA_SETUP.md`(이 문서)는 git에 포함되므로 모든 개발자가 참고 가능
 
 ### 모델별 차이
