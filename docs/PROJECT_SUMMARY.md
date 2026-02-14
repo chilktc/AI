@@ -62,7 +62,7 @@ Safety Agent가 `risk_level ≥ 3` 판정 시:
 | 04 | Context Agent | 1 (병렬) | Haiku | 개발자3 |
 | 05 | Memory Agent | 독립 | Sonnet 4 | 개발자2 |
 | 06 | Knowledge Agent | 독립 | Sonnet 4 | 개발자1 |
-| 07 | Reasoning Agent | 1 (병렬) | Opus 4.5 | 개발자3 |
+| 07 | Reasoning Agent | 1 (병렬) | Opus 4.6 | 개발자3 |
 | 08 | Synthesis Agent | 2 | Sonnet 4 | 개발자1 |
 | 09 | Validator Agent | 3 | Sonnet 4 | 개발자3 |
 | 10 | Personalization Agent | 4 | Sonnet 4 | 개발자1 |
@@ -92,7 +92,7 @@ Intent Classifier, Safety Agent, Emotion Agent, Knowledge Agent, Visualization A
 
 | 구분 | 기술 | 비고 |
 |------|------|------|
-| LLM | Anthropic Claude (Opus 4.5, Sonnet 4, Haiku) | 외부 API 직접 호출 + AWS Bedrock 듀얼 지원 + Ollama 로컬 개발 |
+| LLM | Anthropic Claude (Opus 4.6, Sonnet 4, Haiku) | 외부 API 직접 호출 + AWS Bedrock 듀얼 지원 + Ollama 로컬 개발 |
 | LLM 호출 방식 | **듀얼**: 외부 API (Anthropic SDK) + AWS Bedrock | 섹션 3.1 참조 |
 | 오케스트레이션 | LangGraph StateGraph | |
 | 벡터 DB | Pinecone | |

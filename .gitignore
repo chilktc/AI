@@ -40,7 +40,7 @@ ENV/
 *.bin
 *.safetensors
 *.gguf
-models/
+/models/
 checkpoints/
 
 # Logs
@@ -71,3 +71,6 @@ docs/PROMPT_SECURITY.md
 # 로컬 개발 전용 — __pycache__만 제외 (소스는 git 추적)
 dev/__pycache__/
 dev/**/__pycache__/
+
+# Claude Code (로컬 개발 환경)
+.claude/

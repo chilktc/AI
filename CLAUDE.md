@@ -41,7 +41,7 @@ TIER 4 (후처리): Personalization / Script Personalizer
 | 04 | Context Agent | TIER 1 (병렬) | Haiku | 개발자3 |
 | 05 | Memory Agent | 독립 (Reasoning 조건부 호출) | Sonnet 4 | 개발자2 |
 | 06 | Knowledge Agent | 독립 (Reasoning 조건부 호출) | Sonnet 4 | 개발자1 |
-| 07 | Reasoning Agent | TIER 1 (병렬) | Opus 4.5 | 개발자3 |
+| 07 | Reasoning Agent | TIER 1 (병렬) | Opus 4.6 | 개발자3 |
 | 08 | Synthesis Agent | TIER 2 | Sonnet 4 | 개발자1 |
 | 09 | Validator Agent | TIER 3 | Sonnet 4 | 개발자3 |
 | 10 | Personalization Agent | TIER 4 | Sonnet 4 | 개발자1 |
@@ -208,7 +208,10 @@ main ← PR 머지 (3명 전원 승인 필수)
 모든 에이전트는 하나의 `AgentState`를 읽고 쓴다. 각 에이전트는 **자기 담당 필드만 쓰고**, 다른 에이전트 필드는 읽기만 한다.
 
 ```python
-class AgentState(TypedDict):
+class AgentState(TypedDict, total=False):
+    # total=False: 모든 필드가 선택적. 에이전트는 변경한 필드만 반환하고,
+    # LangGraph가 기존 상태에 병합(merge)한다.
+
     # === 입력 (Intent Classifier가 설정) ===
     user_input: str
     user_id: str
@@ -366,9 +369,9 @@ Content-Type: application/json
 
 ```python
 # 각 개발자는 자기 에이전트를 함수로 구현
-# src/agents/conversation/intent_classifier.py → intent_classifier_node(state) -> state
-# src/agents/conversation/reasoning.py → reasoning_node(state) -> state
-# src/agents/conversation/safety.py → safety_node(state) -> state
+# src/agents/conversation/intent_classifier.py → intent_classifier_node(state) -> dict[str, Any]
+# src/agents/conversation/reasoning.py → reasoning_node(state) -> dict[str, Any]
+# src/agents/conversation/safety.py → safety_node(state) -> dict[str, Any]
 
 # workflow.py에서 통합 (3인 합의 영역)
 # v4.0: TIER 기반 + 모드별 확장 (UnifiedStateGraph)
@@ -401,12 +404,12 @@ graph.add_node("personalization", personalization_node)      # 개발자1
 모든 에이전트 노드는 동일한 시그니처를 따른다:
 
 ```python
-async def agent_node(state: AgentState) -> AgentState:
+async def agent_node(state: AgentState) -> dict[str, Any]:
     # 1. 자기 담당 입력 필드 읽기
     # 2. 처리 로직
-    # 3. 자기 담당 출력 필드 쓰기
+    # 3. 변경된 필드만 dict로 반환 (LangGraph가 기존 상태에 병합)
     # 4. next_step 설정 (필요시)
-    return state
+    return {"필드명": 값, ...}
 ```
 
 ### Memory/Knowledge 독립 에이전트 패턴
@@ -454,7 +457,7 @@ class ReasoningAgent:
 
 | 구분 | 기술 |
 |------|------|
-| LLM | Anthropic Claude (Opus 4.5, Sonnet 4, Haiku) / AWS Bedrock |
+| LLM | Anthropic Claude (Opus 4.6, Sonnet 4, Haiku) / AWS Bedrock |
 | 오케스트레이션 | LangGraph StateGraph (TIER 기반 파이프라인) |
 | 벡터 DB | Pinecone |
 | 관계형 DB | MySQL |

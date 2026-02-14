@@ -162,16 +162,16 @@ git checkout develop
 git pull origin develop
 
 # 2. 기능 브랜치 생성
-git checkout -b feature/analysis-emotion-agent
+git checkout -b feature/reasoning-emotion-agent
 
 # 3. 작업 및 커밋
 git add src/agents/conversation/emotion.py
 git commit -m "feat(emotion): Emotion Agent 감정 벡터 분석 구현"
 
 # 4. 푸시
-git push origin feature/analysis-emotion-agent
+git push origin feature/reasoning-emotion-agent
 
-# 5. GitHub에서 PR 생성 (develop ← feature/analysis-emotion-agent)
+# 5. GitHub에서 PR 생성 (develop ← feature/reasoning-emotion-agent)
 ```
 
 ---

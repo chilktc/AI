@@ -31,7 +31,7 @@ llm:
     safety: 0.1       # 안전 분석은 낮은 temperature
     reasoning: 0.3    # 추론은 약간 낮은 temperature
 
-# 에이전트별 설정 (팟캐스트 모드)
+# 에이전트별 설정
 agents:
   # TIER 0
   intent_classifier:
@@ -39,7 +39,9 @@ agents:
     max_tokens: 1024
     temperature: 0.3
 
-  # TIER 1
+  # ──────────────────────────────────────
+  # 공용 TIER 1 (대화모드 + 팟캐스트모드)
+  # ──────────────────────────────────────
   safety:
     model: sonnet
     max_tokens: 2048
@@ -48,6 +50,59 @@ agents:
   emotion:
     model: sonnet
     max_tokens: 2048
+
+  # ──────────────────────────────────────
+  # 대화모드 TIER 1 (병렬)
+  # ──────────────────────────────────────
+  context:
+    model: haiku          # CLAUDE.md 기준: Haiku
+    max_tokens: 2048
+  reasoning:
+    model: opus           # 사용자 결정: Opus 4.6 (복잡한 추론)
+    max_tokens: 4096
+    temperature: 0.3
+
+  # ──────────────────────────────────────
+  # 대화모드 TIER 1 독립 에이전트
+  # ──────────────────────────────────────
+  memory:
+    model: sonnet
+    max_tokens: 2048
+  knowledge:
+    model: sonnet
+    max_tokens: 2048
+
+  # ──────────────────────────────────────
+  # 대화모드 TIER 2
+  # ──────────────────────────────────────
+  synthesis:
+    model: sonnet
+    max_tokens: 4096
+
+  # ──────────────────────────────────────
+  # 대화모드 TIER 3
+  # ──────────────────────────────────────
+  validator:
+    model: sonnet
+    max_tokens: 2048
+
+  # ──────────────────────────────────────
+  # 대화모드 TIER 4
+  # ──────────────────────────────────────
+  personalization:
+    model: sonnet
+    max_tokens: 2048
+
+  # ──────────────────────────────────────
+  # 대화모드 비동기
+  # ──────────────────────────────────────
+  visualization:
+    model: sonnet
+    max_tokens: 2048
+
+  # ──────────────────────────────────────
+  # 팟캐스트모드 TIER 1 (병렬)
+  # ──────────────────────────────────────
   content_analyzer:
     model: sonnet
     max_tokens: 2048
@@ -56,15 +111,16 @@ agents:
     max_tokens: 4096
     temperature: 0.3
 
-  # TIER 1 독립 에이전트
+  # ──────────────────────────────────────
+  # 팟캐스트모드 TIER 1 독립 에이전트
+  # ──────────────────────────────────────
   episode_memory:
     model: sonnet
     max_tokens: 2048
-  knowledge:
-    model: sonnet
-    max_tokens: 2048
 
-  # TIER 2
+  # ──────────────────────────────────────
+  # 팟캐스트모드 TIER 2
+  # ──────────────────────────────────────
   script_generator:
     model: sonnet
     max_tokens: 4096
@@ -72,17 +128,23 @@ agents:
     model: sonnet
     max_tokens: 2048
 
-  # TIER 3
+  # ──────────────────────────────────────
+  # 팟캐스트모드 TIER 3
+  # ──────────────────────────────────────
   batch_validator:
     model: sonnet
     max_tokens: 2048
 
-  # TIER 4
+  # ──────────────────────────────────────
+  # 팟캐스트모드 TIER 4
+  # ──────────────────────────────────────
   script_personalizer:
     model: sonnet
     max_tokens: 4096
 
-  # 비동기
+  # ──────────────────────────────────────
+  # 공용 비동기
+  # ──────────────────────────────────────
   telemetry:
     model: haiku
     max_tokens: 1024

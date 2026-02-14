@@ -1,8 +1,11 @@
 """
 독립 에이전트 Stub — 통합 전 임시 인터페이스.
 
-Podcast Reasoning이 조건부로 호출하는 Episode Memory(개발자2)와
-Knowledge Agent(개발자1)의 stub 구현.
+Reasoning 계열 에이전트가 조건부로 호출하는 독립 에이전트의 stub 구현.
+- Episode Memory (개발자2) — 팟캐스트모드
+- Knowledge Agent (개발자1) — 대화모드 + 팟캐스트모드
+- Memory Agent (개발자2) — 대화모드
+
 git main 통합 시 실제 에이전트로 교체한다.
 
 인터페이스 계약:
@@ -70,4 +73,41 @@ class KnowledgeAgentStub:
         return {
             "articles": [],
             "guidelines": [],
+        }
+
+
+class MemoryAgentStub:
+    """
+    Memory Agent의 stub 구현 (대화모드).
+
+    실제 에이전트는 Pinecone 벡터 검색 + MySQL 메타데이터를 사용하지만,
+    stub은 빈 결과를 반환한다.
+
+    Reasoning Agent가 조건부로 호출한다.
+    (graph.needs_personal_context가 True일 때만)
+
+    인터페이스 계약:
+        async def search(query: str, user_id: str, filters: dict | None = None) -> dict
+    """
+
+    async def search(
+        self,
+        query: str,
+        user_id: str,
+        filters: dict | None = None,
+    ) -> dict:
+        """
+        개인 기억 검색 (stub — 빈 결과 반환).
+
+        Args:
+            query: 검색 쿼리
+            user_id: 사용자 ID
+            filters: 검색 필터 (선택)
+
+        Returns:
+            빈 검색 결과 dict
+        """
+        return {
+            "memories": [],
+            "relevance_scores": [],
         }

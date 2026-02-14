@@ -65,6 +65,8 @@ docker compose up -d
 
 ## 3. 첫 에이전트 개발
 
+> 상세 구현 가이드, 템플릿, 테스트 패턴은 **[에이전트 개발 가이드](AGENT_DEV_GUIDE.md)**를 참조하세요.
+
 ### 에이전트 노드 기본 구조
 
 모든 에이전트는 `BaseAgent` ABC를 상속받아 `process()` 메서드를 구현합니다.
