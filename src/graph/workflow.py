@@ -44,9 +44,6 @@ _TIER1_TIMEOUT: int = _pipeline_config.get("tier1_timeout_seconds", 15)
 # ---------------------------------------------------------------------------
 # 구현된 에이전트 노드 — 실제 import
 # ---------------------------------------------------------------------------
-from src.agents.podcast.batch_validator import batch_validator_node  # noqa: E402
-from src.agents.podcast.content_analyzer import content_analyzer_node  # noqa: E402
-from src.agents.podcast.podcast_reasoning import podcast_reasoning_node  # noqa: E402
 from src.agents.shared.learning import learning_node  # noqa: E402
 
 
@@ -60,9 +57,14 @@ async def _stub_node(name: str, state: AgentState) -> dict[str, Any]:
 
 
 # --- TIER 0 (개발자1) ---
+from src.agents.conversation.intent_classifier import IntentClassifierAgent
+
+_intent_classifier = IntentClassifierAgent()
+
+
 async def intent_classifier_node(state: AgentState) -> dict[str, Any]:
-    """[STUB] Intent Classifier — 개발자1 구현 예정."""
-    return await _stub_node("intent_classifier", state)
+    """Intent Classifier 노드"""
+    return await _intent_classifier.process(state)
 
 
 # --- TIER 1 공용 (개발자2) ---
@@ -106,15 +108,38 @@ async def personalization_node(state: AgentState) -> dict[str, Any]:
 
 
 # --- TIER 2 팟캐스트모드 (개발자1) ---
+from src.agents.podcast.script_generator import ScriptGeneratorAgent
+
+_script_generator = ScriptGeneratorAgent()
+
+
 async def script_generator_node(state: AgentState) -> dict[str, Any]:
-    """[STUB] Script Generator — 개발자1 구현 예정."""
-    return await _stub_node("script_generator", state)
+    """Script Generator 노드"""
+    return await _script_generator.process(state)
 
 
 # --- TIER 4 팟캐스트모드 (개발자1) ---
+from src.agents.podcast.script_personalizer import ScriptPersonalizerAgent
+
+_script_personalizer = ScriptPersonalizerAgent()
+
+
 async def script_personalizer_node(state: AgentState) -> dict[str, Any]:
-    """[STUB] Script Personalizer — 개발자1 구현 예정."""
-    return await _stub_node("script_personalizer", state)
+    """Script Personalizer 노드"""
+    return await _script_personalizer.process(state)
+
+
+# --- 비동기 팟캐스트 스텁 추가 ---
+async def content_analyzer_node(state: AgentState) -> dict[str, Any]:
+    return await _stub_node("content_analyzer", state)
+
+
+async def podcast_reasoning_node(state: AgentState) -> dict[str, Any]:
+    return await _stub_node("podcast_reasoning", state)
+
+
+async def batch_validator_node(state: AgentState) -> dict[str, Any]:
+    return await _stub_node("batch_validator", state)
 
 
 # --- 비동기 (개발자2) ---
@@ -231,10 +256,7 @@ async def tier1_conversation_fan_out(state: AgentState) -> dict[str, Any]:
     for coro in asyncio.as_completed(tasks):
         name, result = await coro
 
-        if (
-            name == "safety"
-            and result.get("safety_flags", {}).get("status") == "crisis"
-        ):
+        if name == "safety" and result.get("safety_flags", {}).get("status") == "crisis":
             # ■ CRISIS: 나머지 모두 취소 → Safety 심화 → 즉시 응답
             cancel_event.set()
             deep_result = await _safety_deep_crisis(result)
@@ -258,19 +280,14 @@ async def tier1_podcast_fan_out(state: AgentState) -> dict[str, Any]:
         run_with_cancel(safety_node(state), cancel_event, "safety"),
         run_with_cancel(emotion_node(state), cancel_event, "emotion"),
         run_with_cancel(content_analyzer_node(state), cancel_event, "content_analyzer"),
-        run_with_cancel(
-            podcast_reasoning_node(state), cancel_event, "podcast_reasoning"
-        ),
+        run_with_cancel(podcast_reasoning_node(state), cancel_event, "podcast_reasoning"),
     ]
 
     merged: dict[str, Any] = {}
     for coro in asyncio.as_completed(tasks):
         name, result = await coro
 
-        if (
-            name == "safety"
-            and result.get("safety_flags", {}).get("status") == "crisis"
-        ):
+        if name == "safety" and result.get("safety_flags", {}).get("status") == "crisis":
             cancel_event.set()
             deep_result = await _safety_deep_crisis(result)
             return {**deep_result, "next_step": "crisis_response"}
@@ -362,9 +379,7 @@ def route_after_tier3_conversation(state: AgentState) -> str:
         return "tier2_conversation"
 
     # 최대 재시도 초과 또는 escalate → 강제 통과
-    logger.warning(
-        "[RETRY] 최대 재시도(%d) 도달 — 강제 통과", _MAX_RETRIES
-    )
+    logger.warning("[RETRY] 최대 재시도(%d) 도달 — 강제 통과", _MAX_RETRIES)
     return "tier4"
 
 
@@ -395,9 +410,7 @@ def route_after_tier3_podcast(state: AgentState) -> str:
     if iteration_count < _MAX_RETRIES:
         return "tier2_podcast"
 
-    logger.warning(
-        "[RETRY] 팟캐스트 최대 재시도(%d) 도달 — 강제 통과", _MAX_RETRIES
-    )
+    logger.warning("[RETRY] 팟캐스트 최대 재시도(%d) 도달 — 강제 통과", _MAX_RETRIES)
     return "tier4_podcast"
 
 

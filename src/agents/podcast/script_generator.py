@@ -1,0 +1,305 @@
+"""
+Script Generator Agent
+팟캐스트 스크립트를 생성합니다 (세그먼트별 배치 생성).
+
+TIER 2 에이전트: Podcast Reasoning에서 넘어온 기획안을 바탕으로 완전한 스크립트를 작성합니다.
+"""
+
+import logging
+import uuid
+from datetime import datetime
+from typing import Any, Dict, List
+
+from src.agents.shared.llm_client import LLMClient
+from src.models.agent_state import AgentState
+
+logger = logging.getLogger(__name__)
+
+
+class ScriptGeneratorAgent:
+    """
+    팟캐스트 스크립트 생성 에이전트
+    세그먼트별로 순차적으로 스크립트를 생성합니다.
+    """
+
+    WORDS_PER_MINUTE = 150  # 한국어 기준 분당 단어 수 (대략적)
+
+    def __init__(self):
+        # LLMClient 설정
+        self.llm_client = LLMClient(agent_name="script_generator", provider_override="openai")
+
+    async def process(self, state: AgentState) -> dict:
+        """
+        LangGraph 노드 함수 (비동기)
+
+        Args:
+            state: 팟캐스트 상태
+
+        Returns:
+            업데이트된 상태 (script_draft 등)
+        """
+        start_time = datetime.now()
+
+        logger.info("[ScriptGenerator] 스크립트 생성 프로세스 시작")
+
+        # 입력 데이터 추출 (content_analysis 등 이전 단계 결과 반영)
+        content_analysis = state.get(
+            "content_analysis", state
+        )  # state 최상단에 병합됐을 수도 있고 dict 형태일 수도 있음
+        main_theme = content_analysis.get("main_theme", state.get("main_theme", "Mental Health"))
+        sub_themes = content_analysis.get("sub_themes", state.get("sub_themes", []))
+        emotional_journey = content_analysis.get(
+            "emotional_journey", state.get("emotional_journey", {})
+        )
+
+        target_duration = content_analysis.get(
+            "target_duration", state.get("target_duration", 5)
+        )  # 전체 목표 시간
+
+        # Reasoning에서 생성된 segment_plan (또는 episode_structure) 추출
+        reasoning_result = state.get("reasoning_result", {})
+        segment_plan = state.get("segment_plan", [])
+        if not segment_plan and "episode_structure" in reasoning_result:
+            for idx, sec in enumerate(reasoning_result["episode_structure"]):
+                # duration_ratio를 목표 시간에 곱해서 분 단위 계산 (기본 1분)
+                duration_ratio = float(sec.get("duration_ratio", 0.2))
+                calc_duration = max(1, int(target_duration * duration_ratio))
+
+                segment_plan.append(
+                    {
+                        "segment_id": f"seg_{idx+1}_{uuid.uuid4().hex[:4]}",
+                        "segment_type": sec.get("section", f"part_{idx+1}"),
+                        "duration_minutes": calc_duration,
+                        "key_points": [sec.get("content_direction", "")],
+                        "emotional_tone": sec.get("emotional_tone", "차분함"),
+                        "transition_hint": sec.get("transition", ""),
+                    }
+                )
+
+        # 그래도 플랜이 없다면 임시 플랜 생성
+        if not segment_plan:
+            start_emotion = emotional_journey.get(
+                "opening", emotional_journey.get("start_emotion", "차분함")
+            )
+            segment_plan = [
+                {
+                    "segment_id": f"seg_{uuid.uuid4().hex[:6]}",
+                    "segment_type": "intro",
+                    "duration_minutes": 2,
+                    "key_points": [main_theme + "에 대한 공감"],
+                    "emotional_tone": start_emotion,
+                    "transition_hint": "자연스럽게 본론으로 넘어가기",
+                }
+            ]
+
+        knowledge_context = state.get("knowledge_context", {})
+
+        try:
+            # 1. 에피소드 제목 생성
+            episode_title = await self._generate_title(main_theme, sub_themes, emotional_journey)
+            logger.info(f"[ScriptGenerator] 제목 생성 완료: {episode_title}")
+
+            # 2. 세그먼트별 스크립트 생성
+            generated_segments = []
+            for idx, segment in enumerate(segment_plan):
+                logger.info(f"[ScriptGenerator] 세그먼트 {idx + 1}/{len(segment_plan)} 생성 중...")
+
+                prev_context = self._get_previous_context(generated_segments, idx)
+                segment_script = await self._generate_segment_script(
+                    segment=segment,
+                    episode_title=episode_title,
+                    main_theme=main_theme,
+                    emotional_journey=emotional_journey,
+                    previous_context=prev_context,
+                    knowledge_context=knowledge_context,
+                )
+                generated_segments.append(segment_script)
+
+            # 3. 핵심 인사이트 추출
+            key_insights = await self._extract_insights(generated_segments)
+
+            # 4. 최종 스크립트 (Draft) 구조화
+            total_duration = sum(seg.get("duration_minutes", 0) for seg in generated_segments)
+            total_words = sum(seg.get("word_count", 0) for seg in generated_segments)
+
+            script_draft = {
+                "episode_title": episode_title,
+                "total_duration": total_duration,
+                "segments": generated_segments,
+                "key_insights": key_insights,
+                "themes": [main_theme] + sub_themes,
+                "metadata": {
+                    "generated_at": datetime.now().isoformat(),
+                    "main_theme": main_theme,
+                    "total_words": total_words,
+                    "segment_count": len(generated_segments),
+                    "processing_time": (datetime.now() - start_time).total_seconds(),
+                },
+            }
+
+            logger.info(
+                f"[ScriptGenerator] 전체 생성 완료. 총 {total_words}단어, 예상 시간 {total_duration}분"
+            )
+
+            return {"script_draft": script_draft}
+
+        except Exception as e:
+            logger.error(f"[ScriptGenerator] 스크립트 작성 중 에러 발생: {str(e)}")
+            return {"script_draft": {}, "error": str(e)}
+
+    async def _generate_title(
+        self, main_theme: str, sub_themes: List[str], emotional_journey: Dict
+    ) -> str:
+        """에피소드 제목 생성"""
+        start_emotion = emotional_journey.get(
+            "opening", emotional_journey.get("start_emotion", "None")
+        )
+        resolution_emotion = emotional_journey.get(
+            "resolution", emotional_journey.get("resolution_emotion", "None")
+        )
+
+        prompt = (
+            "Create a compelling podcast episode title for mental health content.\n\n"
+            f"Main Theme: {main_theme}\n"
+            f"Sub-themes: {', '.join(sub_themes)}\n"
+            f"Emotional Journey: From {start_emotion} "
+            f"to {resolution_emotion}\n\n"
+            "Requirements:\n"
+            "- In Korean\n"
+            "- 10-30 characters\n"
+            "- Empathetic and engaging\n"
+            "- Avoid clickbait or sensationalism\n\n"
+            "Respond ONLY with the title text itself."
+        )
+
+        try:
+            # generate 메서드는 일반 텍스트를 반환합니다.
+            response_text = await self.llm_client.generate(
+                system_prompt="You are a brilliant podcast producer generating a title.",
+                user_message=prompt,
+            )
+            title = response_text.strip().replace('"', "").replace("'", "")
+            return title if len(title) <= 30 else title[:30] + "..."
+        except Exception:
+            return f"당실을 위한 마음 이야기: {main_theme}"
+
+    async def _generate_segment_script(
+        self,
+        segment: Dict,
+        episode_title: str,
+        main_theme: str,
+        emotional_journey: Dict,
+        previous_context: str,
+        knowledge_context: Dict,
+    ) -> Dict:
+        """개별 세그먼트 스크립트 텍스트 생성"""
+        duration_minutes = segment.get("duration_minutes", 2)
+        word_count_target = duration_minutes * self.WORDS_PER_MINUTE
+
+        # 지식 요약
+        knowledge_summary = "사용 가능한 전문 지식이 없습니다."
+        if knowledge_context and isinstance(knowledge_context, dict):
+            synthesis = knowledge_context.get("knowledge_results", {}).get("synthesis")
+            if synthesis:
+                knowledge_summary = synthesis
+
+        key_points_text = "\n".join([f"- {kp}" for kp in segment.get("key_points", [])])
+
+        prompt = (
+            "You are writing a mental health podcast script in Korean.\n"
+            "Write the exact script for this specific segment.\n\n"
+            f"**Episode Title**: {episode_title}\n"
+            f"**Main Theme**: {main_theme}\n"
+            f"**Target Duration**: {duration_minutes} minutes (approx {word_count_target} words)\n\n"
+            f"**Segment Key Points**:\n{key_points_text}\n"
+            f"**Emotional Tone**: {segment.get('emotional_tone', 'neutral')}\n"
+            f"**Transition Hint**: {segment.get('transition_hint', 'natural transition')}\n\n"
+            f"**Previous Segment Context**: {previous_context or 'This is the opening segment.'}\n\n"
+            f"**Knowledge to Include (if relevant)**: {knowledge_summary}\n\n"
+            "**Writing Guidelines**:\n"
+            "1. Write in natural, warm conversational Korean (존댓말 사용)\n"
+            "2. Be empathetic and supportive, NO medical diagnosing or advising\n"
+            "3. Aim to be reasonably close to the target word count\n\n"
+            "Return ONLY the Korean script text."
+        )
+
+        try:
+            script_text = await self.llm_client.generate(
+                system_prompt="You are an empathetic mental health podcast scriptwriter. Return only the script text.",
+                user_message=prompt,
+            )
+
+            word_count = len(script_text.split())
+
+            return {
+                "segment_id": segment.get("segment_id", "unknown_seg"),
+                "segment_type": segment.get("segment_type", "body"),
+                "duration_minutes": duration_minutes,
+                "script_text": script_text.strip(),
+                "word_count": word_count,
+                "emotional_tone": segment.get("emotional_tone", "neutral"),
+                "tts_markers": [],
+            }
+        except Exception as e:
+            logger.error(f"세그먼트 스크립트 작성 실패: {e}")
+            return {
+                "segment_id": segment.get("segment_id", f"error_seg_{uuid.uuid4().hex[:4]}"),
+                "segment_type": segment.get("segment_type", "body"),
+                "duration_minutes": duration_minutes,
+                "script_text": f"(스크립트 작성 실패: {main_theme} 관련 내용을 논의하는 부분입니다.)",
+                "word_count": 10,
+                "emotional_tone": "neutral",
+                "tts_markers": [],
+            }
+
+    def _get_previous_context(self, generated_segments: List[Dict], current_index: int) -> str:
+        """이전 세그먼트를 기준으로 짧은 요약 컨텍스트를 제공"""
+        if current_index == 0 or not generated_segments:
+            return ""
+
+        prev_seg = generated_segments[-1]
+        text_preview = prev_seg.get("script_text", "")[-150:]
+        return f"이전 세그먼트는 이렇게 끝났습니다: '...{text_preview}'"
+
+    async def _extract_insights(self, generated_segments: List[Dict]) -> List[str]:
+        """생성된 스크립트들에서 핵심 인사이트 추출 (JSON 배열 형식 반환)"""
+        if not generated_segments:
+            return []
+
+        full_script = "\n\n".join([s.get("script_text", "") for s in generated_segments])
+        # 스크립트가 너무 길면 잘라냄
+        if len(full_script) > 5000:
+            full_script = full_script[:5000] + "..."
+
+        system_prompt = (
+            "You are an assistant that reads podcast scripts and extracts key takeaways."
+        )
+        user_message = (
+            "Extract 3-5 brief, actionable, positive key insights (in Korean) from the following script.\n"
+            'Return them strictly as a JSON list of strings, for example: ["인사이트1", "인사이트2"]\n\n'
+            f"Script:\n{full_script}"
+        )
+
+        try:
+            insights = await self.llm_client.generate_json(
+                system_prompt=system_prompt,
+                user_message=user_message,
+            )
+            # 만약 dict로 오면 values 추출, list면 그대로
+            if isinstance(insights, dict) and "insights" in insights:
+                return insights["insights"]
+            if isinstance(insights, list):
+                return insights[:5]
+            return []
+        except Exception:
+            return ["감정 수용하기", "스스로에게 친절하게 대하기"]
+
+
+async def create_script_generator_node() -> Any:
+    """LangGraph에서 호출 가능한 노드 팩토리 생성"""
+    agent = ScriptGeneratorAgent()
+
+    async def _node(state: AgentState) -> dict:
+        return await agent.process(state)
+
+    return _node

@@ -1,0 +1,3 @@
+200
+{"id":"chatcmpl-735","object":"chat.completion","created":1772005934,"model":"gpt-oss:20b","system_fingerprint":"fp_ollama","choices":[{"index":0,"message":{"role":"assistant","content":"Hello! 👋 How can I assist you today?","reasoning":"We have a very short prompt: user says \"Hello\". We need to respond as ChatGPT. We can adopt a friendly tone, ask how can we help, etc. Probably want to keep the conversation open."},"finish_reason":"stop"}],"usage":{"prompt_tokens":68,"completion_tokens":64,"total_tokens":132}}
+
