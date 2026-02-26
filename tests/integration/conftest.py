@@ -313,14 +313,17 @@ def mock_all_llm_calls():
             mock_all_llm_calls.return_value = {"key": "value"}
             # ... 테스트
     """
-    with patch(
-        "src.agents.shared.base_agent.BaseAgent.call_llm_json",
-        new_callable=AsyncMock,
-        return_value={},
-    ) as mock_json, patch(
-        "src.agents.shared.base_agent.BaseAgent.call_llm",
-        new_callable=AsyncMock,
-        return_value="",
-    ) as mock_text:
+    with (
+        patch(
+            "src.agents.shared.base_agent.BaseAgent.call_llm_json",
+            new_callable=AsyncMock,
+            return_value={},
+        ) as mock_json,
+        patch(
+            "src.agents.shared.base_agent.BaseAgent.call_llm",
+            new_callable=AsyncMock,
+            return_value="",
+        ) as mock_text,
+    ):
         mock_json.text_mock = mock_text  # type: ignore[attr-defined]
         yield mock_json

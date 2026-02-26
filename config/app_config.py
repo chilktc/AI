@@ -10,12 +10,12 @@
 
 # Intent 타입 목록 (필요시 추가/삭제 가능)
 INTENT_TYPES = [
-    "casual_chat",        # 일상대화
+    "casual_chat",  # 일상대화
     "emotional_support",  # 감정 표현/지지 요청
-    "counseling",         # 고민상담
-    "crisis",             # 위기상황 (자해/자살 언급 등)
-    "information",        # 정보 요청
-    "podcast_request",    # 팟캐스트 생성 요청
+    "counseling",  # 고민상담
+    "crisis",  # 위기상황 (자해/자살 언급 등)
+    "information",  # 정보 요청
+    "podcast_request",  # 팟캐스트 생성 요청
 ]
 
 # 위기 감지 키워드 (1차 필터링용, 필요시 추가/삭제 가능)

@@ -114,11 +114,12 @@ class LLMClient:
             )
         elif self._provider == "openai":
             import openai
-            self._openai_client = openai.AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY", "dummy-key-for-tests"))
-            model_key = agent_config.get("model", "gpt-4")
-            self._model_id = model_override or agent_config.get(
-                "model_id", model_key
+
+            self._openai_client = openai.AsyncOpenAI(
+                api_key=os.getenv("OPENAI_API_KEY", "dummy-key-for-tests")
             )
+            model_key = agent_config.get("model", "gpt-4")
+            self._model_id = model_override or agent_config.get("model_id", model_key)
         else:
             # Anthropic 직접 API (기본)
             self._anthropic_client = anthropic.AsyncAnthropic()
@@ -247,7 +248,7 @@ class LLMClient:
             temperature=temperature,
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message}
+                {"role": "user", "content": user_message},
             ],
         )
         return response.choices[0].message.content
