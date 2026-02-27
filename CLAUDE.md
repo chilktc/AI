@@ -462,7 +462,6 @@ class ReasoningAgent:
 | 벡터 DB | Pinecone |
 | 관계형 DB | MySQL |
 | 그래프 DB | Neo4j |
-| 캐시 | Redis |
 | 이미지 저장 | S3 / CDN |
 | 프레임워크 | FastAPI + Uvicorn |
 | CI/CD | GitHub Actions |

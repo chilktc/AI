@@ -1,54 +1,14 @@
-# agents/common/schemas.py
 """
-공통 데이터 구조 정의 (Pydantic 모델)
-에이전트 간 데이터 전달에 사용됩니다.
+공통 데이터 구조 정의 (Pydantic 모델).
+
+에이전트 간 데이터 전달에 사용되는 스키마를 정의한다.
+Intent Classifier, Script Personalizer 등 에이전트 전용 모델을 포함한다.
 """
 
 from datetime import datetime
-from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
-
-# =============================================================================
-# Enum 정의
-# =============================================================================
-
-
-class IntentType(str, Enum):
-    """Intent 타입 열거형 - config.py의 INTENT_TYPES와 동기화 필요"""
-
-    CASUAL_CHAT = "casual_chat"
-    EMOTIONAL_SUPPORT = "emotional_support"
-    COUNSELING = "counseling"
-    CRISIS = "crisis"
-    INFORMATION = "information"
-    PODCAST_REQUEST = "podcast_request"
-
-
-class FormailtyLevel(str, Enum):
-    """격식체 수준"""
-
-    HIGH = "high"
-    MEDIUM = "medium"
-    LOW = "low"
-
-
-class AttitudeType(str, Enum):
-    """태도 타입"""
-
-    EMPATHETIC = "empathetic"  # 공감 우선
-    RATIONAL = "rational"  # 이성적 해결 우선
-    BALANCED = "balanced"  # 균형
-
-
-class JourneyType(str, Enum):
-    """감정 여정 타입"""
-
-    HEALING = "healing"
-    GROWTH = "growth"
-    UNDERSTANDING = "understanding"
-
 
 # =============================================================================
 # Intent Classifier 관련 스키마
@@ -71,17 +31,6 @@ class IntentFlags(BaseModel):
     visualization_hint: bool = Field(default=False, description="시각화 힌트 여부")
     urgency_level: int = Field(default=0, ge=0, le=3, description="긴급도 (0-3)")
     risk_flag: bool = Field(default=False, description="위기 감지 플래그")
-
-
-class IntentClassifierInput(BaseModel):
-    """Intent Classifier 입력"""
-
-    user_input: str = Field(..., description="사용자 입력 메시지")
-    user_id: str = Field(..., description="사용자 식별자")
-    session_id: str = Field(..., description="세션 식별자")
-    previous_intent: Optional[Dict[str, Any]] = Field(
-        default=None, description="이전 턴의 의도 정보"
-    )
 
 
 class IntentClassifierOutput(BaseModel):
@@ -176,14 +125,6 @@ class PersonalizedScript(BaseModel):
     personalization_meta: PersonalizationMeta = Field(default_factory=PersonalizationMeta)
 
 
-class ScriptPersonalizerInput(BaseModel):
-    """Script Personalizer 입력"""
-
-    validated_script: ValidatedScript = Field(..., description="검증된 스크립트")
-    user_id: str = Field(..., description="사용자 ID")
-    emotional_journey: Optional[EmotionalJourney] = Field(default=None, description="감정 여정")
-
-
 class LearningEvent(BaseModel):
     """Learning Agent로 보내는 학습 이벤트"""
 
@@ -192,65 +133,3 @@ class LearningEvent(BaseModel):
     episode_id: str = Field(..., description="에피소드 ID")
     personalization_effectiveness: float = Field(default=0.0, description="개인화 효과성")
     applied_settings: Dict[str, Any] = Field(default_factory=dict, description="적용된 설정")
-
-
-# =============================================================================
-# LangGraph State 스키마
-# =============================================================================
-
-
-class ConversationState(BaseModel):
-    """대화 모드 LangGraph State"""
-
-    # 입력
-    user_input: str = Field(default="", description="사용자 입력")
-    user_id: str = Field(default="", description="사용자 ID")
-    session_id: str = Field(default="", description="세션 ID")
-
-    # Intent Classifier 출력
-    intent_result: Optional[IntentClassifierOutput] = Field(default=None)
-
-    # 기타 에이전트 출력 (다른 팀원이 채울 부분)
-    guardian_result: Optional[Dict[str, Any]] = Field(default=None)
-    emotion_result: Optional[Dict[str, Any]] = Field(default=None)
-    context_result: Optional[Dict[str, Any]] = Field(default=None)
-    reasoning_result: Optional[Dict[str, Any]] = Field(default=None)
-
-    # 최종 출력
-    final_response: Optional[str] = Field(default=None)
-
-    # 메타데이터
-    trace_id: str = Field(default="", description="추적 ID")
-    errors: List[str] = Field(default_factory=list, description="에러 목록")
-
-
-class PodcastState(BaseModel):
-    """팟캐스트 모드 LangGraph State"""
-
-    # 입력
-    user_input: str = Field(default="", description="사용자 입력 (팟캐스트 주제)")
-    user_id: str = Field(default="", description="사용자 ID")
-
-    # Content Analyzer 출력
-    main_theme: Optional[str] = Field(default=None)
-    sub_themes: List[str] = Field(default_factory=list)
-    emotional_journey: Optional[EmotionalJourney] = Field(default=None)
-    target_duration: int = Field(default=15)
-    narrative_structure: Optional[str] = Field(default=None)
-    key_messages: List[str] = Field(default_factory=list)
-
-    # Script Generator 출력
-    generated_script: Optional[Dict[str, Any]] = Field(default=None)
-
-    # Batch Validator 출력
-    validated_script: Optional[ValidatedScript] = Field(default=None)
-
-    # Script Personalizer 출력
-    personalized_script: Optional[PersonalizedScript] = Field(default=None)
-
-    # Learning Event
-    learning_event: Optional[LearningEvent] = Field(default=None)
-
-    # 메타데이터
-    trace_id: str = Field(default="", description="추적 ID")
-    errors: List[str] = Field(default_factory=list, description="에러 목록")

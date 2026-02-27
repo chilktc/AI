@@ -126,6 +126,32 @@ class Settings:
         # fallback: 기본 Anthropic 모델 ID 사용
         return self.get_model_id(model_key)
 
+    def get_openai_model_id(self, model_key: str) -> str:
+        """
+        모델 키에 해당하는 OpenAI 모델 ID를 반환한다.
+
+        환경변수 LLM_OPENAI_MODEL_{KEY}로 오버라이드 가능.
+        예: LLM_OPENAI_MODEL_SONNET=gpt-4o
+
+        Args:
+            model_key: 모델 키 (haiku, sonnet, opus)
+
+        Returns:
+            OpenAI 모델 ID 문자열
+        """
+        # 환경변수 오버라이드 확인
+        env_key = f"LLM_OPENAI_MODEL_{model_key.upper()}"
+        env_value = os.getenv(env_key)
+        if env_value:
+            return env_value
+
+        openai_models = self._config["llm"].get("openai_models", {})
+        if model_key in openai_models:
+            return str(openai_models[model_key])
+
+        # fallback: 기본 모델
+        return "gpt-4o-mini"
+
     def get_agent_config(self, agent_name: str) -> dict[str, Any]:
         """
         에이전트별 설정을 반환한다.

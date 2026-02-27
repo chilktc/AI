@@ -5,11 +5,17 @@
 - TIER 1 에이전트 (Content Analyzer, Podcast Reasoning): user_input + intent만
 - TIER 3 에이전트 (Batch Validator): 앞단 결과 전부 포함
 - 비동기 에이전트 (Learning): 전체 파이프라인 완료 상태
+- E2E 워크플로우: 최소 입력 (user_input + mode만, intent 없음)
 """
 
 from __future__ import annotations
 
+import json
+import logging
+from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 def make_content_analyzer_state() -> dict[str, Any]:
@@ -225,6 +231,87 @@ def make_learning_state() -> dict[str, Any]:
         "오늘은 많은 분들이 고민하시는 직장 내 인간관계에 대해 이야기합니다..."
     )
 
+    return state
+
+
+def make_e2e_state() -> dict[str, Any]:
+    """
+    E2E LangGraph 워크플로우 테스트용 최소 초기 상태.
+
+    직장 내 뒷담화/갈등 시나리오 — 복잡도가 높아
+    프로바이더 간 추론 품질 차이를 비교하기에 적합하다.
+
+    **최소 입력**: user_input + user_id + session_id + mode만 전달.
+    intent는 pre-fill 하지 않음 — IntentClassifier가 LLM으로 실제 분류한다.
+    """
+    return {
+        "user_input": (
+            "- 상황: 아니 오늘 친하게 지내던 후배가 내 뒷담을 하는 걸 들었어. "
+            "내가 과장 진급하고 위에서 하도 성과를 가지고 압박하길래 "
+            "나도 나름대로 할 수 있을 수준으로 힘들게 네고하고, "
+            "후배한테도 최대한 좋게 전달하려고 했던 건데 "
+            "이렇게 뒷담을 들어야 한다는게 너무 짜증난다.\n"
+            "- 자신의 생각: 나도 나름대로 중간에서 조율을 하고 내가 할 일을 하는 건데, "
+            "그거가지고 친하게 지내던 후배가 뒷담을 하는게 너무 실망이고 "
+            "오히려 그러니까 나도 그냥 차갑게 대하고 싶어. "
+            "근데 그래봤자 나만 겉돌게 되는건 아닌지 무섭기도 하고… "
+            "그렇다고 상사랑 친하게 지내기도 어려운게 "
+            "진짜 내 상사는 진짜 말이 안 통함.\n"
+            "- 자신의 행동 및 반응: 아직은 그냥 모른척 내가 하던대로 하고 있어. "
+            "그런데 후배를 마주치면 나도 모르게 얼굴이 굳고 "
+            "좀 거리감이 느껴져서 괜히 툭 툭 내뱉듯이 말을 하게 되는 거 같아.\n"
+            "- 동료의 반응: 후배는 내가 뒷담화 들은 걸 모르니까 "
+            "그냥 아직까지는 자연스럽게 대하려고 하는거 같아. "
+            "내가 업무 지시를 해도 그냥 웃으면서 잘 받고. "
+            "근데 그 뒤에 불만이 가득 쌓인거지. 차라리 말을 하던지."
+        ),
+        "user_id": "user_e2e_graph_001",
+        "session_id": "sess_e2e_graph_001",
+        "mode": "podcast",
+    }
+
+
+def load_state_from_json(file_path: str | Path) -> dict[str, Any]:
+    """
+    JSON 파일에서 E2E 테스트 초기 상태를 로드한다.
+
+    JSON 파일 형식:
+        {
+            "user_input": "테스트할 내용...",
+            "mode": "podcast",          // 선택, 기본값: "podcast"
+            "user_id": "user_xxx",      // 선택, 기본값: "user_e2e_graph_001"
+            "session_id": "sess_xxx"    // 선택, 기본값: "sess_e2e_graph_001"
+        }
+
+    Args:
+        file_path: JSON 파일 경로
+
+    Returns:
+        AgentState 초기 dict
+
+    Raises:
+        FileNotFoundError: 파일이 존재하지 않을 때
+        json.JSONDecodeError: JSON 형식이 올바르지 않을 때
+        ValueError: user_input 필드가 없을 때
+    """
+    path = Path(file_path)
+    if not path.exists():
+        raise FileNotFoundError(f"테스트 입력 파일을 찾을 수 없습니다: {path}")
+
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+
+    if "user_input" not in data:
+        raise ValueError(f"JSON 파일에 'user_input' 필드가 필수입니다: {path}")
+
+    state: dict[str, Any] = {
+        "user_input": data["user_input"],
+        "user_id": data.get("user_id", "user_e2e_graph_001"),
+        "session_id": data.get("session_id", "sess_e2e_graph_001"),
+        "mode": data.get("mode", "podcast"),
+    }
+
+    logger.info("커스텀 테스트 입력 로드 완료: %s (mode=%s)", path.name, state["mode"])
     return state
 
 

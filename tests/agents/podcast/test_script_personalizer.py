@@ -10,13 +10,13 @@ import time
 
 import pytest
 
-from src.agents.common.schemas import (
+from src.agents.podcast.script_personalizer import ScriptPersonalizerAgent
+from src.models.schemas import (
     EmotionalJourney,
     ScriptSegment,
     UserProfile,
     ValidatedScript,
 )
-from src.agents.podcast.script_personalizer import ScriptPersonalizerAgent
 
 # =============================================================================
 # 테스트 데이터
@@ -258,24 +258,6 @@ if __name__ == "__main__":
         result = agent.process(state)
         print_script_result(original, result, name)
 
-    # LLM 사용 테스트
-    print("\n\n📌 Ollama LLM 테스트")
-    try:
-        from src.agents.common.llm_client import create_ollama_client
-
-        ollama_client = create_ollama_client()
-        agent_with_llm = ScriptPersonalizerAgent(
-            llm_client=ollama_client, db_client=None, enable_deep_personalization=True
-        )
-
-        state = {
-            "user_input": "번아웃 팟캐스트",
-            "user_id": "user_exp",
-            "script_draft": original.model_dump(),
-            "emotional_journey": create_sample_journey().model_dump(),
-        }
-        result = agent_with_llm.process(state)
-        print_script_result(original, result, "LLM experienced")
-
-    except ImportError:
-        print("⚠️ openai 모듈을 사용할 수 없습니다. pip install openai")
+    # LLM 사용 테스트 — conftest.py의 llm_client 픽스처 또는
+    # dev/ollama_bootstrap.py의 register_ollama()를 사용하세요.
+    # 예: pytest tests/ -v (llm_client 세션 픽스처 자동 적용)

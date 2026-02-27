@@ -11,7 +11,7 @@ app:
 # provider: anthropic(직접 API) 또는 bedrock(AWS Bedrock) 선택
 # 환경변수 LLM_PROVIDER로 오버라이드 가능
 llm:
-  provider: anthropic  # anthropic | bedrock
+  provider: anthropic  # anthropic | bedrock | openai
   models:
     haiku: "claude-haiku-4-5-20251001"
     sonnet: "claude-sonnet-4-5-20250929"
@@ -21,6 +21,11 @@ llm:
     haiku: "anthropic.claude-haiku-4-5-20251001-v1:0"
     sonnet: "anthropic.claude-sonnet-4-5-20250929-v2:0"
     opus: "anthropic.claude-opus-4-6-v1:0"
+  # OpenAI 전용 모델 ID (provider: openai일 때 사용)
+  openai_models:
+    haiku: "gpt-4o-mini"                          # 경량 작업
+    sonnet: "gpt-4o-mini"                         # 표준 작업 (비용 효율적)
+    opus: "gpt-4o"                                # 복잡한 추론
   # Bedrock 설정
   bedrock:
     region: "ap-northeast-2"  # 환경변수 AWS_REGION으로 오버라이드 가능

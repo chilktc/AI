@@ -9,14 +9,12 @@ TIER 0 에이전트: 모든 대화의 첫 번째 처리 단계
 """
 
 import json
-import logging
 import re
 import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-# 공통 모듈 임포트
-from src.agents.common.config import (
+from config.app_config import (
     CRISIS_KEYWORDS,
     DEFAULT_COMPLEXITY_SCORE,
     DEFAULT_INTENT,
@@ -24,19 +22,16 @@ from src.agents.common.config import (
     PODCAST_KEYWORDS,
     REDIS_CONFIG,
 )
-from src.agents.common.schemas import (
+from src.agents.shared.base_agent import BaseAgent
+from src.models.agent_state import AgentState
+from src.models.schemas import (
     DetectedEntities,
     IntentClassifierOutput,
     IntentFlags,
 )
-from src.agents.shared.llm_client import LLMClient
-from src.models.agent_state import AgentState
-
-# 로깅 설정
-logger = logging.getLogger(__name__)
 
 
-class IntentClassifierAgent:
+class IntentClassifierAgent(BaseAgent):
     """
     Intent Classifier Agent
 
@@ -58,10 +53,10 @@ class IntentClassifierAgent:
             use_redis: Redis 캐싱 사용 여부
             redis_client: Redis 클라이언트 - 외부에서 주입
         """
+        super().__init__(name="intent_classifier", tier=0)
+
         self.use_llm = use_llm
-        if self.use_llm:
-            self.llm_client = LLMClient(agent_name="intent_classifier")
-        else:
+        if not self.use_llm:
             self.llm_client = None
 
         self.use_redis = use_redis
@@ -93,7 +88,9 @@ class IntentClassifierAgent:
             # 추적 ID 생성
             trace_id = f"trace_{uuid.uuid4().hex[:12]}"
 
-            logger.info(f"[IntentClassifier] Processing input for user={user_id}, trace={trace_id}")
+            self.logger.info(
+                f"[IntentClassifier] Processing input for user={user_id}, trace={trace_id}"
+            )
 
             # 이전 intent 조회 (Redis에서, 선택적)
             previous_intent = self._get_previous_intent(session_id)
@@ -106,7 +103,7 @@ class IntentClassifierAgent:
 
             # 위기 상황이면 LLM 호출 없이 바로 반환 (안전 우선)
             if preliminary_result["is_crisis"]:
-                logger.warning(
+                self.logger.warning(
                     f"[IntentClassifier] Crisis detected! Keywords: {preliminary_result['detected_keywords']}"
                 )
                 result = self._create_crisis_result(
@@ -131,7 +128,9 @@ class IntentClassifierAgent:
                 )
             else:
                 # LLM이 없으면 규칙 기반 결과 사용
-                logger.info("[IntentClassifier] No LLM client, using rule-based classification")
+                self.logger.info(
+                    "[IntentClassifier] No LLM client, using rule-based classification"
+                )
                 llm_result = self._rule_based_classify(
                     normalized_input=normalized_input, preliminary_result=preliminary_result
                 )
@@ -146,7 +145,7 @@ class IntentClassifierAgent:
 
             # 처리 시간 로깅
             processing_time = (datetime.now() - start_time).total_seconds() * 1000
-            logger.info(
+            self.logger.info(
                 f"[IntentClassifier] Completed in {processing_time:.2f}ms, intent={final_result.intent_type}"
             )
 
@@ -163,7 +162,7 @@ class IntentClassifierAgent:
             }
 
         except Exception as e:
-            logger.error(f"[IntentClassifier] Error: {str(e)}")
+            self.logger.error(f"[IntentClassifier] Error: {str(e)}")
 
             # 에러 시 기본값 반환
             fallback = self._create_fallback_result(
@@ -362,9 +361,7 @@ Important:
 
         try:
             # LLM 클라이언트의 비동기 JSON 생성 메서드 호출
-            parsed = await self.llm_client.generate_json(
-                system_prompt=prompt, user_message=user_input
-            )
+            parsed = await self.call_llm_json(system_prompt=prompt, user_message=user_input)
 
             # 필수 필드 검증 및 기본값 설정
             parsed.setdefault("intent_type", DEFAULT_INTENT)
@@ -386,7 +383,7 @@ Important:
 
             # intent_type 유효성 검증
             if parsed["intent_type"] not in self.intent_types:
-                logger.warning(
+                self.logger.warning(
                     f"[IntentClassifier] Invalid intent_type: {parsed['intent_type']}, using default"
                 )
                 parsed["intent_type"] = DEFAULT_INTENT
@@ -394,7 +391,7 @@ Important:
             return parsed
 
         except Exception as e:
-            logger.error(f"[IntentClassifier] LLM classification failed: {str(e)}")
+            self.logger.error(f"[IntentClassifier] LLM classification failed: {str(e)}")
             # LLM 실패 시 규칙 기반 결과 사용
             return {
                 "intent_type": preliminary_intent,
@@ -555,7 +552,7 @@ Important:
 
         # 안전 우선 원칙: preliminary가 crisis면 LLM 결과 무시
         if preliminary_result["is_crisis"] and llm_result["intent_type"] != "crisis":
-            logger.warning(
+            self.logger.warning(
                 "[IntentClassifier] Overriding LLM result with crisis due to safety-first principle"
             )
             llm_result["intent_type"] = "crisis"
@@ -641,7 +638,7 @@ Important:
             if cached:
                 return json.loads(cached)
         except Exception as e:
-            logger.warning(f"[IntentClassifier] Redis get failed: {str(e)}")
+            self.logger.warning(f"[IntentClassifier] Redis get failed: {str(e)}")
 
         return None
 
@@ -671,7 +668,7 @@ Important:
             )
 
         except Exception as e:
-            logger.warning(f"[IntentClassifier] Redis set failed: {str(e)}")
+            self.logger.warning(f"[IntentClassifier] Redis set failed: {str(e)}")
 
 
 # =============================================================================

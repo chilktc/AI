@@ -5,18 +5,15 @@ Script Generator Agent
 TIER 2 에이전트: Podcast Reasoning에서 넘어온 기획안을 바탕으로 완전한 스크립트를 작성합니다.
 """
 
-import logging
 import uuid
 from datetime import datetime
 from typing import Any, Dict, List
 
-from src.agents.shared.llm_client import LLMClient
+from src.agents.shared.base_agent import BaseAgent
 from src.models.agent_state import AgentState
 
-logger = logging.getLogger(__name__)
 
-
-class ScriptGeneratorAgent:
+class ScriptGeneratorAgent(BaseAgent):
     """
     팟캐스트 스크립트 생성 에이전트
     세그먼트별로 순차적으로 스크립트를 생성합니다.
@@ -25,8 +22,7 @@ class ScriptGeneratorAgent:
     WORDS_PER_MINUTE = 150  # 한국어 기준 분당 단어 수 (대략적)
 
     def __init__(self):
-        # LLMClient 설정
-        self.llm_client = LLMClient(agent_name="script_generator", provider_override="openai")
+        super().__init__(name="script_generator", tier=2)
 
     async def process(self, state: AgentState) -> dict:
         """
@@ -40,7 +36,7 @@ class ScriptGeneratorAgent:
         """
         start_time = datetime.now()
 
-        logger.info("[ScriptGenerator] 스크립트 생성 프로세스 시작")
+        self.logger.info("[ScriptGenerator] 스크립트 생성 프로세스 시작")
 
         # 입력 데이터 추출 (content_analysis 등 이전 단계 결과 반영)
         content_analysis = state.get(
@@ -97,12 +93,14 @@ class ScriptGeneratorAgent:
         try:
             # 1. 에피소드 제목 생성
             episode_title = await self._generate_title(main_theme, sub_themes, emotional_journey)
-            logger.info(f"[ScriptGenerator] 제목 생성 완료: {episode_title}")
+            self.logger.info(f"[ScriptGenerator] 제목 생성 완료: {episode_title}")
 
             # 2. 세그먼트별 스크립트 생성
             generated_segments = []
             for idx, segment in enumerate(segment_plan):
-                logger.info(f"[ScriptGenerator] 세그먼트 {idx + 1}/{len(segment_plan)} 생성 중...")
+                self.logger.info(
+                    f"[ScriptGenerator] 세그먼트 {idx + 1}/{len(segment_plan)} 생성 중..."
+                )
 
                 prev_context = self._get_previous_context(generated_segments, idx)
                 segment_script = await self._generate_segment_script(
@@ -137,14 +135,14 @@ class ScriptGeneratorAgent:
                 },
             }
 
-            logger.info(
+            self.logger.info(
                 f"[ScriptGenerator] 전체 생성 완료. 총 {total_words}단어, 예상 시간 {total_duration}분"
             )
 
             return {"script_draft": script_draft}
 
         except Exception as e:
-            logger.error(f"[ScriptGenerator] 스크립트 작성 중 에러 발생: {str(e)}")
+            self.logger.error(f"[ScriptGenerator] 스크립트 작성 중 에러 발생: {str(e)}")
             return {"script_draft": {}, "error": str(e)}
 
     async def _generate_title(
@@ -174,7 +172,7 @@ class ScriptGeneratorAgent:
 
         try:
             # generate 메서드는 일반 텍스트를 반환합니다.
-            response_text = await self.llm_client.generate(
+            response_text = await self.call_llm(
                 system_prompt="You are a brilliant podcast producer generating a title.",
                 user_message=prompt,
             )
@@ -224,7 +222,7 @@ class ScriptGeneratorAgent:
         )
 
         try:
-            script_text = await self.llm_client.generate(
+            script_text = await self.call_llm(
                 system_prompt="You are an empathetic mental health podcast scriptwriter. Return only the script text.",
                 user_message=prompt,
             )
@@ -241,7 +239,7 @@ class ScriptGeneratorAgent:
                 "tts_markers": [],
             }
         except Exception as e:
-            logger.error(f"세그먼트 스크립트 작성 실패: {e}")
+            self.logger.error(f"세그먼트 스크립트 작성 실패: {e}")
             return {
                 "segment_id": segment.get("segment_id", f"error_seg_{uuid.uuid4().hex[:4]}"),
                 "segment_type": segment.get("segment_type", "body"),
@@ -281,7 +279,7 @@ class ScriptGeneratorAgent:
         )
 
         try:
-            insights = await self.llm_client.generate_json(
+            insights = await self.call_llm_json(
                 system_prompt=system_prompt,
                 user_message=user_message,
             )

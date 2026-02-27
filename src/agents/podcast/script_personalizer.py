@@ -8,21 +8,21 @@ TIER 4 에이전트: 팟캐스트 모드의 마지막 처리 단계
 - Learning Agent로 학습 이벤트 전송
 """
 
-import logging
 import re
 import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-# 공통 모듈 임포트
-from src.agents.common.config import (
+from config.app_config import (
     AGE_GROUP_STYLE_DEFAULTS,
     ATTITUDE_SETTINGS,
     DEFAULT_ATTITUDE,
     FORMALITY_REPLACEMENTS,
     STYLE_MAPPINGS,
 )
-from src.agents.common.schemas import (
+from src.agents.shared.base_agent import BaseAgent
+from src.models.agent_state import AgentState
+from src.models.schemas import (
     EmotionalJourney,
     LearningEvent,
     PersonalizationMeta,
@@ -31,14 +31,9 @@ from src.agents.common.schemas import (
     UserProfile,
     ValidatedScript,
 )
-from src.agents.shared.llm_client import LLMClient
-from src.models.agent_state import AgentState
-
-# 로깅 설정
-logger = logging.getLogger(__name__)
 
 
-class ScriptPersonalizerAgent:
+class ScriptPersonalizerAgent(BaseAgent):
     """
     Script Personalizer Agent
 
@@ -59,10 +54,10 @@ class ScriptPersonalizerAgent:
             db_client: 데이터베이스 클라이언트 (사용자 프로필 조회용) - 외부에서 주입
             enable_deep_personalization: 심화 개인화 활성화 여부
         """
+        super().__init__(name="script_personalizer", tier=4)
+
         self.enable_deep_personalization = enable_deep_personalization
-        if self.enable_deep_personalization:
-            self.llm_client = LLMClient(agent_name="script_personalizer")
-        else:
+        if not self.enable_deep_personalization:
             self.llm_client = None
 
         self.db_client = db_client
@@ -90,7 +85,9 @@ class ScriptPersonalizerAgent:
             # 에피소드 ID 생성
             episode_id = f"ep_{uuid.uuid4().hex[:12]}"
 
-            logger.info(f"[ScriptPersonalizer] Processing for user={user_id}, episode={episode_id}")
+            self.logger.info(
+                f"[ScriptPersonalizer] Processing for user={user_id}, episode={episode_id}"
+            )
 
             # 검증된 스크립트 확인
             if validated_script is None:
@@ -100,7 +97,7 @@ class ScriptPersonalizerAgent:
             user_profile = self._get_user_profile(user_id)
             personalization_strategy = self._determine_strategy(user_profile)
 
-            logger.info(f"[ScriptPersonalizer] Strategy: {personalization_strategy}")
+            self.logger.info(f"[ScriptPersonalizer] Strategy: {personalization_strategy}")
 
             # STEP 2: 규칙 기반 스타일 조정
             adjusted_script, adjusted_segments = self._apply_rule_based_adjustments(
@@ -129,14 +126,14 @@ class ScriptPersonalizerAgent:
 
             # 처리 시간 로깅
             processing_time = (datetime.now() - start_time).total_seconds() * 1000
-            logger.info(f"[ScriptPersonalizer] Completed in {processing_time:.2f}ms")
+            self.logger.info(f"[ScriptPersonalizer] Completed in {processing_time:.2f}ms")
 
             return {
                 "final_output": personalized_script.model_dump_json()  # 문자열 형태의 최종 스크립트 반환
             }
 
         except Exception as e:
-            logger.error(f"[ScriptPersonalizer] Error: {str(e)}")
+            self.logger.error(f"[ScriptPersonalizer] Error: {str(e)}")
 
             # 에러 시 원본 스크립트 그대로 반환
             fallback = ""
@@ -165,10 +162,10 @@ class ScriptPersonalizerAgent:
                 if profile_data:
                     return UserProfile(**profile_data)
             except Exception as e:
-                logger.warning(f"[ScriptPersonalizer] Failed to fetch user profile: {str(e)}")
+                self.logger.warning(f"[ScriptPersonalizer] Failed to fetch user profile: {str(e)}")
 
         # 기본 프로필 반환
-        logger.info(f"[ScriptPersonalizer] Using default profile for user={user_id}")
+        self.logger.info(f"[ScriptPersonalizer] Using default profile for user={user_id}")
         return UserProfile(
             user_id=user_id,
             age_group="30s",
@@ -205,7 +202,7 @@ class ScriptPersonalizerAgent:
             return None
 
         except Exception as e:
-            logger.error(f"[ScriptPersonalizer] DB query failed: {str(e)}")
+            self.logger.error(f"[ScriptPersonalizer] DB query failed: {str(e)}")
             return None
 
     def _determine_strategy(self, user_profile: UserProfile) -> Dict[str, Any]:
@@ -364,7 +361,7 @@ class ScriptPersonalizerAgent:
         if "visual_impairment" in accessibility_needs:
             # TTS를 위한 추가 마커 삽입
             # 문단 사이에 짧은 휴식 추가
-            from src.agents.common.schemas import TTSMarker
+            from src.models.schemas import TTSMarker
 
             # 문장 끝마다 휴식 마커 추가
             sentences = re.split(r"([.!?])", text)
@@ -403,7 +400,7 @@ class ScriptPersonalizerAgent:
         if not self.llm_client:
             return script
 
-        logger.info("[ScriptPersonalizer] Applying deep personalization with LLM")
+        self.logger.info("[ScriptPersonalizer] Applying deep personalization with LLM")
 
         new_segments = []
 
@@ -431,7 +428,7 @@ class ScriptPersonalizerAgent:
                     new_segments.append(new_segment)
 
                 except Exception as e:
-                    logger.warning(
+                    self.logger.warning(
                         f"[ScriptPersonalizer] LLM personalization failed for {segment.segment_id}: {str(e)}"
                     )
                     new_segments.append(segment)
@@ -499,12 +496,12 @@ Return only the adjusted Korean text, no explanations.
 """
 
         try:
-            response = await self.llm_client.generate(
+            response = await self.call_llm(
                 system_prompt="You are a helpful podcast script editor.", user_message=prompt
             )
             return response.strip()
         except Exception as e:
-            logger.error(f"[ScriptPersonalizer] LLM call failed: {str(e)}")
+            self.logger.error(f"[ScriptPersonalizer] LLM call failed: {str(e)}")
             return segment_text
 
     def _summarize_interactions(self, history: List[Dict[str, Any]]) -> str:

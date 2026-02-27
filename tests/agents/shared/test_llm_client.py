@@ -18,6 +18,24 @@ import pytest
 
 from config.loader import Settings
 
+
+# ===================================================================
+# 환경변수 격리 — .env의 LLM_PROVIDER가 테스트에 간섭하지 않도록 보장
+# ===================================================================
+
+
+@pytest.fixture(autouse=True)
+def _clean_llm_provider_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    .env의 LLM_PROVIDER가 테스트에 간섭하지 않도록 환경변수를 제거한다.
+
+    load_dotenv()가 모듈 임포트 시점에 LLM_PROVIDER를 설정할 수 있으므로,
+    매 테스트 전 깨끗한 상태를 보장한다.
+    개별 테스트가 patch.dict로 LLM_PROVIDER를 설정하면 그 값이 우선한다.
+    """
+    monkeypatch.delenv("LLM_PROVIDER", raising=False)
+
+
 # ===================================================================
 # 테스트용 설정 파일 내용 (settings.yaml과 동일 구조)
 # ===================================================================

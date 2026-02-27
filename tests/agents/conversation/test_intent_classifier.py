@@ -188,23 +188,6 @@ if __name__ == "__main__":
             result = agent.process(state)
             print_result(user_input, result)
 
-    # LLM 사용 테스트
-    print("\n\n📌 Ollama LLM 테스트")
-    try:
-        from src.agents.common.llm_client import create_ollama_client
-
-        ollama_client = create_ollama_client()
-        agent_with_llm = IntentClassifierAgent(llm_client=ollama_client, use_redis=False)
-
-        test_inputs = [
-            "오늘 기분이 좀 그래요",
-            "직장에서 번아웃 올 것 같아요",
-        ]
-
-        for user_input in test_inputs:
-            state = {"user_input": user_input, "user_id": "test", "session_id": "test"}
-            result = agent_with_llm.process(state)
-            print_result(user_input, result)
-
-    except ImportError:
-        print("⚠️ openai 모듈을 사용할 수 없습니다. pip install openai")
+    # LLM 사용 테스트 — conftest.py의 llm_client 픽스처 또는
+    # dev/ollama_bootstrap.py의 register_ollama()를 사용하세요.
+    # 예: pytest tests/ -v (llm_client 세션 픽스처 자동 적용)

@@ -118,8 +118,10 @@ class LLMClient:
             self._openai_client = openai.AsyncOpenAI(
                 api_key=os.getenv("OPENAI_API_KEY", "dummy-key-for-tests")
             )
-            model_key = agent_config.get("model", "gpt-4")
-            self._model_id = model_override or agent_config.get("model_id", model_key)
+            model_key = agent_config.get("model", "sonnet")
+            self._model_id = model_override or agent_config.get(
+                "model_id", settings.get_openai_model_id(model_key)
+            )
         else:
             # Anthropic 직접 API (기본)
             self._anthropic_client = anthropic.AsyncAnthropic()
