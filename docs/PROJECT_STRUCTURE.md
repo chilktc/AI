@@ -70,7 +70,8 @@ mind-log/
 │   │   └── contracts.py         # 요청/응답 스키마 정의
 │   │
 │   ├── graph/                   # LangGraph 워크플로우 (Protected - 3인 합의 필수)
-│   │   └── __init__.py          # 워크플로우 정의 (미구현 — 3인 합의 후 작성)
+│   │   ├── __init__.py
+│   │   └── workflow.py          # TIER 기반 듀얼모드 워크플로우 (구현 완료)
 │   │
 │   └── utils/                   # 공통 유틸리티
 │       ├── __init__.py
@@ -182,7 +183,7 @@ class MyAgent(BaseAgent):
 
 ### src/graph/ — LangGraph 워크플로우
 
-에이전트 노드들을 연결하는 StateGraph를 정의합니다. 현재 `__init__.py`만 존재하며, workflow.py는 3인 합의 후 작성 예정입니다.
+에이전트 노드들을 연결하는 StateGraph를 정의합니다. `workflow.py`에 TIER 기반 듀얼모드 파이프라인이 구현되어 있으며, `build_unified_graph()` 함수로 대화모드/팟캐스트모드 워크플로우를 통합 구성합니다.
 
 ### config/ — 설정 관리
 

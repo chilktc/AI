@@ -6,20 +6,18 @@ ollama:
   # Ollama 서버 URL (기본: localhost:11434)
   base_url: "http://localhost:11434"
 
-  # 로컬 추론 타임아웃 (초) — 대형 모델은 응답이 느릴 수 있음
-  timeout: 120
+  # 로컬 추론 타임아웃 (초) — 대형 모델(20B)은 응답이 느릴 수 있음
+  timeout: 180
 
   # 모델 매핑 — Mind-Log 에이전트의 모델 키(haiku/sonnet/opus)를 로컬 모델에 매핑
   # 각 에이전트는 settings.yaml의 model 키(예: "sonnet")를 사용하므로,
   # 여기서 해당 키를 Ollama 모델명으로 변환한다.
   models:
-    haiku: "qwen2.5:7b"           # 한국어 성능 우수 (Learning Agent 등)
-    sonnet: "qwen2.5:7b"          # 한국어 성능 우수 (Content Analyzer, Batch Validator 등)
-    opus: "qwen2.5:7b"            # 한국어 성능 우수 (Reasoning Agent 등)
+    haiku: "gpt-oss:20b"          # GPT OSS 20B (Learning Agent, Intent Classifier 등)
+    sonnet: "gpt-oss:20b"         # GPT OSS 20B (Content Analyzer, Batch Validator 등)
+    opus: "gpt-oss:20b"           # GPT OSS 20B (Reasoning Agent 등)
 
-  # 대안 모델 예시 (필요에 따라 위 매핑을 교체)
-  # JSON 안정성이 필요하면:
-  #   sonnet: "mistral:7b"       # JSON 모드 안정적
-  # 한국어 성능이 필요하면:
-  #   sonnet: "qwen2.5:7b"       # 한국어 성능 우수
-  #   haiku: "qwen2.5:3b"        # 경량 한국어
+  # 대안 모델 (--model 옵션으로 오버라이드 가능)
+  # qwen2.5:14b    — 한국어 성능 우수, 14B 파라미터
+  # qwen2.5:7b     — 경량, 빠른 응답
+  # mistral-small:24b — JSON 안정적, 24B

@@ -112,6 +112,16 @@ class LLMClient:
             self._model_id = model_override or agent_config.get(
                 "model_id", settings.get_bedrock_model_id(model_key)
             )
+        elif self._provider == "openai":
+            import openai
+
+            self._openai_client = openai.AsyncOpenAI(
+                api_key=os.getenv("OPENAI_API_KEY", "dummy-key-for-tests")
+            )
+            model_key = agent_config.get("model", "sonnet")
+            self._model_id = model_override or agent_config.get(
+                "model_id", settings.get_openai_model_id(model_key)
+            )
         else:
             # Anthropic 직접 API (기본)
             self._anthropic_client = anthropic.AsyncAnthropic()
@@ -217,10 +227,33 @@ class LLMClient:
             return await self._generate_bedrock(
                 system_prompt, user_message, actual_max_tokens, actual_temperature
             )
+        elif self._provider == "openai":
+            return await self._generate_openai(
+                system_prompt, user_message, actual_max_tokens, actual_temperature
+            )
         else:
             return await self._generate_anthropic(
                 system_prompt, user_message, actual_max_tokens, actual_temperature
             )
+
+    async def _generate_openai(
+        self,
+        system_prompt: str,
+        user_message: str,
+        max_tokens: int,
+        temperature: float,
+    ) -> str:
+        """OpenAI 직접 API를 통한 텍스트 생성."""
+        response = await self._openai_client.chat.completions.create(
+            model=self._model_id,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ],
+        )
+        return response.choices[0].message.content
 
     async def _generate_anthropic(
         self,

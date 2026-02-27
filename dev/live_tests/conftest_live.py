@@ -2,7 +2,7 @@
 라이브 테스트 공통 인프라 — 멀티 프로바이더 셋업, 헬스체크, 출력 포맷팅.
 
 모든 라이브 테스트 스크립트가 공유하는 유틸리티 함수.
-Ollama(로컬), Anthropic API, AWS Bedrock 프로바이더를 모두 지원한다.
+Ollama(로컬), Anthropic API, AWS Bedrock, OpenAI 프로바이더를 모두 지원한다.
 """
 
 from __future__ import annotations
@@ -53,9 +53,11 @@ def setup_provider(provider: str, model_override: str | None = None) -> None:
         _setup_anthropic()
     elif provider == "bedrock":
         _setup_bedrock()
+    elif provider == "openai":
+        _setup_openai()
     else:
         print_banner(f"[ERROR] 알 수 없는 프로바이더: {provider}", color="red")
-        print("  지원 프로바이더: ollama, anthropic, bedrock")
+        print("  지원 프로바이더: ollama, anthropic, bedrock, openai")
         sys.exit(1)
 
 
@@ -105,6 +107,18 @@ def _setup_bedrock() -> None:
         sys.exit(1)
 
 
+def _setup_openai() -> None:
+    """OpenAI API 키를 확인한다."""
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        print_banner("[ERROR] OPENAI_API_KEY 환경변수가 설정되지 않았습니다.", color="red")
+        print("  .env 파일에 OPENAI_API_KEY=sk-... 을 추가하세요.")
+        sys.exit(1)
+    if not api_key.startswith("sk-"):
+        print_banner("[WARNING] API 키 형식이 일반적이지 않습니다.", color="yellow")
+        print(f"  키 접두사: {api_key[:10]}...")
+
+
 # ────────────────────────────────────────────
 # 헬스체크
 # ────────────────────────────────────────────
@@ -126,6 +140,8 @@ async def check_provider_health(provider: str) -> bool:
         return _check_anthropic_health()
     elif provider == "bedrock":
         return _check_bedrock_health()
+    elif provider == "openai":
+        return _check_openai_health()
     return False
 
 
@@ -170,6 +186,16 @@ def _check_bedrock_health() -> bool:
         return True
     except Exception:
         return False
+
+
+def _check_openai_health() -> bool:
+    """OpenAI API 키 존재를 확인한다."""
+    api_key = os.getenv("OPENAI_API_KEY")
+    if api_key:
+        print(f"  OpenAI API 키 확인됨 (길이: {len(api_key)})")
+        return True
+    print("  OpenAI API 키가 설정되지 않았습니다.")
+    return False
 
 
 # ────────────────────────────────────────────

@@ -1,0 +1,9 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "unified": "./src/graph/workflow.py:build_unified_graph",
+    "conversation": "./src/graph/workflow.py:build_conversation_graph",
+    "podcast": "./src/graph/workflow.py:build_podcast_graph"
+  },
+  "env": ".env"
+}

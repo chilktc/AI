@@ -1,0 +1,325 @@
+# E2E LangGraph 워크플로우 멀티 프로바이더 테스트 가이드
+
+> 실제 LangGraph 워크플로우(`build_unified_graph() → compile() → ainvoke()`)를 통해
+> intent_classifier부터 END까지 전체 노드가 동작하는 것을 검증한다. 팟캐스트모드 기본.
+
+---
+
+## 목적
+
+- **전체 워크플로우 검증** — LangGraph `ainvoke()`로 TIER 0 → TIER 1(병렬) → TIER 2 → TIER 3 → TIER 4 → 비동기 → END 전체 흐름 동작 확인
+- 프로바이더/모델 간 **응답 품질 비교** (주제 분석, 추론 전략, 검증 점수)
+- **상태 전파 검증** — 8개 주요 필드가 모든 프로바이더에서 올바르게 생성되는지 확인
+
+## 전제조건
+
+### 공통
+
+```bash
+cd /Users/kttechup/Documents/NewProject/mind-log
+pip install -r requirements.txt
+```
+
+### Ollama (로컬 모델)
+
+```bash
+# Ollama 설치 (https://ollama.com)
+brew install ollama          # macOS
+
+# 테스트 모델 다운로드
+ollama pull gpt-oss:20b
+ollama pull qwen2.5:14b
+
+# 서버 시작
+ollama serve
+
+# 연결 확인
+curl http://localhost:11434/v1/models
+```
+
+### OpenAI API
+
+```bash
+# .env 파일에 API 키 추가 (절대 코드에 직접 저장하지 마세요)
+echo "OPENAI_API_KEY=sk-..." >> .env
+```
+
+> **보안 주의:** API 키는 반드시 `.env` 파일에만 저장한다. 코드나 커밋에 포함하지 마시오.
+
+---
+
+## 빠른 시작
+
+### 전체 테스트 (Ollama 2모델 + OpenAI)
+
+```bash
+python3 -m dev.live_tests.test_e2e_multi_provider
+```
+
+### Ollama만 테스트
+
+```bash
+python3 -m dev.live_tests.test_e2e_multi_provider --ollama-only
+```
+
+### OpenAI만 테스트
+
+```bash
+python3 -m dev.live_tests.test_e2e_multi_provider --openai-only
+```
+
+### 커스텀 입력으로 테스트
+
+```bash
+python3 -m dev.live_tests.test_e2e_multi_provider --input dev/live_tests/test_inputs/my_scenario.json
+```
+
+### run_live CLI에서 실행
+
+```bash
+python3 -m dev.live_tests.run_live --e2e
+python3 -m dev.live_tests.run_live --e2e --input test_inputs/my_scenario.json
+```
+
+---
+
+## CLI 옵션
+
+```
+python3 -m dev.live_tests.test_e2e_multi_provider [-h]
+    [--ollama-only | --openai-only]
+    [--ollama-models MODELS]
+    [--openai-model MODEL]
+    [--input FILE]
+
+선택:
+  --ollama-only           Ollama 모델만 테스트
+  --openai-only           OpenAI만 테스트
+  --ollama-models MODELS  Ollama 모델 (콤마 구분, 기본: gpt-oss:20b,qwen2.5:14b)
+  --openai-model MODEL    OpenAI 모델 (기본: gpt-4o-mini)
+  --input FILE            커스텀 테스트 입력 JSON 파일 경로
+  -h, --help              도움말 출력
+```
+
+### 사용 예시
+
+```bash
+# Ollama 모델 변경
+python3 -m dev.live_tests.test_e2e_multi_provider --ollama-models mistral-small:24b,phi4:14b
+
+# OpenAI 고성능 모델 테스트
+python3 -m dev.live_tests.test_e2e_multi_provider --openai-only --openai-model gpt-4o
+
+# 커스텀 입력으로 Ollama만 테스트
+python3 -m dev.live_tests.test_e2e_multi_provider --ollama-only --input test_inputs/my_case.json
+```
+
+---
+
+## LangGraph 워크플로우 실행 흐름
+
+`test_e2e_multi_provider.py`는 실제 LangGraph `ainvoke()`를 호출하여 전체 파이프라인을 실행한다.
+
+```
+사용자 입력 (최소 상태: user_input + mode + user_id + session_id)
+    ↓
+build_unified_graph() → compile() → ainvoke(state)
+    ↓
+TIER 0: IntentClassifier (REAL — LLM 의도 분류)
+    ↓ route_after_tier0 → "tier1_podcast"
+TIER 1 (병렬 Fan-out):
+├─ Safety Agent (REAL)
+├─ Emotion Agent (REAL)
+├─ Content Analyzer (REAL)
+└─ Podcast Reasoning (REAL)
+    ↓ route_after_tier1 → "tier2"
+TIER 2: Script Generator (REAL)
+    ↓
+TIER 3: Batch Validator (REAL)
+    ↓ route_after_tier3_podcast → "tier4_podcast"
+TIER 4: Script Personalizer (REAL)
+    ↓
+비동기: Visualization (REAL) + Telemetry (STUB) + Learning (REAL)
+    ↓
+END → 최종 상태 반환
+```
+
+### Mock 최소화
+
+| 대상 | Mock 여부 | 사유 |
+|------|----------|------|
+| 모든 에이전트 | **REAL** | 팟캐스트 경로 전부 구현 완료 |
+| `BackendClient.save()` | **Mock** | 백엔드 서버 미실행 (Learning Agent에서 사용) |
+| LLM 호출 | **REAL** | Ollama/OpenAI 실제 API 사용 |
+| Telemetry | **STUB** | 유일한 스텁 노드 (대화모드 전용) |
+
+### 초기 상태 (최소 입력)
+
+IntentClassifier에 전달하는 초기 상태는 **최소한의 필드만** 포함한다:
+
+```python
+{
+    "user_input": "- 상황: ... - 자신의 생각: ... - 자신의 행동 및 반응: ... - 동료의 반응: ...",
+    "user_id": "user_e2e_graph_001",
+    "session_id": "sess_e2e_graph_001",
+    "mode": "podcast",
+}
+```
+
+`intent`는 pre-fill 하지 않는다 — IntentClassifier가 LLM으로 실제 분류한다.
+
+---
+
+## 커스텀 테스트 데이터
+
+### JSON 입력 파일 형식
+
+`dev/live_tests/test_inputs/` 디렉토리에 JSON 파일을 생성한다:
+
+```json
+{
+    "user_input": "- 상황: 테스트할 내용...\n- 자신의 생각: ...\n- 자신의 행동 및 반응: ...\n- 동료의 반응: ...",
+    "mode": "podcast",
+    "user_id": "user_custom_001",
+    "session_id": "sess_custom_001"
+}
+```
+
+| 필드 | 필수 | 기본값 | 설명 |
+|------|------|--------|------|
+| `user_input` | ✅ | — | IntentClassifier에 전달할 사용자 입력 텍스트 |
+| `mode` | ❌ | `"podcast"` | 실행 모드 (`"podcast"` 또는 `"conversation"`) |
+| `user_id` | ❌ | `"user_e2e_graph_001"` | 사용자 ID |
+| `session_id` | ❌ | `"sess_e2e_graph_001"` | 세션 ID |
+
+### 기본 제공 파일
+
+`dev/live_tests/test_inputs/default_podcast.json` — 직장 내 뒷담화 시나리오
+
+### 입력 로딩 우선순위
+
+1. `--input <파일경로>` CLI 옵션 → JSON 파일에서 로드
+2. 지정하지 않으면 → `fixtures.make_e2e_state()` 기본값 사용
+
+---
+
+## 프로바이더 전환과 싱글톤 리프레시
+
+### 문제
+
+모든 에이전트 모듈은 **모듈 레벨 싱글톤**으로 에이전트 인스턴스를 생성한다.
+프로바이더를 전환(예: Ollama → OpenAI)할 때 이 싱글톤들이 이전 프로바이더의 LLMClient를 계속 사용하는 문제가 있다.
+
+### 해결: `_refresh_all_singletons()`
+
+프로바이더 전환 시 자동으로 호출되며:
+
+1. `config.loader` Settings 싱글톤 리셋
+2. `workflow.reset_agents()` 호출 — workflow.py 내부 3개 싱글톤 재생성
+3. 에이전트 모듈 8개를 `importlib.reload()`로 재로드
+
+```
+workflow.py:       _intent_classifier, _script_generator, _script_personalizer
+safety.py:         safety_agent
+emotion.py:        emotion_agent
+content_analyzer.py: content_analyzer_agent
+podcast_reasoning.py: podcast_reasoning_agent
+batch_validator.py:  batch_validator_agent
+visualization.py:    visualization_agent
+learning.py:         learning_agent
+episode_memory.py:   episode_memory_agent
+```
+
+---
+
+## 결과 검증
+
+### 검증 필드 (8개)
+
+| 필드 | 출처 | 검증 조건 |
+|------|------|----------|
+| `intent` | IntentClassifier (TIER 0) | dict, `mode` 키 존재 |
+| `safety_flags` | Safety (TIER 1) | dict |
+| `emotion_vectors` | Emotion (TIER 1) | dict |
+| `content_analysis` | ContentAnalyzer (TIER 1) | dict, `main_theme` 존재 |
+| `reasoning_result` | PodcastReasoning (TIER 1) | dict, `episode_structure` 존재 |
+| `script_draft` | ScriptGenerator (TIER 2) | dict, `segments` 존재 |
+| `validation_result` | BatchValidator (TIER 3) | dict |
+| `final_output` | ScriptPersonalizer (TIER 4) | str, 비어있지 않음 |
+
+### 비교 테이블 예시
+
+```
+Provider/Model          Status  Total   Fields  Main Theme              Confidence    BV Score
+─────────────────────────────────────────────────────────────────────────────────────────────────
+ollama/gpt-oss:20b        [OK]  182.3s     8/8  직장 내 뒷담화와 갈등         0.78        0.85
+ollama/qwen2.5:14b        [OK]   95.1s     8/8  직장 인간관계 갈등            0.85        0.88
+openai/gpt-4o-mini        [OK]   28.3s     8/8  직장 갈등과 소통              0.92        0.91
+```
+
+### 비교 관점
+
+1. **속도**: OpenAI API > Ollama (네트워크 지연 vs 로컬 추론 시간)
+2. **필드 완성도**: 8/8이면 모든 에이전트가 정상 동작
+3. **주제 분석 정확도**: Main Theme이 입력 시나리오를 얼마나 정확히 반영하는지
+4. **검증 점수**: 높을수록 생성된 스크립트 품질이 좋음
+
+---
+
+## 트러블슈팅
+
+### OpenAI API 키 미설정
+
+```
+[SKIP] OpenAI — OPENAI_API_KEY 미설정
+  .env 파일에 OPENAI_API_KEY=sk-... 을 추가하세요.
+```
+
+OpenAI 키가 없으면 해당 테스트만 건너뛴다 (에러가 아님).
+
+### Ollama 모델 미설치
+
+```
+[SKIP] ollama/gpt-oss:20b — 헬스체크 실패
+```
+
+`ollama pull gpt-oss:20b`로 모델을 먼저 다운로드한다.
+
+### JSON 파싱 실패 (Ollama)
+
+작은 로컬 모델은 JSON 형식을 정확히 반환하지 못할 수 있다. JSON 안정성이 높은 모델(`qwen2.5:14b`, `mistral-small:24b`)을 사용한다.
+
+### 타임아웃 (Ollama)
+
+대형 모델(20b+)은 GPU 없이 실행 시 2분 이상 소요될 수 있다.
+전체 워크플로우(10개 에이전트)는 총 5~10분 이상 걸릴 수 있다.
+
+### 싱글톤 리프레시 실패
+
+```
+WARNING: 싱글톤 리프레시 실패 — src.agents.podcast.xxx: ...
+```
+
+특정 에이전트 모듈 reload 실패 시 이전 프로바이더의 설정으로 실행될 수 있다.
+한 번에 하나의 프로바이더만 테스트하려면 `--ollama-only` 또는 `--openai-only` 옵션을 사용한다.
+
+---
+
+## 비용 참고
+
+### OpenAI API
+
+| 모델 | 테스트 1회 예상 비용 |
+|------|---------------------|
+| gpt-4o-mini | $0.05~0.20 (전체 워크플로우) |
+| gpt-4o | $0.30~1.00 (전체 워크플로우) |
+
+> 전체 워크플로우는 10개 에이전트가 각각 LLM을 호출하므로, 단일 에이전트 테스트보다 비용이 높다.
+
+### Ollama
+
+로컬 실행이므로 API 비용 없음. GPU/CPU 자원만 소비.
+
+---
+
+*마지막 업데이트: 2026-02-27*

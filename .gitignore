@@ -72,5 +72,14 @@ docs/PROMPT_SECURITY.md
 dev/__pycache__/
 dev/**/__pycache__/
 
+# LangGraph 런타임 캐시
+.langgraph_api/
+
+# 라이브 테스트 결과 (로컬 전용)
+dev/live_tests/results/
+
+# 프롬프트 압축 파일
+prompts.zip
+
 # Claude Code (로컬 개발 환경)
 .claude/

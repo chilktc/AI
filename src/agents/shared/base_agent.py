@@ -356,7 +356,7 @@ class BaseAgent(ABC):
         start_time = time.monotonic()
 
         try:
-            result = await self.process(state)
+            result = await self._traced_process(state, tier_label)
             elapsed_ms = int((time.monotonic() - start_time) * 1000)
             self.logger.info(
                 "[%s] %s 완료 (%dms, LLM %d회)%s",
@@ -385,6 +385,27 @@ class BaseAgent(ABC):
             if token is not None:
                 _active_ab_variant.reset(token)
                 self._current_ab_variant = None
+
+    async def _traced_process(
+        self, state: AgentState, tier_label: str,
+    ) -> dict[str, Any]:
+        """
+        LangSmith 트레이싱으로 감싼 process() 실행.
+
+        langsmith가 설치되어 있으면 에이전트 이름으로 child span을 생성하여
+        Fan-out 노드 내부의 개별 에이전트가 LangSmith UI에 표시된다.
+        langsmith가 없으면 process()를 직접 실행한다 (graceful degradation).
+        """
+        try:
+            from langsmith import traceable  # type: ignore[import-untyped]
+        except ImportError:
+            return await self.process(state)
+
+        @traceable(name=self.name, run_type="chain", tags=[tier_label])
+        async def _run(s: AgentState) -> dict[str, Any]:
+            return await self.process(s)
+
+        return await _run(state)
 
     async def call_llm(
         self,

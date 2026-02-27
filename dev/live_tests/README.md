@@ -21,6 +21,7 @@
 | **Ollama** | `--provider ollama` 또는 미지정 | `ollama serve` 실행 + 모델 다운로드 | **기본값** |
 | **Anthropic** | `--provider anthropic` | `ANTHROPIC_API_KEY` 환경변수 | |
 | **Bedrock** | `--provider bedrock` | AWS IAM 인증 (환경변수 또는 IAM Role) | |
+| **OpenAI** | `--provider openai` | `OPENAI_API_KEY` 환경변수 | |
 
 **프로바이더 선택 우선순위:**
 1. CLI `--provider` 옵션
@@ -125,6 +126,79 @@ python3 -m dev.live_tests.run_live --agent content_analyzer --provider bedrock
 python3 -m dev.live_tests.run_live --pipeline --provider bedrock
 ```
 
+### OpenAI API
+
+```bash
+# 사전 조건: API 키 설정 (.env 파일에 추가)
+# OPENAI_API_KEY=sk-...
+
+# 단일 에이전트
+python3 -m dev.live_tests.run_live --agent content_analyzer --provider openai
+
+# 파이프라인 시뮬레이션
+python3 -m dev.live_tests.run_live --pipeline --provider openai
+```
+
+### E2E LangGraph 워크플로우 멀티 프로바이더 테스트
+
+**실제 LangGraph 워크플로우**(`build_unified_graph() → compile() → ainvoke()`)를 통해
+intent_classifier부터 END까지 전체 노드가 동작하는 것을 검증한다. 팟캐스트모드 기본.
+
+```
+TIER 0: IntentClassifier → TIER 1 (병렬 Fan-out): Safety + Emotion + ContentAnalyzer + PodcastReasoning
+    → TIER 2: ScriptGenerator → TIER 3: BatchValidator → TIER 4: ScriptPersonalizer → ASYNC → END
+```
+
+```bash
+# 전체 (Ollama 2모델 + OpenAI)
+python3 -m dev.live_tests.test_e2e_multi_provider
+
+# Ollama만
+python3 -m dev.live_tests.test_e2e_multi_provider --ollama-only
+
+# OpenAI만
+python3 -m dev.live_tests.test_e2e_multi_provider --openai-only
+
+# 커스텀 입력 JSON
+python3 -m dev.live_tests.test_e2e_multi_provider --input dev/live_tests/test_inputs/my_scenario.json
+
+# run_live CLI에서도 실행 가능
+python3 -m dev.live_tests.run_live --e2e
+python3 -m dev.live_tests.run_live --e2e --input test_inputs/my_scenario.json
+```
+
+> 상세 가이드: `docs/E2E_TEST_GUIDE.md`
+
+### 커스텀 테스트 데이터
+
+E2E 테스트에 자신만의 입력 데이터를 사용할 수 있다. `dev/live_tests/test_inputs/` 디렉토리에 JSON 파일을 작성한다.
+
+**JSON 형식:**
+
+```json
+{
+    "user_input": "- 상황: 테스트할 내용...\n- 자신의 생각: ...",
+    "mode": "podcast",
+    "user_id": "user_custom_001",
+    "session_id": "sess_custom_001"
+}
+```
+
+- `user_input` (필수): IntentClassifier에 전달할 사용자 입력 텍스트
+- `mode` (선택, 기본값: `"podcast"`): 실행 모드
+- `user_id` (선택): 사용자 ID
+- `session_id` (선택): 세션 ID
+
+**사용법:**
+
+```bash
+# 기본 제공 입력 파일로 테스트
+python3 -m dev.live_tests.test_e2e_multi_provider --input dev/live_tests/test_inputs/default_podcast.json
+
+# 커스텀 입력으로 OpenAI만 테스트
+python3 -m dev.live_tests.test_e2e_multi_provider --openai-only --input test_inputs/my_case.json
+```
+
 ### 모델 오버라이드
 
 특정 모델을 지정하여 테스트할 수 있다.
@@ -144,9 +218,9 @@ python3 -m dev.live_tests.run_live --agent content_analyzer --provider bedrock -
 ## CLI 옵션 전체 목록
 
 ```
-python3 -m dev.live_tests.run_live [-h] (--agent {name} | --all | --pipeline)
-                                    [--provider {ollama,anthropic,bedrock}]
-                                    [--model MODEL]
+python3 -m dev.live_tests.run_live [-h] (--agent {name} | --all | --pipeline | --e2e)
+                                    [--provider {ollama,anthropic,bedrock,openai}]
+                                    [--model MODEL] [--input FILE]
 
 필수 (하나만 선택):
   --agent {name}    단일 에이전트 테스트 실행
@@ -154,14 +228,17 @@ python3 -m dev.live_tests.run_live [-h] (--agent {name} | --all | --pipeline)
                           batch_validator, learning
   --all             4개 에이전트 전부 순차 실행
   --pipeline        파이프라인 시뮬레이션 (TIER 1→2→3→비동기)
+  --e2e             E2E LangGraph 워크플로우 멀티 프로바이더 테스트
 
 선택:
   --provider {p}    LLM 프로바이더 (기본값: ollama)
-                    p: ollama, anthropic, bedrock
+                    p: ollama, anthropic, bedrock, openai
   --model MODEL     모델 오버라이드
                     Ollama: mistral:7b, qwen2.5:7b 등
                     Anthropic: claude-sonnet-4-20250514 등
                     Bedrock: anthropic.claude-sonnet-4-5-20250929-v2:0 등
+                    OpenAI: gpt-4o, gpt-4o-mini 등
+  --input FILE      E2E 테스트용 커스텀 입력 JSON 파일 경로
   -h, --help        도움말 출력
 ```
 
@@ -178,7 +255,11 @@ dev/live_tests/
 ├── test_podcast_reasoning_live.py     # Podcast Reasoning 라이브 테스트
 ├── test_batch_validator_live.py       # Batch Validator 라이브 테스트
 ├── test_learning_live.py              # Learning Agent 라이브 테스트
-└── test_pipeline_live.py              # 파이프라인 시뮬레이션 (TIER 1→3→비동기)
+├── test_pipeline_live.py              # 파이프라인 시뮬레이션 (TIER 1→3→비동기)
+├── test_model_comparison.py           # 모델 비교 테스트 (단일 Ollama 모델)
+├── test_e2e_multi_provider.py         # E2E LangGraph 워크플로우 멀티 프로바이더 테스트
+└── test_inputs/                       # 커스텀 테스트 입력 JSON 파일
+    └── default_podcast.json           # 기본 테스트 데이터 (직장 내 뒷담화 시나리오)
 ```
 
 ### 각 파일의 역할
@@ -194,6 +275,8 @@ dev/live_tests/
 | | `make_batch_validator_state()` — TIER 3 입력 (전체 앞단 결과 포함) |
 | | `make_learning_state()` — 전체 파이프라인 완료 상태 |
 | | `make_pipeline_initial_state()` — 파이프라인 시뮬레이션 초기 입력 (자존감 주제) |
+| | `make_e2e_state()` — E2E LangGraph 워크플로우 최소 초기 상태 (뒷담화 시나리오) |
+| | `load_state_from_json()` — JSON 파일에서 커스텀 테스트 입력 로드 |
 | | `generate_mock_script()` — 개발자1 Script Generator 출력 시뮬레이션 |
 
 ## 에이전트별 확인 항목
