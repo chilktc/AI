@@ -14,6 +14,14 @@ TIER 기반 파이프라인:
 Safety CRISIS 선점:
     Safety Agent의 CRISIS 판정 → asyncio.Event로 병렬 작업 취소 → 즉시 위기 응답
 
+스트리밍 이벤트:
+    get_stream_writer()로 TIER 시작/완료, 에이전트 완료, CRISIS 이벤트를 실시간 발행.
+    stream_mode=["updates", "custom"]으로 소비 가능.
+
+체크포인팅:
+    compile_graph()에 checkpointer 전달 시 상태 체크포인팅 활성화.
+    InMemorySaver(dev) 또는 PostgresSaver(prod) 사용.
+
 참조:
     - ProjectDocs/ARCHITECTURE_v4.0.md line 237-264 — CRISIS 선점 pseudo-code
     - src/models/agent_state.py — AgentState 스키마
@@ -24,6 +32,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from typing import Any
 
 from langgraph.graph import END, StateGraph
@@ -32,6 +41,23 @@ from config.loader import get_settings
 from src.models.agent_state import AgentState
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# 스트리밍 헬퍼
+# ---------------------------------------------------------------------------
+def _get_writer():
+    """LangGraph 스트림 라이터를 안전하게 가져온다.
+
+    LangGraph 컨텍스트 외부(단위 테스트 등)에서 호출 시 no-op 함수를 반환한다.
+    """
+    try:
+        from langgraph.config import get_stream_writer
+
+        return get_stream_writer()
+    except Exception:
+        return lambda x: None
+
 
 # ---------------------------------------------------------------------------
 # 설정 로드
@@ -231,8 +257,21 @@ async def tier1_conversation_fan_out(state: AgentState) -> dict[str, Any]:
 
     Safety CRISIS 선점 메커니즘:
         Safety가 crisis 반환 시 cancel_event.set() → 나머지 취소 → 즉시 위기 응답
+
+    스트리밍 이벤트:
+        tier_start → agent_complete (×4) → tier_end (또는 crisis)
     """
+    writer = _get_writer()
     cancel_event = asyncio.Event()
+    tier_start = time.monotonic()
+    agent_names = ["safety", "emotion", "context", "reasoning"]
+
+    writer({
+        "event": "tier_start",
+        "tier": 1,
+        "mode": "conversation",
+        "agents": agent_names,
+    })
 
     tasks = [
         run_with_cancel(safety_node(state), cancel_event, "safety"),
@@ -242,16 +281,48 @@ async def tier1_conversation_fan_out(state: AgentState) -> dict[str, Any]:
     ]
 
     merged: dict[str, Any] = {}
+    completed_count = 0
     for coro in asyncio.as_completed(tasks):
         name, result = await coro
+        completed_count += 1
+        elapsed_ms = int((time.monotonic() - tier_start) * 1000)
 
         if name == "safety" and result.get("safety_flags", {}).get("status") == "crisis":
             # ■ CRISIS: 나머지 모두 취소 → Safety 심화 → 즉시 응답
             cancel_event.set()
+            writer({
+                "event": "crisis_detected",
+                "tier": 1,
+                "agent": "safety",
+                "risk_level": result.get("risk_level", 4),
+                "elapsed_ms": elapsed_ms,
+            })
             deep_result = await _safety_deep_crisis(result)
+            writer({
+                "event": "tier_end",
+                "tier": 1,
+                "mode": "conversation",
+                "status": "crisis",
+                "elapsed_ms": int((time.monotonic() - tier_start) * 1000),
+            })
             return {**deep_result, "next_step": "crisis_response"}
 
+        writer({
+            "event": "agent_complete",
+            "tier": 1,
+            "agent": name,
+            "elapsed_ms": elapsed_ms,
+            "progress": f"{completed_count}/{len(agent_names)}",
+        })
         merged.update(result)
+
+    writer({
+        "event": "tier_end",
+        "tier": 1,
+        "mode": "conversation",
+        "status": "ok",
+        "elapsed_ms": int((time.monotonic() - tier_start) * 1000),
+    })
 
     # 정상: 4개 결과 모두 TIER 2로 전달
     return merged
@@ -262,8 +333,21 @@ async def tier1_podcast_fan_out(state: AgentState) -> dict[str, Any]:
     팟캐스트모드 TIER 1: Safety + Emotion + ContentAnalyzer + PodcastReasoning 병렬 실행.
 
     Safety CRISIS 선점 메커니즘은 대화모드와 동일.
+
+    스트리밍 이벤트:
+        tier_start → agent_complete (×4) → tier_end (또는 crisis)
     """
+    writer = _get_writer()
     cancel_event = asyncio.Event()
+    tier_start = time.monotonic()
+    agent_names = ["safety", "emotion", "content_analyzer", "podcast_reasoning"]
+
+    writer({
+        "event": "tier_start",
+        "tier": 1,
+        "mode": "podcast",
+        "agents": agent_names,
+    })
 
     tasks = [
         run_with_cancel(safety_node(state), cancel_event, "safety"),
@@ -273,15 +357,47 @@ async def tier1_podcast_fan_out(state: AgentState) -> dict[str, Any]:
     ]
 
     merged: dict[str, Any] = {}
+    completed_count = 0
     for coro in asyncio.as_completed(tasks):
         name, result = await coro
+        completed_count += 1
+        elapsed_ms = int((time.monotonic() - tier_start) * 1000)
 
         if name == "safety" and result.get("safety_flags", {}).get("status") == "crisis":
             cancel_event.set()
+            writer({
+                "event": "crisis_detected",
+                "tier": 1,
+                "agent": "safety",
+                "risk_level": result.get("risk_level", 4),
+                "elapsed_ms": elapsed_ms,
+            })
             deep_result = await _safety_deep_crisis(result)
+            writer({
+                "event": "tier_end",
+                "tier": 1,
+                "mode": "podcast",
+                "status": "crisis",
+                "elapsed_ms": int((time.monotonic() - tier_start) * 1000),
+            })
             return {**deep_result, "next_step": "crisis_response"}
 
+        writer({
+            "event": "agent_complete",
+            "tier": 1,
+            "agent": name,
+            "elapsed_ms": elapsed_ms,
+            "progress": f"{completed_count}/{len(agent_names)}",
+        })
         merged.update(result)
+
+    writer({
+        "event": "tier_end",
+        "tier": 1,
+        "mode": "podcast",
+        "status": "ok",
+        "elapsed_ms": int((time.monotonic() - tier_start) * 1000),
+    })
 
     return merged
 
@@ -639,3 +755,70 @@ def build_unified_graph() -> StateGraph:
     graph.set_entry_point("intent_classifier")
 
     return graph
+
+
+# ===================================================================
+# 그래프 컴파일 헬퍼
+# ===================================================================
+def compile_graph(
+    graph_builder: str = "unified",
+    *,
+    checkpointer: Any = None,
+) -> Any:
+    """StateGraph를 빌드하고 컴파일한다.
+
+    Args:
+        graph_builder: 빌드할 그래프 유형
+            "unified" — 통합 그래프 (TIER 0 포함)
+            "conversation" — 대화모드 전용
+            "podcast" — 팟캐스트모드 전용
+        checkpointer: LangGraph 체크포인터 (선택).
+            개발용: ``InMemorySaver()``
+            프로덕션: ``PostgresSaver.from_conn_string(DB_URI)``
+
+    Returns:
+        컴파일된 그래프 (CompiledGraph).
+
+    사용법::
+
+        from langgraph.checkpoint.memory import InMemorySaver
+
+        # 체크포인팅 활성화
+        compiled = compile_graph(checkpointer=InMemorySaver())
+        result = await compiled.ainvoke(
+            state,
+            config={
+                "configurable": {"thread_id": f"session_{session_id}"},
+                "callbacks": [MindLogTelemetryCallback()],
+            },
+        )
+
+        # 스트리밍 + 체크포인팅
+        async for mode, chunk in compiled.astream(
+            state,
+            config={"configurable": {"thread_id": "sess_001"}},
+            stream_mode=["updates", "custom"],
+        ):
+            if mode == "custom":
+                handle_streaming_event(chunk)
+            elif mode == "updates":
+                handle_state_update(chunk)
+
+        # 상태 이력 조회 (Time-travel 디버깅)
+        for state_snapshot in compiled.get_state_history(config):
+            print(state_snapshot)
+    """
+    builders = {
+        "unified": build_unified_graph,
+        "conversation": build_conversation_graph,
+        "podcast": build_podcast_graph,
+    }
+    builder_fn = builders.get(graph_builder)
+    if builder_fn is None:
+        raise ValueError(
+            f"Unknown graph builder: {graph_builder!r}. "
+            f"Choose from: {list(builders.keys())}"
+        )
+
+    graph = builder_fn()
+    return graph.compile(checkpointer=checkpointer)

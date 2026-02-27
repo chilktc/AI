@@ -133,6 +133,15 @@ class LLMClient:
         self._max_tokens: int = agent_config.get("max_tokens", 4096)
         self._temperature: float = agent_config.get("temperature", 0.7)
 
+        # 토큰 사용량 추적 — 직전 LLM 호출의 토큰 수를 저장한다
+        self._last_usage: dict[str, int] | None = None
+        # 누적 토큰 사용량 — 이 클라이언트 인스턴스의 전체 토큰 합산
+        self._total_usage: dict[str, int] = {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "total_tokens": 0,
+        }
+
     def _init_custom_provider(
         self,
         agent_config: dict[str, Any],
@@ -192,6 +201,40 @@ class LLMClient:
     def provider(self) -> str:
         """현재 사용 중인 프로바이더 ('anthropic' 또는 'bedrock')."""
         return self._provider
+
+    @property
+    def last_usage(self) -> dict[str, int] | None:
+        """직전 LLM 호출의 토큰 사용량을 반환한다.
+
+        Returns:
+            {"input_tokens": N, "output_tokens": N, "total_tokens": N} 또는 None
+        """
+        return self._last_usage
+
+    @property
+    def total_usage(self) -> dict[str, int]:
+        """이 클라이언트 인스턴스의 누적 토큰 사용량을 반환한다."""
+        return self._total_usage.copy()
+
+    def reset_total_usage(self) -> None:
+        """누적 토큰 사용량을 초기화한다."""
+        self._total_usage = {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "total_tokens": 0,
+        }
+
+    def _record_usage(self, input_tokens: int, output_tokens: int) -> None:
+        """토큰 사용량을 기록한다 (직전 + 누적)."""
+        total = input_tokens + output_tokens
+        self._last_usage = {
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "total_tokens": total,
+        }
+        self._total_usage["input_tokens"] += input_tokens
+        self._total_usage["output_tokens"] += output_tokens
+        self._total_usage["total_tokens"] += total
 
     async def generate(
         self,
@@ -253,6 +296,12 @@ class LLMClient:
                 {"role": "user", "content": user_message},
             ],
         )
+        # 토큰 사용량 기록
+        if response.usage:
+            self._record_usage(
+                input_tokens=response.usage.prompt_tokens or 0,
+                output_tokens=response.usage.completion_tokens or 0,
+            )
         return response.choices[0].message.content
 
     async def _generate_anthropic(
@@ -269,6 +318,11 @@ class LLMClient:
             temperature=temperature,
             system=system_prompt,
             messages=[{"role": "user", "content": user_message}],
+        )
+        # 토큰 사용량 기록
+        self._record_usage(
+            input_tokens=response.usage.input_tokens,
+            output_tokens=response.usage.output_tokens,
         )
         # 첫 번째 content block에서 텍스트 추출 (TextBlock 가정)
         return response.content[0].text  # type: ignore[union-attr]
@@ -309,6 +363,12 @@ class LLMClient:
 
         # 응답 파싱 (strict=False: 제어 문자 허용)
         response_body = json.loads(response["body"].read(), strict=False)
+        # 토큰 사용량 기록 (Bedrock Anthropic 응답 형식)
+        usage = response_body.get("usage", {})
+        self._record_usage(
+            input_tokens=usage.get("input_tokens", 0),
+            output_tokens=usage.get("output_tokens", 0),
+        )
         return str(response_body["content"][0]["text"])
 
     async def generate_json(

@@ -201,3 +201,23 @@ features:
   visualization: true
   telemetry: true
   learning: true
+
+# 모니터링 & Observability
+monitoring:
+  enabled: true
+  provider: "langsmith"              # langsmith | langfuse | both
+  langsmith:
+    project: "mind-log"
+    tracing_enabled: true
+  langfuse:
+    enabled: false
+    self_hosted: false
+    host: "https://cloud.langfuse.com"
+  metrics:
+    collect_token_usage: true
+    collect_tier_timing: true
+    collect_agent_io: true           # I/O 스냅샷 저장 여부
+    io_snapshot_max_chars: 2000      # 스냅샷 최대 문자수 (민감정보 보호)
+  alerting:
+    crisis_alert_enabled: true
+    latency_threshold_ms: 10000      # 파이프라인 전체 10초 초과 시 경고

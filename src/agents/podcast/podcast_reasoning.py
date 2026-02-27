@@ -322,11 +322,28 @@ class PodcastReasoningAgent(BaseAgent):
         각 추론 phase(GoT/ToT/CoT)에 전달할 user_message를 조합한다.
 
         이전 phase 결과를 누적하여 다음 phase에 전달하는 구조.
+
+        토큰 최적화:
+            - GoT(첫 단계): user_input 전체 전달 (원문 분석 필요)
+            - ToT/CoT(후속 단계): GoT가 core_pattern을 추출한 경우
+              user_input 대신 core_pattern을 참조하여 토큰 절감
         """
         parts: list[str] = []
 
-        # 기본 입력 — 모든 phase 공통
-        parts.append(f"[사용자 입력]\n{user_input}")
+        # 기본 입력 — GoT는 원문 전체, ToT/CoT는 이전 phase 결과가 있으면 요약 참조
+        if phase == "GoT" or got_result is None:
+            # GoT(첫 단계) 또는 이전 결과가 없는 경우: user_input 전체 전달
+            parts.append(f"[사용자 입력]\n{user_input}")
+        else:
+            # ToT/CoT: GoT가 이미 핵심을 추출했으므로 user_input 요약만 전달
+            core_pattern = got_result.get("core_pattern", "")
+            if core_pattern:
+                # user_input 앞 100자만 참조 + GoT core_pattern 활용
+                input_preview = user_input[:100] + ("..." if len(user_input) > 100 else "")
+                parts.append(f"[사용자 입력 요약]\n{input_preview}")
+            else:
+                # core_pattern이 없으면 원문 전달 (fallback)
+                parts.append(f"[사용자 입력]\n{user_input}")
 
         # Intent Classifier(TIER 0) 정보
         if intent:

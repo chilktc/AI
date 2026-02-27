@@ -117,9 +117,24 @@ class BatchValidatorAgent(BaseAgent):
         """검증에 필요한 컨텍스트 정보를 조합한다."""
         parts = []
 
-        # 스크립트 내용
+        # 스크립트 내용 — 검증에 필요한 핵심 필드만 추출 (토큰 절감)
         if script_draft:
-            parts.append(f"[스크립트]\n{_dict_to_readable(script_draft)}")
+            script_parts = []
+            title = script_draft.get("title", "")
+            if title:
+                script_parts.append(f"제목: {title}")
+            full_script = script_draft.get("full_script", "")
+            if full_script:
+                script_parts.append(f"본문:\n{full_script}")
+            # segments에서 구조 정보만 추출 (본문은 full_script에 포함)
+            segments = script_draft.get("segments", [])
+            if segments:
+                seg_summary = ", ".join(
+                    s.get("type", "unknown") if isinstance(s, dict) else str(s)
+                    for s in segments[:10]  # 최대 10개까지만
+                )
+                script_parts.append(f"세그먼트 구성: [{seg_summary}] (총 {len(segments)}개)")
+            parts.append(f"[스크립트]\n" + "\n".join(script_parts) if script_parts else "[스크립트]\n(내용 없음)")
         else:
             parts.append("[스크립트]\n(스크립트가 비어있음 — 구조 완전성 검증 실패)")
 
