@@ -16,9 +16,9 @@ v11 고도화:
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
+from config.loader import get_settings
 from src.agents.shared.base_agent import BaseAgent
 from src.models.agent_state import AgentState
 
@@ -35,23 +35,17 @@ VALID_NARRATIVE_STRUCTURES = frozenset(
     }
 )
 
-# 에피소드 길이 제한 (분)
-MIN_DURATION = 3
-MAX_DURATION = 5
-
-# 하위 주제 개수 제한
-MIN_SUB_THEMES = 3
-MAX_SUB_THEMES = 5
-
-# 입력 최소 길이 (자)
-MIN_INPUT_LENGTH = 10
-
-# 주제 최대 길이 (자)
-MAX_THEME_LENGTH = 100
-
-# complexity_score → 분석 깊이 매핑 임계값
-DEEP_THRESHOLD = 0.7
-MODERATE_THRESHOLD = 0.4
+# 기본값 (settings.yaml 미로드 시 fallback)
+_DEFAULTS = {
+    "min_duration": 3,
+    "max_duration": 5,
+    "min_sub_themes": 3,
+    "max_sub_themes": 5,
+    "min_input_length": 10,
+    "max_theme_length": 100,
+    "deep_threshold": 0.7,
+    "moderate_threshold": 0.4,
+}
 
 
 class ContentAnalyzerAgent(BaseAgent):
@@ -69,6 +63,7 @@ class ContentAnalyzerAgent(BaseAgent):
 
     def __init__(self) -> None:
         super().__init__(name="content_analyzer", tier=1)
+        self._load_config()
 
     async def process(self, state: AgentState) -> dict[str, Any]:
         """
@@ -107,6 +102,25 @@ class ContentAnalyzerAgent(BaseAgent):
             "content_analysis": validated_analysis,
         }
 
+    # === 설정 로드 ===
+
+    def _load_config(self) -> None:
+        """settings.yaml에서 에이전트 설정을 로드한다. 실패 시 기본값 사용."""
+        try:
+            cfg = get_settings().get_agent_config("content_analyzer")
+        except Exception:
+            cfg = {}
+        self.min_duration: int = cfg.get("min_duration", _DEFAULTS["min_duration"])
+        self.max_duration: int = cfg.get("max_duration", _DEFAULTS["max_duration"])
+        self.min_sub_themes: int = cfg.get("min_sub_themes", _DEFAULTS["min_sub_themes"])
+        self.max_sub_themes: int = cfg.get("max_sub_themes", _DEFAULTS["max_sub_themes"])
+        self.min_input_length: int = cfg.get("min_input_length", _DEFAULTS["min_input_length"])
+        self.max_theme_length: int = cfg.get("max_theme_length", _DEFAULTS["max_theme_length"])
+        self.deep_threshold: float = cfg.get("deep_threshold", _DEFAULTS["deep_threshold"])
+        self.moderate_threshold: float = cfg.get(
+            "moderate_threshold", _DEFAULTS["moderate_threshold"]
+        )
+
     # === 전처리 메서드 ===
 
     def _normalize_input(self, raw_input: str) -> str:
@@ -117,7 +131,7 @@ class ContentAnalyzerAgent(BaseAgent):
         입력이 최소 길이 미만이면 그대로 반환한다 (LLM이 처리).
         """
         # 연속 공백 → 단일 공백
-        normalized = re.sub(r"\s+", " ", raw_input).strip()
+        normalized = " ".join(raw_input.split())
         return normalized
 
     def _extract_complexity(self, intent: dict[str, Any]) -> float:
@@ -137,9 +151,9 @@ class ContentAnalyzerAgent(BaseAgent):
         0.4 ~ 0.7 → moderate: 표준 분석
         < 0.4 → light: 기본 주제/테마만 추출
         """
-        if complexity_score >= DEEP_THRESHOLD:
+        if complexity_score >= self.deep_threshold:
             return "deep"
-        if complexity_score >= MODERATE_THRESHOLD:
+        if complexity_score >= self.moderate_threshold:
             return "moderate"
         return "light"
 
@@ -176,16 +190,16 @@ class ContentAnalyzerAgent(BaseAgent):
 
         # 1. 주제 길이 검증 — 100자 초과 시 잘라냄
         main_theme = corrected.get("main_theme", corrected.get("topic", ""))
-        if len(main_theme) > MAX_THEME_LENGTH:
-            main_theme = main_theme[:MAX_THEME_LENGTH] + "..."
+        if len(main_theme) > self.max_theme_length:
+            main_theme = main_theme[:self.max_theme_length] + "..."
         corrected["main_theme"] = main_theme
 
         # 2. 하위 주제 개수 보정 — 3~5개 범위
         sub_themes = corrected.get("sub_themes", corrected.get("themes", []))
         if not isinstance(sub_themes, list):
             sub_themes = []
-        if len(sub_themes) > MAX_SUB_THEMES:
-            sub_themes = sub_themes[:MAX_SUB_THEMES]
+        if len(sub_themes) > self.max_sub_themes:
+            sub_themes = sub_themes[:self.max_sub_themes]
         corrected["sub_themes"] = sub_themes
 
         # 3. 에피소드 길이 보정 — 3~5분 범위 고정
@@ -195,7 +209,7 @@ class ContentAnalyzerAgent(BaseAgent):
                 target_duration = int(target_duration)
             except (ValueError, TypeError):
                 target_duration = 4  # 기본값
-            target_duration = max(MIN_DURATION, min(MAX_DURATION, target_duration))
+            target_duration = max(self.min_duration, min(self.max_duration, target_duration))
         else:
             target_duration = 4  # 기본값
         corrected["target_duration"] = target_duration

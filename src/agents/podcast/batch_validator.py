@@ -134,7 +134,8 @@ class BatchValidatorAgent(BaseAgent):
                     for s in segments[:10]  # 최대 10개까지만
                 )
                 script_parts.append(f"세그먼트 구성: [{seg_summary}] (총 {len(segments)}개)")
-            parts.append(f"[스크립트]\n" + "\n".join(script_parts) if script_parts else "[스크립트]\n(내용 없음)")
+            content = "\n".join(script_parts) if script_parts else "(내용 없음)"
+            parts.append(f"[스크립트]\n{content}")
         else:
             parts.append("[스크립트]\n(스크립트가 비어있음 — 구조 완전성 검증 실패)")
 
@@ -172,21 +173,6 @@ class BatchValidatorAgent(BaseAgent):
                 parts.append("- 주의: 스크립트에 안전 경고 문구가 포함되어야 합니다")
 
         return "\n\n".join(parts)
-
-
-def _dict_to_readable(d: dict[str, Any], indent: int = 0) -> str:
-    """dict를 읽기 쉬운 문자열로 변환한다 (검증 컨텍스트용)."""
-    lines = []
-    prefix = "  " * indent
-    for key, value in d.items():
-        if isinstance(value, dict):
-            lines.append(f"{prefix}{key}:")
-            lines.append(_dict_to_readable(value, indent + 1))
-        elif isinstance(value, list):
-            lines.append(f"{prefix}{key}: [{len(value)}개 항목]")
-        else:
-            lines.append(f"{prefix}{key}: {value}")
-    return "\n".join(lines)
 
 
 # LangGraph 노드 함수로 사용할 에이전트 인스턴스

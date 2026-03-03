@@ -111,10 +111,20 @@ agents:
   content_analyzer:
     model: sonnet
     max_tokens: 2048
+    min_duration: 3
+    max_duration: 5
+    min_sub_themes: 3
+    max_sub_themes: 5
+    min_input_length: 10
+    max_theme_length: 100
+    deep_threshold: 0.7
+    moderate_threshold: 0.4
   podcast_reasoning:
     model: sonnet
     max_tokens: 4096
     temperature: 0.3
+    full_threshold: 0.8
+    standard_threshold: 0.5
 
   # ──────────────────────────────────────
   # 팟캐스트모드 TIER 1 독립 에이전트

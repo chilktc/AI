@@ -13,7 +13,6 @@ import pytest
 
 from src.agents.podcast.batch_validator import (
     BatchValidatorAgent,
-    _dict_to_readable,
     batch_validator_agent,
     batch_validator_node,
 )
@@ -570,28 +569,3 @@ class TestBatchValidatorEdgeCases:
         assert set(criteria.keys()) == expected_criteria_keys
 
 
-class TestDictToReadable:
-    """헬퍼 함수 _dict_to_readable 단위 테스트."""
-
-    def test_empty_dict(self) -> None:
-        """빈 dict는 빈 문자열을 반환해야 한다."""
-        assert _dict_to_readable({}) == ""
-
-    def test_nested_dict(self) -> None:
-        """중첩 dict는 들여쓰기와 함께 렌더링되어야 한다."""
-        nested = {
-            "level1": {
-                "level2_key": "value",
-            }
-        }
-        result = _dict_to_readable(nested)
-        # 최상위 키는 들여쓰기 없이
-        assert "level1:" in result
-        # 중첩 키는 들여쓰기와 함께
-        assert "  level2_key: value" in result
-
-    def test_list_value(self) -> None:
-        """list 값은 항목 개수가 표시되어야 한다."""
-        data = {"items": [1, 2, 3]}
-        result = _dict_to_readable(data)
-        assert "items: [3개 항목]" in result

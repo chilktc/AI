@@ -23,6 +23,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
+from config.loader import get_settings
 from src.agents.shared.base_agent import BaseAgent
 from src.agents.shared.stubs import EpisodeMemoryStub, KnowledgeAgentStub
 from src.models.agent_state import AgentState
@@ -57,6 +58,7 @@ class PodcastReasoningAgent(BaseAgent):
         # 의존성 주입 — 통합 전에는 stub 사용
         self.episode_memory = episode_memory or EpisodeMemoryStub()
         self.knowledge_agent = knowledge_agent or KnowledgeAgentStub()
+        self._load_config()
 
     async def process(self, state: AgentState) -> dict[str, Any]:
         """
@@ -119,6 +121,17 @@ class PodcastReasoningAgent(BaseAgent):
 
         return result
 
+    # === 설정 로드 ===
+
+    def _load_config(self) -> None:
+        """settings.yaml에서 추론 깊이 임계값을 로드한다. 실패 시 기본값 사용."""
+        try:
+            cfg = get_settings().get_agent_config("podcast_reasoning")
+        except Exception:
+            cfg = {}
+        self.full_threshold: float = cfg.get("full_threshold", 0.8)
+        self.standard_threshold: float = cfg.get("standard_threshold", 0.5)
+
     # === 추론 깊이 결정 ===
 
     def _determine_reasoning_depth(self, complexity: float) -> ReasoningDepth:
@@ -131,9 +144,9 @@ class PodcastReasoningAgent(BaseAgent):
         Returns:
             "full" (GoT+ToT+CoT), "standard" (ToT+CoT), "minimal" (CoT만)
         """
-        if complexity >= 0.8:
+        if complexity >= self.full_threshold:
             return "full"
-        elif complexity >= 0.5:
+        elif complexity >= self.standard_threshold:
             return "standard"
         else:
             return "minimal"

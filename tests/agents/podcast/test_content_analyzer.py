@@ -19,15 +19,18 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from src.agents.podcast.content_analyzer import (
-    MAX_DURATION,
-    MAX_SUB_THEMES,
-    MAX_THEME_LENGTH,
-    MIN_DURATION,
     VALID_NARRATIVE_STRUCTURES,
     ContentAnalyzerAgent,
+    _DEFAULTS,
     content_analyzer_agent,
     content_analyzer_node,
 )
+
+# _DEFAULTS에서 테스트용 상수 참조
+MAX_DURATION = _DEFAULTS["max_duration"]
+MAX_SUB_THEMES = _DEFAULTS["max_sub_themes"]
+MAX_THEME_LENGTH = _DEFAULTS["max_theme_length"]
+MIN_DURATION = _DEFAULTS["min_duration"]
 from src.models.agent_state import AgentState
 
 # === 픽스처 ===
