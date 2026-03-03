@@ -55,9 +55,9 @@ Mind-Log 프로젝트에 기여하기 위한 가이드입니다.
 모든 에이전트는 이 시그니처를 따릅니다:
 
 ```python
-async def {name}_node(state: AgentState) -> AgentState:
-    # 자기 담당 필드만 읽고 쓰기
-    return state
+async def {name}_node(state: AgentState) -> dict[str, Any]:
+    # 자기 담당 필드만 읽고 쓰기 — 변경된 필드만 dict로 반환
+    return {"필드명": 값}
 ```
 
 ---
@@ -70,7 +70,7 @@ async def {name}_node(state: AgentState) -> AgentState:
 
 타입: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
 
-상세 스코프 목록은 `docs/GIT_WORKFLOW.md`를 참조하세요.
+상세 스코프 목록은 `docs/guides/GIT_WORKFLOW.md`를 참조하세요.
 
 ---
 
@@ -104,4 +104,4 @@ git push origin feature/your-feature
 
 ---
 
-*상세 브랜치 전략은 docs/GIT_WORKFLOW.md, 아키텍처 규칙은 CLAUDE.md를 참조하세요.*
+*상세 브랜치 전략은 docs/guides/GIT_WORKFLOW.md, 아키텍처 규칙은 CLAUDE.md를 참조하세요.*

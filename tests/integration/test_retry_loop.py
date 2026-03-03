@@ -19,158 +19,111 @@ from src.graph.workflow import (
 )
 from src.models.agent_state import AgentState
 
-
-class TestRetryLoopConversation:
-    """대화모드 재시도 루프 테스트."""
-
-    def test_approve_routes_to_tier4(self) -> None:
-        """검증 통과 시 TIER 4로 라우팅되는지 확인."""
-        state = AgentState(
-            validation_result={
-                "action": {"decision": "approve"},
-            },
-            iteration_count=0,
-        )
-        assert route_after_tier3_conversation(state) == "tier4"
-
-    def test_revise_routes_to_tier2_when_retries_available(self) -> None:
-        """검증 실패 + 재시도 가능 시 TIER 2로 라우팅되는지 확인."""
-        state = AgentState(
-            validation_result={
-                "action": {"decision": "revise"},
-            },
-            iteration_count=0,
-        )
-        assert route_after_tier3_conversation(state) == "tier2_conversation"
-
-    def test_revise_routes_to_tier2_on_second_attempt(self) -> None:
-        """2차 시도에서도 재시도 라우팅되는지 확인."""
-        state = AgentState(
-            validation_result={
-                "action": {"decision": "revise"},
-            },
-            iteration_count=1,
-        )
-        assert route_after_tier3_conversation(state) == "tier2_conversation"
-
-    def test_force_pass_when_max_retries_exceeded(self) -> None:
-        """최대 재시도(2회) 초과 시 강제 통과(TIER 4)하는지 확인."""
-        state = AgentState(
-            validation_result={
-                "action": {"decision": "revise"},
-            },
-            iteration_count=2,  # max_retries = 2, 이미 2회 시도
-        )
-        assert route_after_tier3_conversation(state) == "tier4"
-
-    def test_escalate_with_retries_available_force_passes(self) -> None:
-        """escalate 판정 + 재시도 소진 시 강제 통과하는지 확인."""
-        state = AgentState(
-            validation_result={
-                "action": {"decision": "escalate"},
-            },
-            iteration_count=2,
-        )
-        assert route_after_tier3_conversation(state) == "tier4"
-
-    def test_crisis_next_step_routes_to_crisis(self) -> None:
-        """next_step이 crisis_response일 때 CRISIS 라우팅되는지 확인."""
-        state = AgentState(
-            next_step="crisis_response",
-            validation_result={},
-        )
-        assert route_after_tier3_conversation(state) == "crisis_response"
+# === 대화모드 라우팅 테스트 ===
 
 
-class TestRetryLoopPodcast:
-    """팟캐스트모드 재시도 루프 테스트."""
-
-    def test_pass_verdict_routes_to_tier4(self) -> None:
-        """PASS 판정 시 TIER 4로 라우팅되는지 확인."""
-        state = AgentState(
-            validation_result={"verdict": "PASS"},
-            iteration_count=0,
-        )
-        assert route_after_tier3_podcast(state) == "tier4_podcast"
-
-    def test_fail_verdict_routes_to_tier2_when_retries_available(self) -> None:
-        """FAIL 판정 + 재시도 가능 시 TIER 2로 라우팅되는지 확인."""
-        state = AgentState(
-            validation_result={"verdict": "FAIL"},
-            iteration_count=0,
-        )
-        assert route_after_tier3_podcast(state) == "tier2_podcast"
-
-    def test_fail_verdict_force_pass_when_max_retries_exceeded(self) -> None:
-        """FAIL + 최대 재시도 초과 시 강제 통과하는지 확인."""
-        state = AgentState(
-            validation_result={"verdict": "FAIL"},
-            iteration_count=2,
-        )
-        assert route_after_tier3_podcast(state) == "tier4_podcast"
-
-    def test_critical_fail_routes_to_crisis(self) -> None:
-        """CRITICAL_FAIL 시 즉시 위기 응답으로 라우팅되는지 확인."""
-        state = AgentState(
-            validation_result={"verdict": "CRITICAL_FAIL"},
-            iteration_count=0,
-        )
-        assert route_after_tier3_podcast(state) == "crisis_response"
-
-    def test_podcast_crisis_next_step_routes_to_crisis(self) -> None:
-        """next_step이 crisis_response일 때 CRISIS 라우팅되는지 확인."""
-        state = AgentState(
-            next_step="crisis_response",
-            validation_result={},
-        )
-        assert route_after_tier3_podcast(state) == "crisis_response"
+@pytest.mark.parametrize(
+    "decision, iteration_count, expected_route",
+    [
+        ("approve", 0, "tier4"),
+        ("revise", 0, "tier2_conversation"),
+        ("revise", 1, "tier2_conversation"),
+        ("revise", 2, "tier4"),  # 최대 재시도 초과 → 강제 통과
+        ("escalate", 2, "tier4"),  # escalate + 재시도 소진 → 강제 통과
+    ],
+    ids=["approve", "revise_first", "revise_second", "force_pass", "escalate_force_pass"],
+)
+def test_conversation_routing(
+    decision: str, iteration_count: int, expected_route: str
+) -> None:
+    """대화모드 TIER 3 판정에 따른 라우팅을 검증한다."""
+    state = AgentState(
+        validation_result={"action": {"decision": decision}},
+        iteration_count=iteration_count,
+    )
+    assert route_after_tier3_conversation(state) == expected_route
 
 
-class TestIterationCounter:
-    """iteration_count 증가 테스트."""
-
-    @pytest.mark.asyncio
-    async def test_increment_from_zero(self) -> None:
-        """iteration_count가 0에서 1로 증가하는지 확인."""
-        state = AgentState(iteration_count=0)
-        result = await increment_iteration_node(state)
-        assert result["iteration_count"] == 1
-
-    @pytest.mark.asyncio
-    async def test_increment_from_one(self) -> None:
-        """iteration_count가 1에서 2로 증가하는지 확인."""
-        state = AgentState(iteration_count=1)
-        result = await increment_iteration_node(state)
-        assert result["iteration_count"] == 2
-
-    @pytest.mark.asyncio
-    async def test_increment_default_when_missing(self) -> None:
-        """iteration_count 필드가 없을 때 0→1로 증가하는지 확인."""
-        state = AgentState()
-        result = await increment_iteration_node(state)
-        assert result["iteration_count"] == 1
+def test_conversation_crisis_next_step() -> None:
+    """next_step이 crisis_response일 때 CRISIS 라우팅된다."""
+    state = AgentState(next_step="crisis_response", validation_result={})
+    assert route_after_tier3_conversation(state) == "crisis_response"
 
 
-class TestRouterEdgeCases:
-    """라우터 엣지 케이스 테스트."""
+# === 팟캐스트모드 라우팅 테스트 ===
 
-    def test_empty_validation_result_defaults_to_approve(self) -> None:
-        """validation_result가 비어있을 때 기본 approve 처리되는지 확인."""
-        state = AgentState(
-            validation_result={},
-            iteration_count=0,
-        )
-        assert route_after_tier3_conversation(state) == "tier4"
 
-    def test_missing_validation_result_defaults_to_approve(self) -> None:
-        """validation_result 필드 자체가 없을 때 기본 approve 처리되는지 확인."""
-        state = AgentState(iteration_count=0)
-        assert route_after_tier3_conversation(state) == "tier4"
+@pytest.mark.parametrize(
+    "verdict, iteration_count, expected_route",
+    [
+        ("PASS", 0, "tier4_podcast"),
+        ("FAIL", 0, "tier2_podcast"),
+        ("FAIL", 2, "tier4_podcast"),  # 최대 재시도 초과 → 강제 통과
+        ("CRITICAL_FAIL", 0, "crisis_response"),
+    ],
+    ids=["pass", "fail_retry", "fail_force_pass", "critical_fail"],
+)
+def test_podcast_routing(
+    verdict: str, iteration_count: int, expected_route: str
+) -> None:
+    """팟캐스트모드 TIER 3 verdict에 따른 라우팅을 검증한다."""
+    state = AgentState(
+        validation_result={"verdict": verdict},
+        iteration_count=iteration_count,
+    )
+    assert route_after_tier3_podcast(state) == expected_route
 
-    def test_missing_verdict_defaults_to_pass(self) -> None:
-        """팟캐스트 verdict가 없을 때 기본 PASS 처리되는지 확인."""
-        state = AgentState(
-            validation_result={},
-            iteration_count=0,
-        )
-        assert route_after_tier3_podcast(state) == "tier4_podcast"
+
+def test_podcast_crisis_next_step() -> None:
+    """next_step이 crisis_response일 때 CRISIS 라우팅된다."""
+    state = AgentState(next_step="crisis_response", validation_result={})
+    assert route_after_tier3_podcast(state) == "crisis_response"
+
+
+# === iteration_count 증가 테스트 ===
+
+
+@pytest.mark.parametrize(
+    "initial, expected",
+    [(1, 2)],
+    ids=["one_to_two"],
+)
+@pytest.mark.asyncio
+async def test_increment_iteration(initial: int, expected: int) -> None:
+    """iteration_count가 올바르게 증가한다."""
+    state = AgentState(iteration_count=initial)
+    result = await increment_iteration_node(state)
+    assert result["iteration_count"] == expected
+
+
+@pytest.mark.asyncio
+async def test_increment_default_when_missing() -> None:
+    """iteration_count 필드가 없거나 0일 때 0→1로 증가한다."""
+    # 필드 없음 → 0→1
+    state = AgentState()
+    result = await increment_iteration_node(state)
+    assert result["iteration_count"] == 1
+
+    # 명시적 0 → 1
+    state_zero = AgentState(iteration_count=0)
+    result_zero = await increment_iteration_node(state_zero)
+    assert result_zero["iteration_count"] == 1
+
+
+# === 엣지 케이스 테스트 ===
+
+
+@pytest.mark.parametrize(
+    "router_func, expected_route",
+    [
+        (route_after_tier3_conversation, "tier4"),
+        (route_after_tier3_podcast, "tier4_podcast"),
+    ],
+    ids=["conversation_empty", "podcast_empty"],
+)
+def test_empty_validation_result_defaults_to_pass(router_func, expected_route: str) -> None:
+    """validation_result가 비어있을 때 기본 통과 처리된다."""
+    state = AgentState(validation_result={}, iteration_count=0)
+    assert router_func(state) == expected_route
+
+

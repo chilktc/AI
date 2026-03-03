@@ -113,7 +113,9 @@ class PodcastReasoningAgent(BaseAgent):
             "reasoning_result": reasoning,
         }
 
-        # 조건부 결과 포함
+        # 조건부 결과 포함 (독립 에이전트 호출 성공 시에만 AgentState에 기록)
+        # - memory_results: Episode Memory 호출 결과 (complexity >= 0.6 또는 execution_plan 요청 시)
+        # - knowledge_results: Knowledge Agent 호출 결과 (complexity >= 0.5 또는 execution_plan 요청 시)
         if memory_result:
             result["memory_results"] = memory_result
         if knowledge_result:

@@ -435,6 +435,78 @@ class BaseAgent(ABC):
 
         return await _run(state)
 
+    async def _traced_llm_call(
+        self,
+        system_prompt: str,
+        user_message: str,
+        **kwargs: Any,
+    ) -> str:
+        """
+        LangSmith LLM 스팬으로 감싼 LLM 호출.
+
+        settings.yaml의 monitoring.langsmith.tracing_enabled=true이고
+        langsmith가 설치되어 있으면 run_type="llm" child 스팬을 생성하여
+        LangSmith 대시보드의 LLM Count, Token Usage, Cost가 표시된다.
+        비활성 또는 미설치 시 llm_client.generate()를 직접 호출한다.
+        """
+        # 설정 확인 — tracing 비활성 시 직접 호출
+        try:
+            if not get_settings().langsmith_tracing_enabled:
+                return await self.llm_client.generate(
+                    system_prompt=system_prompt,
+                    user_message=user_message,
+                    **kwargs,
+                )
+        except Exception:
+            pass
+
+        # langsmith 미설치 시 직접 호출 (graceful degradation)
+        try:
+            from langsmith import traceable  # type: ignore[import-untyped]
+        except ImportError:
+            return await self.llm_client.generate(
+                system_prompt=system_prompt,
+                user_message=user_message,
+                **kwargs,
+            )
+
+        @traceable(
+            name=self.llm_client.model_id,
+            run_type="llm",
+            metadata={
+                "ls_provider": self.llm_client.provider,
+                "ls_model_name": self.llm_client.model_id,
+            },
+        )
+        async def _llm_run(
+            messages: list[dict[str, str]],
+            model: str,
+            **kw: Any,
+        ) -> dict[str, Any]:
+            text = await self.llm_client.generate(
+                system_prompt=system_prompt,
+                user_message=user_message,
+                **kwargs,
+            )
+            usage = self.llm_client.last_usage or {}
+            return {
+                "text": text,
+                "usage_metadata": {
+                    "input_tokens": usage.get("input_tokens", 0),
+                    "output_tokens": usage.get("output_tokens", 0),
+                    "total_tokens": usage.get("total_tokens", 0),
+                },
+            }
+
+        result = await _llm_run(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ],
+            model=self.llm_client.model_id,
+        )
+        return str(result["text"]) if isinstance(result, dict) else str(result)
+
     async def call_llm(
         self,
         system_prompt: str,
@@ -448,7 +520,7 @@ class BaseAgent(ABC):
         audit.llm_calls가 자동으로 집계된다.
         """
         self._llm_call_count += 1
-        return await self.llm_client.generate(
+        return await self._traced_llm_call(
             system_prompt=system_prompt,
             user_message=user_message,
             **kwargs,
@@ -467,11 +539,12 @@ class BaseAgent(ABC):
         audit.llm_calls가 자동으로 집계된다.
         """
         self._llm_call_count += 1
-        return await self.llm_client.generate_json(
+        raw_text = await self._traced_llm_call(
             system_prompt=system_prompt,
             user_message=user_message,
             **kwargs,
         )
+        return self.llm_client._parse_json_response(raw_text)
 
     def create_message(
         self,

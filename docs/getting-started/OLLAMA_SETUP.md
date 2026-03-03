@@ -346,7 +346,7 @@ ollama list
 
 - `dev/` 폴더는 운영 배포 시 삭제로 완전히 제거할 수 있다
 - `dev/` 설정은 git으로 공유되므로 프로젝트 클론 시 자동으로 포함된다
-- `docs/OLLAMA_SETUP.md`(이 문서)는 git에 포함되므로 모든 개발자가 참고 가능
+- `docs/getting-started/OLLAMA_SETUP.md`(이 문서)는 git에 포함되므로 모든 개발자가 참고 가능
 
 ### 모델별 차이
 

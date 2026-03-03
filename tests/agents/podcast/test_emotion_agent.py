@@ -1,88 +1,96 @@
+"""
+Emotion Agent 단위 테스트.
+
+감정 벡터 추출, clamp 보정, fallback 로직을 검증한다.
+"""
+
 from __future__ import annotations
 
-from typing import Any
+from unittest.mock import AsyncMock, patch
 
-from src.agents.shared.base_agent import BaseAgent
+import pytest
+
+from src.agents.podcast.emotion import EmotionAgent
 from src.models.agent_state import AgentState
 
 
-class EmotionAgent(BaseAgent):
-    """
-    Emotion Agent (TIER 1)
-
-    ✅ 출력 키: emotion_vectors
-    - BatchValidator/ContentAnalyzer가 기대하는 키 스펙을 고정합니다.
-    - valence(-1~1), arousal(0~1) 유지
-    - emotional_journey_hint는 안정적으로 list 반환
-
-    [TIER 1 규칙]
-    - user_input, intent(TIER0)까지만 참조합니다.
-    """
-
-    def __init__(self) -> None:
-        super().__init__(name="emotion", tier=1)
-
-    async def process(self, state: AgentState) -> dict[str, Any]:
-        user_input = str(state.get("user_input", ""))
-        intent = state.get("intent", {})
-        if not isinstance(intent, dict):
-            intent = {}
-
-        try:
-            vec = await self.call_llm_json(
-                system_prompt=self.get_prompt("system_prompt"),
-                user_message=(
-                    f"[사용자 입력]\n{user_input}\n\n"
-                    f"[Intent 참고(TIER0)]\n{intent}\n\n"
-                    "반드시 JSON으로 반환:\n"
-                    "{\n"
-                    '  "primary_emotion": str,\n'
-                    '  "intensity": float (0~1),\n'
-                    '  "valence": float (-1~1),\n'
-                    '  "arousal": float (0~1),\n'
-                    '  "secondary_emotions": list[str],\n'
-                    '  "tone_recommendation": str,\n'
-                    '  "emotional_journey_hint": list[str]\n'
-                    "}\n"
-                ),
-            )
-        except KeyError:
-            text = user_input
-            primary = "anxiety" if "불안" in text else ("sadness" if "우울" in text else "neutral")
-            vec = {
-                "primary_emotion": primary,
-                "intensity": 0.7 if primary != "neutral" else 0.3,
-                "valence": -0.4 if primary in ("anxiety", "sadness") else 0.0,
-                "arousal": 0.7 if primary == "anxiety" else 0.3,
-                "secondary_emotions": [],
-                "tone_recommendation": "supportive_neutral",
-                "emotional_journey_hint": ["공감", "정리", "실행 가능한 한 가지", "마무리"],
-            }
-
-        def _clamp(x: Any, lo: float, hi: float, default: float) -> float:
-            try:
-                return max(lo, min(hi, float(x)))
-            except (TypeError, ValueError):
-                return default
-
-        secondary = vec.get("secondary_emotions", [])
-        journey = vec.get("emotional_journey_hint", [])
-
-        emotion_vectors = {
-            "primary_emotion": str(vec.get("primary_emotion", "neutral")),
-            "intensity": _clamp(vec.get("intensity", 0.3), 0.0, 1.0, 0.3),
-            "valence": _clamp(vec.get("valence", 0.0), -1.0, 1.0, 0.0),
-            "arousal": _clamp(vec.get("arousal", 0.3), 0.0, 1.0, 0.3),
-            "secondary_emotions": secondary if isinstance(secondary, list) else [],
-            "tone_recommendation": str(vec.get("tone_recommendation", "supportive_neutral")),
-            "emotional_journey_hint": journey if isinstance(journey, list) else [],
-        }
-
-        return {"emotion_vectors": emotion_vectors}
+@pytest.fixture
+def agent() -> EmotionAgent:
+    with patch.object(EmotionAgent, "get_prompt", return_value="dummy"):
+        ag = EmotionAgent()
+    ag.get_prompt = lambda key="system_prompt": "dummy"
+    return ag
 
 
-emotion_agent = EmotionAgent()
+@pytest.mark.asyncio
+async def test_process_returns_emotion_vectors(agent: EmotionAgent) -> None:
+    """LLM 정상 응답 시 emotion_vectors가 올바르게 반환된다."""
+    llm_response = {
+        "primary_emotion": "frustration",
+        "intensity": 0.8,
+        "valence": -0.5,
+        "arousal": 0.7,
+        "secondary_emotions": ["disappointment"],
+        "tone_recommendation": "empathetic_supportive",
+        "emotional_journey_hint": ["공감", "이해", "전환"],
+    }
+    state = AgentState(
+        user_input="직장 스트레스가 심해요",
+        user_id="u", session_id="s", mode="podcast",
+    )
+
+    mock = AsyncMock(return_value=llm_response)
+    with patch.object(agent, "call_llm_json", mock):
+        result = await agent.process(state)
+
+    ev = result["emotion_vectors"]
+    assert ev["primary_emotion"] == "frustration"
+    assert 0.0 <= ev["intensity"] <= 1.0
+    assert -1.0 <= ev["valence"] <= 1.0
+    assert 0.0 <= ev["arousal"] <= 1.0
+    assert isinstance(ev["secondary_emotions"], list)
+    assert isinstance(ev["emotional_journey_hint"], list)
 
 
-async def emotion_node(state: AgentState) -> dict[str, Any]:
-    return await emotion_agent(state)
+@pytest.mark.asyncio
+async def test_fallback_on_key_error(agent: EmotionAgent) -> None:
+    """LLM 호출 시 KeyError가 발생하면 키워드 기반 fallback을 사용한다."""
+    state = AgentState(
+        user_input="불안하고 걱정이 많아요",
+        user_id="u", session_id="s", mode="podcast",
+    )
+
+    mock = AsyncMock(side_effect=KeyError("prompt"))
+    with patch.object(agent, "call_llm_json", mock):
+        result = await agent.process(state)
+
+    ev = result["emotion_vectors"]
+    assert ev["primary_emotion"] == "anxiety"
+    assert ev["intensity"] == 0.7
+    assert ev["valence"] == -0.4
+    assert ev["arousal"] == 0.7
+
+
+@pytest.mark.asyncio
+async def test_clamp_out_of_range_values(agent: EmotionAgent) -> None:
+    """LLM이 범위 밖 수치를 반환해도 clamp 처리된다."""
+    llm_response = {
+        "primary_emotion": "joy",
+        "intensity": 1.5,      # > 1.0
+        "valence": -2.0,       # < -1.0
+        "arousal": "invalid",  # not a number
+        "secondary_emotions": "not_a_list",  # type error
+        "tone_recommendation": "positive",
+        "emotional_journey_hint": None,      # not a list
+    }
+    state = AgentState(user_input="기분 좋아요", user_id="u", session_id="s", mode="podcast")
+
+    with patch.object(agent, "call_llm_json", new_callable=AsyncMock, return_value=llm_response):
+        result = await agent.process(state)
+
+    ev = result["emotion_vectors"]
+    assert ev["intensity"] == 1.0      # clamped
+    assert ev["valence"] == -1.0       # clamped
+    assert ev["arousal"] == 0.3        # default
+    assert ev["secondary_emotions"] == []           # type-safe
+    assert ev["emotional_journey_hint"] == []       # type-safe

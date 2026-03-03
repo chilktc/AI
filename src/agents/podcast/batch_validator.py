@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from config.loader import get_settings
 from src.agents.shared.base_agent import BaseAgent
 from src.models.agent_state import AgentState
 
@@ -29,11 +30,13 @@ class BatchValidatorAgent(BaseAgent):
     실패 시 TIER 2 재시도를 요청한다. 최대 2회 재시도.
     """
 
-    # 재시도 상한 (config에서 가져올 수도 있지만, CLAUDE.md 명세에 따라 2회 고정)
-    MAX_RETRIES = 2
-
     def __init__(self) -> None:
         super().__init__(name="batch_validator", tier=3)
+        try:
+            cfg = get_settings().get_agent_config("batch_validator")
+        except Exception:
+            cfg = {}
+        self.max_retries: int = cfg.get("max_retries", 2)
 
     async def process(self, state: AgentState) -> dict[str, Any]:
         """
@@ -80,13 +83,13 @@ class BatchValidatorAgent(BaseAgent):
                 "next_step": "script_personalizer",
             }
 
-        elif iteration_count < self.MAX_RETRIES:
+        elif iteration_count < self.max_retries:
             # 검증 실패 + 재시도 가능 → TIER 2 재시도
             new_count = iteration_count + 1
             self.logger.warning(
                 "스크립트 검증 실패 — 재시도 %d/%d (score=%.2f)",
                 new_count,
-                self.MAX_RETRIES,
+                self.max_retries,
                 validation.get("overall_score", 0),
             )
             return {

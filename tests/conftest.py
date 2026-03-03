@@ -6,6 +6,26 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # =============================================================================
+# 외부 API 안전장치
+# =============================================================================
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _guard_external_api():
+    """테스트 중 실수로 Anthropic/OpenAI 외부 API를 호출하지 않도록 API 키를 일시 제거.
+
+    Ollama(localhost)는 OPENAI_BASE_URL로 리다이렉트되므로 영향 없음.
+    """
+    saved: dict[str, str | None] = {}
+    for key in ("ANTHROPIC_API_KEY",):
+        saved[key] = os.environ.pop(key, None)
+    yield
+    for key, val in saved.items():
+        if val is not None:
+            os.environ[key] = val
+
+
+# =============================================================================
 # Ollama 설정
 # =============================================================================
 OLLAMA_MODEL = "gpt-oss:20b"  # 로컬에 설치된 Ollama 모델 이름
@@ -23,8 +43,6 @@ def llm_client():
     global _ollama_client
 
     if _ollama_client is None:
-        import os
-
         from src.agents.shared.llm_client import LLMClient
 
         # OpenAI 라이브러리가 로컬 Ollama를 볼 수 있도록 환경변수 설정

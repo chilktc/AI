@@ -470,9 +470,10 @@ class ReasoningAgent:
 
 ## 참고 문서
 
-- `docs/GIT_WORKFLOW.md` — 브랜치/커밋/PR 상세 가이드
-- `docs/PROJECT_STRUCTURE.md` — 디렉토리 구조 설명
-- `docs/QUICK_START.md` — 환경 설정 및 빠른 시작
+- `docs/guides/GIT_WORKFLOW.md` — 브랜치/커밋/PR 상세 가이드
+- `docs/architecture/PROJECT_STRUCTURE.md` — 디렉토리 구조 설명
+- `docs/getting-started/QUICK_START.md` — 환경 설정 및 빠른 시작
+- `docs/architecture/AGENT_ROLES.md` — 에이전트별 역할·입출력·이슈 정의서
 - ProjectDocs/INDEX.md — 마스터 인덱스 (20개 에이전트 전체)
 - ProjectDocs/ARCHITECTURE_v4.0.md — v4.0 아키텍처 확정 명세
 - ProjectDocs/ARCHITECTURE_REDESIGN_v4.0.md — v4.0 재설계 과정 및 상세
