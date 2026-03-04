@@ -291,57 +291,18 @@ class IntentClassifierAgent(BaseAgent):
     ) -> str:
         """LLM 프롬프트 생성"""
 
-        intent_descriptions = """
-Intent Types:
-- casual_chat: 일상적인 대화, 인사, 잡담
-- emotional_support: 감정 표현, 위로/공감 요청, 기분 토로
-- counseling: 구체적인 고민 상담, 조언 요청
-- crisis: 위기 상황 (자해/자살 언급, 극단적 표현) - 매우 신중하게 판단
-- information: 정보 요청, 질문, 설명 요청
-- podcast_request: 팟캐스트/에피소드 생성 요청
-"""
-
         previous_context = ""
         if previous_intent:
-            previous_context = f"""
-Previous Turn Intent: {previous_intent.get('intent_type', 'unknown')}
-(Consider conversation continuity)
-"""
+            previous_context = f"Previous Turn Intent: {previous_intent.get('intent_type', 'unknown')}\n(Consider conversation continuity)"
 
-        prompt = f"""You are an intent classifier for a mental health support chatbot.
-Analyze the user's message and classify their intent.
-
-{intent_descriptions}
-
-{previous_context}
-
-Preliminary Analysis suggests: {preliminary_intent}
-
-User Message: "{user_input}"
-
-Respond in JSON format:
-{{
-    "intent_type": "one of the intent types above",
-    "complexity_score": 0.0 to 1.0 (how complex is this request),
-    "detected_entities": {{
-        "emotions": ["list of detected emotions in Korean"],
-        "topics": ["list of topics mentioned"],
-        "persons": ["list of persons mentioned"]
-    }},
-    "flags": {{
-        "requires_memory": true/false (needs conversation history),
-        "requires_knowledge": true/false (needs external knowledge),
-        "visualization_hint": true/false (could benefit from visual),
-        "urgency_level": 0-3 (0=normal, 3=urgent)
-    }},
-    "reasoning": "brief explanation of your classification"
-}}
-
-Important:
-- Be conservative with "crisis" classification - only use for clear danger signals
-- Consider Korean cultural context
-- If unsure, prefer "emotional_support" over "casual_chat" for safety
-"""
+        # PromptLoader를 통해 yaml에서 로드된 system_prompt 포맷팅
+        base_prompt = self.get_prompt("system_prompt")
+        
+        prompt = base_prompt.format(
+            previous_context=previous_context,
+            preliminary_intent=preliminary_intent,
+            user_input=user_input,
+        )
         return prompt
 
     async def _llm_classify(
