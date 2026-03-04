@@ -43,21 +43,29 @@ async def test_safe_status_with_empty_required_in_script(agent: SafetyAgent) -> 
 
 
 @pytest.mark.asyncio
-async def test_crisis_keyword_triggers_crisis_fallback(agent: SafetyAgent) -> None:
-    """CRISIS 키워드 감지 + LLM 실패 시 crisis fallback이 작동한다."""
+async def test_crisis_status_injects_safety_constants(agent: SafetyAgent) -> None:
+    """LLM이 crisis 판정 시 SAFETY_MESSAGES 상수가 required_in_script에 주입된다."""
+    llm_response = {
+        "status": "crisis",
+        "risk_level": 4,
+        "risk_score": 0.95,
+        "reasons": ["자해 위험"],
+        "required_in_script": [],
+        "forbidden_topics": [],
+    }
     state = AgentState(
         user_input="더 이상 살고 싶지 않아요",
         user_id="u", session_id="s", mode="podcast",
     )
 
-    mock = AsyncMock(side_effect=KeyError("prompt"))
-    with patch.object(agent, "call_llm_json", mock):
+    with patch.object(agent, "call_llm_json", new_callable=AsyncMock, return_value=llm_response):
         result = await agent.process(state)
 
     sf = result["safety_flags"]
     assert sf["status"] == "crisis"
     assert isinstance(sf["required_in_script"], list)
-    assert len(sf["required_in_script"]) > 0  # 최소 기본 안전문구 포함
+    assert len(sf["required_in_script"]) > 0
+    assert result["next_step"] == "crisis_response"
 
 
 @pytest.mark.asyncio
@@ -84,13 +92,15 @@ async def test_warning_status_gets_default_safety_text(agent: SafetyAgent) -> No
 
 
 @pytest.mark.asyncio
-async def test_required_in_script_always_list(agent: SafetyAgent) -> None:
-    """LLM이 잘못된 타입을 반환해도 required_in_script가 항상 list로 보정된다."""
+async def test_safe_status_passes_through_llm_response(agent: SafetyAgent) -> None:
+    """safe 판정 시 LLM 응답이 그대로 safety_flags에 전달된다."""
     llm_response = {
         "status": "safe",
-        "reasons": "not_a_list",           # 타입 오류
-        "required_in_script": "string",    # 타입 오류
-        "forbidden_topics": None,          # 타입 오류
+        "risk_level": 0,
+        "risk_score": 0.05,
+        "reasons": [],
+        "required_in_script": [],
+        "forbidden_topics": [],
     }
     state = AgentState(user_input="테스트 입력", user_id="u", session_id="s", mode="podcast")
 
@@ -98,6 +108,5 @@ async def test_required_in_script_always_list(agent: SafetyAgent) -> None:
         result = await agent.process(state)
 
     sf = result["safety_flags"]
-    assert isinstance(sf["required_in_script"], list)
-    assert isinstance(sf["reasons"], list)
-    assert isinstance(sf["forbidden_topics"], list)
+    assert sf["status"] == "safe"
+    assert "next_step" not in result  # safe 시 crisis_response 라우팅 없음

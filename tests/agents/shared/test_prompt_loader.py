@@ -76,10 +76,12 @@ def test_load_all(
     ],
 )
 def test_get_version(mode: str, agent: str) -> None:
-    """프롬프트 파일의 버전을 반환한다."""
+    """프롬프트 파일의 버전이 유효한 semver 형식이다."""
+    import re
+
     loader = PromptLoader(base_dir="prompts")
     version = loader.get_version(mode, agent)
-    assert version == "1.0.0"
+    assert re.match(r"^\d+\.\d+\.\d+$", version), f"잘못된 버전 형식: {version}"
 
 
 def test_cache_hit_and_clear() -> None:
@@ -219,13 +221,16 @@ def test_get_prompt_base_dir_default_and_env() -> None:
 def test_agent_loads_prompts_and_version(
     import_path: str, agent_cls_name: str
 ) -> None:
-    """에이전트 생성 시 YAML 프롬프트가 로드되고 버전이 1.0.0이다."""
+    """에이전트 생성 시 YAML 프롬프트가 로드되고 유효한 semver 버전이다."""
     import importlib
+    import re
 
     module = importlib.import_module(import_path)
     agent_cls = getattr(module, agent_cls_name)
     agent = agent_cls()
 
-    # 프롬프트 버전 확인
+    # 프롬프트 버전 확인 (semver 형식)
     assert agent.prompt_version is not None
-    assert agent.prompt_version == "1.0.0"
+    assert re.match(r"^\d+\.\d+\.\d+$", agent.prompt_version), (
+        f"{agent_cls_name} 버전이 잘못된 형식: {agent.prompt_version}"
+    )

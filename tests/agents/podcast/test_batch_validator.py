@@ -25,10 +25,10 @@ def agent() -> BatchValidatorAgent:
 
 @pytest.fixture
 def passing_validation() -> dict[str, Any]:
-    """검증 통과 LLM 응답."""
+    """검증 통과 LLM 응답 (action.decision 기반)."""
     return {
-        "passed": True,
         "overall_score": 0.85,
+        "action": {"decision": "approve", "feedback": "양호"},
         "criteria": {
             "structure_completeness": {"passed": True, "score": 0.9, "feedback": "완전"},
             "safety_compliance": {"passed": True, "score": 0.9, "feedback": "양호"},
@@ -36,17 +36,16 @@ def passing_validation() -> dict[str, Any]:
             "timing_appropriateness": {"passed": True, "score": 0.85, "feedback": "적절"},
             "content_safety": {"passed": True, "score": 0.9, "feedback": "안전"},
         },
-        "issues": [],
-        "suggestions": ["약간의 전환 문구 추가 권장"],
+        "critical_issues": [],
     }
 
 
 @pytest.fixture
 def failing_validation() -> dict[str, Any]:
-    """검증 실패 LLM 응답."""
+    """검증 실패 LLM 응답 (action.decision 기반)."""
     return {
-        "passed": False,
         "overall_score": 0.45,
+        "action": {"decision": "revise", "feedback": "개선 필요"},
         "criteria": {
             "structure_completeness": {"passed": False, "score": 0.4, "feedback": "아웃트로 누락"},
             "safety_compliance": {"passed": True, "score": 0.8, "feedback": "양호"},
@@ -54,8 +53,7 @@ def failing_validation() -> dict[str, Any]:
             "timing_appropriateness": {"passed": True, "score": 0.7, "feedback": "적절"},
             "content_safety": {"passed": True, "score": 0.9, "feedback": "안전"},
         },
-        "issues": ["아웃트로가 누락됨", "본문 톤 불일치"],
-        "suggestions": ["아웃트로 추가", "톤 통일"],
+        "critical_issues": ["아웃트로가 누락됨", "본문 톤 불일치"],
     }
 
 
@@ -96,7 +94,7 @@ async def test_pass_routes_to_script_personalizer(
         result = await agent.process(base_state)
 
     assert result["next_step"] == "script_personalizer"
-    assert result["validation_result"]["passed"] is True
+    assert result["validation_result"]["verdict"] == "PASS"
     assert result["validation_result"]["overall_score"] == 0.85
     assert "iteration_count" not in result
 
@@ -162,7 +160,7 @@ async def test_max_retries_forces_pass(
 
     assert result["next_step"] == "script_personalizer"
     assert result["validation_result"]["forced_pass"] is True
-    assert result["validation_result"]["passed"] is False
+    assert result["validation_result"]["verdict"] == "FAIL"
     assert result["validation_result"]["overall_score"] == 0.45
 
 
@@ -282,7 +280,7 @@ async def test_llm_returns_empty_dict(
 async def test_minimal_pass_response(
     agent: BatchValidatorAgent,
 ) -> None:
-    """passed=True만 있는 최소 응답으로 통과 라우팅."""
+    """action.decision='approve'만 있는 최소 응답으로 통과 라우팅."""
     state = AgentState(
         user_input="테스트",
         user_id="u",
@@ -296,12 +294,44 @@ async def test_minimal_pass_response(
         iteration_count=0,
     )
     with patch.object(
-        agent, "call_llm_json", new_callable=AsyncMock, return_value={"passed": True}
+        agent, "call_llm_json", new_callable=AsyncMock,
+        return_value={"action": {"decision": "approve"}},
     ):
         result = await agent.process(state)
 
     assert result["next_step"] == "script_personalizer"
-    assert result["validation_result"]["passed"] is True
+    assert result["validation_result"]["verdict"] == "PASS"
+
+
+@pytest.mark.asyncio
+async def test_escalate_routes_to_crisis_response(
+    agent: BatchValidatorAgent,
+) -> None:
+    """decision='escalate' 시 CRITICAL_FAIL → crisis_response 라우팅."""
+    state = AgentState(
+        user_input="테스트",
+        user_id="u",
+        session_id="s",
+        mode="podcast",
+        script_draft={"intro": {"content": "test"}},
+        content_analysis={},
+        reasoning_result={},
+        safety_flags={},
+        emotion_vectors={},
+        iteration_count=0,
+    )
+    escalate_response = {
+        "overall_score": 0.1,
+        "action": {"decision": "escalate", "feedback": "위험 콘텐츠"},
+        "critical_issues": ["유해 콘텐츠 감지"],
+    }
+    with patch.object(
+        agent, "call_llm_json", new_callable=AsyncMock, return_value=escalate_response
+    ):
+        result = await agent.process(state)
+
+    assert result["next_step"] == "crisis_response"
+    assert result["validation_result"]["verdict"] == "CRITICAL_FAIL"
 
 
 @pytest.mark.asyncio
