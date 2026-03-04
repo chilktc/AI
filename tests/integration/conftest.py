@@ -8,7 +8,6 @@ AgentState fixture, LLM mock, 그래프 빌더를 제공한다.
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -65,20 +64,6 @@ def podcast_crisis_state() -> AgentState:
 # ===================================================================
 # 모의 에이전트 결과 Fixture
 # ===================================================================
-@pytest.fixture
-def mock_intent_result() -> dict[str, Any]:
-    """Intent Classifier 모의 결과."""
-    return {
-        "intent": {
-            "primary_intent": "emotional_support",
-            "complexity_score": 0.6,
-            "risk_flag": False,
-        },
-        "mode": "conversation",
-        "execution_plan": {"tier1_agents": ["safety", "emotion", "context", "reasoning"]},
-    }
-
-
 @pytest.fixture
 def mock_safety_safe_result() -> dict[str, Any]:
     """Safety Agent 모의 결과 — safe."""
@@ -148,67 +133,6 @@ def mock_reasoning_result() -> dict[str, Any]:
     }
 
 
-@pytest.fixture
-def mock_synthesis_result() -> dict[str, Any]:
-    """Synthesis Agent 모의 결과."""
-    return {
-        "response_draft": "직장에서 스트레스를 많이 받고 계시군요. "
-        "그 상황이 얼마나 힘드실지 충분히 이해합니다.",
-    }
-
-
-@pytest.fixture
-def mock_validation_pass_result() -> dict[str, Any]:
-    """Validator Agent 모의 결과 — 통과."""
-    return {
-        "validation_result": {
-            "validation": {
-                "approved": True,
-                "safety_check": {"passed": True, "issues": []},
-                "quality_check": {"score": 0.85, "issues": [], "suggestions": []},
-            },
-            "action": {
-                "decision": "approve",
-                "revision_instructions": None,
-                "max_iterations_remaining": 2,
-            },
-        },
-        "next_step": "personalization",
-    }
-
-
-@pytest.fixture
-def mock_validation_fail_result() -> dict[str, Any]:
-    """Validator Agent 모의 결과 — 실패 (재시도 필요)."""
-    return {
-        "validation_result": {
-            "validation": {
-                "approved": False,
-                "safety_check": {"passed": True, "issues": []},
-                "quality_check": {
-                    "score": 0.45,
-                    "issues": ["응답이 너무 짧음"],
-                    "suggestions": ["구체적인 공감 표현 추가"],
-                },
-            },
-            "action": {
-                "decision": "revise",
-                "revision_instructions": "응답에 구체적인 공감 표현을 추가하세요.",
-                "max_iterations_remaining": 1,
-            },
-        },
-    }
-
-
-@pytest.fixture
-def mock_personalization_result() -> dict[str, Any]:
-    """Personalization Agent 모의 결과."""
-    return {
-        "final_output": "직장에서 많은 스트레스를 받고 계시는군요. "
-        "그 마음이 얼마나 무거우실지 저도 느껴져요.",
-    }
-
-
 # ===================================================================
 # 팟캐스트모드 모의 결과
 # ===================================================================
@@ -245,85 +169,3 @@ def mock_podcast_reasoning_result() -> dict[str, Any]:
     }
 
 
-@pytest.fixture
-def mock_script_draft_result() -> dict[str, Any]:
-    """Script Generator 모의 결과."""
-    return {
-        "script_draft": {
-            "title": "나를 돌보는 시간",
-            "sections": [
-                {"type": "intro", "content": "안녕하세요, 오늘의 에피소드입니다."},
-                {"type": "body", "content": "이번 주 여러분의 감정을 돌아볼까요."},
-                {"type": "outro", "content": "오늘도 수고하셨습니다."},
-            ],
-        },
-    }
-
-
-@pytest.fixture
-def mock_batch_validation_pass() -> dict[str, Any]:
-    """Batch Validator 모의 결과 — 통과."""
-    return {
-        "validation_result": {
-            "scores": {
-                "content_quality": 0.85,
-                "safety_compliance": 0.95,
-                "emotional_alignment": 0.80,
-                "structure_coherence": 0.75,
-                "engagement_potential": 0.70,
-            },
-            "overall_score": 0.81,
-            "verdict": "PASS",
-            "feedback": "",
-            "critical_issues": [],
-        },
-    }
-
-
-@pytest.fixture
-def mock_batch_validation_fail() -> dict[str, Any]:
-    """Batch Validator 모의 결과 — 실패."""
-    return {
-        "validation_result": {
-            "scores": {
-                "content_quality": 0.60,
-                "safety_compliance": 0.90,
-                "emotional_alignment": 0.50,
-                "structure_coherence": 0.65,
-                "engagement_potential": 0.55,
-            },
-            "overall_score": 0.64,
-            "verdict": "FAIL",
-            "feedback": "감정 정렬과 참여도 개선 필요",
-            "critical_issues": [],
-        },
-    }
-
-
-# ===================================================================
-# 전역 LLM Mock
-# ===================================================================
-@pytest.fixture
-def mock_all_llm_calls():
-    """
-    모든 LLM 호출을 전역으로 mock하는 fixture.
-
-    사용법:
-        def test_something(mock_all_llm_calls):
-            mock_all_llm_calls.return_value = {"key": "value"}
-            # ... 테스트
-    """
-    with (
-        patch(
-            "src.agents.shared.base_agent.BaseAgent.call_llm_json",
-            new_callable=AsyncMock,
-            return_value={},
-        ) as mock_json,
-        patch(
-            "src.agents.shared.base_agent.BaseAgent.call_llm",
-            new_callable=AsyncMock,
-            return_value="",
-        ) as mock_text,
-    ):
-        mock_json.text_mock = mock_text  # type: ignore[attr-defined]
-        yield mock_json

@@ -102,6 +102,10 @@ class BaseAgent(ABC):
         # 현재 실행에서 선택된 A/B variant (Telemetry 추적용)
         self._current_ab_variant: str | None = None
 
+        # I/O 스냅샷 — 직전 실행의 입출력 기록 (모니터링용)
+        self._last_input_snapshot: dict[str, Any] | None = None
+        self._last_output_snapshot: dict[str, Any] | None = None
+
     # --- v8: 버전 해석 ---
 
     def _resolve_target_version(self) -> str | None:
@@ -353,11 +357,19 @@ class BaseAgent(ABC):
 
         # LLM 호출 카운터 초기화
         self._llm_call_count = 0
+        self.llm_client.reset_total_usage()
         start_time = time.monotonic()
+
+        # I/O 스냅샷 — 입력 상태 기록
+        self._last_input_snapshot = self._sanitize_state_snapshot(state)
 
         try:
             result = await self._traced_process(state, tier_label)
             elapsed_ms = int((time.monotonic() - start_time) * 1000)
+
+            # I/O 스냅샷 — 출력 결과 기록
+            self._last_output_snapshot = result
+
             self.logger.info(
                 "[%s] %s 완료 (%dms, LLM %d회)%s",
                 tier_label,
@@ -395,17 +407,105 @@ class BaseAgent(ABC):
         langsmith가 설치되어 있으면 에이전트 이름으로 child span을 생성하여
         Fan-out 노드 내부의 개별 에이전트가 LangSmith UI에 표시된다.
         langsmith가 없으면 process()를 직접 실행한다 (graceful degradation).
+
+        메타데이터에 프롬프트 버전, A/B variant, 모델 정보를 포함하여
+        LangSmith에서 에이전트별 필터링과 성능 분석이 가능하다.
         """
         try:
             from langsmith import traceable  # type: ignore[import-untyped]
         except ImportError:
             return await self.process(state)
 
-        @traceable(name=self.name, run_type="chain", tags=[tier_label])
+        mode = state.get("mode", "unknown")
+
+        @traceable(
+            name=self.name,
+            run_type="chain",
+            tags=[tier_label, f"mode:{mode}"],
+            metadata={
+                "agent_name": self.name,
+                "tier": self.tier,
+                "prompt_version": self._prompt_version,
+                "ab_variant": self._current_ab_variant,
+                "model_id": self.llm_client.model_id,
+            },
+        )
         async def _run(s: AgentState) -> dict[str, Any]:
             return await self.process(s)
 
         return await _run(state)
+
+    async def _traced_llm_call(
+        self,
+        system_prompt: str,
+        user_message: str,
+        **kwargs: Any,
+    ) -> str:
+        """
+        LangSmith LLM 스팬으로 감싼 LLM 호출.
+
+        settings.yaml의 monitoring.langsmith.tracing_enabled=true이고
+        langsmith가 설치되어 있으면 run_type="llm" child 스팬을 생성하여
+        LangSmith 대시보드의 LLM Count, Token Usage, Cost가 표시된다.
+        비활성 또는 미설치 시 llm_client.generate()를 직접 호출한다.
+        """
+        # 설정 확인 — tracing 비활성 시 직접 호출
+        try:
+            if not get_settings().langsmith_tracing_enabled:
+                return await self.llm_client.generate(
+                    system_prompt=system_prompt,
+                    user_message=user_message,
+                    **kwargs,
+                )
+        except Exception:
+            pass
+
+        # langsmith 미설치 시 직접 호출 (graceful degradation)
+        try:
+            from langsmith import traceable  # type: ignore[import-untyped]
+        except ImportError:
+            return await self.llm_client.generate(
+                system_prompt=system_prompt,
+                user_message=user_message,
+                **kwargs,
+            )
+
+        @traceable(
+            name=self.llm_client.model_id,
+            run_type="llm",
+            metadata={
+                "ls_provider": self.llm_client.provider,
+                "ls_model_name": self.llm_client.model_id,
+            },
+        )
+        async def _llm_run(
+            messages: list[dict[str, str]],
+            model: str,
+            **kw: Any,
+        ) -> dict[str, Any]:
+            text = await self.llm_client.generate(
+                system_prompt=system_prompt,
+                user_message=user_message,
+                **kwargs,
+            )
+            usage = self.llm_client.last_usage or {}
+            return {
+                "text": text,
+                "usage_metadata": {
+                    "input_tokens": usage.get("input_tokens", 0),
+                    "output_tokens": usage.get("output_tokens", 0),
+                    "total_tokens": usage.get("total_tokens", 0),
+                },
+            }
+
+        result = await _llm_run(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ],
+            model=self.llm_client.model_id,
+        )
+        return str(result["text"]) if isinstance(result, dict) else str(result)
 
     async def call_llm(
         self,
@@ -420,7 +520,7 @@ class BaseAgent(ABC):
         audit.llm_calls가 자동으로 집계된다.
         """
         self._llm_call_count += 1
-        return await self.llm_client.generate(
+        return await self._traced_llm_call(
             system_prompt=system_prompt,
             user_message=user_message,
             **kwargs,
@@ -439,11 +539,78 @@ class BaseAgent(ABC):
         audit.llm_calls가 자동으로 집계된다.
         """
         self._llm_call_count += 1
-        return await self.llm_client.generate_json(
+        raw_text = await self._traced_llm_call(
             system_prompt=system_prompt,
             user_message=user_message,
             **kwargs,
         )
+        return self.llm_client._parse_json_response(raw_text)
+
+    async def call_image_gen(
+        self,
+        prompt: str,
+        model: str = "dall-e-3",
+        size: str = "1024x1024",
+        quality: str = "standard",
+    ) -> dict[str, Any]:
+        """
+        이미지 생성 API를 호출하고 로컬에 저장한다.
+
+        Visualization Agent에서 사용한다.
+        LLM 프로바이더와 무관하게 항상 OpenAI Images API를 통해 이미지를 생성한다.
+        생성된 이미지는 data/outputs/images/ 폴더에 PNG로 저장된다.
+
+        Args:
+            prompt: 이미지 생성 프롬프트 (영문 권장)
+            model: 이미지 모델 (기본: dall-e-3)
+            size: 이미지 크기 (기본: 1024x1024)
+            quality: 이미지 품질 (standard / hd)
+
+        Returns:
+            {"url": "임시 URL", "local_path": "로컬 저장 경로"} 형태의 dict
+        """
+        import os
+        from pathlib import Path
+
+        import httpx
+        import openai
+
+        client = openai.AsyncOpenAI(
+            api_key=os.getenv("OPENAI_API_KEY"),
+        )
+
+        response = await client.images.generate(
+            model=model,
+            prompt=prompt,
+            size=size,
+            quality=quality,
+            n=1,
+        )
+
+        image_url = response.data[0].url or ""
+        self.logger.info("이미지 생성 완료: model=%s, size=%s", model, size)
+
+        # 로컬 저장 — data/outputs/images/{timestamp}_{agent_name}.png
+        local_path = ""
+        try:
+            images_dir = Path("data/outputs/images")
+            images_dir.mkdir(parents=True, exist_ok=True)
+
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            filename = f"{timestamp}_{self.name}.png"
+            file_path = images_dir / filename
+
+            async with httpx.AsyncClient(timeout=30) as http_client:
+                img_response = await http_client.get(image_url)
+                img_response.raise_for_status()
+                file_path.write_bytes(img_response.content)
+
+            local_path = str(file_path)
+            self.logger.info("이미지 로컬 저장 완료: %s", local_path)
+        except Exception as e:
+            self.logger.warning("이미지 로컬 저장 실패: %s", e)
+
+        return {"url": image_url, "local_path": local_path}
 
     def create_message(
         self,
@@ -489,3 +656,72 @@ class BaseAgent(ABC):
                 status="ok",
             ),
         )
+
+    # ------------------------------------------------------------------
+    # 모니터링 — 실행 메트릭 및 I/O 스냅샷
+    # ------------------------------------------------------------------
+
+    def get_execution_metrics(self) -> dict[str, Any]:
+        """직전 실행의 성능 메트릭을 반환한다.
+
+        Telemetry 콜백 핸들러나 외부 모니터링 시스템에서
+        에이전트별 성능 데이터를 수집할 때 사용한다.
+
+        Returns:
+            에이전트 이름, TIER, 프롬프트 버전, A/B variant,
+            LLM 호출 횟수, 토큰 사용량, 모델 ID를 포함한 dict
+        """
+        return {
+            "agent_name": self.name,
+            "tier": self.tier,
+            "prompt_version": self._prompt_version,
+            "ab_variant": self._current_ab_variant,
+            "llm_call_count": self._llm_call_count,
+            "token_usage": self.llm_client.last_usage,
+            "total_token_usage": self.llm_client.total_usage,
+            "model_id": self.llm_client.model_id,
+        }
+
+    @property
+    def last_input_snapshot(self) -> dict[str, Any] | None:
+        """직전 실행의 입력 상태 스냅샷을 반환한다."""
+        return self._last_input_snapshot
+
+    @property
+    def last_output_snapshot(self) -> dict[str, Any] | None:
+        """직전 실행의 출력 결과 스냅샷을 반환한다."""
+        return self._last_output_snapshot
+
+    @staticmethod
+    def _sanitize_state_snapshot(
+        state: AgentState,
+        max_chars: int = 2000,
+    ) -> dict[str, Any]:
+        """AgentState에서 모니터링용 스냅샷을 생성한다.
+
+        민감정보 보호를 위해 문자열 값은 max_chars로 잘라내고,
+        user_input은 길이만 기록한다.
+
+        Args:
+            state: 현재 AgentState
+            max_chars: 문자열 값의 최대 길이
+
+        Returns:
+            sanitize된 상태 dict
+        """
+        snapshot: dict[str, Any] = {}
+        for key, value in state.items():
+            if key == "user_input":
+                # 사용자 원문은 길이만 기록 (민감정보 보호)
+                snapshot[key] = f"<len={len(str(value))}>"
+            elif isinstance(value, str) and len(value) > max_chars:
+                snapshot[key] = value[:max_chars] + "...<truncated>"
+            elif isinstance(value, dict):
+                # dict는 키 목록만 기록
+                snapshot[key] = {
+                    "_keys": list(value.keys()),
+                    "_size": len(value),
+                }
+            else:
+                snapshot[key] = value
+        return snapshot

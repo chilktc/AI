@@ -1,0 +1,704 @@
+# 에이전트 역할 정의서 (AGENT_ROLES.md)
+
+코드 분석 기반으로 작성된 에이전트별 역할·입출력·스키마·소비자·이슈 정의서.
+
+> **참고**: 이 문서는 실제 코드를 기준으로 작성됨. `ProjectDocs/`의 설계 원본과 차이가 있을 수 있음.
+
+---
+
+## 데이터 플로우 개요
+
+### 팟캐스트 모드
+
+```
+TIER 0 (Intent)         → 0.3~0.5 KB
+TIER 1 (병렬 4개)       → ~8~12 KB (Content 0.25~0.8 + Emotion 0.3 + Reasoning 7~11 + Safety 0.5)
+TIER 2 (Script Gen)     → 8~21 KB
+TIER 3 (Batch Val)      → 0.2~0.6 KB
+TIER 4 (Personalizer)   → 9~22 KB
+Peak State Size: 19~37 KB
+```
+
+### 대화 모드
+
+```
+TIER 0 (Intent)         → 0.3~0.5 KB
+TIER 1 (병렬 4개)       → ~8~12 KB (Safety + Emotion + Context + Reasoning)
+TIER 2 (Synthesis)      → 0.5~2 KB
+TIER 3 (Validator)      → 0.3~0.5 KB
+TIER 4 (Personalization)→ 0.5~2 KB
+Peak State Size: ~12~18 KB (추정, 미구현)
+```
+
+---
+
+## 구현 현황
+
+| 상태 | 에이전트 |
+|------|----------|
+| **구현 완료 (10개)** | Intent Classifier, Safety, Emotion, Knowledge, Content Analyzer, Podcast Reasoning, Script Generator, Batch Validator, Script Personalizer, Visualization |
+| **공용 구현 완료 (1개)** | Learning |
+| **미구현 (8개)** | Context, Reasoning(대화), Memory, Synthesis, Validator(대화), Personalization, Telemetry |
+| **스텁 (1개)** | Episode Memory (BaseMemoryAgent 확장) |
+
+---
+
+## 에이전트 상세
+
+### Intent Classifier -- TIER 0 / 공용
+
+- **목적**: 사용자 입력의 의도를 분류하고, 모드를 감지하며, 1차 위기 신호를 판별한다.
+- **모델**: Haiku
+- **구현 상태**: 완료
+
+**입력 (AgentState 읽기)**
+
+| 필드 | 출처 | 필수 |
+|------|------|------|
+| `user_input` | 사용자 | O |
+| `user_id` | 세션 | O |
+| `session_id` | 세션 | O |
+
+**출력 (AgentState 쓰기)**
+
+| 필드 | 타입 | 크기 |
+|------|------|------|
+| `intent` | dict (IntentClassifierOutput) | 0.3~0.5 KB |
+| `risk_level` | int (0-4) | - |
+| `risk_score` | float (0.0-1.0) | - |
+| `safety_flags` | dict | - |
+| `next_step` | str | - |
+
+**출력 스키마 (IntentClassifierOutput)**
+
+```python
+{
+  "intent_type": str,           # casual_chat|emotional_support|counseling|crisis|information|podcast_request
+  "complexity_score": float,    # 0.0-1.0
+  "detected_entities": {
+    "emotions": list[str],
+    "topics": list[str],
+    "persons": list[str]
+  },
+  "flags": {
+    "requires_memory": bool,
+    "requires_knowledge": bool,
+    "visualization_hint": bool,
+    "urgency_level": int,       # 0-3
+    "risk_flag": bool
+  },
+  "reasoning": str,
+  "trace_id": str,
+  "classified_at": datetime
+}
+```
+
+**소비자**
+
+| 에이전트 | 사용 필드 | 미사용 필드 |
+|----------|-----------|-------------|
+| Safety | `intent` (risk_flag) | reasoning, trace_id |
+| Emotion | `intent` (전체) | reasoning, trace_id |
+| Content Analyzer | `intent.complexity_score` | reasoning, trace_id, entities |
+| Podcast Reasoning | `intent.complexity_score`, `execution_plan` | reasoning, trace_id |
+
+- **데이터 효율**: 30~50% (reasoning, trace_id, classified_at 미사용)
+- **알려진 이슈**:
+  - [S-1] `risk_level`, `risk_score`, `safety_flags` 쓰기 -- 개발자2 전용 필드 경계 위반
+  - [B-3] Safety Agent와 이중 위험평가
+
+---
+
+### Safety Agent -- TIER 1 (병렬) / 공용
+
+- **목적**: 사용자 입력의 위험도를 평가하고, CRISIS 시 파이프라인을 선점 중단한다.
+- **모델**: Sonnet 4
+- **구현 상태**: 완료
+
+**입력 (AgentState 읽기)**
+
+| 필드 | 출처 | 필수 |
+|------|------|------|
+| `user_input` | 사용자 | O |
+| `intent` | Intent Classifier | O |
+
+**출력 (AgentState 쓰기)**
+
+| 필드 | 타입 | 크기 |
+|------|------|------|
+| `safety_flags` | dict | ~0.5 KB |
+
+**출력 스키마**
+
+```python
+{
+  "status": str,                    # safe|warning|crisis
+  "reasons": list[str],
+  "forbidden_topics": list[str],
+  "required_in_script": list[str],
+  "tone_guidelines": {
+    "avoid_medical_claims": bool,
+    "avoid_diagnosis": bool,
+    "use_supportive_neutral_tone": bool
+  },
+  "_debug": {
+    "rule_crisis_hit": bool,
+    "intent_risk_flag": bool,
+    "llm_used": bool
+  }
+}
+```
+
+**소비자**
+
+| 에이전트 | 사용 필드 | 미사용 필드 |
+|----------|-----------|-------------|
+| Batch Validator | status, reasons | _debug |
+| Script Personalizer | status, required_in_script | _debug, tone_guidelines |
+| Visualization | status, required_in_script | _debug |
+
+- **데이터 효율**: 100%
+- **알려진 이슈**:
+  - [B-4] 전체 intent dict를 LLM 컨텍스트에 전달 (200~400 토큰 낭비)
+
+---
+
+### Emotion Agent -- TIER 1 (병렬) / 공용
+
+- **목적**: 사용자 입력의 감정을 분석하여 벡터화한다.
+- **모델**: Sonnet 4
+- **구현 상태**: 완료
+
+**입력 (AgentState 읽기)**
+
+| 필드 | 출처 | 필수 |
+|------|------|------|
+| `user_input` | 사용자 | O |
+| `intent` | Intent Classifier | X (컨텍스트 참고) |
+
+**출력 (AgentState 쓰기)**
+
+| 필드 | 타입 | 크기 |
+|------|------|------|
+| `emotion_vectors` | dict | ~0.3 KB |
+
+**출력 스키마**
+
+```python
+{
+  "primary_emotion": str,
+  "intensity": float,               # 0.0-1.0
+  "valence": float,                 # -1.0 ~ 1.0
+  "arousal": float,                 # 0.0-1.0
+  "secondary_emotions": list[str],
+  "tone_recommendation": str,
+  "emotional_journey_hint": list[str]
+}
+```
+
+**소비자**
+
+| 에이전트 | 사용 필드 | 미사용 필드 |
+|----------|-----------|-------------|
+| Visualization | primary_emotion, intensity, valence, arousal | secondary_emotions |
+| Script Personalizer | tone_recommendation | secondary_emotions |
+| Batch Validator | (전체) | - |
+
+- **데이터 효율**: 100%
+- **알려진 이슈**:
+  - [B-4] 전체 intent dict를 LLM 컨텍스트에 전달 (Safety와 동일)
+
+---
+
+### Content Analyzer -- TIER 1 (병렬) / 팟캐스트
+
+- **목적**: 사용자 입력을 분석하여 팟캐스트 에피소드 주제·구조·깊이를 도출한다.
+- **모델**: Sonnet 4
+- **구현 상태**: 완료
+
+**입력 (AgentState 읽기)**
+
+| 필드 | 출처 | 필수 |
+|------|------|------|
+| `user_input` | 사용자 | O |
+| `intent` | Intent Classifier | O (complexity_score) |
+
+**출력 (AgentState 쓰기)**
+
+| 필드 | 타입 | 크기 |
+|------|------|------|
+| `content_analysis` | dict | 0.25~0.8 KB |
+
+**출력 스키마**
+
+```python
+{
+  "main_theme": str,                # max 100자
+  "sub_themes": list[str],          # 3-5개
+  "target_duration": int,           # 3-5분 고정
+  "narrative_structure": str,       # personal_story|expert_qa|reflection|comparative
+  "depth_level": str                # light|moderate|deep
+}
+```
+
+**소비자**
+
+| 에이전트 | 사용 필드 | 미사용 필드 |
+|----------|-----------|-------------|
+| Script Generator | main_theme, sub_themes, target_duration | - |
+| Batch Validator | main_theme (비교용) | narrative_structure |
+
+- **데이터 효율**: 75~80%
+
+---
+
+### Podcast Reasoning -- TIER 1 (병렬) / 팟캐스트
+
+- **목적**: GoT+ToT+CoT 3단계 추론으로 에피소드 구조·내러티브·핵심 포인트를 도출한다.
+- **모델**: Sonnet 4
+- **구현 상태**: 완료
+
+**입력 (AgentState 읽기)**
+
+| 필드 | 출처 | 필수 |
+|------|------|------|
+| `user_input` | 사용자 | O |
+| `user_id` | 세션 | O |
+| `intent` | Intent Classifier | O (complexity_score) |
+| `execution_plan` | Intent Classifier | X (조건부 참고) |
+
+**출력 (AgentState 쓰기)**
+
+| 필드 | 타입 | 크기 |
+|------|------|------|
+| `reasoning_result` | dict | 7~11 KB |
+| `memory_results` | dict (조건부) | 1.5~3.5 KB |
+| `knowledge_results` | dict (조건부) | 2~5 KB |
+
+**추론 깊이 라우팅**
+
+| complexity_score | 깊이 | 전략 | LLM 호출 |
+|-----------------|------|------|----------|
+| >= 0.8 (CLAUDE.md) / >= 0.55 (settings.yaml) | full | GoT -> ToT -> CoT | 3회 |
+| >= 0.5 (CLAUDE.md) / >= 0.3 (settings.yaml) | standard | ToT -> CoT | 2회 |
+| < 0.5 / < 0.3 | minimal | CoT only | 1회 |
+
+**출력 스키마**
+
+```python
+{
+  "reasoning_depth": str,           # full|standard|minimal
+  "reasoning_strategy": str,        # GoT+ToT+CoT|ToT+CoT|CoT
+  "got_result": {                   # full일 때만
+    "nodes": list, "edges": list,
+    "core_pattern": str, "insights": list
+  },
+  "tot_result": {                   # full/standard일 때만
+    "alternatives": list, "selected": dict,
+    "selection_rationale": str
+  },
+  "episode_structure": list,
+  "narrative_flow": str,
+  "key_points": list,
+  "emotional_journey": list,
+  "confidence": float
+}
+```
+
+**소비자**
+
+| 에이전트 | 사용 필드 | 미사용 필드 |
+|----------|-----------|-------------|
+| Script Generator | episode_structure, narrative_flow, key_points, emotional_journey | **got_result, tot_result** (전체 미사용) |
+| Batch Validator | (비교용 참조) | got_result, tot_result |
+
+- **데이터 효율**: **5~7%** (got_result, tot_result가 7~10KB 차지하지만 다운스트림에서 미사용)
+- **알려진 이슈**:
+  - [C-1] CRITICAL: 임계값 불일치 -- CLAUDE.md(0.8/0.5) vs settings.yaml(0.55/0.3)
+  - [C-2] 토큰 예산 4096 -- 출력 7~11KB 잘림 가능성
+  - [S-5] memory_results, knowledge_results 조건부 쓰기 미문서화
+
+---
+
+### Episode Memory -- 독립 / 팟캐스트
+
+- **목적**: 과거 팟캐스트 에피소드 기억을 검색하여 일관성과 연속성을 확보한다.
+- **모델**: Sonnet 4 (BaseMemoryAgent 상속)
+- **구현 상태**: 스텁 (BaseMemoryAgent 확장)
+
+**입력**: DI 호출 -- `search(query, user_id)`
+
+**출력 (AgentState 쓰기)**
+
+| 필드 | 타입 | 크기 |
+|------|------|------|
+| `memory_results` | dict | 1.5~3.5 KB |
+
+**소비자**
+
+| 에이전트 | 사용 필드 | 미사용 필드 |
+|----------|-----------|-------------|
+| Podcast Reasoning | count만 확인 | episodes, segments 상세 |
+
+- **데이터 효율**: 3~7% (count만 사용, 상세 에피소드 데이터 미사용)
+- **네임스페이스**: `mem_podcast_episode` (대화 기억과 분리)
+
+---
+
+### Knowledge Agent -- 독립 / 공용
+
+- **목적**: 전문 지식 DB를 검색하여 근거 기반 정보를 제공한다.
+- **모델**: Sonnet 4
+- **구현 상태**: 완료
+
+**입력 (AgentState 읽기)**
+
+| 필드 | 출처 | 필수 |
+|------|------|------|
+| `user_input` | 사용자 | O |
+| `domain_hints` | (미정의) | X |
+| `user_context` | (미정의) | X |
+
+**출력 (AgentState 쓰기)**
+
+| 필드 | 타입 | 크기 |
+|------|------|------|
+| `knowledge_results` | dict | 2~5 KB |
+
+**출력 스키마**
+
+```python
+{
+  "documents": list[{
+    "id": str, "title": str, "content": str,
+    "relevance_score": float, "applicability_score": float
+  }],
+  "synthesis": str,
+  "recommended_approaches": list[{
+    "approach": str, "rationale": str, "contraindications": list[str]
+  }]
+}
+```
+
+**소비자**
+
+| 에이전트 | 사용 필드 | 미사용 필드 |
+|----------|-----------|-------------|
+| Synthesis (대화) | synthesis, recommended_approaches | documents 상세 |
+
+- **데이터 효율**: 20~50% (synthesis만 주로 사용)
+- **알려진 이슈**:
+  - [S-3] domain_hints, user_context -- AgentState에 미정의 필드 읽기
+  - [B-7] domain_hints 미전달
+
+---
+
+### Script Generator -- TIER 2 / 팟캐스트
+
+- **목적**: TIER 1 분석 결과를 종합하여 팟캐스트 스크립트를 생성한다.
+- **모델**: Sonnet 4
+- **구현 상태**: 완료
+
+**입력 (AgentState 읽기)**
+
+| 필드 | 출처 | 필수 |
+|------|------|------|
+| `content_analysis` | Content Analyzer | O |
+| `reasoning_result` | Podcast Reasoning | O (episode_structure) |
+| `knowledge_context` | Knowledge Agent | X |
+
+**출력 (AgentState 쓰기)**
+
+| 필드 | 타입 | 크기 |
+|------|------|------|
+| `script_draft` | dict | 8~21 KB |
+
+**출력 스키마**
+
+```python
+{
+  "episode_title": str,             # 10-30자
+  "total_duration": int,
+  "segments": list[{
+    "segment_id": str, "segment_type": str,
+    "duration_minutes": float, "script_text": str,
+    "word_count": int, "emotional_tone": str, "tts_markers": dict
+  }],
+  "key_insights": list[str],       # 3-5개
+  "themes": list[str],
+  "metadata": dict
+}
+```
+
+**소비자**
+
+| 에이전트 | 사용 필드 | 미사용 필드 |
+|----------|-----------|-------------|
+| Batch Validator | 전체 | - |
+| Script Personalizer | 전체 | - |
+
+- **데이터 효율**: 100% (출력 전체가 다운스트림에서 사용)
+- **알려진 이슈**:
+  - [C-2] 토큰 예산 4096 -- 출력 8~21KB 잘림 가능성
+  - [S-4] content_analysis 필드 직접 읽기 범위 문서화 필요
+
+---
+
+### Batch Validator -- TIER 3 / 팟캐스트
+
+- **목적**: 스크립트 초안의 품질을 5가지 기준으로 검증하고, 실패 시 재시도를 라우팅한다.
+- **모델**: Sonnet 4
+- **구현 상태**: 완료
+
+**입력 (AgentState 읽기)**
+
+| 필드 | 출처 | 필수 |
+|------|------|------|
+| `script_draft` | Script Generator | O |
+| `content_analysis` | Content Analyzer | O |
+| `reasoning_result` | Podcast Reasoning | O |
+| `safety_flags` | Safety Agent | O |
+| `emotion_vectors` | Emotion Agent | O |
+| `iteration_count` | 제어 | O |
+
+**출력 (AgentState 쓰기)**
+
+| 필드 | 타입 | 크기 |
+|------|------|------|
+| `validation_result` | dict | 0.2~0.6 KB |
+| `next_step` | str | - |
+| `iteration_count` | int (조건부) | - |
+
+**검증 기준**: completeness, quality, safety compliance, emotional tone fit, coherence
+
+**재시도 로직**: `MAX_RETRIES = 2` (하드코딩) -- 실패 시 retry_script, 초과 시 forced_pass
+
+**소비자**
+
+| 에이전트 | 사용 필드 | 미사용 필드 |
+|----------|-----------|-------------|
+| Script Personalizer | passed, forced_pass | 검증 상세 |
+
+- **데이터 효율**: 100%
+- **알려진 이슈**:
+  - [C-4] MAX_RETRIES 하드코딩 -- settings.yaml 미참조
+
+---
+
+### Script Personalizer -- TIER 4 / 팟캐스트
+
+- **목적**: 사용자 프로필 기반으로 스크립트의 톤·스타일·접근성을 조정한다.
+- **모델**: Sonnet 4
+- **구현 상태**: 완료
+
+**입력 (AgentState 읽기)**
+
+| 필드 | 출처 | 필수 |
+|------|------|------|
+| `script_draft` | Script Generator | O |
+| `user_id` | 세션 | O |
+| `emotion_vectors` | Emotion Agent | X |
+| `safety_flags` | Safety Agent | X |
+
+**출력 (AgentState 쓰기)**
+
+| 필드 | 타입 | 크기 |
+|------|------|------|
+| `final_output` | str (JSON 직렬화) | 9~22 KB |
+
+**출력 스키마 (PersonalizedScript)**
+
+```python
+{
+  "episode_id": str,                # ep_{uuid[:12]}
+  "episode_title": str,
+  "total_duration": int,
+  "segments": list[ScriptSegment],
+  "key_insights": list[str],
+  "themes": list[str],
+  "personalization_meta": {
+    "applied_style": dict,
+    "adjusted_segments": list[str],
+    "attitude_applied": str
+  }
+}
+```
+
+**소비자**: 프론트엔드/스토리지 (최종 출력)
+
+- **데이터 효율**: 100%
+- **알려진 이슈**:
+  - [B-5] emotional_journey = None 하드코딩
+  - [S-6] final_output을 model_dump_json() 문자열로 반환 (다른 에이전트는 dict)
+  - [C-5] deep_personalization 플래그 settings.yaml 미등록
+
+---
+
+### Visualization Agent -- 비동기 / 공용
+
+- **목적**: 감정 벡터 기반으로 시각화 이미지 메타데이터와 해석 텍스트를 생성한다.
+- **모델**: Sonnet 4
+- **구현 상태**: 완료
+
+**입력 (AgentState 읽기)**
+
+| 필드 | 출처 | 필수 |
+|------|------|------|
+| `emotion_vectors` | Emotion Agent | O |
+| `safety_flags` | Safety Agent | O |
+| `mode` | Intent Classifier | O |
+| `session_id` | 세션 | O |
+| `final_output` / `script_draft` | 여러 | X (우선순위 폴백) |
+
+**출력 (AgentState 쓰기)**
+
+| 필드 | 타입 | 크기 |
+|------|------|------|
+| `visualization_result` | dict | 1~2 KB |
+
+- **데이터 효율**: 100%
+- **알려진 이슈**:
+  - [S-2] `visualization_result` 반환 vs AgentState `visual_data` 정의 -- 키 이름 불일치
+
+---
+
+### Learning Agent -- 비동기 / 공용
+
+- **목적**: 사용자 선호·감정 패턴·응답 효과를 분석하여 백엔드에 저장한다.
+- **모델**: Haiku
+- **구현 상태**: 완료
+
+**입력**: AgentState 전체 읽기 (read-only)
+
+**출력**: 빈 dict `{}` (AgentState 변경 없음, 백엔드 API로 직접 저장)
+
+- **데이터 효율**: N/A (출력 없음)
+
+---
+
+### 미구현 에이전트 (대화모드 전용)
+
+아래 에이전트는 아직 구현되지 않았으며, CLAUDE.md 설계 사양을 기준으로 기술합니다.
+
+#### Context Agent -- TIER 1 (병렬) / 대화
+
+- **목적**: 대화 맥락을 관리하고, 주제 연속성·사용자 상태를 분석한다.
+- **모델**: Haiku
+- **출력 필드**: `context` (dict)
+- **소비자**: Reasoning Agent, Synthesis Agent
+
+#### Reasoning Agent -- TIER 1 (병렬) / 대화
+
+- **목적**: GoT/ToT/CoT 추론으로 대화 맥락을 분석하고 응답 방향을 도출한다.
+- **모델**: Opus 4.6
+- **출력 필드**: `reasoning_result` (dict), `memory_results` (조건부), `knowledge_results` (조건부)
+- **소비자**: Synthesis Agent, Validator Agent
+
+#### Memory Agent -- 독립 / 대화
+
+- **목적**: 개인 대화 기억을 검색한다.
+- **모델**: Sonnet 4
+- **출력 필드**: `memory_results` (dict)
+- **네임스페이스**: `mem_conversation` (팟캐스트와 분리)
+
+#### Synthesis Agent -- TIER 2 / 대화
+
+- **목적**: TIER 1 결과를 종합하여 응답 내용을 생성한다 (톤 조정 없음).
+- **모델**: Sonnet 4
+- **출력 필드**: `response_draft` (str)
+- **소비자**: Validator Agent
+
+#### Validator Agent -- TIER 3 / 대화
+
+- **목적**: 응답 초안의 품질을 검증한다. 실패 시 TIER 2 재시도 (최대 2회).
+- **모델**: Sonnet 4
+- **출력 필드**: `validation_result` (dict), `next_step` (str), `iteration_count` (int)
+
+#### Personalization Agent -- TIER 4 / 대화
+
+- **목적**: 톤/스타일 조정의 단독 책임자. Safety 경고 톤 강화 포함.
+- **모델**: Sonnet 4
+- **출력 필드**: `final_output` (str)
+
+#### Telemetry Agent -- 비동기 / 공용
+
+- **목적**: 에이전트 실행 메트릭·파이프라인 성능을 기록한다.
+- **모델**: Haiku
+- **출력**: 빈 dict (백엔드에 직접 저장)
+
+---
+
+## 데이터 효율성 매트릭스
+
+| 에이전트 | 출력(KB) | 실제소비(KB) | 효율(%) | 비고 |
+|----------|---------|-------------|---------|------|
+| Intent Classifier | 0.3~0.5 | 0.15 | 30~50% | reasoning, trace_id 미사용 |
+| Safety | 0.5 | 0.5 | 100% | - |
+| Emotion | 0.3 | 0.3 | 100% | - |
+| Content Analyzer | 0.25~0.8 | 0.2~0.6 | 75~80% | 구조화 효율적 |
+| **Podcast Reasoning** | **7~11** | **0.5** | **5~7%** | **got_result/tot_result 미사용** |
+| Episode Memory | 1.5~3.5 | 0.1 | 3~7% | count만 사용 |
+| Knowledge | 2~5 | 1.0 | 20~50% | synthesis만 사용 |
+| Script Generator | 8~21 | 8~21 | 100% | 출력 전체 사용 |
+| Batch Validator | 0.2~0.6 | 0.2~0.6 | 100% | 최적화 완료 |
+| Script Personalizer | 9~22 | 9~22 | 100% | - |
+| Visualization | 1~2 | 1~2 | 100% | - |
+
+---
+
+## 성능 최적화 대상
+
+| # | 대상 | 현재 | 개선안 | 절감 |
+|---|------|------|--------|------|
+| O-1 | Podcast Reasoning 출력 | 7~11 KB (GoT+ToT+CoT 전체 포함) | CoT 핵심만 전달, GoT/ToT는 디버그 전용 | 5~8 KB/요청 |
+| O-2 | Script Generator 입력 크기 | reasoning_result 전체 수신 (효율 17%) | episode_structure 등 사용 필드만 전달 | LLM 컨텍스트 70% 절감 |
+| O-3 | TIER간 상태 누적 | 19~37 KB (TIER 4 도달 시) | 필드 정리 후 축소 | 장기 |
+
+---
+
+## 발견된 이슈 목록
+
+### 기능적 불일치
+
+| # | 심각도 | 이슈 | 파일 | 담당 |
+|---|--------|------|------|------|
+| B-1 | CRITICAL | Conversation/Podcast 그래프 TIER 0 건너뜀 | workflow.py:609,659 | 3인합의 |
+| B-2 | CRITICAL | Crisis Deep Response TODO 스텁 | workflow.py:225~248 | 개발자2 |
+| B-3 | HIGH | 이중 위험평가 (Intent + Safety 중복) | intent_classifier.py, safety.py | 개발자1+2 |
+| B-4 | HIGH | Safety/Emotion이 전체 intent dict를 LLM에 전달 (200~400토큰 낭비) | safety.py:54, emotion.py:36 | 개발자2 |
+| B-5 | MEDIUM | Script Personalizer emotional_journey = None 하드코딩 | script_personalizer.py:83 | 개발자1 |
+| B-7 | MEDIUM | Knowledge Agent domain_hints 미전달 | knowledge.py | 개발자1 |
+| B-8 | LOW | CONTRIBUTING.md 노드 시그니처 불일치 | CONTRIBUTING.md:58 | 문서 (수정 완료) |
+
+### AgentState 필드 접근 위반
+
+| # | 심각도 | 이슈 | 에이전트 |
+|---|--------|------|----------|
+| S-1 | HIGH | 개발자 경계 위반: Intent가 개발자2 필드 쓰기 (risk_level, risk_score, safety_flags) | Intent Classifier |
+| S-2 | HIGH | 출력 키 불일치: `visualization_result` 반환 vs AgentState `visual_data` 정의 | Visualization |
+| S-3 | MEDIUM | 미정의 필드 읽기: domain_hints, user_context | Knowledge |
+| S-4 | MEDIUM | Script Generator 다수 필드 직접 읽기 문서화 필요 | Script Generator |
+| S-5 | MEDIUM | 조건부 쓰기 미문서화: memory_results, knowledge_results | Podcast Reasoning |
+| S-6 | MEDIUM | 반환 타입 불일치: final_output을 JSON 문자열로 반환 | Script Personalizer |
+| S-7 | LOW | 고아 필드: response_draft 정의됨 but 미사용 | AgentState |
+
+### 설정 불일치
+
+| # | 심각도 | 이슈 | 위치 |
+|---|--------|------|------|
+| C-1 | CRITICAL | Podcast Reasoning 임계값 불일치: CLAUDE.md(0.8/0.5) vs settings.yaml(0.55/0.3) | settings.yaml, CLAUDE.md |
+| C-2 | HIGH | 토큰 예산 부족: podcast_reasoning(4096), script_generator(4096) | settings.yaml |
+| C-3 | MEDIUM | TIER 타임아웃 settings.yaml 정의 but workflow.py 미적용 | workflow.py |
+| C-4 | MEDIUM | batch_validator MAX_RETRIES 하드코딩 (settings 미참조) | batch_validator.py |
+| C-5 | MEDIUM | deep_personalization 플래그 settings.yaml 미등록 | script_personalizer.py |
+
+### 프롬프트 YAML 상태
+
+| # | 심각도 | 이슈 |
+|---|--------|------|
+| P-1 | HIGH | shared/ + conversation/ 15개 YAML이 [TODO] 스텁 (대화모드 구현 시 작성 필요) |
+| P-2 | PASS | 팟캐스트 모드 7개 YAML -- 출력스키마, 역할, 변수주입 모두 일치 |
+
+---
+
+*마지막 업데이트: 2026-03-03*

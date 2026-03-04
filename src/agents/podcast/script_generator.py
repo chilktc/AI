@@ -156,6 +156,12 @@ class ScriptGeneratorAgent(BaseAgent):
             "resolution", emotional_journey.get("resolution_emotion", "None")
         )
 
+        # yaml 내에 user_prompt 도 정의해 두었거나, 기존처럼 코드 내에 유지하되 yaml의 system_prompt 만 사용할 수도 있습니다.
+        # 코드 변경사항을 최소화하기 위해 user_message는 기존 형식을 유지하고, system_prompt만 로더에서 가져옵니다.
+        # 혹은 yaml에서 가져온 user_prompt도 format하여 사용할 수 있습니다. 여기서는 yaml도 고려하여 두 가지 모두 가져옵니다.
+        
+        prompts = self._prompt_loader.load_all("podcast", "script_generator")
+        
         prompt = (
             "Create a compelling podcast episode title for mental health content.\n\n"
             f"Main Theme: {main_theme}\n"
@@ -173,7 +179,7 @@ class ScriptGeneratorAgent(BaseAgent):
         try:
             # generate 메서드는 일반 텍스트를 반환합니다.
             response_text = await self.call_llm(
-                system_prompt="You are a brilliant podcast producer generating a title.",
+                system_prompt=self.get_prompt("generate_title"),
                 user_message=prompt,
             )
             title = response_text.strip().replace('"', "").replace("'", "")
@@ -223,7 +229,7 @@ class ScriptGeneratorAgent(BaseAgent):
 
         try:
             script_text = await self.call_llm(
-                system_prompt="You are an empathetic mental health podcast scriptwriter. Return only the script text.",
+                system_prompt=self.get_prompt("generate_segment"),
                 user_message=prompt,
             )
 
@@ -269,9 +275,7 @@ class ScriptGeneratorAgent(BaseAgent):
         if len(full_script) > 5000:
             full_script = full_script[:5000] + "..."
 
-        system_prompt = (
-            "You are an assistant that reads podcast scripts and extracts key takeaways."
-        )
+        system_prompt = self.get_prompt("extract_insights")
         user_message = (
             "Extract 3-5 brief, actionable, positive key insights (in Korean) from the following script.\n"
             'Return them strictly as a JSON list of strings, for example: ["인사이트1", "인사이트2"]\n\n'

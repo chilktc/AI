@@ -278,6 +278,15 @@ class Settings:
 
         return cast(dict[str, Any], ab_config)
 
+    # --- 모니터링 설정 ---
+
+    @property
+    def langsmith_tracing_enabled(self) -> bool:
+        """LangSmith 트레이싱 활성화 여부 (settings.yaml 기준)."""
+        monitoring = self._config.get("monitoring", {})
+        langsmith = monitoring.get("langsmith", {})
+        return bool(langsmith.get("tracing_enabled", False))
+
     # --- 기능 플래그 ---
 
     def is_feature_enabled(self, feature_name: str) -> bool:

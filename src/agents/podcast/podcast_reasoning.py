@@ -23,6 +23,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
+from config.loader import get_settings
 from src.agents.shared.base_agent import BaseAgent
 from src.agents.shared.stubs import EpisodeMemoryStub, KnowledgeAgentStub
 from src.models.agent_state import AgentState
@@ -57,6 +58,7 @@ class PodcastReasoningAgent(BaseAgent):
         # 의존성 주입 — 통합 전에는 stub 사용
         self.episode_memory = episode_memory or EpisodeMemoryStub()
         self.knowledge_agent = knowledge_agent or KnowledgeAgentStub()
+        self._load_config()
 
     async def process(self, state: AgentState) -> dict[str, Any]:
         """
@@ -111,13 +113,26 @@ class PodcastReasoningAgent(BaseAgent):
             "reasoning_result": reasoning,
         }
 
-        # 조건부 결과 포함
+        # 조건부 결과 포함 (독립 에이전트 호출 성공 시에만 AgentState에 기록)
+        # - memory_results: Episode Memory 호출 결과 (complexity >= 0.6 또는 execution_plan 요청 시)
+        # - knowledge_results: Knowledge Agent 호출 결과 (complexity >= 0.5 또는 execution_plan 요청 시)
         if memory_result:
             result["memory_results"] = memory_result
         if knowledge_result:
             result["knowledge_results"] = knowledge_result
 
         return result
+
+    # === 설정 로드 ===
+
+    def _load_config(self) -> None:
+        """settings.yaml에서 추론 깊이 임계값을 로드한다. 실패 시 기본값 사용."""
+        try:
+            cfg = get_settings().get_agent_config("podcast_reasoning")
+        except Exception:
+            cfg = {}
+        self.full_threshold: float = cfg.get("full_threshold", 0.8)
+        self.standard_threshold: float = cfg.get("standard_threshold", 0.5)
 
     # === 추론 깊이 결정 ===
 
@@ -131,9 +146,9 @@ class PodcastReasoningAgent(BaseAgent):
         Returns:
             "full" (GoT+ToT+CoT), "standard" (ToT+CoT), "minimal" (CoT만)
         """
-        if complexity >= 0.8:
+        if complexity >= self.full_threshold:
             return "full"
-        elif complexity >= 0.5:
+        elif complexity >= self.standard_threshold:
             return "standard"
         else:
             return "minimal"
@@ -322,11 +337,28 @@ class PodcastReasoningAgent(BaseAgent):
         각 추론 phase(GoT/ToT/CoT)에 전달할 user_message를 조합한다.
 
         이전 phase 결과를 누적하여 다음 phase에 전달하는 구조.
+
+        토큰 최적화:
+            - GoT(첫 단계): user_input 전체 전달 (원문 분석 필요)
+            - ToT/CoT(후속 단계): GoT가 core_pattern을 추출한 경우
+              user_input 대신 core_pattern을 참조하여 토큰 절감
         """
         parts: list[str] = []
 
-        # 기본 입력 — 모든 phase 공통
-        parts.append(f"[사용자 입력]\n{user_input}")
+        # 기본 입력 — GoT는 원문 전체, ToT/CoT는 이전 phase 결과가 있으면 요약 참조
+        if phase == "GoT" or got_result is None:
+            # GoT(첫 단계) 또는 이전 결과가 없는 경우: user_input 전체 전달
+            parts.append(f"[사용자 입력]\n{user_input}")
+        else:
+            # ToT/CoT: GoT가 이미 핵심을 추출했으므로 user_input 요약만 전달
+            core_pattern = got_result.get("core_pattern", "")
+            if core_pattern:
+                # user_input 앞 100자만 참조 + GoT core_pattern 활용
+                input_preview = user_input[:100] + ("..." if len(user_input) > 100 else "")
+                parts.append(f"[사용자 입력 요약]\n{input_preview}")
+            else:
+                # core_pattern이 없으면 원문 전달 (fallback)
+                parts.append(f"[사용자 입력]\n{user_input}")
 
         # Intent Classifier(TIER 0) 정보
         if intent:

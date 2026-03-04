@@ -167,7 +167,7 @@ python3 -m dev.live_tests.run_live --e2e
 python3 -m dev.live_tests.run_live --e2e --input test_inputs/my_scenario.json
 ```
 
-> 상세 가이드: `docs/E2E_TEST_GUIDE.md`
+> 상세 가이드: `docs/guides/E2E_TEST_GUIDE.md`
 
 ### 커스텀 테스트 데이터
 

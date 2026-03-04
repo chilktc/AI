@@ -63,7 +63,7 @@ htmlcov/
 .ipynb_checkpoints/
 
 # Prompts (YAML 프롬프트 파일 — 보안상 리포지토리에 포함하지 않음)
-prompts/
+# prompts/
 
 # Prompt Security (보안 대책 문서 — 외부 유출 방지)
 docs/PROMPT_SECURITY.md

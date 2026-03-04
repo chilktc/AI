@@ -33,7 +33,10 @@ def create_sample_script() -> ValidatedScript:
                 segment_id="opening",
                 segment_type="opening",
                 duration_minutes=3,
-                script_text="여러분, 안녕하세요. 오늘은 번아웃에 대해 이야기해볼게요. 요즘 많이 지치셨나요?",
+                script_text=(
+                    "여러분, 안녕하세요. 오늘은 번아웃에 대해 "
+                    "이야기해볼게요. 요즘 많이 지치셨나요?"
+                ),
                 word_count=25,
                 emotional_tone="warm",
                 tts_markers=[],
@@ -42,7 +45,10 @@ def create_sample_script() -> ValidatedScript:
                 segment_id="education",
                 segment_type="education",
                 duration_minutes=8,
-                script_text="번아웃은 단순한 피로가 아닙니다. 세계보건기구에서도 공식적으로 인정한 직업 현상이에요.",
+                script_text=(
+                    "번아웃은 단순한 피로가 아닙니다. "
+                    "세계보건기구에서도 공식적으로 인정한 직업 현상이에요."
+                ),
                 word_count=30,
                 emotional_tone="informative",
                 tts_markers=[],
@@ -205,16 +211,8 @@ class TestWithLLM:
         # 이력 많은 사용자
         exp_user = SAMPLE_PROFILES["experienced"]
 
-        print("\n🔍 심화 개인화 자격:")
-        print(
-            f"   young_casual ({len(new_user.interaction_history)}회): {agent._should_deep_personalize(new_user)}"
-        )
-        print(
-            f"   experienced ({len(exp_user.interaction_history)}회): {agent._should_deep_personalize(exp_user)}"
-        )
-
-        assert agent._should_deep_personalize(new_user) == False
-        assert agent._should_deep_personalize(exp_user) == True
+        assert not agent._should_deep_personalize(new_user)
+        assert agent._should_deep_personalize(exp_user)
 
     @pytest.mark.asyncio
     async def test_llm_various_profiles(self, agent, create_state):

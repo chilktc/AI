@@ -23,213 +23,110 @@ from src.graph.workflow import (
 from src.models.agent_state import AgentState
 
 
-class TestCrisisPreemptionConversation:
-    """대화모드 CRISIS 선점 테스트."""
+@pytest.mark.asyncio
+async def test_crisis_cancels_other_tasks(
+    crisis_state: AgentState,
+    mock_safety_crisis_result: dict[str, Any],
+) -> None:
+    """Safety CRISIS 시 나머지 TIER 1 태스크가 취소되는지 확인."""
+    slow_result: dict[str, Any] = {"emotion_vectors": {"primary": "sadness"}}
 
-    @pytest.mark.asyncio
-    async def test_crisis_cancels_other_tasks(
-        self,
-        crisis_state: AgentState,
-        mock_safety_crisis_result: dict[str, Any],
-    ) -> None:
-        """Safety CRISIS 시 나머지 TIER 1 태스크가 취소되는지 확인."""
-        # Safety는 즉시 crisis 반환, 나머지는 느리게 응답
-        slow_result: dict[str, Any] = {"emotion_vectors": {"primary": "sadness"}}
+    async def slow_node(state: AgentState) -> dict[str, Any]:
+        await asyncio.sleep(5)
+        return slow_result
 
-        async def slow_node(state: AgentState) -> dict[str, Any]:
-            await asyncio.sleep(5)  # 충분히 긴 대기
-            return slow_result
+    with (
+        patch(
+            "src.graph.workflow.safety_node",
+            new_callable=AsyncMock,
+            return_value=mock_safety_crisis_result,
+        ),
+        patch("src.graph.workflow.emotion_node", side_effect=slow_node),
+        patch("src.graph.workflow.context_node", side_effect=slow_node),
+        patch("src.graph.workflow.reasoning_node", side_effect=slow_node),
+    ):
+        result = await tier1_conversation_fan_out(crisis_state)
 
-        with (
-            patch(
-                "src.graph.workflow.safety_node",
-                new_callable=AsyncMock,
-                return_value=mock_safety_crisis_result,
-            ),
-            patch("src.graph.workflow.emotion_node", side_effect=slow_node),
-            patch("src.graph.workflow.context_node", side_effect=slow_node),
-            patch("src.graph.workflow.reasoning_node", side_effect=slow_node),
-        ):
-            result = await tier1_conversation_fan_out(crisis_state)
-
-        # CRISIS 응답 확인
-        assert result.get("next_step") == "crisis_response"
-
-    @pytest.mark.asyncio
-    async def test_crisis_returns_immediate_response(
-        self,
-        crisis_state: AgentState,
-        mock_safety_crisis_result: dict[str, Any],
-    ) -> None:
-        """Safety CRISIS 시 즉시 위기 응답(final_output)이 생성되는지 확인."""
-        with (
-            patch(
-                "src.graph.workflow.safety_node",
-                new_callable=AsyncMock,
-                return_value=mock_safety_crisis_result,
-            ),
-            patch(
-                "src.graph.workflow.emotion_node",
-                new_callable=AsyncMock,
-                return_value={},
-            ),
-            patch(
-                "src.graph.workflow.context_node",
-                new_callable=AsyncMock,
-                return_value={},
-            ),
-            patch(
-                "src.graph.workflow.reasoning_node",
-                new_callable=AsyncMock,
-                return_value={},
-            ),
-        ):
-            result = await tier1_conversation_fan_out(crisis_state)
-
-        # 위기 응답이 즉시 포함
-        assert "final_output" in result
-        assert result["next_step"] == "crisis_response"
-
-    @pytest.mark.asyncio
-    async def test_crisis_sets_high_risk_level(
-        self,
-        crisis_state: AgentState,
-        mock_safety_crisis_result: dict[str, Any],
-    ) -> None:
-        """Safety CRISIS 시 risk_level이 최고 수준(4)으로 설정되는지 확인."""
-        with (
-            patch(
-                "src.graph.workflow.safety_node",
-                new_callable=AsyncMock,
-                return_value=mock_safety_crisis_result,
-            ),
-            patch(
-                "src.graph.workflow.emotion_node",
-                new_callable=AsyncMock,
-                return_value={},
-            ),
-            patch(
-                "src.graph.workflow.context_node",
-                new_callable=AsyncMock,
-                return_value={},
-            ),
-            patch(
-                "src.graph.workflow.reasoning_node",
-                new_callable=AsyncMock,
-                return_value={},
-            ),
-        ):
-            result = await tier1_conversation_fan_out(crisis_state)
-
-        assert result.get("risk_level") == 4
-        assert result.get("risk_score", 0) >= 0.9
-
-    @pytest.mark.asyncio
-    async def test_crisis_skips_tier2_through_tier4(
-        self,
-        crisis_state: AgentState,
-        mock_safety_crisis_result: dict[str, Any],
-    ) -> None:
-        """CRISIS 시 TIER 2~4 결과가 포함되지 않는지 확인."""
-        with (
-            patch(
-                "src.graph.workflow.safety_node",
-                new_callable=AsyncMock,
-                return_value=mock_safety_crisis_result,
-            ),
-            patch(
-                "src.graph.workflow.emotion_node",
-                new_callable=AsyncMock,
-                return_value={},
-            ),
-            patch(
-                "src.graph.workflow.context_node",
-                new_callable=AsyncMock,
-                return_value={},
-            ),
-            patch(
-                "src.graph.workflow.reasoning_node",
-                new_callable=AsyncMock,
-                return_value={},
-            ),
-        ):
-            result = await tier1_conversation_fan_out(crisis_state)
-
-        # TIER 2 (Synthesis) 결과가 없어야 함
-        assert "response_draft" not in result
-        # Emotion/Context/Reasoning 결과가 병합되지 않아야 함
-        assert "emotion_vectors" not in result
-        assert "context" not in result
-        assert "reasoning_result" not in result
+    assert result.get("next_step") == "crisis_response"
 
 
-class TestCrisisPreemptionPodcast:
-    """팟캐스트모드 CRISIS 선점 테스트."""
+@pytest.mark.asyncio
+async def test_crisis_conversation_all_assertions(
+    crisis_state: AgentState,
+    mock_safety_crisis_result: dict[str, Any],
+) -> None:
+    """대화모드 CRISIS: 즉시 응답 생성, 높은 risk_level, TIER 2~4 스킵을 한 번에 검증."""
+    with (
+        patch(
+            "src.graph.workflow.safety_node",
+            new_callable=AsyncMock,
+            return_value=mock_safety_crisis_result,
+        ),
+        patch(
+            "src.graph.workflow.emotion_node",
+            new_callable=AsyncMock,
+            return_value={},
+        ),
+        patch(
+            "src.graph.workflow.context_node",
+            new_callable=AsyncMock,
+            return_value={},
+        ),
+        patch(
+            "src.graph.workflow.reasoning_node",
+            new_callable=AsyncMock,
+            return_value={},
+        ),
+    ):
+        result = await tier1_conversation_fan_out(crisis_state)
 
-    @pytest.mark.asyncio
-    async def test_podcast_crisis_returns_crisis_response(
-        self,
-        podcast_crisis_state: AgentState,
-        mock_safety_crisis_result: dict[str, Any],
-    ) -> None:
-        """팟캐스트모드에서도 Safety CRISIS 시 즉시 응답하는지 확인."""
-        with (
-            patch(
-                "src.graph.workflow.safety_node",
-                new_callable=AsyncMock,
-                return_value=mock_safety_crisis_result,
-            ),
-            patch(
-                "src.graph.workflow.emotion_node",
-                new_callable=AsyncMock,
-                return_value={},
-            ),
-            patch(
-                "src.graph.workflow.content_analyzer_node",
-                new_callable=AsyncMock,
-                return_value={},
-            ),
-            patch(
-                "src.graph.workflow.podcast_reasoning_node",
-                new_callable=AsyncMock,
-                return_value={},
-            ),
-        ):
-            result = await tier1_podcast_fan_out(podcast_crisis_state)
+    # 위기 응답이 즉시 포함
+    assert "final_output" in result
+    assert result["next_step"] == "crisis_response"
 
-        assert result.get("next_step") == "crisis_response"
-        assert "final_output" in result
+    # risk_level 최고 수준
+    assert result.get("risk_level") == 4
+    assert result.get("risk_score", 0) >= 0.9
 
-    @pytest.mark.asyncio
-    async def test_podcast_crisis_cancels_content_analyzer(
-        self,
-        podcast_crisis_state: AgentState,
-        mock_safety_crisis_result: dict[str, Any],
-    ) -> None:
-        """팟캐스트 CRISIS 시 Content Analyzer가 취소되는지 확인."""
-        with (
-            patch(
-                "src.graph.workflow.safety_node",
-                new_callable=AsyncMock,
-                return_value=mock_safety_crisis_result,
-            ),
-            patch(
-                "src.graph.workflow.emotion_node",
-                new_callable=AsyncMock,
-                return_value={},
-            ),
-            patch(
-                "src.graph.workflow.content_analyzer_node",
-                new_callable=AsyncMock,
-                return_value={"content_analysis": {"should_not": "appear"}},
-            ),
-            patch(
-                "src.graph.workflow.podcast_reasoning_node",
-                new_callable=AsyncMock,
-                return_value={},
-            ),
-        ):
-            result = await tier1_podcast_fan_out(podcast_crisis_state)
+    # TIER 2 (Synthesis) 결과가 없어야 함
+    assert "response_draft" not in result
+    # Emotion/Context/Reasoning 결과가 병합되지 않아야 함
+    assert "emotion_vectors" not in result
+    assert "context" not in result
+    assert "reasoning_result" not in result
 
-        # Content Analyzer 결과가 포함되지 않아야 함
-        assert "content_analysis" not in result
+
+@pytest.mark.asyncio
+async def test_podcast_crisis_all_assertions(
+    podcast_crisis_state: AgentState,
+    mock_safety_crisis_result: dict[str, Any],
+) -> None:
+    """팟캐스트모드 CRISIS: 즉시 응답 + Content Analyzer 취소를 한 번에 검증."""
+    with (
+        patch(
+            "src.graph.workflow.safety_node",
+            new_callable=AsyncMock,
+            return_value=mock_safety_crisis_result,
+        ),
+        patch(
+            "src.graph.workflow.emotion_node",
+            new_callable=AsyncMock,
+            return_value={},
+        ),
+        patch(
+            "src.graph.workflow.content_analyzer_node",
+            new_callable=AsyncMock,
+            return_value={"content_analysis": {"should_not": "appear"}},
+        ),
+        patch(
+            "src.graph.workflow.podcast_reasoning_node",
+            new_callable=AsyncMock,
+            return_value={},
+        ),
+    ):
+        result = await tier1_podcast_fan_out(podcast_crisis_state)
+
+    assert result.get("next_step") == "crisis_response"
+    assert "final_output" in result
+    # Content Analyzer 결과가 포함되지 않아야 함
+    assert "content_analysis" not in result

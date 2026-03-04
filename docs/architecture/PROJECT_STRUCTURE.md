@@ -107,16 +107,26 @@ mind-log/
 │   └── integration/             # 통합 테스트 (에이전트 간 연동)
 │
 ├── docs/                        # 프로젝트 문서
-│   ├── PROJECT_STRUCTURE.md     # 이 파일
-│   ├── PROJECT_SUMMARY.md       # 프로젝트 현황 종합 보고서
-│   ├── GIT_WORKFLOW.md          # 브랜치/커밋/PR 가이드
-│   ├── QUICK_START.md           # 환경 설정 및 빠른 시작
-│   ├── OLLAMA_SETUP.md          # Ollama 로컬 LLM 설정 가이드
-│   ├── PROMPT_SECURITY.md       # 프롬프트 보안 가이드
-│   ├── CHANGELOG_v1-v5.md       # 변경이력 v1~v5
-│   ├── CHANGELOG_v6.md          # 변경이력 v6
-│   ├── CHANGELOG_v7.md          # 변경이력 v7
-│   └── CHANGELOG_v9.md          # 변경이력 v9
+│   ├── INDEX.md                 # 마스터 네비게이션
+│   ├── getting-started/         # 시작 가이드
+│   │   ├── QUICK_START.md       # 환경 설정 및 빠른 시작
+│   │   └── OLLAMA_SETUP.md      # Ollama 로컬 LLM 설정 가이드
+│   ├── architecture/            # 아키텍처 문서
+│   │   ├── PROJECT_STRUCTURE.md # 이 파일
+│   │   ├── AGENT_ROLES.md       # 에이전트별 역할·입출력·이슈 정의서
+│   │   ├── API_SPEC.md          # REST API 명세
+│   │   └── DATA_SCHEMA_PLAN.md  # 데이터 스키마 설계 계획
+│   ├── guides/                  # 개발 가이드
+│   │   ├── AGENT_DEV_GUIDE.md   # 에이전트 개발 상세 가이드
+│   │   ├── GIT_WORKFLOW.md      # 브랜치/커밋/PR 가이드
+│   │   └── E2E_TEST_GUIDE.md    # E2E 테스트 가이드
+│   ├── reports/                 # 보고서
+│   │   ├── PROJECT_SUMMARY.md   # 프로젝트 현황 종합 보고서
+│   │   ├── AGENT_IO_ANALYSIS.md # 에이전트 I/O 분석 보고서
+│   │   ├── OLLAMA_MODEL_TEST_REPORT.md # Ollama 모델 테스트 결과
+│   │   └── REFACTORING_LOG.md   # 리팩토링 이력
+│   └── changelog/               # 변경이력
+│       └── CHANGELOG_v*.md      # v1~v19 변경이력 (10개)
 │
 ├── dev/                         # 로컬 개발 전용 (.gitignore — git push 제외)
 │   ├── ollama_provider.py       # Ollama OpenAI 호환 API 프로바이더

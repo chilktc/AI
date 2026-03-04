@@ -96,9 +96,9 @@ mind-log/
 | 문서 | 설명 |
 |------|------|
 | [CLAUDE.md](CLAUDE.md) | 아키텍처 + 협업 규칙 + API 규약 통합 가이드 |
-| [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) | 폴더 구조 및 파일 역할 상세 |
-| [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md) | 브랜치 전략, 커밋 컨벤션, PR 가이드 |
-| [docs/QUICK_START.md](docs/QUICK_START.md) | 환경 설정 및 첫 에이전트 개발 가이드 |
+| [docs/architecture/PROJECT_STRUCTURE.md](docs/architecture/PROJECT_STRUCTURE.md) | 폴더 구조 및 파일 역할 상세 |
+| [docs/guides/GIT_WORKFLOW.md](docs/guides/GIT_WORKFLOW.md) | 브랜치 전략, 커밋 컨벤션, PR 가이드 |
+| [docs/getting-started/QUICK_START.md](docs/getting-started/QUICK_START.md) | 환경 설정 및 첫 에이전트 개발 가이드 |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | 기여 가이드 및 코드 리뷰 규칙 |
 
 ---

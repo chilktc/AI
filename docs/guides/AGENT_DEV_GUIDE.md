@@ -1,7 +1,7 @@
 # 에이전트 개발 가이드
 
 Mind-Log 에이전트를 구현할 때 참고하는 실무 가이드입니다.
-기본 개념은 `QUICK_START.md`, 아키텍처 전체는 `CLAUDE.md`를 참조하세요.
+기본 개념은 `../getting-started/QUICK_START.md`, 아키텍처 전체는 `CLAUDE.md`를 참조하세요.
 
 ---
 

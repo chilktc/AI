@@ -38,7 +38,7 @@ python3 -m pytest dev/test_ollama.py -v
 
 ### 상세 가이드
 
-종합 설정 가이드는 `docs/OLLAMA_SETUP.md`를 참고하세요.
+종합 설정 가이드는 `docs/getting-started/OLLAMA_SETUP.md`를 참고하세요.
 
 ---
 

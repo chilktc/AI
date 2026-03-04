@@ -94,16 +94,7 @@ class KnowledgeAgent(BaseAgent):
 
     async def _expand_query(self, query: str, domain_hints: List[str]) -> Dict[str, Any]:
         """쿼리를 전문가 용어로 확장하고 탐색할 도메인 지정 (LLM)"""
-        system_prompt = (
-            "You are a mental health knowledge assistant.\n"
-            "Convert user queries into professional terminology for expert knowledge retrieval.\n\n"
-            "Domains:\n"
-            "- cbt: Cognitive Behavioral Therapy\n"
-            "- dbt: Dialectical Behavior Therapy\n"
-            "- psychodynamic: Psychodynamic therapy\n"
-            "- crisis_intervention: Suicide prevention, crisis care\n"
-            "- general_psychology: General mental health concepts\n"
-        )
+        system_prompt = self.get_prompt("expand_query")
 
         user_message = (
             f'User Query: "{query}"\n'
@@ -172,10 +163,7 @@ class KnowledgeAgent(BaseAgent):
         if not documents:
             return {}
 
-        system_prompt = (
-            "You are a clinical psychologist evaluating treatment applicability.\n"
-            "Consider age, culture, previous treatments, and contraindications.\n"
-        )
+        system_prompt = self.get_prompt("assess_applicability")
 
         docs_text = "\n\n".join(
             [
@@ -226,10 +214,7 @@ class KnowledgeAgent(BaseAgent):
                 "evidence_level": "low",
             }
 
-        system_prompt = (
-            "You are a clinical supervisor synthesizing research evidence.\n"
-            "Provide concise, practical recommendations with evidence citations.\n"
-        )
+        system_prompt = self.get_prompt("synthesize_knowledge")
 
         docs_text = "\n\n".join(
             [

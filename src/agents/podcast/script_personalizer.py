@@ -497,7 +497,7 @@ Return only the adjusted Korean text, no explanations.
 
         try:
             response = await self.call_llm(
-                system_prompt="You are a helpful podcast script editor.", user_message=prompt
+                system_prompt=self.get_prompt("system_prompt"), user_message=prompt
             )
             return response.strip()
         except Exception as e:

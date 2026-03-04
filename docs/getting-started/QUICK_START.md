@@ -48,8 +48,8 @@ docker compose up -d
 | 순서 | 문서 | 내용 |
 |------|------|------|
 | 1 | CLAUDE.md | 아키텍처 요약, 협업 규칙, API 규약 |
-| 2 | docs/PROJECT_STRUCTURE.md | 폴더 구조 및 파일 역할 |
-| 3 | docs/GIT_WORKFLOW.md | 브랜치 전략, 커밋 컨벤션 |
+| 2 | docs/architecture/PROJECT_STRUCTURE.md | 폴더 구조 및 파일 역할 |
+| 3 | docs/guides/GIT_WORKFLOW.md | 브랜치 전략, 커밋 컨벤션 |
 
 ### 에이전트 설계 문서
 
@@ -200,7 +200,7 @@ ollama serve
 echo "LLM_PROVIDER=ollama" >> .env
 ```
 
-종합 설정 가이드: `docs/OLLAMA_SETUP.md`
+종합 설정 가이드: `docs/getting-started/OLLAMA_SETUP.md`
 
 ---
 
