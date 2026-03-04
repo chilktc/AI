@@ -41,7 +41,7 @@ class VisualizationAgent(BaseAgent):
         
         # 기획 결과물 (image_prompt, style_type, interpretation 포함)
         planning = await self.call_llm_json(
-            system_message=system_prompt,
+            system_prompt=system_prompt,
             user_message=user_context
         )
         
@@ -61,6 +61,7 @@ class VisualizationAgent(BaseAgent):
         return {
             "visual_data": {
                 "image_url": generation_result.get("url"),
+                "local_path": generation_result.get("local_path"),
                 "style_type": planning.get("style_type"),
                 "interpretation": planning.get("interpretation"),
                 "original_prompt": image_prompt,

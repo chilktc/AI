@@ -546,6 +546,72 @@ class BaseAgent(ABC):
         )
         return self.llm_client._parse_json_response(raw_text)
 
+    async def call_image_gen(
+        self,
+        prompt: str,
+        model: str = "dall-e-3",
+        size: str = "1024x1024",
+        quality: str = "standard",
+    ) -> dict[str, Any]:
+        """
+        이미지 생성 API를 호출하고 로컬에 저장한다.
+
+        Visualization Agent에서 사용한다.
+        LLM 프로바이더와 무관하게 항상 OpenAI Images API를 통해 이미지를 생성한다.
+        생성된 이미지는 data/outputs/images/ 폴더에 PNG로 저장된다.
+
+        Args:
+            prompt: 이미지 생성 프롬프트 (영문 권장)
+            model: 이미지 모델 (기본: dall-e-3)
+            size: 이미지 크기 (기본: 1024x1024)
+            quality: 이미지 품질 (standard / hd)
+
+        Returns:
+            {"url": "임시 URL", "local_path": "로컬 저장 경로"} 형태의 dict
+        """
+        import os
+        from pathlib import Path
+
+        import httpx
+        import openai
+
+        client = openai.AsyncOpenAI(
+            api_key=os.getenv("OPENAI_API_KEY"),
+        )
+
+        response = await client.images.generate(
+            model=model,
+            prompt=prompt,
+            size=size,
+            quality=quality,
+            n=1,
+        )
+
+        image_url = response.data[0].url or ""
+        self.logger.info("이미지 생성 완료: model=%s, size=%s", model, size)
+
+        # 로컬 저장 — data/outputs/images/{timestamp}_{agent_name}.png
+        local_path = ""
+        try:
+            images_dir = Path("data/outputs/images")
+            images_dir.mkdir(parents=True, exist_ok=True)
+
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            filename = f"{timestamp}_{self.name}.png"
+            file_path = images_dir / filename
+
+            async with httpx.AsyncClient(timeout=30) as http_client:
+                img_response = await http_client.get(image_url)
+                img_response.raise_for_status()
+                file_path.write_bytes(img_response.content)
+
+            local_path = str(file_path)
+            self.logger.info("이미지 로컬 저장 완료: %s", local_path)
+        except Exception as e:
+            self.logger.warning("이미지 로컬 저장 실패: %s", e)
+
+        return {"url": image_url, "local_path": local_path}
+
     def create_message(
         self,
         receiver: str,

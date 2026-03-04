@@ -31,7 +31,7 @@ class SafetyAgent(BaseAgent):
         
         # 1. LLM 호출 (시스템 프롬프트는 YAML에서 자동 로드)
         result = await self.call_llm_json(
-            system_message=self.get_prompt("system_prompt"),
+            system_prompt=self.get_prompt("system_prompt"),
             user_message=user_message
         )
         
