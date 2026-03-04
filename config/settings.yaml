@@ -123,8 +123,8 @@ agents:
     model: sonnet
     max_tokens: 4096
     temperature: 0.3
-    full_threshold: 0.8
-    standard_threshold: 0.5
+    full_threshold: 0.0
+    standard_threshold: 0.0
 
   # ──────────────────────────────────────
   # 팟캐스트모드 TIER 1 독립 에이전트

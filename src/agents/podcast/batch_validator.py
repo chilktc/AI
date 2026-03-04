@@ -73,7 +73,15 @@ class BatchValidatorAgent(BaseAgent):
         )
 
         # 검증 결과에 따른 라우팅 결정
-        passed = validation.get("passed", False)
+        # 프롬프트 출력: action.decision = "approve" | "revise" | "escalate"
+        action = validation.get("action", {})
+        decision = action.get("decision", "revise")
+        passed = decision == "approve"
+
+        # verdict 필드: route_after_tier3_podcast()가 라우팅에 사용
+        # decision → verdict 매핑: approve→PASS, revise→FAIL, escalate→CRITICAL_FAIL
+        verdict_map = {"approve": "PASS", "revise": "FAIL", "escalate": "CRITICAL_FAIL"}
+        validation["verdict"] = verdict_map.get(decision, "FAIL")
 
         if passed:
             # 검증 통과 → TIER 4 (Script Personalizer)로 진행
@@ -81,6 +89,17 @@ class BatchValidatorAgent(BaseAgent):
             return {
                 "validation_result": validation,
                 "next_step": "script_personalizer",
+            }
+
+        elif decision == "escalate":
+            # CRITICAL_FAIL → 즉시 중단
+            self.logger.critical(
+                "스크립트 검증 CRITICAL_FAIL (score=%.2f)",
+                validation.get("overall_score", 0),
+            )
+            return {
+                "validation_result": validation,
+                "next_step": "crisis_response",
             }
 
         elif iteration_count < self.max_retries:
@@ -120,24 +139,32 @@ class BatchValidatorAgent(BaseAgent):
         """검증에 필요한 컨텍스트 정보를 조합한다."""
         parts = []
 
-        # 스크립트 내용 — 검증에 필요한 핵심 필드만 추출 (토큰 절감)
+        # 스크립트 내용 — 세그먼트별 본문을 포함하여 LLM이 실제 내용을 평가할 수 있게 함
         if script_draft:
             script_parts = []
-            title = script_draft.get("title", "")
+            title = script_draft.get("episode_title", "")
             if title:
                 script_parts.append(f"제목: {title}")
-            full_script = script_draft.get("full_script", "")
-            if full_script:
-                script_parts.append(f"본문:\n{full_script}")
-            # segments에서 구조 정보만 추출 (본문은 full_script에 포함)
+
+            # 세그먼트별 실제 스크립트 본문 포함
             segments = script_draft.get("segments", [])
             if segments:
-                seg_summary = ", ".join(
-                    s.get("type", "unknown") if isinstance(s, dict) else str(s)
-                    for s in segments[:10]  # 최대 10개까지만
-                )
-                script_parts.append(f"세그먼트 구성: [{seg_summary}] (총 {len(segments)}개)")
-            content = "\n".join(script_parts) if script_parts else "(내용 없음)"
+                for i, seg in enumerate(segments):
+                    if isinstance(seg, dict):
+                        seg_type = seg.get("segment_type", "unknown")
+                        seg_text = seg.get("script_text", "")
+                        seg_tone = seg.get("emotional_tone", "")
+                        script_parts.append(
+                            f"--- 세그먼트 {i + 1} ({seg_type}) [톤: {seg_tone}] ---\n{seg_text}"
+                        )
+                script_parts.append(f"\n총 세그먼트: {len(segments)}개")
+
+            # 핵심 인사이트
+            insights = script_draft.get("key_insights", [])
+            if insights:
+                script_parts.append(f"핵심 인사이트: {insights}")
+
+            content = "\n\n".join(script_parts) if script_parts else "(내용 없음)"
             parts.append(f"[스크립트]\n{content}")
         else:
             parts.append("[스크립트]\n(스크립트가 비어있음 — 구조 완전성 검증 실패)")
@@ -146,8 +173,8 @@ class BatchValidatorAgent(BaseAgent):
         if content_analysis:
             parts.append(
                 f"[원본 콘텐츠 분석]\n"
-                f"- 주제: {content_analysis.get('topic', 'N/A')}\n"
-                f"- 유형: {content_analysis.get('episode_type', 'N/A')}\n"
+                f"- 주제: {content_analysis.get('main_theme', 'N/A')}\n"
+                f"- 서사 구조: {content_analysis.get('narrative_structure', 'N/A')}\n"
                 f"- 깊이: {content_analysis.get('depth_level', 'N/A')}"
             )
 
@@ -171,9 +198,18 @@ class BatchValidatorAgent(BaseAgent):
         # Safety 플래그 (경고 반영 확인용)
         if safety_flags:
             status = safety_flags.get("status", "safe")
-            parts.append(f"[Safety 상태]\n- 상태: {status}")
-            if status == "warning":
-                parts.append("- 주의: 스크립트에 안전 경고 문구가 포함되어야 합니다")
+            safety_parts = [f"[Safety 상태]\n- 상태: {status}"]
+            if status == "safe":
+                safety_parts.append(
+                    "- Safety Agent가 'safe'로 판정하였으므로, 별도의 안전 경고 문구는 필요하지 않습니다.\n"
+                    "- safety_compliance는 유해 콘텐츠 부재와 의료/법률 조언 경계만 확인하세요."
+                )
+            elif status == "warning":
+                safety_parts.append("- 주의: Safety Agent가 'warning'을 발행했으므로, 스크립트에 안전 경고 문구가 포함되어야 합니다.")
+                required = safety_flags.get("required_in_script", [])
+                if required:
+                    safety_parts.append(f"- 스크립트에 포함 필요: {required}")
+            parts.append("\n".join(safety_parts))
 
         return "\n\n".join(parts)
 

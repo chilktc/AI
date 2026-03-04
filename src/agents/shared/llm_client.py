@@ -279,6 +279,9 @@ class LLMClient:
                 system_prompt, user_message, actual_max_tokens, actual_temperature
             )
 
+    # temperature를 지원하지 않는 OpenAI 모델 접두사 (reasoning 계열)
+    _OPENAI_NO_TEMPERATURE_PREFIXES = ("o1", "o3", "o4", "gpt-5")
+
     async def _generate_openai(
         self,
         system_prompt: str,
@@ -287,15 +290,18 @@ class LLMClient:
         temperature: float,
     ) -> str:
         """OpenAI 직접 API를 통한 텍스트 생성."""
-        response = await self._openai_client.chat.completions.create(
-            model=self._model_id,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            messages=[
+        kwargs: dict[str, Any] = {
+            "model": self._model_id,
+            "max_completion_tokens": max_tokens,
+            "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message},
             ],
-        )
+        }
+        # reasoning 계열 모델은 temperature를 지원하지 않음
+        if not self._model_id.startswith(self._OPENAI_NO_TEMPERATURE_PREFIXES):
+            kwargs["temperature"] = temperature
+        response = await self._openai_client.chat.completions.create(**kwargs)
         # 토큰 사용량 기록
         if response.usage:
             self._record_usage(

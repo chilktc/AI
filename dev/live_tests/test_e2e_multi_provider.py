@@ -32,9 +32,11 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import logging
 import os
 import time
+from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
@@ -55,7 +57,7 @@ logger = logging.getLogger(__name__)
 # ────────────────────────────────────────
 
 DEFAULT_OLLAMA_MODELS = ["gpt-oss:20b", "qwen2.5:14b"]
-DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
+DEFAULT_OPENAI_MODEL = "gpt-5-mini"
 
 # ANSI 컬러
 _G = "\033[92m"  # green
@@ -276,6 +278,9 @@ async def run_workflow_for_model(
         print(f"  bv_score: {validation['bv_score']}")
         print(f"  final_output: {validation['final_output_len']}자")
 
+        # 7. 결과 파일 저장 (results 폴더)
+        _save_results_to_file(provider, model_name, final_state, elapsed, validation)
+
         return {
             "provider": provider,
             "model": model_name,
@@ -296,6 +301,67 @@ async def run_workflow_for_model(
 
         traceback.print_exc()
         return None
+
+
+# ────────────────────────────────────────
+# 결과 파일 저장
+# ────────────────────────────────────────
+
+
+def _save_results_to_file(
+    provider: str,
+    model_name: str,
+    final_state: dict[str, Any],
+    elapsed: float,
+    validation: dict[str, Any],
+) -> None:
+    """
+    E2E 테스트 결과를 dev/live_tests/results/ 폴더에 JSON으로 저장한다.
+
+    visualization_result, emotion_vectors 등 주요 에이전트 출력을 모두 포함한다.
+    """
+    results_dir = Path(__file__).parent / "results"
+    results_dir.mkdir(exist_ok=True)
+
+    # 파일명: {provider}_{model}_{timestamp}.json
+    safe_model = model_name.replace(":", "_").replace("/", "_")
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    filename = f"{provider}_{safe_model}_{timestamp}.json"
+
+    # 저장할 데이터 구성
+    result_data: dict[str, Any] = {
+        "test_info": {
+            "provider": provider,
+            "model": model_name,
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "total_time_seconds": round(elapsed, 2),
+        },
+        "validation_summary": validation,
+    }
+
+    # 주요 에이전트 출력 필드 저장
+    for field in EXPECTED_FIELDS:
+        val = final_state.get(field)
+        if val is not None:
+            result_data[field] = val
+
+    # visualization_result 저장 (비동기 에이전트 출력)
+    vis_result = final_state.get("visualization_result")
+    if vis_result:
+        result_data["visualization_result"] = vis_result
+
+    # visual_data 저장 (있는 경우)
+    visual_data = final_state.get("visual_data")
+    if visual_data:
+        result_data["visual_data"] = visual_data
+
+    file_path = results_dir / filename
+    try:
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(result_data, f, ensure_ascii=False, indent=2, default=str)
+        print(f"\n  {_G}[SAVED]{_0} 결과 저장: {file_path}")
+    except Exception as e:
+        print(f"\n  {_Y}[WARN]{_0} 결과 저장 실패: {e}")
 
 
 # ────────────────────────────────────────
