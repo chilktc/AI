@@ -63,9 +63,8 @@ def _get_writer():
 # 설정 로드
 # ---------------------------------------------------------------------------
 _settings = get_settings()
-_pipeline_config = _settings._config.get("pipeline", {})
-_MAX_RETRIES: int = _pipeline_config.get("max_retries", 2)
-_TIER1_TIMEOUT: int = _pipeline_config.get("tier1_timeout_seconds", 15)
+_MAX_RETRIES: int = _settings.max_retries
+_TIER1_TIMEOUT: int = _settings.tier1_timeout
 
 # ---------------------------------------------------------------------------
 # 구현된 에이전트 노드 — 실제 import

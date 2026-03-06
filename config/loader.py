@@ -287,23 +287,6 @@ class Settings:
         langsmith = monitoring.get("langsmith", {})
         return bool(langsmith.get("tracing_enabled", False))
 
-    # --- 기능 플래그 ---
-
-    def is_feature_enabled(self, feature_name: str) -> bool:
-        """기능 플래그 확인. 환경변수 ENABLE_{FEATURE}로 오버라이드 가능."""
-        env_key = f"ENABLE_{feature_name.upper()}"
-        env_value = os.getenv(env_key)
-        if env_value is not None:
-            return env_value.lower() in ("true", "1", "yes")
-
-        return bool(self._config.get("features", {}).get(feature_name, False))
-
-    # --- Anthropic API 키 ---
-
-    @property
-    def anthropic_api_key(self) -> str | None:
-        """Anthropic API 키. 환경변수에서만 가져온다 (보안)."""
-        return os.getenv("ANTHROPIC_API_KEY")
 
 
 # 싱글톤 인스턴스 (모듈 레벨에서 한 번만 로드)

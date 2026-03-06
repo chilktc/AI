@@ -107,21 +107,20 @@ class LLMClient:
             self._init_custom_provider(agent_config, model_override)
         elif self._provider == "bedrock":
             self._init_bedrock_client(settings)
-            # Bedrock 모델 ID 사용 (오버라이드가 없을 때)
+            # Bedrock 전용 모델 ID — agent_config.model_id는 Anthropic 직접 API ID이므로
+            # Bedrock에서는 반드시 get_bedrock_model_id()를 사용해야 한다.
             model_key = agent_config.get("model", "sonnet")
-            self._model_id = model_override or agent_config.get(
-                "model_id", settings.get_bedrock_model_id(model_key)
-            )
+            self._model_id = model_override or settings.get_bedrock_model_id(model_key)
         elif self._provider == "openai":
             import openai
 
             self._openai_client = openai.AsyncOpenAI(
                 api_key=os.getenv("OPENAI_API_KEY", "dummy-key-for-tests")
             )
+            # OpenAI 전용 모델 ID — agent_config.model_id는 Anthropic 직접 API ID이므로
+            # OpenAI에서는 반드시 get_openai_model_id()를 사용해야 한다.
             model_key = agent_config.get("model", "sonnet")
-            self._model_id = model_override or agent_config.get(
-                "model_id", settings.get_openai_model_id(model_key)
-            )
+            self._model_id = model_override or settings.get_openai_model_id(model_key)
         else:
             # Anthropic 직접 API (기본)
             self._anthropic_client = anthropic.AsyncAnthropic()
@@ -410,20 +409,12 @@ class LLMClient:
         )
 
         # JSON 블록 추출 시도 (```json ... ``` 형식 대응)
-        return self._parse_json_response(raw_response)
+        return self.parse_json_response(raw_response)
 
     @staticmethod
     def parse_json_response(text: str) -> dict[str, Any]:
-        """LLM 응답 텍스트에서 JSON을 추출한다 (public 인터페이스).
-
-        마크다운 코드 블록(```json ... ```)이나 순수 JSON 텍스트 모두 처리.
         """
-        return LLMClient._parse_json_response(text)
-
-    @staticmethod
-    def _parse_json_response(text: str) -> dict[str, Any]:
-        """
-        LLM 응답에서 JSON을 추출한다.
+        LLM 응답 텍스트에서 JSON을 추출한다.
 
         마크다운 코드 블록(```json ... ```)이나 순수 JSON 텍스트 모두 처리.
         """

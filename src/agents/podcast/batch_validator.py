@@ -148,39 +148,51 @@ class BatchValidatorAgent(BaseAgent):
         emotion_vectors: dict[str, Any],
     ) -> str:
         """검증에 필요한 컨텍스트 정보를 조합한다."""
-        parts = []
+        parts = [self._build_script_context(script_draft)]
+        parts.extend(
+            self._build_analysis_context(content_analysis, reasoning_result, safety_flags, emotion_vectors)
+        )
+        return "\n\n".join(parts)
 
-        # 스크립트 내용 — 세그먼트별 본문을 포함하여 LLM이 실제 내용을 평가할 수 있게 함
-        if script_draft:
-            script_parts = []
-            title = script_draft.get("episode_title", "")
-            if title:
-                script_parts.append(f"제목: {title}")
+    def _build_script_context(self, script_draft: dict[str, Any]) -> str:
+        """스크립트 세그먼트별 본문을 포함한 검증 컨텍스트를 구성한다."""
+        if not script_draft:
+            return "[스크립트]\n(스크립트가 비어있음 — 구조 완전성 검증 실패)"
 
-            # 세그먼트별 실제 스크립트 본문 포함
-            segments = script_draft.get("segments", [])
-            if segments:
-                for i, seg in enumerate(segments):
-                    if isinstance(seg, dict):
-                        seg_type = seg.get("segment_type", "unknown")
-                        seg_text = seg.get("script_text", "")
-                        seg_tone = seg.get("emotional_tone", "")
-                        script_parts.append(
-                            f"--- 세그먼트 {i + 1} ({seg_type}) [톤: {seg_tone}] ---\n{seg_text}"
-                        )
-                script_parts.append(f"\n총 세그먼트: {len(segments)}개")
+        script_parts: list[str] = []
+        title = script_draft.get("episode_title", "")
+        if title:
+            script_parts.append(f"제목: {title}")
 
-            # 핵심 인사이트
-            insights = script_draft.get("key_insights", [])
-            if insights:
-                script_parts.append(f"핵심 인사이트: {insights}")
+        segments = script_draft.get("segments", [])
+        if segments:
+            for i, seg in enumerate(segments):
+                if isinstance(seg, dict):
+                    seg_type = seg.get("segment_type", "unknown")
+                    seg_text = seg.get("script_text", "")
+                    seg_tone = seg.get("emotional_tone", "")
+                    script_parts.append(
+                        f"--- 세그먼트 {i + 1} ({seg_type}) [톤: {seg_tone}] ---\n{seg_text}"
+                    )
+            script_parts.append(f"\n총 세그먼트: {len(segments)}개")
 
-            content = "\n\n".join(script_parts) if script_parts else "(내용 없음)"
-            parts.append(f"[스크립트]\n{content}")
-        else:
-            parts.append("[스크립트]\n(스크립트가 비어있음 — 구조 완전성 검증 실패)")
+        insights = script_draft.get("key_insights", [])
+        if insights:
+            script_parts.append(f"핵심 인사이트: {insights}")
 
-        # 원본 콘텐츠 분석 (비교 기준)
+        content = "\n\n".join(script_parts) if script_parts else "(내용 없음)"
+        return f"[스크립트]\n{content}"
+
+    def _build_analysis_context(
+        self,
+        content_analysis: dict[str, Any],
+        reasoning_result: dict[str, Any],
+        safety_flags: dict[str, Any],
+        emotion_vectors: dict[str, Any],
+    ) -> list[str]:
+        """콘텐츠 분석·추론·감정·Safety 정보를 검증 섹션으로 구성한다."""
+        parts: list[str] = []
+
         if content_analysis:
             parts.append(
                 f"[원본 콘텐츠 분석]\n"
@@ -189,7 +201,6 @@ class BatchValidatorAgent(BaseAgent):
                 f"- 깊이: {content_analysis.get('depth_level', 'N/A')}"
             )
 
-        # 추론 결과 (비교 기준)
         if reasoning_result:
             parts.append(
                 f"[추론 결과]\n"
@@ -197,7 +208,6 @@ class BatchValidatorAgent(BaseAgent):
                 f"- 핵심 포인트: {reasoning_result.get('key_points', [])}"
             )
 
-        # 사용자 감정 상태 (톤 적합성 판단 근거)
         if emotion_vectors:
             parts.append(
                 f"[사용자 감정 상태]\n"
@@ -206,7 +216,6 @@ class BatchValidatorAgent(BaseAgent):
                 f"- 주의: 스크립트의 톤이 위 감정 상태에 적합한지 검증 필요"
             )
 
-        # Safety 플래그 (경고 반영 확인용)
         if safety_flags:
             status = safety_flags.get("status", "safe")
             safety_parts = [f"[Safety 상태]\n- 상태: {status}"]
@@ -222,7 +231,7 @@ class BatchValidatorAgent(BaseAgent):
                     safety_parts.append(f"- 스크립트에 포함 필요: {required}")
             parts.append("\n".join(safety_parts))
 
-        return "\n\n".join(parts)
+        return parts
 
 
 # LangGraph 노드 함수로 사용할 에이전트 인스턴스
