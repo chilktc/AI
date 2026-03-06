@@ -133,16 +133,19 @@ def print_script_result(
     print(f"📋 적용 스타일: {meta.get('applied_style')}")
     print(f"🔄 조정된 세그먼트: {meta.get('adjusted_segments')}")
 
-    print("\n📝 세그먼트 변화:")
-    for orig in original.segments:
-        pers = next((s for s in segments if s.get("segment_id") == orig.segment_id), None)
-        if pers:
-            changed = orig.script_text != pers.get("script_text")
-            status = "🔄 변경" if changed else "➡️ 유지"
-            print(f"\n   [{orig.segment_id}] {status}")
-            if changed:
-                print(f"   원본: {orig.script_text[:50]}...")
-                print(f"   변경: {pers.get('script_text')[:50]}...")
+    print("\n📝 변경된 전체 스크립트 텍스트:")
+    if segments and len(segments) > 0:
+        first_segment = segments[0]
+        text_preview = first_segment.get("script_text", "")
+        # Preview first 100 chars
+        print(f"   {text_preview[:100]}...\n")
+        
+        # Determine if it was modified
+        orig_texts_joined = " ".join([s.script_text for s in original.segments])
+        if text_preview != orig_texts_joined:
+            print("   (✅ 통합되어 새롭게 쓰여진 스크립트입니다.)")
+        else:
+            print("   (➡️ 원본 스크립트 그대로 반환됨.)")
     print(f"{'='*60}")
 
 
