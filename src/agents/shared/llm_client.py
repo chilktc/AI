@@ -413,6 +413,14 @@ class LLMClient:
         return self._parse_json_response(raw_response)
 
     @staticmethod
+    def parse_json_response(text: str) -> dict[str, Any]:
+        """LLM 응답 텍스트에서 JSON을 추출한다 (public 인터페이스).
+
+        마크다운 코드 블록(```json ... ```)이나 순수 JSON 텍스트 모두 처리.
+        """
+        return LLMClient._parse_json_response(text)
+
+    @staticmethod
     def _parse_json_response(text: str) -> dict[str, Any]:
         """
         LLM 응답에서 JSON을 추출한다.

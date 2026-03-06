@@ -2,11 +2,12 @@
 Batch Validator — 팟캐스트 스크립트 품질 검증 에이전트.
 
 TIER 3에서 Script Generator(개발자1)가 생성한 script_draft를 검증한다.
-검증 실패 시 iteration_count를 증가시키고 TIER 2 재시도를 요청한다.
+검증 실패 시 TIER 2 재시도를 요청한다.
 최대 2회 재시도 후에는 강제 통과한다.
+iteration_count 증가는 workflow의 increment_iteration_node()가 전담한다.
 
 담당: 개발자3
-출력 필드: validation_result, next_step, iteration_count
+출력 필드: validation_result, next_step
 모델: Sonnet 4
 """
 
@@ -52,7 +53,6 @@ class BatchValidatorAgent(BaseAgent):
         출력:
             - validation_result: 검증 결과 상세
             - next_step: 다음 단계 라우팅 ("script_personalizer" 또는 "retry_script")
-            - iteration_count: 재시도 카운터 (실패 시 증가)
         """
         script_draft = state.get("script_draft", {})
         content_analysis = state.get("content_analysis", {})
@@ -60,6 +60,18 @@ class BatchValidatorAgent(BaseAgent):
         safety_flags = state.get("safety_flags", {})
         emotion_vectors = state.get("emotion_vectors", {})
         iteration_count = state.get("iteration_count", 0)
+
+        # 빈 스크립트 조기 반환 — LLM 호출 절약
+        if not script_draft:
+            self.logger.warning("스크립트가 비어있어 검증 실패 (iteration_count=%d)", iteration_count)
+            return {
+                "validation_result": {
+                    "verdict": "FAIL",
+                    "reason": "Empty script_draft",
+                    "overall_score": 0.0,
+                },
+                "next_step": "retry_script",
+            }
 
         # 검증 컨텍스트 조합
         validation_context = self._build_validation_context(
@@ -104,16 +116,15 @@ class BatchValidatorAgent(BaseAgent):
 
         elif iteration_count < self.max_retries:
             # 검증 실패 + 재시도 가능 → TIER 2 재시도
-            new_count = iteration_count + 1
+            # iteration_count 증가는 workflow의 increment_iteration_node()가 전담
             self.logger.warning(
-                "스크립트 검증 실패 — 재시도 %d/%d (score=%.2f)",
-                new_count,
+                "스크립트 검증 실패 — 현재 %d/%d (score=%.2f)",
+                iteration_count,
                 self.max_retries,
                 validation.get("overall_score", 0),
             )
             return {
                 "validation_result": validation,
-                "iteration_count": new_count,
                 "next_step": "retry_script",
             }
 

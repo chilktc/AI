@@ -189,9 +189,9 @@ prompts:
   # 미지정 에이전트는 YAML 내부 default_version 사용
   versions:
     default: "1.0.0"              # 글로벌 기본 버전
-    # content_analyzer: "1.1.0"   # 에이전트별 오버라이드 예시
-    # podcast_reasoning: "1.0.0"
-    # batch_validator: "1.0.0"
+    content_analyzer: "2.1.0"     # Round 2 최적 버전 (2026-03-05)
+    podcast_reasoning: "2.0.0"    # Round 2 최적 버전 (2026-03-05)
+    batch_validator: "1.5.0"      # Round 1/2 공통 최적 버전 (2026-03-05)
     # learning: "1.0.0"
 
   # A/B 테스트 설정 (선택적)
