@@ -369,6 +369,33 @@ def test_json_parsing_invalid() -> None:
 
 
 # ===================================================================
+# parse_json_response (public 래퍼)
+# ===================================================================
+
+
+@pytest.mark.parametrize(
+    "input_text, expected",
+    [
+        ('{"key": "value"}', {"key": "value"}),
+        ('```json\n{"a": 1}\n```', {"a": 1}),
+    ],
+)
+def test_parse_json_response_public(input_text: str, expected: dict) -> None:
+    """public parse_json_response()가 private 메서드와 동일하게 동작한다."""
+    from src.agents.shared.llm_client import LLMClient
+
+    assert LLMClient.parse_json_response(input_text) == expected
+
+
+def test_parse_json_response_public_invalid() -> None:
+    """public parse_json_response()도 유효하지 않은 JSON에 JSONDecodeError."""
+    from src.agents.shared.llm_client import LLMClient
+
+    with pytest.raises(json.JSONDecodeError):
+        LLMClient.parse_json_response("not json")
+
+
+# ===================================================================
 # Bedrock boto3 미설치
 # ===================================================================
 

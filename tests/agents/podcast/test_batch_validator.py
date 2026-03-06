@@ -100,24 +100,23 @@ async def test_pass_routes_to_script_personalizer(
 
 
 @pytest.mark.parametrize(
-    "initial_count, expected_count",
-    [(0, 1), (1, 2)],
+    "initial_count",
+    [0, 1],
     ids=["first_retry", "second_retry"],
 )
 @pytest.mark.asyncio
-async def test_fail_routes_to_retry_and_increments(
+async def test_fail_routes_to_retry_without_incrementing(
     agent: BatchValidatorAgent,
     failing_validation: dict[str, Any],
     initial_count: int,
-    expected_count: int,
 ) -> None:
-    """검증 실패 시 retry_script 라우팅 + iteration_count 증가."""
+    """검증 실패 시 retry_script 라우팅, iteration_count는 반환하지 않음 (workflow가 전담)."""
     state = AgentState(
         user_input="테스트",
         user_id="u",
         session_id="s",
         mode="podcast",
-        script_draft={},
+        script_draft={"intro": {"content": "test"}},
         content_analysis={},
         reasoning_result={},
         safety_flags={},
@@ -130,7 +129,7 @@ async def test_fail_routes_to_retry_and_increments(
         result = await agent.process(state)
 
     assert result["next_step"] == "retry_script"
-    assert result["iteration_count"] == expected_count
+    assert "iteration_count" not in result
 
 
 @pytest.mark.parametrize("iteration_count", [2, 5], ids=["exact_max", "above_max"])
@@ -146,7 +145,7 @@ async def test_max_retries_forces_pass(
         user_id="u",
         session_id="s",
         mode="podcast",
-        script_draft={},
+        script_draft={"intro": {"content": "test"}},
         content_analysis={},
         reasoning_result={},
         safety_flags={},
@@ -168,11 +167,10 @@ async def test_max_retries_forces_pass(
 
 
 @pytest.mark.asyncio
-async def test_empty_script_includes_failure_note(
+async def test_empty_script_early_return_skips_llm(
     agent: BatchValidatorAgent,
-    passing_validation: dict[str, Any],
 ) -> None:
-    """스크립트가 비어있으면 '비어있음' 노트가 컨텍스트에 포함."""
+    """스크립트가 비어있으면 LLM 호출 없이 FAIL verdict로 조기 반환."""
     state = AgentState(
         user_input="테스트",
         user_id="u",
@@ -185,15 +183,39 @@ async def test_empty_script_includes_failure_note(
         emotion_vectors={},
         iteration_count=0,
     )
-    mock = AsyncMock(return_value=passing_validation)
+    mock = AsyncMock()
     with patch.object(agent, "call_llm_json", mock):
-        await agent.process(state)
+        result = await agent.process(state)
 
-    call_args = mock.call_args
-    user_message = call_args.kwargs.get(
-        "user_message", call_args.args[1] if len(call_args.args) > 1 else ""
+    mock.assert_not_called()
+    assert result["next_step"] == "retry_script"
+    assert result["validation_result"]["verdict"] == "FAIL"
+    assert result["validation_result"]["overall_score"] == 0.0
+    assert "iteration_count" not in result
+
+
+@pytest.mark.parametrize("iteration_count", [0, 1, 2], ids=["zero", "one", "max"])
+@pytest.mark.asyncio
+async def test_empty_script_early_return_consistent_across_iterations(
+    agent: BatchValidatorAgent,
+    iteration_count: int,
+) -> None:
+    """빈 스크립트 조기 반환은 iteration_count에 무관하게 일관적."""
+    state = AgentState(
+        user_input="테스트",
+        user_id="u",
+        session_id="s",
+        mode="podcast",
+        script_draft={},
+        iteration_count=iteration_count,
     )
-    assert "비어있음" in user_message
+    mock = AsyncMock()
+    with patch.object(agent, "call_llm_json", mock):
+        result = await agent.process(state)
+
+    mock.assert_not_called()
+    assert result["next_step"] == "retry_script"
+    assert result["validation_result"]["verdict"] == "FAIL"
 
 
 @pytest.mark.asyncio
@@ -235,12 +257,13 @@ async def test_missing_optional_fields(
     agent: BatchValidatorAgent,
     passing_validation: dict[str, Any],
 ) -> None:
-    """선택 필드가 모두 없어도 정상 동작해야 한다."""
+    """선택 필드(content_analysis 등)가 없어도 LLM 경로가 정상 동작해야 한다."""
     state = AgentState(
         user_input="최소 입력",
         user_id="u",
         session_id="s",
         mode="podcast",
+        script_draft={"intro": {"content": "test"}},
         iteration_count=0,
     )
     mock = AsyncMock(return_value=passing_validation)
@@ -273,7 +296,7 @@ async def test_llm_returns_empty_dict(
         result = await agent.process(state)
 
     assert result["next_step"] == "retry_script"
-    assert result["iteration_count"] == 1
+    assert "iteration_count" not in result
 
 
 @pytest.mark.asyncio
