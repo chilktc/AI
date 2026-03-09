@@ -203,21 +203,40 @@ system_prompt: |
   {...}
 ```
 
+### 멀티버전 프롬프트 형식
+
+`default_version` + `versions` 딕셔너리로 여러 버전을 관리합니다.
+`settings.yaml`에서 에이전트별 버전을 핀닝합니다.
+
+```yaml
+# prompts/podcast/content_analyzer.yaml
+default_version: "2.1.0"
+versions:
+  "2.1.0":
+    system_prompt: |
+      (시스템 프롬프트)
+```
+
 ### 다중 프롬프트 형식 (GoT/ToT/CoT)
 
 ```yaml
-version: "1.0.0"
-prompts:
-  got:
-    system_prompt: |
-      (GoT 프롬프트)
-  tot:
-    system_prompt: |
-      (ToT 프롬프트)
-  cot:
-    system_prompt: |
-      (CoT 프롬프트)
+default_version: "3.0.0"
+versions:
+  "3.0.0":
+    prompts:
+      got:
+        system_prompt: |
+          (GoT 프롬프트)
+      tot:
+        system_prompt: |
+          (ToT 프롬프트)
+      cot:
+        system_prompt: |
+          (CoT 프롬프트)
 ```
+
+> 이전 버전은 `prompts/{mode}/_archive/` 폴더에 보존되어 있습니다.
+> 버전 관리 상세는 `PROMPT_VERSIONING.md`를 참조하세요.
 
 ### 코드에서 프롬프트 호출
 
@@ -415,4 +434,4 @@ PR 생성 시 개발자 3명 전원의 리뷰를 받으세요.
 
 ---
 
-*마지막 업데이트: 2026-02-14*
+*마지막 업데이트: 2026-03-06*

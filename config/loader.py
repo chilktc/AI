@@ -287,23 +287,30 @@ class Settings:
         langsmith = monitoring.get("langsmith", {})
         return bool(langsmith.get("tracing_enabled", False))
 
-    # --- 기능 플래그 ---
-
-    def is_feature_enabled(self, feature_name: str) -> bool:
-        """기능 플래그 확인. 환경변수 ENABLE_{FEATURE}로 오버라이드 가능."""
-        env_key = f"ENABLE_{feature_name.upper()}"
-        env_value = os.getenv(env_key)
-        if env_value is not None:
-            return env_value.lower() in ("true", "1", "yes")
-
-        return bool(self._config.get("features", {}).get(feature_name, False))
-
-    # --- Anthropic API 키 ---
+    # --- 저장소 설정 ---
 
     @property
-    def anthropic_api_key(self) -> str | None:
-        """Anthropic API 키. 환경변수에서만 가져온다 (보안)."""
-        return os.getenv("ANTHROPIC_API_KEY")
+    def storage_mode(self) -> str:
+        """저장소 모드. STORAGE_MODE 환경변수로 오버라이드 가능."""
+        return os.getenv(
+            "STORAGE_MODE",
+            self._config.get("storage", {}).get("mode", "local"),
+        )
+
+    @property
+    def s3_bucket(self) -> str:
+        """S3 버킷명."""
+        return os.getenv(
+            "AWS_S3_BUCKET",
+            self._config.get("storage", {}).get("s3", {}).get("bucket", "mindlog-images"),
+        )
+
+    @property
+    def s3_upload_prefix(self) -> str:
+        """S3 업로드 prefix."""
+        return str(
+            self._config.get("storage", {}).get("s3", {}).get("upload_prefix", "vis")
+        )
 
 
 # 싱글톤 인스턴스 (모듈 레벨에서 한 번만 로드)

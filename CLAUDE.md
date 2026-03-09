@@ -468,6 +468,19 @@ class ReasoningAgent:
 
 ---
 
+## 구현 현황 (2026-03-06 기준)
+
+| 모드 | 구현 에이전트 | 진행률 |
+|------|------------|--------|
+| **팟캐스트모드** | Content Analyzer, Podcast Reasoning, Script Generator, Batch Validator, Script Personalizer, Visualization, Episode Memory | 7/7 (100%) |
+| **대화모드** | Intent Classifier, Knowledge, Learning | 3/13 (23%) |
+| **공용 에이전트** | Safety, Emotion | 팟캐스트모드에서 구현, 양 모드에서 재사용 |
+
+> 대화모드 전용 에이전트(Context, Memory, Reasoning, Synthesis, Validator, Personalization 등)는 미구현.
+> Telemetry Agent는 스텁 노드로 등록되어 있으며, 전체 에이전트 완료 후 구현 예정.
+
+---
+
 ## 참고 문서
 
 - `docs/guides/GIT_WORKFLOW.md` — 브랜치/커밋/PR 상세 가이드
@@ -482,4 +495,4 @@ class ReasoningAgent:
 
 ---
 
-*마지막 업데이트: 2026-02-14*
+*마지막 업데이트: 2026-03-06*

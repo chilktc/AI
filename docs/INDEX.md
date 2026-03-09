@@ -41,6 +41,8 @@ Mind-Log 프로젝트 문서 마스터 네비게이션입니다.
 
 | 문서 | 설명 |
 |------|------|
+| [CHANGELOG_v21.md](changelog/CHANGELOG_v21.md) | v21 변경이력 |
+| [CHANGELOG_v20.md](changelog/CHANGELOG_v20.md) | v20 변경이력 |
 | [CHANGELOG_v19.md](changelog/CHANGELOG_v19.md) | v19 변경이력 |
 | [CHANGELOG_v18.md](changelog/CHANGELOG_v18.md) | v18 변경이력 |
 | [CHANGELOG_v16-v17.md](changelog/CHANGELOG_v16-v17.md) | v16~v17 변경이력 |
@@ -70,4 +72,4 @@ Mind-Log 프로젝트 문서 마스터 네비게이션입니다.
 
 ---
 
-*마지막 업데이트: 2026-03-03*
+*마지막 업데이트: 2026-03-09*

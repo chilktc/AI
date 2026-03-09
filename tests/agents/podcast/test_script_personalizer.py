@@ -246,7 +246,7 @@ if __name__ == "__main__":
     # LLM 없이 테스트
     print("\n📌 규칙 기반 테스트")
     agent = ScriptPersonalizerAgent(
-        llm_client=None, db_client=None, enable_deep_personalization=False
+        db_client=None, enable_deep_personalization=False
     )
 
     for name, profile in SAMPLE_PROFILES.items():
