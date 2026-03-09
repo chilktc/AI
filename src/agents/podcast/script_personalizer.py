@@ -452,7 +452,6 @@ class ScriptPersonalizerAgent(BaseAgent):
     async def _personalize_integrated_script_with_llm(
         self,
         full_script_text: str,
-        segment_type: str,
         user_profile: UserProfile,
         strategy: Dict[str, Any],
         emotional_journey: Optional[EmotionalJourney],
