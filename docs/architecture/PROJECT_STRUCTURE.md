@@ -67,15 +67,33 @@ mind-log/
 │   ├── api/                     # 백엔드 API 통신 (Protected - 3인 합의 필수)
 │   │   ├── __init__.py
 │   │   ├── client.py            # HTTP 클라이언트 (재시도, 타임아웃)
-│   │   └── contracts.py         # 요청/응답 스키마 정의
+│   │   ├── contracts.py         # 요청/응답 스키마 정의
+│   │   └── backend_resources.py # Backend API 리소스 경로 상수 + TODO(backend)
+│   │
+│   ├── db/                      # 저장소 추상화 (Strategy + Factory 패턴)
+│   │   ├── __init__.py          # 4개 ABC + 4개 팩토리 함수 export
+│   │   ├── base.py              # 추상 인터페이스 (BaseVector/Graph/RDB/StorageClient)
+│   │   ├── pinecone_client.py   # Pinecone 직접 클라이언트
+│   │   ├── neo4j_client.py      # Neo4j 직접 클라이언트
+│   │   ├── mysql_client.py      # MySQL 직접 클라이언트
+│   │   ├── s3_client.py         # S3 직접 클라이언트 (읽기+쓰기)
+│   │   ├── api_proxy.py         # Backend API 프록시 4종
+│   │   └── factory.py           # 환경별 팩토리 (STORAGE_MODE=local|proxy|hybrid)
 │   │
 │   ├── graph/                   # LangGraph 워크플로우 (Protected - 3인 합의 필수)
 │   │   ├── __init__.py
 │   │   └── workflow.py          # TIER 기반 듀얼모드 워크플로우 (구현 완료)
 │   │
+│   ├── monitoring/              # 모니터링 인프라
+│   │   ├── __init__.py          # 텔레메트리 콜백, I/O 트래커, 데이터 모델 export
+│   │   ├── models.py            # AgentMetric, PipelineMetrics, MonitoringEvent 등
+│   │   ├── callbacks.py         # MindLogTelemetryCallback (LangGraph 콜백)
+│   │   ├── io_tracker.py        # AgentIOTracker (에이전트 입출력 스냅샷)
+│   │   └── prometheus.py        # Prometheus 메트릭 + GET /metrics 라우터
+│   │
 │   └── utils/                   # 공통 유틸리티
 │       ├── __init__.py
-│       ├── logger.py            # 구조화 로깅 설정
+│       ├── logger.py            # 구조화 로깅 (APP_ENV=production → JSON 포맷)
 │       └── retry.py             # Exponential backoff 재시도 데코레이터
 │
 ├── config/                      # 환경 설정
@@ -126,7 +144,7 @@ mind-log/
 │   │   ├── OLLAMA_MODEL_TEST_REPORT.md # Ollama 모델 테스트 결과
 │   │   └── REFACTORING_LOG.md   # 리팩토링 이력
 │   └── changelog/               # 변경이력
-│       └── CHANGELOG_v*.md      # v1~v19 변경이력 (10개)
+│       └── CHANGELOG_v*.md      # v1~v21 변경이력
 │
 ├── dev/                         # 로컬 개발 전용 (.gitignore — git push 제외)
 │   ├── ollama_provider.py       # Ollama OpenAI 호환 API 프로바이더
@@ -191,6 +209,27 @@ class MyAgent(BaseAgent):
 
 백엔드 서버와의 통신을 담당합니다. 모든 HTTP 호출은 이 모듈을 통해서만 수행합니다.
 
+- `client.py`: `BackendClient` — 재시도, 타임아웃 포함 비동기 HTTP 클라이언트
+- `contracts.py`: 요청/응답 Pydantic 스키마 (Protected — 3인 합의 필수)
+- `backend_resources.py`: Backend API 리소스 경로 상수. `TODO(backend):` 주석으로 협의 포인트 표시
+
+### src/db/ — 저장소 추상화
+
+Strategy + Factory 패턴으로 환경별(개발/배포/하이브리드) DB 접근 방식을 전환합니다. `STORAGE_MODE` 환경변수로 제어합니다.
+
+- `base.py`: 추상 인터페이스 4종 (`BaseVectorClient`, `BaseGraphClient`, `BaseRDBClient`, `BaseStorageClient`)
+- `pinecone_client.py`, `neo4j_client.py`, `mysql_client.py`, `s3_client.py`: 직접 접속 구현체
+- `api_proxy.py`: Backend API 경유 프록시 구현체 4종
+- `factory.py`: `STORAGE_MODE=local|proxy|hybrid`에 따라 적절한 구현체를 반환하는 팩토리
+
+### src/monitoring/ — 모니터링 인프라
+
+텔레메트리 콜백, 에이전트 I/O 추적, Prometheus 메트릭을 제공합니다.
+
+- `callbacks.py`: LangGraph 콜백 기반 TIER별 성능 메트릭, CRISIS 감지, 비용 추정
+- `io_tracker.py`: 에이전트 입출력 스냅샷 캡처 + 민감정보 보호
+- `prometheus.py`: `GET /metrics` 엔드포인트 + 5개 메트릭 (요청 수, CRISIS, 파이프라인/에이전트 실행 시간, LLM 토큰)
+
 ### src/graph/ — LangGraph 워크플로우
 
 에이전트 노드들을 연결하는 StateGraph를 정의합니다. `workflow.py`에 TIER 기반 듀얼모드 파이프라인이 구현되어 있으며, `build_unified_graph()` 함수로 대화모드/팟캐스트모드 워크플로우를 통합 구성합니다.
@@ -224,4 +263,4 @@ class MyAgent(BaseAgent):
 
 *참고: 에이전트 상세 설계는 ProjectDocs/ 폴더의 개별 에이전트 문서를 참조하세요.*
 
-*마지막 업데이트: 2026-02-14*
+*마지막 업데이트: 2026-03-09*

@@ -4,7 +4,8 @@
 
 | 버전 | 파일 | 요약 |
 |------|------|------|
-| v20 | [CHANGELOG_v20.md](CHANGELOG_v20.md) | 최신 |
+| v21 | [CHANGELOG_v21.md](CHANGELOG_v21.md) | Zone C + Zone D(Backend) 저장소·관측성 |
+| v20 | [CHANGELOG_v20.md](CHANGELOG_v20.md) | 테스트 스위트 감축 (361→270) |
 | v19 | [CHANGELOG_v19.md](CHANGELOG_v19.md) | |
 | v18 | [CHANGELOG_v18.md](CHANGELOG_v18.md) | |
 | v16-v17 | [CHANGELOG_v16-v17.md](CHANGELOG_v16-v17.md) | |
@@ -15,4 +16,4 @@
 
 ---
 
-*마지막 업데이트: 2026-03-06*
+*마지막 업데이트: 2026-03-09*

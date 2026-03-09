@@ -287,6 +287,30 @@ class Settings:
         langsmith = monitoring.get("langsmith", {})
         return bool(langsmith.get("tracing_enabled", False))
 
+    # --- 저장소 설정 ---
+
+    @property
+    def storage_mode(self) -> str:
+        """저장소 모드. STORAGE_MODE 환경변수로 오버라이드 가능."""
+        return os.getenv(
+            "STORAGE_MODE",
+            self._config.get("storage", {}).get("mode", "local"),
+        )
+
+    @property
+    def s3_bucket(self) -> str:
+        """S3 버킷명."""
+        return os.getenv(
+            "AWS_S3_BUCKET",
+            self._config.get("storage", {}).get("s3", {}).get("bucket", "mindlog-images"),
+        )
+
+    @property
+    def s3_upload_prefix(self) -> str:
+        """S3 업로드 prefix."""
+        return str(
+            self._config.get("storage", {}).get("s3", {}).get("upload_prefix", "vis")
+        )
 
 
 # 싱글톤 인스턴스 (모듈 레벨에서 한 번만 로드)

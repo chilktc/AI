@@ -167,6 +167,18 @@ agents:
     model: haiku
     max_tokens: 1024
 
+# 저장소 설정
+storage:
+  mode: "local"                    # local | proxy | hybrid
+  s3:
+    bucket: "mindlog-images"
+    # region은 별도 정의 안 함 — 기존 llm.bedrock.region / AWS_REGION 재사용
+    upload_prefix: "vis"           # TODO(backend): 4-4 prefix 확정
+  pinecone:
+    index_knowledge: "expert_knowledge"
+    index_memory_conversation: "mem_conversation"
+    index_memory_podcast: "mem_podcast_episode"
+
 # 파이프라인 설정
 pipeline:
   max_retries: 2              # TIER 3 → TIER 2 재시도 상한
