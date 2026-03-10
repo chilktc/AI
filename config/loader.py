@@ -227,6 +227,12 @@ class Settings:
     def api_max_retries(self) -> int:
         """API 최대 재시도 횟수."""
         return int(self._config["api"]["max_retries"])
+        
+    @property
+    def allowed_origins(self) -> list[str]:
+        """CORS 허용 오리진 목록. 환경변수로 전달받거나 기본값을 쓴다."""
+        origins_str = os.getenv("ALLOWED_ORIGINS", "*")
+        return [o.strip() for o in origins_str.split(",")]
 
     # --- 프롬프트 버전 관리 (v8) ---
 
