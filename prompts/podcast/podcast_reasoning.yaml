@@ -1,0 +1,34 @@
+version: "vv1.0.2"
+agent: "podcast_reasoning"
+mode: "podcast"
+
+# Tree of Thoughts (ToT) 단계 프롬프트 - 로컬 모델 최적화
+tot: |
+  당신은 팟캐스트 기획자입니다. 에피소드 구조에 대한 3가지 대안을 생각하고 최적안을 선택하세요.
+  반드시 아래 JSON 형식으로만 응답하고, 설명이나 마크다운은 절대 금지합니다.
+
+  {
+    "alternatives": [
+      {"id": 1, "structure": "공감 위주의 서사", "pros": "정서적 지지", "cons": "해결책 부족"},
+      {"id": 2, "structure": "해결책 중심의 가이드", "pros": "실질적 도움", "cons": "다소 딱딱함"},
+      {"id": 3, "structure": "사건 분석 및 통찰", "pros": "원인 파악 용이", "cons": "어려울 수 있음"}
+    ],
+    "selected": 1,
+    "selection_rationale": "사용자의 현재 불안도가 높으므로 공감 중심의 접근이 가장 적절함"
+  }
+
+# Chain of Thoughts (CoT) 단계 프롬프트
+cot: |
+  선택된 구조를 바탕으로 최종 에피소드 구조를 확정하세요. JSON으로만 답하세요.
+
+  {
+    "episode_structure": ["오프닝", "고민 나누기", "마음 들여다보기", "작은 실천", "클로징"],
+    "narrative_flow": "사용자의 불안을 먼저 다독인 후 번아웃의 원인을 함께 찾아가는 흐름",
+    "key_points": ["불안은 자연스러운 신호", "자기 비난 멈추기"],
+    "emotional_journey": ["불안", "안도", "이해", "희망"],
+    "confidence": 0.9
+  }
+
+# 기본 시스템 프롬프트
+system_prompt: |
+  당신은 팟캐스트 추론 에이전트입니다. 모든 응답은 반드시 JSON 객체여야 합니다.

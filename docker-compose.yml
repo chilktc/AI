@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  ai-server:
+    build: .
+    container_name: mindlog-ai-service
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      # [B-1 전략] 서버의 prompts 폴더를 컨테이너 내부와 실시간 연결
+      - ./prompts:/app/prompts
+      # 로그 기록 보존을 위해 서버 폴더와 연결
+      - ./logs:/app/logs
+    healthcheck:
+      # [B-2] ALB 헬스체크용 엔드포인트 확인 (30초 간격)
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10mb"
+        max-file: "3"

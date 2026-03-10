@@ -1,0 +1,27 @@
+# Git 설정 및 문서
+.git
+.gitignore
+*.md
+docs/
+
+# 환경 변수 (보안상)
+.env
+.env.development
+.env.production
+
+# 프롬프트 폴더 (서버에서 직접 관리하기 위해)
+prompts/
+
+# 파이썬 실행 부산물 및 테스트
+__pycache__/
+*.py[cod]
+*$py.class
+tests/
+.pytest_cache/
+vultr/
+dev/
+
+# 로그 및 데이터
+logs/
+data/outputs/
+data/cache/
