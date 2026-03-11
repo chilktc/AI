@@ -58,5 +58,5 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build Docker image (Test)
         run: |
-          # Dockerfile을 이용해 박스가 정상적으로 구워지는지 체크합니다.
+          # Dockerfile을 이용해 박스가 정상적으로 구워지는지 체크합니다. 
           docker build -t mindlog-ai:test .
