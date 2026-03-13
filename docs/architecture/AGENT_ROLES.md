@@ -675,7 +675,7 @@ Peak State Size: ~12~18 KB (추정, 미구현)
 | # | 심각도 | 이슈 | 에이전트 |
 |---|--------|------|----------|
 | S-1 | HIGH | 개발자 경계 위반: Intent가 개발자2 필드 쓰기 (risk_level, risk_score, safety_flags) | Intent Classifier |
-| S-2 | HIGH | 출력 키 불일치: `visualization_result` 반환 vs AgentState `visual_data` 정의 | Visualization |
+| S-2 | ~~HIGH~~ RESOLVED | 출력 키 불일치: visual_data로 수정 완료 (visualization.py:64) | Visualization |
 | S-3 | MEDIUM | 미정의 필드 읽기: domain_hints, user_context | Knowledge |
 | S-4 | MEDIUM | Script Generator 다수 필드 직접 읽기 문서화 필요 | Script Generator |
 | S-5 | MEDIUM | 조건부 쓰기 미문서화: memory_results, knowledge_results | Podcast Reasoning |
@@ -701,4 +701,4 @@ Peak State Size: ~12~18 KB (추정, 미구현)
 
 ---
 
-*마지막 업데이트: 2026-03-03*
+*마지막 업데이트: 2026-03-13*

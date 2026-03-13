@@ -1,7 +1,7 @@
 """
 Health Check API 라우터.
 
-AWS ALB 및 쿠버네티스 Liveness/Readiness Probe용 엔드포인트.
+AWS ALB Target Group 헬스체크 및 Docker 컨테이너 Readiness Probe용 엔드포인트.
 """
 
 from fastapi import APIRouter
@@ -17,10 +17,12 @@ class HealthResponse(BaseModel):
     """기본 Health 응답"""
     status: str = "ok"
 
+
 class ReadyResponse(BaseModel):
     """Ready(준비됨) 응답"""
     status: str = "ready"
     components: dict[str, str]
+    storage_mode: str = "local"
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -35,23 +37,29 @@ async def health_check():
 @router.get("/health/ready", response_model=ReadyResponse)
 async def ready_check():
     """
-    심층 상태 점검 (Readiness Probe).
-    
+    심층 상태 점검 (Docker 컨테이너 Readiness Probe).
+
     LangGraph가 컴파일되었고, 백엔드 클라이언트가 초기화되었는지 검사한다.
     트래픽을 받을 준비가 되었는지 여부를 반환.
     """
     from src.api.main import backend_client, compiled_graph
-    
+
     components_status = {
         "graph": "ok" if compiled_graph is not None else "not_ready",
         "backend_client": "ok" if backend_client is not None else "not_ready",
     }
-    
-    # 하나라도 not_ready면 전체 상태가 "not_ready"일 수 있지만 
+
+    # 하나라도 not_ready면 전체 상태가 "not_ready"일 수 있지만
     # 현재 정책상 컴포넌트들 상태를 포함하여 200 반환 후 상태 라벨만 표시
     status = "ready" if all(v == "ok" for v in components_status.values()) else "not_ready"
-    
-    # 만약 완전히 트래픽 처리가 불가능한 상태라면 503 에러를 반환하게 구현할 수도 있음.
-    # 여기서는 상태값 반환으로 처리.
-    
-    return ReadyResponse(status=status, components=components_status)
+
+    # STORAGE_MODE 정보 포함 (Zone D: 현재 저장소 모드 확인용)
+    from config.loader import get_settings
+    settings = get_settings()
+    storage_mode = getattr(settings, "storage_mode", "local")
+
+    return ReadyResponse(
+        status=status,
+        components=components_status,
+        storage_mode=storage_mode,
+    )
