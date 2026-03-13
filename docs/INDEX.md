@@ -17,7 +17,11 @@ Mind-Log 프로젝트 문서 마스터 네비게이션입니다.
 |------|------|
 | [PROJECT_STRUCTURE.md](architecture/PROJECT_STRUCTURE.md) | 디렉토리 구조 및 파일 역할 |
 | [AGENT_ROLES.md](architecture/AGENT_ROLES.md) | 에이전트별 역할·입출력·스키마·이슈 정의서 |
-| [API_SPEC.md](architecture/API_SPEC.md) | REST API 명세 (v1.2, API_FLOW + BACKEND_API_CONTRACT 통합) |
+| [API_SPEC.md](architecture/API_SPEC.md) | REST API 명세 인덱스 (v2.0, 5개 문서 모음) |
+| [API_ARCHITECTURE.md](architecture/API_ARCHITECTURE.md) | API 아키텍처 — 서버 구조 & 파이프라인 실행 흐름 |
+| [API_ENDPOINTS_RECEIVING.md](architecture/API_ENDPOINTS_RECEIVING.md) | 수신 API (Backend→AI) 9개 엔드포인트 상세 |
+| [API_ENDPOINTS_INTERNAL.md](architecture/API_ENDPOINTS_INTERNAL.md) | 발신 API (AI→Backend) 5개 + Load API |
+| [API_COMMON.md](architecture/API_COMMON.md) | 스트리밍 이벤트, 에러 코드, 재시도 정책 |
 | [DATA_SCHEMA.md](architecture/DATA_SCHEMA.md) | 데이터 스키마 명세 (MySQL 7테이블 + Pinecone 2인덱스 + Neo4j 5노드 + S3) |
 | [DATA_SCHEMA_PLAN.md](architecture/DATA_SCHEMA_PLAN.md) | 데이터 스키마 설계 계획 (참고용) |
 
@@ -48,6 +52,7 @@ Mind-Log 프로젝트 문서 마스터 네비게이션입니다.
 
 | 문서 | 설명 |
 |------|------|
+| [CHANGELOG_v24.md](changelog/CHANGELOG_v24.md) | v24 변경이력 |
 | [CHANGELOG_v23.md](changelog/CHANGELOG_v23.md) | v23 변경이력 |
 | [CHANGELOG_v22.md](changelog/CHANGELOG_v22.md) | v22 변경이력 |
 | [CHANGELOG_v21.md](changelog/CHANGELOG_v21.md) | v21 변경이력 |

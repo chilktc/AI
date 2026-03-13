@@ -7,7 +7,7 @@ Backend팀과의 협의 사항을 한 곳에 집중하여 관리한다.
 경로 상수는 BackendClient.save(resource=...) / load(resource=...) 에서 사용.
 타입 상수는 SaveRequest(type=...) 에서 사용.
 
-Backend API 계약서: docs/architecture/BACKEND_API_CONTRACT.md
+Backend API 계약서: docs/architecture/API_SPEC.md (v2.0)
 """
 
 # ===================================================================

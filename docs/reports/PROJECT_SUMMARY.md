@@ -1,6 +1,6 @@
 # Mind-Log 프로젝트 종합 현황 보고서
 
-> 최종 업데이트: 2026-02-14 (v3 — v9~v13 반영: 멀티 프로바이더, pgvector 제거, Ollama, 인프라 보호, 라이브 테스트)
+> 최종 업데이트: 2026-03-13 (v4 — v14~v23 반영: 팟캐스트 7/7 완성, OpenAI 전환, 프롬프트 최적화 R1-R4, Zone C/D 통합)
 
 ---
 
@@ -105,7 +105,7 @@ Intent Classifier, Safety Agent, Emotion Agent, Knowledge Agent, Visualization A
 | 데이터 검증 | Pydantic v2 | |
 | 설정 관리 | PyYAML | |
 | CI/CD | GitHub Actions | |
-| Python | 3.12 | |
+| Python | 3.11+ | |
 | 린팅 | Black + isort + Ruff + mypy | |
 | 테스트 | pytest + pytest-asyncio | |
 
@@ -209,7 +209,7 @@ class LLMClient:
 | 구성 요소 | 파일 | 설명 |
 |-----------|------|------|
 | BaseAgent | `src/agents/shared/base_agent.py` | ABC 패턴, LLM 자동 설정, 프롬프트 자동 로드, A/B 테스트 |
-| LLM 클라이언트 | `src/agents/shared/llm_client.py` | 멀티 프로바이더 LLM 클라이언트 (Anthropic + Bedrock + 커스텀) |
+| LLM 클라이언트 | `src/agents/shared/llm_client.py` | 멀티 프로바이더 LLM 클라이언트 (Anthropic + Bedrock + OpenAI + Ollama + 커스텀) |
 | PromptLoader | `src/agents/shared/prompt_loader.py` | 5계층 보안 YAML 로더, 멀티버전 지원 |
 | Settings | `config/loader.py` | YAML 설정 + 환경변수, 버전/A/B 테스트 통제 |
 | AgentState | `src/models/agent_state.py` | TypedDict 공유 상태 (Protected) |
@@ -218,35 +218,50 @@ class LLMClient:
 | API 스키마 | `src/api/contracts.py` | SaveRequest/LoadResponse (Protected) |
 | 유틸리티 | `src/utils/logger.py`, `retry.py` | 로깅, 재시도 데코레이터 |
 
-#### 팟캐스트 에이전트 (개발자3 스코프)
-| 에이전트 | 파일 | TIER | 상태 |
+#### 팟캐스트모드 에이전트 (7/7 완료)
+| 에이전트 | 파일 | TIER | 담당 | 상태 |
+|---------|------|------|------|------|
+| Content Analyzer | `src/agents/podcast/content_analyzer.py` | 1 | 개발자3 | ✅ 구현 완료 |
+| Podcast Reasoning | `src/agents/podcast/podcast_reasoning.py` | 1 | 개발자3 | ✅ 구현 완료 (GoT/ToT/CoT) |
+| Script Generator | `src/agents/podcast/script_generator.py` | 2 | 개발자1 | ✅ 구현 완료 |
+| Batch Validator | `src/agents/podcast/batch_validator.py` | 3 | 개발자3 | ✅ 구현 완료 (5개 기준 검증) |
+| Script Personalizer | `src/agents/podcast/script_personalizer.py` | 4 | 개발자1 | ✅ 구현 완료 |
+| Episode Memory | `src/agents/podcast/episode_memory.py` | 독립 | 개발자2 | ✅ 구현 완료 |
+| Visualization (Podcast) | `src/agents/podcast/visualization.py` | 2/비동기 | 개발자2 | ✅ 구현 완료 |
+
+#### 공용 에이전트 (양 모드 공유)
+| 에이전트 | 파일 | 담당 | 상태 |
 |---------|------|------|------|
-| Content Analyzer | `src/agents/podcast/content_analyzer.py` | 1 | ✅ 구현 완료 |
-| Podcast Reasoning | `src/agents/podcast/podcast_reasoning.py` | 1 | ✅ 구현 완료 (GoT/ToT/CoT) |
-| Batch Validator | `src/agents/podcast/batch_validator.py` | 3 | ✅ 구현 완료 (5개 기준 검증) |
-| Learning Agent | `src/agents/shared/learning.py` | 비동기 | ✅ 구현 완료 |
+| Intent Classifier | `src/agents/conversation/intent_classifier.py` | 개발자1 | ✅ 구현 완료 |
+| Safety Agent | `src/agents/podcast/safety.py` | 개발자2 | ✅ 구현 완료 (양 모드 공용) |
+| Emotion Agent | `src/agents/podcast/emotion.py` | 개발자2 | ✅ 구현 완료 (양 모드 공용) |
+| Knowledge Agent | `src/agents/conversation/knowledge.py` | 개발자1 | ✅ 구현 완료 |
+| Learning Agent | `src/agents/shared/learning.py` | 개발자3 | ✅ 구현 완료 (양 모드 공용) |
+
+#### 워크플로우
+| 구성 요소 | 파일 | 상태 |
+|-----------|------|------|
+| LangGraph Workflow | `src/graph/workflow.py` | ✅ 구현 완료 (팟캐스트 경로) |
 
 #### 프롬프트 시스템
 | 프롬프트 | 파일 | 형식 |
 |---------|------|------|
-| Content Analyzer | `prompts/podcast/content_analyzer.yaml` | 멀티버전 v1.0.0 |
-| Podcast Reasoning | `prompts/podcast/podcast_reasoning.yaml` | 멀티버전 v1.0.0 (GoT/ToT/CoT) |
-| Batch Validator | `prompts/podcast/batch_validator.yaml` | 멀티버전 v1.0.0 |
+| Content Analyzer | `prompts/podcast/content_analyzer.yaml` | 멀티버전 v2.1.0 (R4 최종) |
+| Podcast Reasoning | `prompts/podcast/podcast_reasoning.yaml` | 멀티버전 v3.0.0 (R4 최종, GoT/ToT/CoT) |
+| Batch Validator | `prompts/podcast/batch_validator.yaml` | 멀티버전 v2.3.0 (R4 최종) |
 | Learning | `prompts/shared/learning.yaml` | 멀티버전 v1.0.0 |
 
-### 5.2 미구현 / 스텁 상태 (⏳)
+### 5.2 미구현 — 대화모드 전용 에이전트 (⏳)
 
 | 항목 | 상태 | 담당 | 비고 |
 |------|------|------|------|
-| Script Generator | ⏳ 스텁 | 개발자1 | TIER 2 생성 에이전트 |
-| Script Personalizer | ⏳ 스텁 | 개발자1 | TIER 4 톤/스타일 조정 |
-| Episode Memory | ⏳ 스텁 | 개발자2 | DI 패턴으로 Reasoning이 조건부 호출 |
-| Safety Agent (전체) | ⏳ 스텁 | 개발자2 | 현재 risk_level 반환만 |
-| Emotion Agent | ⏳ 스텁 | 개발자2 | |
-| Intent Classifier | ⏳ 스텁 | 개발자1 | |
-| Knowledge Agent (실제) | ⏳ 스텁 | 개발자1 | 현재 스텁으로 빈 결과 반환 |
-| LangGraph Workflow | ⏳ 미구현 | 3인 합의 | `src/graph/workflow.py` |
-| 대화모드 에이전트 13개 | ⏳ 보류 | 전원 | 팟캐스트 완료 후 착수 |
+| Context Agent | ⏳ 미구현 | 개발자3 | TIER 1 대화 맥락 |
+| Memory Agent | ⏳ 미구현 | 개발자2 | 독립 (Reasoning 조건부 호출) |
+| Reasoning Agent | ⏳ 미구현 | 개발자3 | TIER 1 GoT/ToT/CoT |
+| Synthesis Agent | ⏳ 미구현 | 개발자1 | TIER 2 응답 생성 |
+| Validator Agent | ⏳ 미구현 | 개발자3 | TIER 3 검증 |
+| Personalization Agent | ⏳ 미구현 | 개발자1 | TIER 4 톤/스타일 |
+| Telemetry Agent | ⏳ 스텁 | 미정 | 전체 에이전트 완료 후 구현 예정 |
 
 ---
 
@@ -328,7 +343,7 @@ class LLMClient:
 
 ## 7. 테스트 현황
 
-### 전체 결과: 210 passed ✅
+### v13 시점 결과: 210 passed ✅
 
 | 테스트 파일 | 테스트 수 | 검증 대상 |
 |------------|----------|----------|
@@ -340,6 +355,8 @@ class LLMClient:
 | `test_prompt_versioning.py` | 27 | 멀티버전 로드, 기본/폴백 버전, A/B 테스트, Settings 연동 |
 | `test_llm_client.py` | 37 | LLM 멀티 프로바이더, JSON 파싱, register_provider, Bedrock |
 | **합계** | **210** | |
+
+> **v23 이후 현황 (2026-03-13)**: monitoring, api/e2e, integration, graph, 공용 에이전트 테스트 등이 대폭 추가됨. 정확한 수치는 `pytest --collect-only -q | tail -1`로 확인.
 
 ### 린트/타입 검사
 
@@ -377,29 +394,35 @@ mind-log/
 │   ├── agents/
 │   │   ├── shared/
 │   │   │   ├── base_agent.py          # BaseAgent ABC (v8 멀티버전 + A/B)
-│   │   │   ├── llm_client.py          # 멀티 프로바이더 LLM 클라이언트 (Anthropic + Bedrock + 커스텀)
+│   │   │   ├── llm_client.py          # 멀티 프로바이더 LLM 클라이언트 (Anthropic + Bedrock + OpenAI + Ollama + 커스텀)
 │   │   │   ├── prompt_loader.py       # YAML 프롬프트 로더 (v7+v8)
 │   │   │   ├── learning.py            # Learning Agent
 │   │   │   └── stubs.py               # Episode Memory & Knowledge 스텁
 │   │   ├── podcast/
 │   │   │   ├── content_analyzer.py    # Content Analyzer (TIER 1)
 │   │   │   ├── podcast_reasoning.py   # Podcast Reasoning (GoT/ToT/CoT)
-│   │   │   └── batch_validator.py     # Batch Validator (TIER 3)
+│   │   │   ├── batch_validator.py     # Batch Validator (TIER 3)
+│   │   │   ├── script_generator.py    # Script Generator (TIER 2)
+│   │   │   ├── script_personalizer.py # Script Personalizer (TIER 4)
+│   │   │   ├── episode_memory.py      # Episode Memory (독립)
+│   │   │   ├── visualization.py       # Visualization (TIER 2/비동기)
+│   │   │   ├── safety.py              # Safety Agent (공용)
+│   │   │   └── emotion.py             # Emotion Agent (공용)
 │   │   └── conversation/              # [보류] 대화모드 에이전트
 │   ├── api/
 │   │   ├── client.py                  # BackendClient (httpx 비동기)
 │   │   └── contracts.py               # [Protected] SaveRequest/LoadResponse
 │   ├── graph/
-│   │   └── __init__.py                # [Protected] LangGraph 워크플로우 (미구현 — 3인 합의 후 작성)
+│   │   └── workflow.py                 # [Protected] LangGraph 워크플로우 (팟캐스트 경로 구현 완료)
 │   └── utils/
 │       ├── logger.py                  # 구조화 로깅
 │       └── retry.py                   # 재시도 데코레이터
 │
-├── prompts/                           # [.gitignore] YAML 프롬프트 (보안상 리포 미포함)
+├── prompts/                           # YAML 프롬프트 (리포 포함, PROMPT_SECURITY.md만 .gitignore)
 │   ├── podcast/
-│   │   ├── content_analyzer.yaml      # 멀티버전 v1.0.0
-│   │   ├── podcast_reasoning.yaml     # 멀티버전 v1.0.0 (GoT/ToT/CoT)
-│   │   └── batch_validator.yaml       # 멀티버전 v1.0.0
+│   │   ├── content_analyzer.yaml      # 멀티버전 v2.1.0 (R4 최종)
+│   │   ├── podcast_reasoning.yaml     # 멀티버전 v3.0.0 (R4 최종, GoT/ToT/CoT)
+│   │   └── batch_validator.yaml       # 멀티버전 v2.3.0 (R4 최종)
 │   └── shared/
 │       └── learning.yaml              # 멀티버전 v1.0.0
 │
@@ -418,16 +441,28 @@ mind-log/
 │   └── integration/                        # [보류]
 │
 ├── docs/
-│   ├── PROJECT_STRUCTURE.md           # 디렉토리 구조 상세
-│   ├── PROJECT_SUMMARY.md            # ← 본 문서
-│   ├── GIT_WORKFLOW.md                # 브랜치/커밋/PR 가이드
-│   ├── QUICK_START.md                 # 환경 설정 및 빠른 시작
-│   ├── OLLAMA_SETUP.md               # Ollama 로컬 LLM 설정 가이드
-│   ├── PROMPT_SECURITY.md             # 프롬프트 보안 문서 [.gitignore]
-│   ├── CHANGELOG_v1-v5.md            # v1~v5 변경이력
-│   ├── CHANGELOG_v6.md               # v6 변경이력
-│   ├── CHANGELOG_v7.md               # v7 변경이력
-│   └── CHANGELOG_v9.md               # v9 변경이력
+│   ├── INDEX.md                       # 문서 마스터 인덱스
+│   ├── architecture/                  # 아키텍처 문서
+│   │   ├── PROJECT_STRUCTURE.md       # 디렉토리 구조 상세
+│   │   ├── AGENT_ROLES.md             # 에이전트별 역할·입출력 정의서
+│   │   ├── API_SPEC.md                # AI↔Backend API 명세
+│   │   ├── DATA_SCHEMA.md             # 데이터 스키마 정의
+│   │   └── DATA_SCHEMA_PLAN.md        # 데이터 스키마 설계안 (폐기)
+│   ├── guides/                        # 개발 가이드
+│   │   ├── GIT_WORKFLOW.md            # 브랜치/커밋/PR 가이드
+│   │   ├── AGENT_DEV_GUIDE.md         # 에이전트 개발 가이드
+│   │   ├── E2E_TEST_GUIDE.md          # E2E 테스트 가이드
+│   │   ├── PROMPT_VERSIONING.md       # 프롬프트 버전 관리 가이드
+│   │   └── ...                        # 인프라, Zone 가이드 등
+│   ├── getting-started/               # 시작 가이드
+│   │   ├── QUICK_START.md             # 환경 설정 및 빠른 시작
+│   │   └── OLLAMA_SETUP.md            # Ollama 로컬 LLM 설정 가이드
+│   ├── reports/                       # 프로젝트 보고서
+│   │   ├── PROJECT_SUMMARY.md         # ← 본 문서
+│   │   └── ...                        # 코드 리뷰, 리팩토링 로그 등
+│   └── changelog/                     # 변경이력 (v1-v5 ~ v23)
+│       ├── INDEX.md                   # 변경이력 인덱스
+│       └── CHANGELOG_v1-v5.md ~ v23   # 15개 변경이력 파일
 │
 ├── dev/                               # 로컬 개발 전용 (.gitignore — git push 제외)
 │   ├── ollama_provider.py             # Ollama OpenAI 호환 API 프로바이더
@@ -515,7 +550,7 @@ main ← PR 머지 (3명 전원 승인 필수)
  └── develop ← 통합 테스트 브랜치 (최소 1명 리뷰)
       ├── feature/analysis-*     (개발자1)
       ├── feature/reasoning-*    (개발자2)
-      └── feature/validation-*   (개발자3)  ← 현재 활성: feature/validation-podcast-agents
+      └── feature/validation-*   (개발자3)
 ```
 
 ### 커밋 컨벤션
@@ -529,7 +564,7 @@ scope: intent, safety, emotion, context, memory, knowledge, reasoning,
        podcast, content, episode, script, batch, graph, api, models
 ```
 
-### 현재 브랜치 상태
+### v13 시점 브랜치 상태
 
 | 브랜치 | 기반 | 커밋 수 | 상태 |
 |--------|------|---------|------|
@@ -537,7 +572,7 @@ scope: intent, safety, emotion, context, memory, knowledge, reasoning,
 | `develop` | main | 0 (동기화) | 기본 통합 브랜치 |
 | `main` | — | 2 | 프로덕션 |
 
-### 커밋 이력 (feature/validation-podcast-agents)
+### v13 시점 커밋 이력 (feature/validation-podcast-agents)
 
 ```
 d345d71 docs: pgvector 제거 — Pinecone 단독 벡터 DB로 통일
@@ -588,13 +623,13 @@ GET /api/v1/{resource}?user_id={uuid}&type={type}&limit={n}
 | 3 | 에피소드 3-5분 | 멘탈케어 마이크로 콘텐츠 최적 소비 시간 |
 | 4 | 재시도 최대 2회 | 무한 루프 방지 (CLAUDE.md v4.0) |
 | 5 | YAML safe_load 강제 | 임의 코드 실행 방어 |
-| 6 | prompts/ 디렉토리 .gitignore | 프롬프트 보안 (리포지토리 미포함) |
+| 6 | prompts/ 보안 정책 | .gitignore 규칙 유지 + 운영 YAML은 `git add -f`로 추적 (PROMPT_SECURITY.md만 미포함) |
 | 7 | complexity 기반 추론 라우팅 | 단순 쿼리의 LLM 비용 절감 |
 | 8 | 세션 기반 A/B variant | 동일 세션 내 일관된 경험 보장 |
 | 9 | contextvars 사용 | LangGraph 병렬 실행에서 비동기 안전 격리 |
 | 10 | DI 패턴 (스텁) | Memory/Knowledge 미구현 상태에서도 파이프라인 테스트 가능 |
 | 11 | 관계형 DB → MySQL | PostgreSQL에서 MySQL로 변경 |
-| 12 | LLM 트리플 프로바이더 | Anthropic SDK + AWS Bedrock + 커스텀(Ollama) 플러그인으로 유연성 확보 |
+| 12 | LLM 멀티 프로바이더 | Anthropic SDK + AWS Bedrock + OpenAI + 커스텀(Ollama) 플러그인으로 유연성 확보 |
 | 13 | json.loads strict=False | 로컬 LLM(Ollama 등)의 제어 문자 포함 JSON 응답 허용 |
 | 14 | dev/ 폴더 격리 | 개발 전용 코드를 .gitignore로 분리, 운영 영향 0 |
 
@@ -602,26 +637,26 @@ GET /api/v1/{resource}?user_id={uuid}&type={type}&limit={n}
 
 ## 13. 다음 단계 (향후 로드맵)
 
-### 단기 (팟캐스트 파이프라인 완성)
+### 단기 — 팟캐스트 파이프라인 ✅ 완료 (v14~v23)
 
-1. **Script Generator** 구현 (개발자1) — TIER 2 스크립트 생성
-2. **Script Personalizer** 구현 (개발자1) — TIER 4 톤/스타일 조정
-3. **Episode Memory** 실제 구현 (개발자2) — 스텁 교체
-4. **Knowledge Agent** 실제 구현 (개발자1) — 스텁 교체
-5. **LangGraph Workflow** 통합 (3인 합의) — 전체 파이프라인 연결
+1. ~~Script Generator 구현 (개발자1)~~ ✅
+2. ~~Script Personalizer 구현 (개발자1)~~ ✅
+3. ~~Episode Memory 실제 구현 (개발자2)~~ ✅
+4. ~~Knowledge Agent 실제 구현 (개발자1)~~ ✅
+5. ~~LangGraph Workflow 통합 (3인 합의)~~ ✅
 
-### 중기 (대화모드 착수)
+### 중기 (대화모드 착수) — 진행 중
 
-7. Intent Classifier, Safety, Emotion, Context 에이전트 구현
-8. Reasoning, Memory, Knowledge, Synthesis 에이전트 구현
-9. Validator, Personalization 에이전트 구현
-10. 대화모드 LangGraph 워크플로우 통합
+6. ~~Intent Classifier~~ ✅, ~~Safety~~ ✅, ~~Emotion~~ ✅ — 구현 완료 (팟캐스트 공용)
+7. Context, Memory, Reasoning, Synthesis — ⏳ 미구현
+8. Validator, Personalization — ⏳ 미구현
+9. 대화모드 LangGraph 워크플로우 통합 — ⏳ 미구현
 
 ### 장기 (플랫폼 완성)
 
-11. Visualization Agent 구현 (이미지 생성)
-12. Telemetry 실시간 모니터링 (담당자 결정 후)
-13. 프론트엔드 연동 (FastAPI + WebSocket)
+10. ~~Visualization Agent~~ ✅ — 구현 완료
+11. Telemetry 실시간 모니터링 (담당자 결정 후) — ⏳
+12. 프론트엔드 연동 (FastAPI + WebSocket) — ⏳
 14. 프로덕션 배포 + A/B 테스트 실전 운영
 
 ---
@@ -660,7 +695,7 @@ GET /api/v1/{resource}?user_id={uuid}&type={type}&limit={n}
 | 항목 | 초반 계획 | 현재 |
 |------|----------|------|
 | 관계형 DB | PostgreSQL | **MySQL** |
-| LLM 호출 | Anthropic SDK 직접 호출만 | **트리플: Anthropic SDK + AWS Bedrock + 커스텀(Ollama)** (구현 완료) |
+| LLM 호출 | Anthropic SDK 직접 호출만 | **멀티: Anthropic SDK + AWS Bedrock + OpenAI + 커스텀(Ollama)** (구현 완료) |
 
 ### 14.3 v7/v8 — 초반 계획에 없던 신규 시스템
 
@@ -735,3 +770,5 @@ v7과 v8에서 도입된 기능은 **초반 CLAUDE.md에 전혀 언급되지 않
 ---
 
 *본 문서는 프로젝트의 전체 현황을 종합한 것으로, 코드·문서·대화 이력을 기반으로 작성되었습니다.*
+
+*마지막 업데이트: 2026-03-13*

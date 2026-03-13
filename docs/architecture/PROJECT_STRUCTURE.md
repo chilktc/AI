@@ -60,7 +60,7 @@ mind-log/
 │   │   └── shared/              # 공용 에이전트 유틸리티
 │   │       ├── __init__.py
 │   │       ├── base_agent.py    # 에이전트 공통 부모 클래스 (BaseAgent ABC)
-│   │       ├── llm_client.py    # 멀티 프로바이더 LLM 클라이언트 (Anthropic + Bedrock + OpenAI + 커스텀)
+│   │       ├── llm_client.py    # 멀티 프로바이더 LLM 클라이언트 (Anthropic + Bedrock + OpenAI + Ollama + 커스텀)
 │   │       ├── prompt_loader.py # YAML 프롬프트 로더 (멀티버전 + A/B 테스트)
 │   │       ├── learning.py      # Learning Agent 구현 (양쪽 모드 공용)
 │   │       ├── base_memory.py   # 기억 에이전트 공통 베이스 클래스
@@ -156,7 +156,11 @@ mind-log/
 │   ├── architecture/            # 아키텍처 문서
 │   │   ├── PROJECT_STRUCTURE.md # 이 파일
 │   │   ├── AGENT_ROLES.md       # 에이전트별 역할·입출력·이슈 정의서
-│   │   ├── API_SPEC.md          # REST API 명세
+│   │   ├── API_SPEC.md          # REST API 명세 인덱스 (v2.0)
+│   │   ├── API_ARCHITECTURE.md  # API 아키텍처 (서버 구조, 파이프라인 흐름)
+│   │   ├── API_ENDPOINTS_RECEIVING.md # 수신 API (Backend→AI) 상세
+│   │   ├── API_ENDPOINTS_INTERNAL.md  # 발신 API (AI→Backend) 상세
+│   │   ├── API_COMMON.md        # 공통 에러 코드, 스트리밍, 재시도
 │   │   └── DATA_SCHEMA_PLAN.md  # 데이터 스키마 설계 계획
 │   ├── guides/                  # 개발 가이드
 │   │   ├── AGENT_DEV_GUIDE.md   # 에이전트 개발 상세 가이드
@@ -226,7 +230,7 @@ class MyAgent(BaseAgent):
 모든 에이전트가 의존하는 공용 코드입니다. 기존 public 메서드의 시그니처/동작 변경은 금지되며, 신규 추가만 허용됩니다.
 
 - `base_agent.py`: BaseAgent ABC — LLM 호출, 로깅, 시간 측정, 프롬프트 로딩 공통 처리
-- `llm_client.py`: 멀티 프로바이더 LLM 클라이언트 (Anthropic SDK + AWS Bedrock + OpenAI + 커스텀 플러그인)
+- `llm_client.py`: 멀티 프로바이더 LLM 클라이언트 (Anthropic SDK + AWS Bedrock + OpenAI + Ollama + 커스텀 플러그인)
 - `prompt_loader.py`: YAML 기반 프롬프트 로더 (멀티버전 지원 + A/B 테스트)
 - `learning.py`: Learning Agent 구현 (대화/팟캐스트 양쪽 모드 공용)
 - `base_memory.py`: 기억 에이전트(Memory, Episode Memory) 공통 베이스 클래스
@@ -311,4 +315,4 @@ A/B 테스트가 활성화된 경우(`prompts.ab_tests.{agent_name}.enabled: tru
 
 *참고: 에이전트 상세 설계는 ProjectDocs/ 폴더의 개별 에이전트 문서를 참조하세요.*
 
-*마지막 업데이트: 2026-03-11*
+*마지막 업데이트: 2026-03-13*

@@ -4,6 +4,7 @@
 
 | 버전 | 파일 | 요약 |
 |------|------|------|
+| v24 | [CHANGELOG_v24.md](CHANGELOG_v24.md) | API_SPEC.md 구조 분할 리팩토링 (v1.2 → v2.0) |
 | v23 | [CHANGELOG_v23.md](CHANGELOG_v23.md) | Zone C/D 통합 + API 문서 통합 + 스키마 정렬 + 인프라 수정 |
 | v22 | [CHANGELOG_v22.md](CHANGELOG_v22.md) | 팟캐스트 데이터 저장 + AgentDataPublisher + 문서 갱신 |
 | v21 | [CHANGELOG_v21.md](CHANGELOG_v21.md) | Zone C + Zone D(Backend) 저장소·관측성 |
@@ -13,7 +14,7 @@
 | v16-v17 | [CHANGELOG_v16-v17.md](CHANGELOG_v16-v17.md) | |
 | v14-v15 | [CHANGELOG_v14-v15.md](CHANGELOG_v14-v15.md) | |
 | v10-v13 | [CHANGELOG_v10-v13.md](CHANGELOG_v10-v13.md) | |
-| v6-v9 | [CHANGELOG_v6.md](CHANGELOG_v6.md) ~ [CHANGELOG_v9.md](CHANGELOG_v9.md) | 개별 파일 |
+| v6-v9 | [v6](CHANGELOG_v6.md) · [v7](CHANGELOG_v7.md) · [v8](CHANGELOG_v8.md) · [v9](CHANGELOG_v9.md) | 개별 파일 |
 | v1-v5 | [CHANGELOG_v1-v5.md](CHANGELOG_v1-v5.md) | 초기 개발 |
 
 ---

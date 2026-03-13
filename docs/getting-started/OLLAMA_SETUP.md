@@ -117,13 +117,15 @@ ollama:
   timeout: 120                         # 타임아웃 (초)
 
   models:
-    haiku: "gemma2:2b"        # Learning Agent 등 경량 모델
-    sonnet: "llama3.2"        # Content Analyzer, Batch Validator 등
-    opus: "llama3.2:latest"   # Reasoning Agent 등 고급 모델
+    haiku: "gpt-oss:20b"      # Learning Agent, Intent Classifier 등
+    sonnet: "gpt-oss:20b"     # Content Analyzer, Batch Validator 등
+    opus: "gpt-oss:20b"       # Reasoning Agent 등 고급 모델
 ```
 
-> **참고**: Mind-Log는 한국어 기반 프로젝트이므로 `qwen2.5:7b` 모델을 권장합니다.
-> 현재 `dev/ollama_config.yaml`의 기본 매핑은 haiku/sonnet/opus 모두 `qwen2.5:7b`으로 설정되어 있습니다.
+> **참고**: Mind-Log는 한국어 기반 프로젝트이므로 `qwen2.5` 계열 모델을 권장합니다.
+> 현재 `dev/ollama_config.yaml`의 기본 매핑은 `gpt-oss:20b`이며, 한국어 성능 우선 시 `qwen2.5:14b`(sonnet/opus) + `qwen2.5:7b`(haiku)로 변경을 권장합니다 (상세: `docs/reports/OLLAMA_MODEL_TEST_REPORT.md` 섹션 7.2).
+>
+> **운영 기본 프로바이더 (Round 4 이후)**: OpenAI `gpt-4o-mini`가 기본입니다. Ollama는 로컬 개발/오프라인 테스트용으로 유지됩니다.
 
 ### 4.4. .env 설정
 
@@ -390,4 +392,4 @@ python3 -m dev.live_tests.run_live --pipeline
 
 ---
 
-*마지막 업데이트: 2026-02-14*
+*마지막 업데이트: 2026-03-13*
