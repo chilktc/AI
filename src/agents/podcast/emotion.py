@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import Any
 
 from src.agents.shared.base_agent import BaseAgent
+from src.api.backend_resources import RESOURCE_EMOTION_LOG
+from src.api.publisher import AgentDataPublisher
 from src.models.agent_state import AgentState
 
 
@@ -77,6 +79,15 @@ class EmotionAgent(BaseAgent):
             "tone_recommendation": str(vec.get("tone_recommendation", "supportive_neutral")),
             "emotional_journey_hint": journey if isinstance(journey, list) else [],
         }
+
+        # 백엔드에 감정 데이터 직접 전달 (실패 시 예외 미전파)
+        publisher = AgentDataPublisher()
+        await publisher.publish(
+            resource=RESOURCE_EMOTION_LOG,
+            data=emotion_vectors,
+            user_id=state.get("user_id", ""),
+            session_id=state.get("session_id", ""),
+        )
 
         return {"emotion_vectors": emotion_vectors}
 

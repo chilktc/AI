@@ -71,9 +71,9 @@ def create_sample_script() -> ValidatedScript:
 def create_sample_journey() -> EmotionalJourney:
     """샘플 감정 여정"""
     return EmotionalJourney(
-        start_emotion="exhausted",
-        peak_emotion="understood",
-        resolution_emotion="hopeful",
+        opening="exhausted",
+        development="understood",
+        resolution="hopeful",
         journey_type="healing",
     )
 

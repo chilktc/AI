@@ -35,7 +35,7 @@ async def create_session(request: SessionCreateRequest) -> SessionCreateResponse
     """
     세션 생성.
     
-    프론트엔드가 대화나 팟캐스트 모드 진입 시 호출한다.
+    Backend 서버가 대화나 팟캐스트 모드 진입 시 호출한다.
     신규 세션 ID를 생성하여 반환.
     """
     
@@ -62,11 +62,13 @@ async def close_session(session_id: str, request: SessionCloseRequest) -> dict:
     """
     세션 종료.
     
-    대화가 끝났을 때 프론트가 호출.
+    대화가 끝났을 때 Backend 서버가 호출.
     비동기로 백그라운드 태스크나 Learning Agent를 트리거하여 세션 로그를 정리/학습할 수 있다.
     """
     
-    # TODO: 피드백(request.feedback) 등을 바탕으로 Learning Agent 비동기 트리거 구현
+    # TODO: Learning Agent 비동기 트리거 — 대화모드 에이전트 구현 완료 후 활성화 예정
+    # 현재 비활성 이유: 대화모드 세션에서 수집할 AgentState가 아직 없음
+    # 활성화 시점: 대화모드 에이전트 (Context, Reasoning, Synthesis 등) 구현 후
     # asyncio.create_task(trigger_learning_agent(session_id, request.user_id, request.feedback))
     
     return {"success": True, "message": f"Session {session_id} closed successfully"}

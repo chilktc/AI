@@ -300,7 +300,26 @@ class AgentState(TypedDict, total=False):
 
 ## 백엔드 API 규약
 
-백엔드 서버와는 REST API + JSON으로 통신한다. API 명세는 백엔드 팀이 작성하며, 프론트엔드 AI 파트는 아래 인터페이스를 따른다.
+### 서버 아키텍처
+
+```
+Frontend (app-4:3000) → Backend 서버 (app-3:8080) ↔ AI 서버 (app-2:8000)
+                                    ↓
+                                   DB
+```
+
+| 서버 | 역할 | 포트 |
+|------|------|------|
+| AI 서버 | LLM 파이프라인 실행, Backend 서버 전용 API 제공 | 8000 |
+| Backend 서버 | 데이터 영속화 (MySQL), 조회, 프론트엔드 API 제공 | 8080 |
+
+- 프론트엔드는 **Backend 서버에만** 접속한다. AI 서버와 직접 통신하지 않는다.
+- AI 서버와 양방향 통신하는 서버는 **오직 Backend 서버** 하나뿐이다.
+- Backend 서버가 프론트엔드 요청을 받아 AI 서버에 전달하고, 결과를 프론트엔드에 반환한다.
+- Save/Load API는 AI → Backend 내부 통신이다 (`BackendClient` 경유).
+- Backend 서버 API 계약서: `docs/architecture/BACKEND_API_CONTRACT.md`
+
+백엔드 서버와는 REST API + JSON으로 통신한다. API 스키마는 `src/api/contracts.py`에 정의되어 있으며, 리소스 경로/타입 상수는 `src/api/backend_resources.py`에서 관리한다.
 
 ### 저장 API (Save)
 
@@ -356,7 +375,10 @@ Content-Type: application/json
 
 - 모든 API 호출은 `src/api/` 모듈을 통해서만 한다 (직접 HTTP 호출 금지)
 - API 스키마 변경은 백엔드 팀과 합의 후 `src/api/contracts.py`에 반영
-- 타임아웃: 기본 5초, LLM 관련 30초
+- 리소스 경로 상수: `src/api/backend_resources.py` (RESOURCE_* 상수)
+- Save 타입 상수: `src/api/backend_resources.py` (TYPE_* 상수)
+- 타임아웃: 기본 5초, LLM 관련 30초 (config `api.timeout`, `api.llm_timeout`)
+- Backend URL 기본값: `http://localhost:8080/api/v1` (`BACKEND_API_URL` 환경변수로 오버라이드)
 - 실패 시 최대 3회 재시도 (exponential backoff)
 
 ---

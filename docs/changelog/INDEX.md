@@ -4,6 +4,8 @@
 
 | 버전 | 파일 | 요약 |
 |------|------|------|
+| v23 | [CHANGELOG_v23.md](CHANGELOG_v23.md) | Zone C/D 통합 + API 문서 통합 + 스키마 정렬 + 인프라 수정 |
+| v22 | [CHANGELOG_v22.md](CHANGELOG_v22.md) | 팟캐스트 데이터 저장 + AgentDataPublisher + 문서 갱신 |
 | v21 | [CHANGELOG_v21.md](CHANGELOG_v21.md) | Zone C + Zone D(Backend) 저장소·관측성 |
 | v20 | [CHANGELOG_v20.md](CHANGELOG_v20.md) | 테스트 스위트 감축 (361→270) |
 | v19 | [CHANGELOG_v19.md](CHANGELOG_v19.md) | |
@@ -16,4 +18,4 @@
 
 ---
 
-*마지막 업데이트: 2026-03-09*
+*마지막 업데이트: 2026-03-13*

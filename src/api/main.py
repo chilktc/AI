@@ -2,7 +2,7 @@
 FastAPI 앱 엔트리포인트.
 
 API 서버의 뼈대로서 CORS, 예외 핸들링, 라우터 등록 및 Lifespan(앱 수명주기)
-관리를 담당한다. 
+관리를 담당한다.
 """
 
 from contextlib import asynccontextmanager
@@ -16,8 +16,13 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from config.loader import get_settings
 from src.api.client import BackendClient
 from src.api.external_schemas import ErrorDetail, ErrorResponse, RequestTracing
+from src.api.middleware import RequestLoggingMiddleware
 from src.api.routes import health, sessions, podcasts
 from src.graph.workflow import compile_graph
+from src.monitoring.prometheus import get_metrics_router
+from src.utils.logger import get_agent_logger
+
+logger = get_agent_logger("api_server")
 
 
 # 전역 클라이언트 인스턴스 (필요 시 의존성 주입 등에 활용)
@@ -32,21 +37,35 @@ async def lifespan(app: FastAPI):
     앱 시작 시 초기화하고 종료 시 리소스를 반환한다.
     """
     global backend_client, compiled_graph
-    
+
     settings = get_settings()
+    storage_mode = getattr(settings, "storage_mode", "local")
+
+    logger.info(
+        "앱 시작: STORAGE_MODE=%s",
+        storage_mode,
+        extra={"storage_mode": storage_mode},
+    )
 
     # 1. LangGraph 컴파일 (최초 1회 컴파일 캐싱 효과)
     # MemorySaver 등 체포인터 설정은 환경에 맞게 추가할 수 있음
     compiled_graph = compile_graph("unified")
+    logger.info("LangGraph 컴파일 완료 (unified)")
 
     # 2. Backend API 클라이언트 초기화
     backend_client = BackendClient()
+    logger.info(
+        "BackendClient 초기화 완료 (base_url=%s)",
+        backend_client._base_url,
+    )
 
     yield
 
     # 앱 종료 시 리소스 정리
+    logger.info("앱 종료 시작: 리소스 정리")
     if backend_client:
         await backend_client.close()
+    logger.info("앱 종료 완료")
 
 # FastAPI 앱 생성
 app = FastAPI(
@@ -67,6 +86,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# HTTP 요청/응답 구조화 로깅 미들웨어 (C-1)
+app.add_middleware(RequestLoggingMiddleware)
 
 # ---------------------------------------------------------------------------
 # 전역 예외 처리기
@@ -135,3 +157,6 @@ async def general_exception_handler(request: Request, exc: Exception):
 app.include_router(health.router, tags=["Health Check"])
 app.include_router(sessions.router, prefix="/api/v1/sessions", tags=["Sessions"])
 app.include_router(podcasts.router, prefix="/api/v1/podcasts", tags=["Podcasts"])
+
+# Prometheus 메트릭 엔드포인트 (C-2: prometheus.py 인수 사항)
+app.include_router(get_metrics_router())

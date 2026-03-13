@@ -216,7 +216,7 @@ class Settings:
     @property
     def api_base_url(self) -> str:
         """백엔드 API 기본 URL. 환경변수 BACKEND_API_URL로 설정."""
-        return os.getenv("BACKEND_API_URL", "http://localhost:8000/api/v1")
+        return os.getenv("BACKEND_API_URL", "http://localhost:8080/api/v1")
 
     @property
     def api_timeout(self) -> int:
