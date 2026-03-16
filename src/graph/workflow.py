@@ -9,7 +9,7 @@ TIER 기반 파이프라인:
     TIER 2 (생성): Synthesis / Script Generator (+Visualization 병렬)
     TIER 3 (검증): Validator / Batch Validator (실패 시 TIER 2 재시도, 최대 2회)
     TIER 4 (후처리): Personalization / Script Personalizer
-    비동기: Visualization + Telemetry + Learning
+    비동기: Telemetry + Learning
 
 Safety CRISIS 선점:
     Safety Agent의 CRISIS 판정 → asyncio.Event로 병렬 작업 취소 → 즉시 위기 응답
@@ -96,6 +96,45 @@ _script_generator = ScriptGeneratorAgent()
 async def script_generator_node(state: AgentState) -> dict[str, Any]:
     """Script Generator 노드"""
     return await _script_generator.process(state)
+
+
+async def tier2_podcast_fan_out(state: AgentState) -> dict[str, Any]:
+    """
+    TIER 2 팟캐스트 병렬 실행: Script Generator + Visualization.
+
+    Script Generator 결과는 필수 (TIER 3으로 전달),
+    Visualization은 실패해도 파이프라인에 영향 없음.
+    재시도 시 Visualization은 건너뜀 (visual_data가 이미 존재하면 스킵).
+    """
+    writer = _get_writer()
+    if writer:
+        writer({"event": "tier2_podcast_start"})
+
+    # Script Generator는 항상 실행 (재시도 시에도)
+    script_task = asyncio.create_task(script_generator_node(state))
+
+    # Visualization은 이미 생성된 경우 건너뜀 (재시도 시 중복 방지)
+    vis_task = None
+    if not state.get("visual_data"):
+        vis_task = asyncio.create_task(visualization_node(state))
+
+    # Script Generator 결과는 필수 — 예외 시 전파
+    script_result = await script_task
+
+    # Visualization 결과는 선택 — 실패 시 무시
+    vis_result: dict[str, Any] = {}
+    if vis_task is not None:
+        try:
+            vis_result = await vis_task
+        except Exception:
+            logger.warning("[TIER 2] Visualization 실패 — 무시하고 계속 진행", exc_info=True)
+
+    merged = {**script_result, **vis_result}
+
+    if writer:
+        writer({"event": "tier2_podcast_end"})
+
+    return merged
 
 
 # --- TIER 4 팟캐스트모드 (개발자1) ---
@@ -406,13 +445,14 @@ async def tier1_podcast_fan_out(state: AgentState) -> dict[str, Any]:
 # ===================================================================
 async def async_post_processing_node(state: AgentState) -> dict[str, Any]:
     """
-    비동기 후처리: Visualization + Telemetry + Learning.
+    비동기 후처리: Telemetry + Learning.
 
     최종 응답 출력 후 백그라운드에서 실행.
     실패해도 파이프라인에 영향 없음.
+
+    Note: Visualization은 TIER 2에서 Script Generator와 병렬 실행으로 이동됨.
     """
     tasks = [
-        asyncio.create_task(visualization_node(state)),
         asyncio.create_task(telemetry_node(state)),
         asyncio.create_task(learning_node(state)),
     ]
@@ -614,14 +654,14 @@ def build_podcast_graph() -> StateGraph:
     """
     팟캐스트모드 StateGraph 구축.
 
-    TIER 1(병렬) → TIER 2(스크립트 생성) → TIER 3(배치 검증) → TIER 4(개인화)
+    TIER 1(병렬) → TIER 2(Script Generator + Visualization 병렬) → TIER 3(배치 검증) → TIER 4(개인화)
     + CRISIS 선점 + 재시도 루프
     """
     graph = StateGraph(AgentState)
 
     # --- 노드 등록 ---
     graph.add_node("tier1_podcast", tier1_podcast_fan_out)
-    graph.add_node("script_generator", script_generator_node)
+    graph.add_node("tier2_podcast", tier2_podcast_fan_out)
     graph.add_node("batch_validator", batch_validator_node)
     graph.add_node("script_personalizer", script_personalizer_node)
     graph.add_node("crisis_response", crisis_response_node)
@@ -633,12 +673,12 @@ def build_podcast_graph() -> StateGraph:
         "tier1_podcast",
         route_after_tier1,
         {
-            "tier2": "script_generator",
+            "tier2": "tier2_podcast",
             "crisis_response": "crisis_response",
         },
     )
 
-    graph.add_edge("script_generator", "batch_validator")
+    graph.add_edge("tier2_podcast", "batch_validator")
 
     graph.add_conditional_edges(
         "batch_validator",
@@ -650,7 +690,7 @@ def build_podcast_graph() -> StateGraph:
         },
     )
 
-    graph.add_edge("increment_iteration", "script_generator")
+    graph.add_edge("increment_iteration", "tier2_podcast")
     graph.add_edge("script_personalizer", "async_post")
     graph.add_edge("async_post", END)
     graph.add_edge("crisis_response", END)
@@ -682,7 +722,7 @@ def build_unified_graph() -> StateGraph:
 
     # --- 팟캐스트모드 노드 ---
     graph.add_node("tier1_podcast", tier1_podcast_fan_out)
-    graph.add_node("script_generator", script_generator_node)
+    graph.add_node("tier2_podcast", tier2_podcast_fan_out)
     graph.add_node("batch_validator", batch_validator_node)
     graph.add_node("script_personalizer", script_personalizer_node)
 
@@ -729,11 +769,11 @@ def build_unified_graph() -> StateGraph:
         "tier1_podcast",
         route_after_tier1,
         {
-            "tier2": "script_generator",
+            "tier2": "tier2_podcast",
             "crisis_response": "crisis_response",
         },
     )
-    graph.add_edge("script_generator", "batch_validator")
+    graph.add_edge("tier2_podcast", "batch_validator")
     graph.add_conditional_edges(
         "batch_validator",
         route_after_tier3_podcast,
@@ -743,7 +783,7 @@ def build_unified_graph() -> StateGraph:
             "crisis_response": "crisis_response",
         },
     )
-    graph.add_edge("increment_iteration_pod", "script_generator")
+    graph.add_edge("increment_iteration_pod", "tier2_podcast")
     graph.add_edge("script_personalizer", "async_post")
 
     # === 공용 엣지 ===

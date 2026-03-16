@@ -641,6 +641,27 @@ class PodcastEpisodeResponse(BaseModel):
     tracing: RequestTracing = Field(description="추적 컨텍스트")
 
 
+class SlimPodcastResponse(BaseModel):
+    """
+    팟캐스트 에피소드 생성 완료 응답 (슬림).
+
+    파이프라인 실행 + DB 저장 완료 후 반환하는 최소 응답.
+    모든 데이터는 DB에 저장되므로 Backend가 GET API로 조회 가능.
+    safety_alert만 직접 포함 (CRISIS 시 에피소드 미생성 → DB 미저장).
+
+    Endpoint 응답: POST /api/v1/podcasts/episodes
+    """
+
+    success: Literal[True] = True
+    episode_id: str = Field(description="생성된 에피소드 고유 ID")
+    session_id: str = Field(description="세션 ID")
+    safety_alert: SafetyAlertData | None = Field(
+        default=None,
+        description="안전 경고 (CRISIS 시 에피소드 미생성, 응답에 직접 포함)",
+    )
+    tracing: RequestTracing = Field(description="추적 컨텍스트")
+
+
 class PodcastEpisodeData(BaseModel):
     """
     팟캐스트 에피소드 데이터.
@@ -974,6 +995,13 @@ class MySQLPodcastEpisode(BaseModel):
     cover_image_url: str | None = Field(
         default=None, description="커버 이미지 S3 URL"
     )
+    # 파이프라인 메타
+    intent_type: str = Field(default="unknown", description="의도 분류 타입")
+    complexity_score: float = Field(default=0.0, description="입력 복잡도 (0.0-1.0)")
+    safety_status: str = Field(default="safe", description="안전 상태 (safe/warning/crisis)")
+    validation_score: float = Field(default=0.0, description="검증 점수")
+    retry_count: int = Field(default=0, description="TIER 2→3 재시도 횟수")
+    pipeline_duration_ms: int = Field(default=0, description="파이프라인 소요 시간 (ms)")
     # 추적
     trace_id: str = Field(description="분산 추적 ID")
     correlation_id: str = Field(description="상관관계 ID")
@@ -1080,9 +1108,6 @@ class MySQLVisualizationMeta(BaseModel):
     # 시각화 메타
     image_prompt: str = Field(description="이미지 생성 프롬프트 (영문)")
     interpretation_text: str = Field(description="해설 텍스트 (한국어)")
-    primary_emotion: str = Field(description="기반 감정")
-    palette: str = Field(description="팔레트 이름")
-    style_tags: list[str] = Field(default_factory=list, description="스타일 태그")
     # 추적
     trace_id: str = Field(description="분산 추적 ID")
     created_at: datetime = Field(default_factory=_now_utc, description="생성 시각")

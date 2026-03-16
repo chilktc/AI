@@ -15,7 +15,7 @@
 
 **EndPoint** : `POST /api/v1/podcasts/episodes`
 
-**설명** : 사용자의 주제(topic)와 설명(description)을 받아 팟캐스트모드 LangGraph 파이프라인(TIER 0→1→2→3→4)을 실행하고, AI가 생성한 에피소드 스크립트를 반환합니다. 에피소드 데이터는 BackgroundTasks로 비동기 저장됩니다.
+**설명** : 사용자의 주제(topic)와 설명(description)을 받아 팟캐스트모드 LangGraph 파이프라인(TIER 0→1→2→3→4)을 실행하고, 핵심 데이터를 DB에 동기 저장한 뒤 완료 신호를 반환합니다. 모든 데이터는 DB에 저장되므로 Backend가 GET API로 조회 가능합니다.
 
 **구현 파일** : `src/api/routes/podcasts.py`
 
@@ -73,147 +73,44 @@
 
 **Success**
 
-> 소스: `PodcastEpisodeResponse` (src/api/external_schemas.py)
+> 소스: `SlimPodcastResponse` (src/api/external_schemas.py)
+>
+> 파이프라인 실행 + DB 저장 완료 후 반환하는 **최소 응답**. 모든 데이터는 DB에 저장되므로 Backend가 GET API로 조회 가능.
+> safety_alert만 직접 포함 (CRISIS 시 에피소드 미생성 → DB 미저장).
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | success | Boolean | true | 항상 `true` |
-| episode | Object | true | 에피소드 데이터 |
-| episode.episode_id | String | true | 에피소드 고유 ID |
-| episode.session_id | String | true | 생성 세션 ID |
-| episode.episode_title | String | true | 에피소드 제목 (한국어) |
-| episode.total_duration | Integer | true | 총 에피소드 길이 (분) |
-| episode.segments | Array | true | 세그먼트 목록 |
-| episode.segments[].segment_id | String | true | 세그먼트 고유 ID |
-| episode.segments[].segment_type | String | true | `opening`, `education`, `practical`, `exploration`, `transition`, `closing` |
-| episode.segments[].duration_minutes | Integer | true | 세그먼트 예상 길이 (분) |
-| episode.segments[].script_text | String | true | 스크립트 텍스트 (TTS 입력) |
-| episode.segments[].word_count | Integer | true | 단어 수 |
-| episode.segments[].emotional_tone | String | true | 감정 톤 |
-| episode.segments[].tts_markers | Array | true | TTS 제어 마커 |
-| episode.key_insights | Array[String] | true | 핵심 인사이트 (3~5개) |
-| episode.themes | Array[String] | true | 에피소드 주제 태그 |
-| episode.created_at | String | true | 에피소드 생성 시각 (ISO 8601) |
-| emotion | Object | false | 감정 분석 요약 (null 가능) |
-| emotion.primary_emotion | String | true | 주요 감정 (영문 키) |
-| emotion.primary_emotion_kr | String | true | 주요 감정 (한국어, UI 표시용) |
-| emotion.intensity | Float | true | 감정 강도 (0.0~1.0) |
-| emotion.valence | Float | true | 감정 가치 (-1.0~1.0) |
-| emotion.secondary_emotions | Array[String] | true | 부수 감정 목록 |
-| emotion.tone_recommendation | String | true | 추천 톤 |
-| safety_alert | Object | false | 안전 경고 (warning/crisis 시에만 포함) |
+| episode_id | String | true | 생성된 에피소드 고유 ID |
+| session_id | String | true | 세션 ID |
+| safety_alert | Object | false | 안전 경고 (warning/crisis 시에만 포함, safe 시 `null`) |
 | safety_alert.status | String | true | `warning` 또는 `crisis` |
 | safety_alert.alert_message | String | true | 안전 안내 메시지 (한국어) |
 | safety_alert.helpline_info | Array | false | 도움 연결 정보 |
 | safety_alert.show_emergency_button | Boolean | true | 긴급 도움 버튼 표시 여부 |
-| cover_image | Object | false | 커버 이미지 (비동기 생성이므로 null 가능) |
-| cover_image.image_url | String | false | 이미지 URL (S3 CDN) |
-| cover_image.interpretation | String | true | 해설 텍스트 |
-| cover_image.style_type | String | true | 시각적 스타일 유형 |
-| cover_image.original_prompt | String | true | 이미지 생성 원본 프롬프트 |
-| cover_image.resolution | String | true | 이미지 해상도 |
-| cover_image.status | String | true | 생성 상태 |
-| metadata | Object | true | 응답 메타데이터 |
-| metadata.mode | String | true | 항상 `"podcast"` |
-| metadata.pipeline_duration_ms | Integer | true | 파이프라인 소요 시간 (ms) |
-| metadata.intent_type | String | true | 분류된 의도 타입 |
-| metadata.complexity_score | Float | true | 입력 복잡도 점수 |
-| metadata.reasoning_depth | String | true | 추론 깊이 (full/standard/minimal) |
-| metadata.retry_count | Integer | true | TIER 2→3 재시도 횟수 |
-| metadata.total_words | Integer | true | 전체 스크립트 단어 수 |
 | tracing | Object | true | 추적 컨텍스트 |
+| tracing.request_id | String | true | API 요청 고유 ID |
+| tracing.trace_id | String | true | 분산 추적 ID |
+| tracing.correlation_id | String | true | 상관관계 ID |
+| tracing.timestamp | String | true | 타임스탬프 (ISO 8601) |
 
 ```json
 {
     "success": true,
-    "episode": {
-        "episode_id": "ep_a1b2c3d4e5f6",
-        "session_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
-        "episode_title": "야근 속 나를 지키는 법 - 직장 스트레스 관리 가이드",
-        "total_duration": 5,
-        "segments": [
-            {
-                "segment_id": "seg_001",
-                "segment_type": "opening",
-                "duration_minutes": 1,
-                "script_text": "안녕하세요, 오늘은 직장에서의 스트레스, 특히 야근이 많은 환경에서 ...",
-                "word_count": 150,
-                "emotional_tone": "warm",
-                "tts_markers": []
-            },
-            {
-                "segment_id": "seg_002",
-                "segment_type": "education",
-                "duration_minutes": 2,
-                "script_text": "스트레스 관리의 핵심은...",
-                "word_count": 300,
-                "emotional_tone": "informative",
-                "tts_markers": [
-                    {"position": 42, "instruction": "slow_down"},
-                    {"position": 180, "instruction": "pause_1s"}
-                ]
-            },
-            {
-                "segment_id": "seg_003",
-                "segment_type": "practical",
-                "duration_minutes": 1,
-                "script_text": "이제 잠시 멈추고, 자신에게 물어보세요...",
-                "word_count": 150,
-                "emotional_tone": "reflective",
-                "tts_markers": []
-            },
-            {
-                "segment_id": "seg_004",
-                "segment_type": "closing",
-                "duration_minutes": 1,
-                "script_text": "오늘 이야기를 마무리하며...",
-                "word_count": 120,
-                "emotional_tone": "encouraging",
-                "tts_markers": []
-            }
-        ],
-        "key_insights": [
-            "마이크로 휴식의 중요성",
-            "경계 설정 기법",
-            "자기 대화 리프레이밍"
-        ],
-        "themes": ["직장 스트레스", "야근", "자기 관리"],
-        "created_at": "2026-03-11T12:00:00.000Z"
-    },
-    "emotion": {
-        "primary_emotion": "anxiety",
-        "primary_emotion_kr": "불안",
-        "intensity": 0.55,
-        "valence": -0.30,
-        "secondary_emotions": ["stress", "fatigue"],
-        "tone_recommendation": "supportive_neutral"
-    },
+    "episode_id": "ep_a1b2c3d4e5f6",
+    "session_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
     "safety_alert": null,
-    "cover_image": {
-        "image_url": "https://cdn.mindlog.app/vis/3fa85f64/podcast/ep_a1b2c3d4e5f6/cover.webp",
-        "interpretation": "잔잔한 바다와 일출이 회복의 여정을 상징합니다.",
-        "style_type": "Conceptual",
-        "original_prompt": "A serene ocean sunrise representing recovery journey...",
-        "resolution": "1024x1024",
-        "status": "completed"
-    },
-    "metadata": {
-        "mode": "podcast",
-        "pipeline_duration_ms": 3200,
-        "intent_type": "topic_exploration",
-        "complexity_score": 0.5,
-        "reasoning_depth": "standard",
-        "retry_count": 0,
-        "total_words": 720
-    },
     "tracing": {
         "request_id": "req_8a9b0c1d2e3f",
         "trace_id": "trace_4a5b6c7d8e9f",
         "correlation_id": "corr_1a2b3c4d5e6f",
-        "timestamp": "2026-03-11T12:00:00.000Z"
+        "timestamp": "2026-03-16T12:00:00.000Z"
     }
 }
 ```
+
+> **참고**: 이전 버전의 `PodcastEpisodeResponse`는 episode, emotion, cover_image, metadata를 모두 포함했으나,
+> v25(2026-03-16)에서 `SlimPodcastResponse`로 교체됨. 상세 데이터는 Backend GET API로 조회.
 
 **Error**
 

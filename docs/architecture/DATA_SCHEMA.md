@@ -110,6 +110,12 @@
 | `themes` | JSON | not null | 테마 태그 배열 (한국어) |
 | `reasoning_depth` | ENUM | default `standard` | `full\|standard\|minimal` |
 | `cover_image_url` | VARCHAR | nullable | S3 CDN URL |
+| `intent_type` | VARCHAR | default `unknown` | 의도 분류 타입 |
+| `complexity_score` | FLOAT | default `0.0` | 입력 복잡도 (0.0~1.0) |
+| `safety_status` | ENUM | default `safe` | `safe\|warning\|crisis` |
+| `validation_score` | FLOAT | default `0.0` | 검증 점수 |
+| `retry_count` | INT | default `0` | TIER 2→3 재시도 횟수 |
+| `pipeline_duration_ms` | INT | default `0` | 파이프라인 소요 시간 (ms) |
 | `trace_id` | VARCHAR | nullable | |
 | `correlation_id` | VARCHAR | nullable | |
 | `created_at` | DATETIME | not null | |
@@ -170,9 +176,6 @@
 | `cdn_url` | VARCHAR | not null | CDN URL |
 | `image_prompt` | TEXT | not null | 이미지 생성 프롬프트 (영문) |
 | `interpretation_text` | TEXT | not null | 해석 텍스트 (한국어) |
-| `primary_emotion` | VARCHAR | nullable | |
-| `palette` | VARCHAR | nullable | 색상 팔레트 |
-| `style_tags` | JSON | default `[]` | 스타일 태그 배열 |
 | `trace_id` | VARCHAR | nullable | |
 | `created_at` | DATETIME | not null | |
 

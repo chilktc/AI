@@ -141,60 +141,55 @@ TIER 1 병렬 실행 중, 일부 에이전트가 **파이프라인 완료를 기
 ```
 final_state
     │
-    ├── _build_episode_data()  → PodcastEpisodeData (segments, key_insights, themes)
-    ├── _extract_emotion()     → EmotionSummary | None
+    ├── _build_episode_data()   → PodcastEpisodeData (segments, key_insights, themes)
     ├── _extract_safety_alert() → SafetyAlertData | None  (warning/crisis 시)
-    └── VisualizationData      → 커버 이미지 메타 (visual_data 존재 시)
     │
-    ▼ PodcastEpisodeResponse 조립
+    ▼ SlimPodcastResponse 조립 (최소 응답)
     │
-    ├── episode:      PodcastEpisodeData
-    ├── emotion:      EmotionSummary | None
+    ├── episode_id:   str (에피소드 고유 ID)
+    ├── session_id:   str (세션 ID)
     ├── safety_alert: SafetyAlertData | None
-    ├── cover_image:  VisualizationData | None
-    ├── metadata:     PodcastResponseMeta (duration_ms, intent_type, ...)
     └── tracing:      RequestTracing
 ```
 
-#### 백그라운드 저장
+> **참고**: 이전 버전의 `PodcastEpisodeResponse`는 episode, emotion, cover_image, metadata를 모두 포함했으나,
+> v25(2026-03-16)에서 `SlimPodcastResponse`로 교체됨. 상세 데이터는 Backend GET API로 조회.
 
-HTTP 응답 반환 **후** BackgroundTasks에서 실행됩니다. 저장 실패가 HTTP 응답에 영향을 주지 않습니다.
+#### 동기 저장
+
+HTTP 응답 반환 **전** `_save_core_data()`에서 핵심 데이터를 DB에 동기 저장합니다.
+감정 로그는 Emotion Agent가 TIER 1에서 `AgentDataPublisher`로 이미 저장하므로 여기서는 제외합니다.
 
 ```
-[HTTP 응답 반환 후]
+[파이프라인 완료 후, 응답 반환 전]
     │
-    ▼ BackgroundTasks → _save_episode_bundle()
+    ▼ await _save_core_data()
     │
     ├── (1) 에피소드 메타 + 세그먼트
     │       └── BackendClient.save(RESOURCE_PODCAST_EPISODE, SaveRequest)
     │              └── POST /api/v1/podcast_episodes → Backend 서버
     │
-    ├── (2) 감정 로그 (emotion_summary 존재 시)
-    │       └── BackendClient.save(RESOURCE_EMOTION_LOG, SaveRequest)
-    │              └── POST /api/v1/emotion_logs → Backend 서버
-    │
-    └── (3) 시각화 메타 (visual_data 존재 시)
+    └── (2) 시각화 메타 (visual_data 존재 시)
             └── BackendClient.save(RESOURCE_VISUALIZATION, SaveRequest)
                    └── POST /api/v1/visualizations → Backend 서버
 ```
 
-**관련 파일**: `src/api/routes/podcasts.py` → `_save_episode_bundle()`
+**관련 파일**: `src/api/routes/podcasts.py` → `_save_core_data()`
 
 ### 전체 타임라인
 
 ```
 시간 ──────────────────────────────────────────────────────────▶
 
-[요청 수신]──[TIER 0]──[TIER 1 병렬]──[TIER 2]──[TIER 3]──[TIER 4]──[응답 반환]
-                           │                                            │
-                     AgentDataPublisher                           BackgroundTasks
-                     (즉시 전달)                               (비동기 일괄 저장)
-                           │                                            │
-                           ▼                                            ▼
-                     Backend 서버                                Backend 서버
-                    (emotion_log,                          (podcast_episodes,
-                     content_analysis)                      emotion_logs,
-                                                            visualizations)
+[요청 수신]──[TIER 0]──[TIER 1 병렬]──[TIER 2 병렬]──[TIER 3]──[TIER 4]──[동기 저장]──[응답 반환]
+                           │            │                                      │
+                     AgentDataPublisher  │                              _save_core_data()
+                     (즉시 전달)         │                              (응답 전 저장)
+                           │            │                                      │
+                           ▼            ▼                                      ▼
+                     Backend 서버    Script Generator                    Backend 서버
+                    (emotion_log,   + Visualization 병렬              (podcast_episodes,
+                     content_analysis)                                  visualizations)
 ```
 
 ### 세션 종료 (Phase 3)

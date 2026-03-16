@@ -7,11 +7,8 @@ compiled_graph를 mock하여 파이프라인 없이 엔드포인트 매핑 로�
 
 from __future__ import annotations
 
-import json
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
-
-import pytest
+from unittest.mock import AsyncMock
 
 from tests.api.conftest import make_pipeline_result
 
@@ -38,8 +35,9 @@ class TestCreatePodcastEpisode:
 
         assert response.status_code == 200
         data = response.json()
-        assert "episode" in data
-        assert "metadata" in data
+        assert data["success"] is True
+        assert "episode_id" in data
+        assert "session_id" in data
 
     def test_create_episode_response_structure(
         self, test_client, mock_compiled_graph,
@@ -51,17 +49,18 @@ class TestCreatePodcastEpisode:
         )
 
         data = response.json()
-        # 필수 최상위 필드
-        assert "episode" in data
-        assert "emotion" in data
-        assert "metadata" in data
+        # SlimPodcastResponse 필수 필드
+        assert data["success"] is True
+        assert isinstance(data["episode_id"], str)
+        assert isinstance(data["session_id"], str)
+        assert "safety_alert" in data
         assert "tracing" in data
-
-        # episode 내부
-        episode = data["episode"]
-        assert "episode_id" in episode
-        assert "episode_title" in episode
-        assert "segments" in episode
+        assert isinstance(data["tracing"]["trace_id"], str)
+        # 제거된 필드가 없는지 확인
+        assert "episode" not in data
+        assert "emotion" not in data
+        assert "metadata" not in data
+        assert "cover_image" not in data
 
     def test_create_episode_state_mapping(
         self, test_client, mock_compiled_graph,
@@ -97,37 +96,6 @@ class TestCreatePodcastEpisode:
         # C-2: TelemetryCallback이 callbacks에 포함되었는지 확인
         assert "callbacks" in config
         assert len(config["callbacks"]) >= 1
-
-    def test_create_episode_emotion_extraction(
-        self, test_client, mock_compiled_graph,
-    ) -> None:
-        """emotion_vectors 데이터가 EmotionSummary로 올바르게 변환."""
-        response = test_client.post(
-            "/api/v1/podcasts/episodes",
-            json=self._valid_request(),
-        )
-
-        data = response.json()
-        emotion = data["emotion"]
-        assert emotion is not None
-        assert emotion["primary_emotion"] == "calm"
-        assert emotion["intensity"] == 0.6
-
-    def test_create_episode_emotion_none_when_missing(
-        self, test_client, mock_compiled_graph,
-    ) -> None:
-        """emotion_vectors가 없으면 emotion=None."""
-        mock_compiled_graph.ainvoke = AsyncMock(
-            return_value=make_pipeline_result(emotion_vectors=None),
-        )
-
-        response = test_client.post(
-            "/api/v1/podcasts/episodes",
-            json=self._valid_request(),
-        )
-
-        data = response.json()
-        assert data["emotion"] is None
 
     def test_create_episode_safety_alert_crisis(
         self, test_client, mock_compiled_graph,
@@ -205,19 +173,3 @@ class TestCreatePodcastEpisode:
         data = response.json()
         assert data["error"]["code"] == "SERVER_ERROR"
 
-    def test_create_episode_metadata(
-        self, test_client, mock_compiled_graph,
-    ) -> None:
-        """metadata에 pipeline_duration_ms, total_words 등이 포함."""
-        response = test_client.post(
-            "/api/v1/podcasts/episodes",
-            json=self._valid_request(),
-        )
-
-        data = response.json()
-        meta = data["metadata"]
-        assert "pipeline_duration_ms" in meta
-        assert meta["pipeline_duration_ms"] >= 0
-        assert "total_words" in meta
-        assert meta["total_words"] == 10  # conftest mock의 word_count=10
-        assert "intent_type" in meta

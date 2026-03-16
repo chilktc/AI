@@ -13,27 +13,23 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter
 
 # src.api.main import removed from top level to prevent circular import
 from src.api.backend_resources import (
-    RESOURCE_EMOTION_LOG,
     RESOURCE_PODCAST_EPISODE,
     RESOURCE_VISUALIZATION,
-    TYPE_EMOTION_LOG,
     TYPE_PODCAST_EPISODE,
     TYPE_VISUALIZATION,
 )
 from src.api.contracts import SaveRequest
 from src.api.external_schemas import (
     PodcastRequest,
-    PodcastEpisodeResponse,
     PodcastEpisodeData,
     PodcastSegment,
-    EmotionSummary,
-    SafetyAlertData,
-    VisualizationData,
     PodcastResponseMeta,
+    SafetyAlertData,
+    SlimPodcastResponse,
     ErrorResponse,
 )
 
@@ -78,60 +74,6 @@ def _build_episode_data(state: dict[str, Any]) -> PodcastEpisodeData:
         themes=script_data.get("themes", []),
     )
 
-
-_EMOTION_EN_TO_KR: dict[str, str] = {
-    "joy": "기쁨",
-    "happiness": "행복",
-    "sadness": "슬픔",
-    "anxiety": "불안",
-    "anger": "분노",
-    "fear": "두려움",
-    "surprise": "놀람",
-    "disgust": "혐오",
-    "frustration": "좌절",
-    "disappointment": "실망",
-    "loneliness": "외로움",
-    "guilt": "죄책감",
-    "shame": "수치심",
-    "hope": "희망",
-    "gratitude": "감사",
-    "love": "사랑",
-    "calm": "평온",
-    "excitement": "흥분",
-    "curiosity": "호기심",
-    "confusion": "혼란",
-    "boredom": "지루함",
-    "pride": "자부심",
-    "jealousy": "질투",
-    "empathy": "공감",
-    "nostalgia": "향수",
-    "relief": "안도",
-    "contentment": "만족",
-    "neutral": "중립",
-}
-
-
-def _extract_emotion(state: dict[str, Any]) -> EmotionSummary | None:
-    """AgentState에서 EmotionSummary를 구성한다.
-
-    Emotion Agent 출력의 primary_emotion은 영문 키이므로,
-    _EMOTION_EN_TO_KR 딕셔너리로 한국어 변환하여 primary_emotion_kr에 설정한다.
-    """
-    emotion_vectors = state.get("emotion_vectors")
-    if not emotion_vectors:
-        return None
-
-    primary = emotion_vectors.get("primary_emotion", "neutral")
-    primary_kr = _EMOTION_EN_TO_KR.get(primary, primary)
-
-    return EmotionSummary(
-        primary_emotion=primary,
-        primary_emotion_kr=primary_kr,
-        intensity=emotion_vectors.get("intensity", 0.5),
-        valence=emotion_vectors.get("valence", 0.0),
-        secondary_emotions=emotion_vectors.get("secondary_emotions", []),
-        tone_recommendation=emotion_vectors.get("tone_recommendation", "supportive_neutral"),
-    )
 
 
 def _extract_safety_alert(state: dict[str, Any]) -> SafetyAlertData | None:
@@ -178,21 +120,21 @@ def _extract_safety_alert(state: dict[str, Any]) -> SafetyAlertData | None:
     return None
 
 
-async def _save_episode_bundle(
+async def _save_core_data(
     user_id: str,
     session_id: str,
     episode_data: PodcastEpisodeData,
-    emotion_summary: EmotionSummary | None,
     final_state: dict[str, Any],
     meta: PodcastResponseMeta,
     trace_id: str,
     correlation_id: str,
+    elapsed_ms: int,
 ) -> None:
     """
-    에피소드 관련 데이터를 백엔드에 비동기 일괄 저장.
+    핵심 데이터를 백엔드에 동기 저장 (응답 반환 전 완료).
 
-    BackgroundTasks에서 호출되며, 실패해도 HTTP 응답에 영향을 주지 않는다.
-    저장 순서: (1) 에피소드 메타+세그먼트 → (2) 감정 로그 → (3) 시각화 메타
+    저장 순서: (1) 에피소드 메타+세그먼트 → (2) 시각화 메타
+    감정 로그는 Emotion Agent가 TIER 1에서 AgentDataPublisher로 이미 저장.
     """
     from src.api.main import backend_client
 
@@ -225,6 +167,10 @@ async def _save_episode_bundle(
                 or visual_data_raw.get("cdn_url")
             )
 
+        intent_data = final_state.get("intent", {})
+        safety_flags = final_state.get("safety_flags", {})
+        validation_result = final_state.get("validation_result", {})
+
         episode_request = SaveRequest(
             user_id=user_id,
             session_id=session_id,
@@ -239,6 +185,12 @@ async def _save_episode_bundle(
                 "themes": episode_data.themes,
                 "reasoning_depth": meta.reasoning_depth,
                 "cover_image_url": cover_image_url,
+                "intent_type": intent_data.get("intent_type", "unknown"),
+                "complexity_score": intent_data.get("complexity_score", 0.0),
+                "safety_status": safety_flags.get("status", "safe"),
+                "validation_score": validation_result.get("overall_score", 0.0),
+                "retry_count": final_state.get("iteration_count", 0),
+                "pipeline_duration_ms": elapsed_ms,
                 "trace_id": trace_id,
                 "correlation_id": correlation_id,
                 "segments": segments_data,
@@ -254,34 +206,7 @@ async def _save_episode_bundle(
     except Exception:
         logger.warning("에피소드 저장 실패", exc_info=True)
 
-    # (2) 감정 로그 (emotion_summary가 있을 때만)
-    if emotion_summary:
-        try:
-            emotion_vectors = final_state.get("emotion_vectors", {})
-            emotion_request = SaveRequest(
-                user_id=user_id,
-                session_id=session_id,
-                type=TYPE_EMOTION_LOG,
-                data={
-                    "log_id": f"elog_{uuid.uuid4().hex[:12]}",
-                    "mode": "podcast",
-                    "episode_id": episode_data.episode_id,
-                    "primary_emotion": emotion_summary.primary_emotion,
-                    "intensity": emotion_summary.intensity,
-                    "valence": emotion_summary.valence,
-                    "arousal": emotion_vectors.get("arousal", 0.5),
-                    "secondary_emotions": emotion_summary.secondary_emotions,
-                    "tone_recommendation": emotion_summary.tone_recommendation,
-                    "trace_id": trace_id,
-                },
-                timestamp=datetime.now(timezone.utc),
-            )
-            await backend_client.save(RESOURCE_EMOTION_LOG, emotion_request)
-            logger.info("감정 로그 저장 완료 (episode_id=%s)", episode_data.episode_id)
-        except Exception:
-            logger.warning("감정 로그 저장 실패", exc_info=True)
-
-    # (3) 시각화 메타 (visual_data가 있을 때만)
+    # (2) 시각화 메타 (visual_data가 있을 때만)
     # Visualization Agent 출력 키: image_url, interpretation, style_type,
     # original_prompt, resolution, status (flat 구조)
     visual_data_raw = final_state.get("visual_data")
@@ -301,9 +226,6 @@ async def _save_episode_bundle(
                     "interpretation_text": visual_data_raw.get(
                         "interpretation", ""
                     ),
-                    "primary_emotion": "",
-                    "palette": "",
-                    "style_tags": [],
                     "trace_id": trace_id,
                 },
                 timestamp=datetime.now(timezone.utc),
@@ -316,7 +238,7 @@ async def _save_episode_bundle(
 
 @router.post(
     "/episodes",
-    response_model=PodcastEpisodeResponse,
+    response_model=SlimPodcastResponse,
     responses={
         422: {"model": ErrorResponse, "description": "요청 검증 에러"},
         500: {"model": ErrorResponse, "description": "서버 에러"}
@@ -324,31 +246,30 @@ async def _save_episode_bundle(
 )
 async def create_podcast_episode(
     request: PodcastRequest,
-    background_tasks: BackgroundTasks,
-) -> PodcastEpisodeResponse:
+) -> SlimPodcastResponse:
     """
     팟캐스트 에피소드 생성.
-    
-    주제(topic)와 설명(description)을 바탕으로 LangGraph 파이프라인(모드=podcast)을 실행하여
-    최종 팟캐스트 스크립트와 메타데이터 응답을 반환한다.
+
+    주제(topic)와 설명(description)을 바탕으로 LangGraph 파이프라인(모드=podcast)을 실행하고,
+    핵심 데이터를 DB에 저장한 뒤 완료 신호를 반환한다.
+    모든 데이터는 DB에 저장되므로 Backend가 GET API로 조회 가능.
     """
     import time
     start_time = time.monotonic()
-    
+
     # 1. AgentState 구성
     user_input = request.topic
     if request.description:
         user_input += f" - {request.description}"
-        
+
     initial_state = {
         "user_input": user_input,
         "user_id": request.user_id,
         "session_id": request.session_id,
         "mode": "podcast",
     }
-    
+
     # 2. 파이프라인(컴파일된 그래프) 실행
-    # compile_graph()가 main 에서 "unified" 로 생성되었음
     from src.api.main import compiled_graph
 
     # C-2: TelemetryCallback으로 TIER별 메트릭 수집
@@ -382,21 +303,12 @@ async def create_podcast_episode(
         MetricsCollector.record_pipeline(telemetry_cb.get_metrics())
     except Exception:
         logger.warning("Prometheus 메트릭 기록 실패", exc_info=True)
-    
-    # 3. 데이터 추출 및 매핑
+
+    # 3. 데이터 추출
     episode_data = _build_episode_data(final_state)
-    emotion_summary = _extract_emotion(final_state)
     safety_alert = _extract_safety_alert(final_state)
-    
-    # visual_data 맵핑 (비동기 생성 중이면 부분값만 있을 수 있음)
-    visual_data_raw = final_state.get("visual_data")
-    visual_data = None
-    if visual_data_raw:
-        visual_data = VisualizationData(**visual_data_raw)
-        
-    # 메타데이터
+
     intent_data = final_state.get("intent", {})
-    
     meta = PodcastResponseMeta(
         pipeline_duration_ms=elapsed_ms,
         intent_type=intent_data.get("intent_type", "unknown"),
@@ -406,24 +318,21 @@ async def create_podcast_episode(
         total_words=sum(seg.word_count for seg in episode_data.segments),
     )
 
-    # 4. 비동기 저장 스케줄링 (응답 반환 후 BackgroundTasks에서 실행)
-    background_tasks.add_task(
-        _save_episode_bundle,
+    # 4. 핵심 데이터 동기 저장 (응답 반환 전 완료)
+    await _save_core_data(
         user_id=request.user_id,
         session_id=request.session_id,
         episode_data=episode_data,
-        emotion_summary=emotion_summary,
         final_state=final_state,
         meta=meta,
         trace_id=request.tracing.trace_id,
         correlation_id=request.tracing.correlation_id,
+        elapsed_ms=elapsed_ms,
     )
 
-    return PodcastEpisodeResponse(
-        episode=episode_data,
-        emotion=emotion_summary,
+    return SlimPodcastResponse(
+        episode_id=episode_data.episode_id,
+        session_id=request.session_id,
         safety_alert=safety_alert,
-        cover_image=visual_data,
-        metadata=meta,
         tracing=request.tracing,
     )
