@@ -87,5 +87,10 @@ data/outputs/images/
 # 프롬프트 반복 테스트 러너 (로컬 전용)
 dev/live_tests/run_prompt_iteration.py
 
+# Root-level ad-hoc test/mock files
+/run_*.py
+/test_*.py
+/mock_*.json
+
 # Claude Code (로컬 개발 환경)
 .claude/
