@@ -1,0 +1,13 @@
+# 운영 환경(Production) 전용 설정
+
+# 1. 앱 기본 정보
+app:
+  env: "production"
+
+# 2. 로그 설정 (기존 코드에 log_level 접근 로직이 있다면 반영됨)
+logging:
+  level: "INFO"
+
+# 3. API 설정
+api:
+  timeout: 30

@@ -50,3 +50,13 @@ jobs:
         run: isort --check-only .
       - name: mypy
         run: mypy src/ --ignore-missing-imports
+
+# Docker 빌드 검증 작업 추가
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image (Test)
+        run: |
+          # Dockerfile을 이용해 박스가 정상적으로 구워지는지 체크합니다. 
+          docker build -t mindlog-ai:test .

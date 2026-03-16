@@ -45,7 +45,7 @@ python3 -m pytest dev/test_ollama.py -v
 ## 라이브 LLM 테스트 (`live_tests/`)
 
 개별 에이전트를 **실제 LLM으로 호출**하여 동작을 검증하는 스모크 테스트 스위트.
-Ollama(기본), Anthropic API, AWS Bedrock 모든 프로바이더를 지원한다.
+Ollama, OpenAI(기본), Anthropic API, AWS Bedrock 모든 프로바이더를 지원한다.
 
 ### 빠른 시작
 

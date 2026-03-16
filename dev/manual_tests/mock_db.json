@@ -1,0 +1,44 @@
+[
+  {
+    "text": "지난주 'Restoration of Color' 프로젝트의 무채색 서사 설정에 대해 고민하셨습니다. 주인공이 색을 잃은 세상에서 처음으로 빨간색을 발견하는 장면에 대해 언급하셨죠.",
+    "score": 0.98,
+    "metadata": {
+      "category": "project_setting",
+      "date": "2026-03-03"
+    }
+  },
+  {
+    "text": "Sora님과의 대화에서 AI 에이전트의 시각화 방식에 대해 논의하셨습니다. 유화 느낌의 임파스토 질감을 디지털로 구현하는 방안에 대해 흥미를 보이셨습니다.",
+    "score": 0.85,
+    "metadata": {
+      "category": "relationship",
+      "date": "2026-03-10"
+    }
+  },
+  {
+    "text": "AI 에이전트들의 코드 구조를 잡으면서 성취감을 느끼셨던 순간이 있었습니다. 특히 CI/CD 파이프라인을 구축하며 자동화의 편리함을 실감하셨죠.",
+    "score": 0.75,
+    "metadata": {
+      "category": "development",
+      "date": "2026-02-25"
+    }
+  },
+  {
+    "text": "오늘 KT Cloud RAG Suite 연동에 드디어 성공했다! 팀원들과 맛있는 걸 먹으러 가야지.",
+    "vector": [],
+    "score": 1.0,
+    "metadata": {
+      "category": "achievement",
+      "feeling": "happy"
+    }
+  },
+  {
+    "text": "오늘은 KT Cloud와 로컬 DB를 연동하는 중요한 이정표를 세운 날이다.",
+    "vector": [],
+    "score": 1.0,
+    "metadata": {
+      "category": "development",
+      "milestone": "RAG_integration"
+    }
+  }
+]

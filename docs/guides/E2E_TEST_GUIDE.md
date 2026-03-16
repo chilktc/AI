@@ -46,6 +46,8 @@ echo "OPENAI_API_KEY=sk-..." >> .env
 
 > **보안 주의:** API 키는 반드시 `.env` 파일에만 저장한다. 코드나 커밋에 포함하지 마시오.
 
+> **기본 프로바이더 (Round 4 이후):** OpenAI `gpt-4o-mini`가 운영 기본 모델이다. Ollama(`gpt-oss:20b`, `qwen2.5:14b`)는 로컬 테스트용으로 유지.
+
 ---
 
 ## 빠른 시작
@@ -149,7 +151,7 @@ END → 최종 상태 반환
 | 대상 | Mock 여부 | 사유 |
 |------|----------|------|
 | 모든 에이전트 | **REAL** | 팟캐스트 경로 전부 구현 완료 |
-| `BackendClient.save()` | **Mock** | 백엔드 서버 미실행 (Learning Agent에서 사용) |
+| `BackendClient.save()` | **Mock** | 백엔드 서버 미실행 (Learning Agent + AgentDataPublisher 경유: Emotion·Content Analyzer) |
 | LLM 호출 | **REAL** | Ollama/OpenAI 실제 API 사용 |
 | Telemetry | **STUB** | 유일한 스텁 노드 (대화모드 전용) |
 
@@ -376,4 +378,4 @@ pytest -m "unit or integration"
 
 ---
 
-*마지막 업데이트: 2026-03-06*
+*마지막 업데이트: 2026-03-13*

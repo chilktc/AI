@@ -24,6 +24,14 @@ from dotenv import load_dotenv
 
 # .env 파일에서 환경변수 로드
 load_dotenv()
+def _deep_merge(base: dict, update: dict) -> dict:
+    """기본 설정(base)에 환경별 설정(update)을 깊은 복사로 덮어쓰는 함수"""
+    for k, v in update.items():
+        if isinstance(v, dict) and k in base and isinstance(base[k], dict):
+            _deep_merge(base[k], v)
+        else:
+            base[k] = v
+    return base
 
 # 설정 파일 경로 (프로젝트 루트 기준)
 _CONFIG_DIR = Path(__file__).parent
@@ -38,10 +46,22 @@ class Settings:
     """
 
     def __init__(self, config_path: Path | None = None) -> None:
-        """설정 파일을 로드한다."""
-        path = config_path or _SETTINGS_PATH
-        with open(path, encoding="utf-8") as f:
+        """설정 파일을 로드하고, APP_ENV에 따라 환경별 설정을 오버레이한다."""
+        # 1. 기본 settings.yaml 로드
+        base_path = config_path or _SETTINGS_PATH
+        with open(base_path, encoding="utf-8") as f:
             self._config: dict[str, Any] = yaml.safe_load(f)
+
+        # 2. [B-5 핵심] APP_ENV에 따른 추가 설정 로드 (예: settings.production.yaml)
+        env = os.getenv("APP_ENV", "development").lower()
+        if env != "development":
+            env_settings_path = _CONFIG_DIR / f"settings.{env}.yaml"
+            if env_settings_path.exists():
+                with open(env_settings_path, encoding="utf-8") as f:
+                    env_config = yaml.safe_load(f)
+                    if env_config:
+                        # 기존 설정 위에 환경별 설정을 덮어씀
+                        self._config = _deep_merge(self._config, env_config)
 
     @property
     def app_name(self) -> str:
@@ -196,7 +216,7 @@ class Settings:
     @property
     def api_base_url(self) -> str:
         """백엔드 API 기본 URL. 환경변수 BACKEND_API_URL로 설정."""
-        return os.getenv("BACKEND_API_URL", "http://localhost:8000/api/v1")
+        return os.getenv("BACKEND_API_URL", "http://localhost:8080/api/v1")
 
     @property
     def api_timeout(self) -> int:
@@ -207,6 +227,12 @@ class Settings:
     def api_max_retries(self) -> int:
         """API 최대 재시도 횟수."""
         return int(self._config["api"]["max_retries"])
+        
+    @property
+    def allowed_origins(self) -> list[str]:
+        """CORS 허용 오리진 목록. 환경변수로 전달받거나 기본값을 쓴다."""
+        origins_str = os.getenv("ALLOWED_ORIGINS", "*")
+        return [o.strip() for o in origins_str.split(",")]
 
     # --- 프롬프트 버전 관리 (v8) ---
 

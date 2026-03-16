@@ -465,9 +465,9 @@ class ScriptPersonalizerAgent(BaseAgent):
         if emotional_journey:
             emotional_context = f"""
 Emotional Journey:
-- Start: {emotional_journey.start_emotion}
-- Peak: {emotional_journey.peak_emotion}
-- Resolution: {emotional_journey.resolution_emotion}
+- Opening: {emotional_journey.opening}
+- Development: {emotional_journey.development}
+- Resolution: {emotional_journey.resolution}
 - Type: {emotional_journey.journey_type}
 """
 
