@@ -56,9 +56,16 @@ class ScriptGeneratorAgent(BaseAgent):
         reasoning_result = state.get("reasoning_result", {})
         segment_plan = state.get("segment_plan", [])
         if not segment_plan and "episode_structure" in reasoning_result:
-            for idx, sec in enumerate(reasoning_result["episode_structure"]):
-                # duration_ratio를 목표 시간에 곱해서 분 단위 계산 (기본 1분)
-                duration_ratio = float(sec.get("duration_ratio", 0.2))
+            episode_structure = reasoning_result["episode_structure"]
+            num_sections = max(len(episode_structure), 1)
+            default_ratio = round(1.0 / num_sections, 2)
+
+            for idx, sec in enumerate(episode_structure):
+                # sec가 str인 경우 (프롬프트가 문자열 배열을 반환한 경우) dict로 변환
+                if isinstance(sec, str):
+                    sec = {"section": sec}
+
+                duration_ratio = float(sec.get("duration_ratio", default_ratio))
                 calc_duration = max(1, int(target_duration * duration_ratio))
 
                 segment_plan.append(
