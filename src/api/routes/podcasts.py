@@ -250,17 +250,22 @@ async def create_podcast_episode(
     """
     팟캐스트 에피소드 생성.
 
-    주제(topic)와 설명(description)을 바탕으로 LangGraph 파이프라인(모드=podcast)을 실행하고,
+    사용자의 상황·생각·행동·동료반응을 바탕으로 LangGraph 파이프라인(모드=podcast)을 실행하고,
     핵심 데이터를 DB에 저장한 뒤 완료 신호를 반환한다.
     모든 데이터는 DB에 저장되므로 Backend가 GET API로 조회 가능.
     """
     import time
     start_time = time.monotonic()
 
-    # 1. AgentState 구성
-    user_input = request.topic
-    if request.description:
-        user_input += f" - {request.description}"
+    # 1. AgentState 구성 — 프론트엔드 4필드를 파이프라인 user_input 형식으로 조합
+    parts = [
+        f"- 상황: {request.situation}",
+        f"- 자신의 생각: {request.thought}",
+        f"- 자신의 행동 및 반응: {request.action}",
+    ]
+    if request.colleague_reaction:
+        parts.append(f"- 동료의 반응: {request.colleague_reaction}")
+    user_input = "\n".join(parts)
 
     initial_state = {
         "user_input": user_input,

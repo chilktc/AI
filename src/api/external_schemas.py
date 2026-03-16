@@ -294,30 +294,44 @@ class PodcastRequest(BaseModel):
     """
     팟캐스트 에피소드 생성 요청.
 
-    사용자가 특정 주제에 대한 팟캐스트 에피소드 생성을 요청할 때 사용한다.
+    프론트엔드가 사용자의 상황·생각·행동·동료반응을 구조화하여 전달한다.
     서버는 이 요청을 팟캐스트 모드 LangGraph 파이프라인에 전달한다.
 
     Endpoint: POST /api/v1/podcasts/episodes
     파이프라인: TIER 0 → TIER 1(병렬) → TIER 2(병렬) → TIER 3 → TIER 4
 
     AgentState 매핑:
-        user_input  ← topic + (description or "")
+        user_input  ← situation + thought + action + (colleagueReaction or "")
+                      (줄바꿈 구분 문자열로 조합)
         user_id     ← user_id
         session_id  ← session_id
         mode        ← "podcast" (고정)
     """
 
+    model_config = {"populate_by_name": True}
+
     user_id: str = Field(description="사용자 고유 ID")
     session_id: str = Field(description="세션 고유 ID")
-    topic: str = Field(
+    situation: str = Field(
         min_length=2,
-        max_length=200,
-        description="에피소드 주제 (2~200자)",
+        max_length=500,
+        description="사용자가 처한 상황 (2~500자)",
     )
-    description: str | None = Field(
+    thought: str = Field(
+        min_length=2,
+        max_length=500,
+        description="상황에 대한 자신의 생각 (2~500자)",
+    )
+    action: str = Field(
+        min_length=2,
+        max_length=500,
+        description="자신의 행동 및 반응 (2~500자)",
+    )
+    colleague_reaction: str | None = Field(
         default=None,
-        max_length=2000,
-        description="주제에 대한 상세 설명 (선택, 최대 2000자)",
+        max_length=500,
+        alias="colleagueReaction",
+        description="동료의 반응 (선택, 최대 500자)",
     )
     preferences: PodcastPreferences | None = Field(
         default=None,

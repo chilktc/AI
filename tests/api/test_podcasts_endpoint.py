@@ -21,7 +21,9 @@ class TestCreatePodcastEpisode:
         base = {
             "user_id": "test_user_001",
             "session_id": "sess_test123",
-            "topic": "스트레스 관리법",
+            "situation": "직장에서 스트레스를 많이 받고 있어",
+            "thought": "이 상황을 어떻게 해결해야 할지 모르겠어",
+            "action": "일단 참고 있는데 점점 힘들어지고 있어",
         }
         base.update(overrides)
         return base
@@ -65,17 +67,23 @@ class TestCreatePodcastEpisode:
     def test_create_episode_state_mapping(
         self, test_client, mock_compiled_graph,
     ) -> None:
-        """topic + description → user_input, mode=podcast 매핑 확인."""
+        """situation/thought/action/colleagueReaction → user_input, mode=podcast 매핑 확인."""
         test_client.post(
             "/api/v1/podcasts/episodes",
-            json=self._valid_request(description="상세 설명입니다"),
+            json=self._valid_request(colleagueReaction="동료는 아무 말도 안 해"),
         )
 
         # ainvoke 호출 인자 확인
         call_args = mock_compiled_graph.ainvoke.call_args
         state = call_args[0][0]  # 첫 번째 위치 인자
 
-        assert state["user_input"] == "스트레스 관리법 - 상세 설명입니다"
+        expected = (
+            "- 상황: 직장에서 스트레스를 많이 받고 있어\n"
+            "- 자신의 생각: 이 상황을 어떻게 해결해야 할지 모르겠어\n"
+            "- 자신의 행동 및 반응: 일단 참고 있는데 점점 힘들어지고 있어\n"
+            "- 동료의 반응: 동료는 아무 말도 안 해"
+        )
+        assert state["user_input"] == expected
         assert state["mode"] == "podcast"
         assert state["user_id"] == "test_user_001"
         assert state["session_id"] == "sess_test123"
@@ -139,16 +147,18 @@ class TestCreatePodcastEpisode:
         data = response.json()
         assert data["safety_alert"] is None
 
-    def test_create_episode_validation_error_missing_topic(
+    def test_create_episode_validation_error_missing_situation(
         self, test_client,
     ) -> None:
-        """topic 필드 누락 시 422."""
+        """situation 필드 누락 시 422."""
         response = test_client.post(
             "/api/v1/podcasts/episodes",
             json={
                 "user_id": "test_user_001",
                 "session_id": "sess_test123",
-                # topic 누락
+                # situation 누락
+                "thought": "생각",
+                "action": "행동",
             },
         )
 
