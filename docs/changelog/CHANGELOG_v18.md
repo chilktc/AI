@@ -83,4 +83,98 @@ src/agents/shared/llm_client.py ← OpenAI 분기에서 settings 매핑 사용
 
 ---
 
-*마지막 업데이트: 2026-02-27*
+## 팀 기여 (Team Contributions)
+
+> 같은 기간 다른 개발자가 머지한 PR. 해당 버전 시점에 코드베이스에 반영된 변경사항.
+
+### PR #7 — Agent framework: Safety, Emotion, Memory, Visualization (개발자2, 한가은)
+
+- **머지**: 2026-02-26 | **브랜치**: `feature/agents-gaeun`
+- **규모**: +1,318 / -1 (10개 파일)
+
+#### 신규 파일 (9개)
+
+| 파일 | 변경 |
+|------|------|
+| `src/agents/podcast/emotion.py` | 신규: Emotion Agent 구현 (88줄) |
+| `src/agents/podcast/safety.py` | 신규: Safety Agent 구현 (133줄) |
+| `src/agents/podcast/visualization.py` | 신규: Visualization Agent 구현 (341줄) |
+| `src/agents/podcast/episode_memory.py` | 신규: Episode Memory Agent 스텁 (37줄) |
+| `src/agents/shared/base_memory.py` | 신규: Memory 공통 베이스 클래스 (120줄) |
+| `tests/agents/podcast/test_emotion_agent.py` | 신규: Emotion Agent 테스트 (88줄) |
+| `tests/agents/podcast/test_safety_agent.py` | 신규: Safety Agent 테스트 (133줄) |
+| `tests/agents/podcast/test_visualization_agent.py` | 신규: Visualization Agent 테스트 (341줄) |
+| `tests/agents/podcast/test_episode_memory.py` | 신규: Episode Memory 테스트 (37줄) |
+
+#### 수정 파일 (1개)
+
+| 파일 | 변경 |
+|------|------|
+| `tests/__init__.py` | 불필요 내용 제거 (-1줄) |
+
+---
+
+### PR #6 — Intent Classifier, Knowledge, Script Generator/Personalizer 통합 (개발자1, Jun)
+
+- **머지**: 2026-02-26 | **브랜치**: `feature/analysis-integration`
+- **규모**: +3,593 / -3,053 (28개 파일)
+
+#### 신규 에이전트 (4개)
+
+| 파일 | 변경 |
+|------|------|
+| `src/agents/conversation/intent_classifier.py` | 신규: Intent Classifier 구현 (693줄) |
+| `src/agents/conversation/knowledge.py` | 신규: Knowledge Agent 구현 (313줄) |
+| `src/agents/podcast/script_generator.py` | 신규: Script Generator 구현 (305줄) |
+| `src/agents/podcast/script_personalizer.py` | 신규: Script Personalizer 구현 (644줄) |
+
+#### 신규 공통 모듈 (5개)
+
+| 파일 | 변경 |
+|------|------|
+| `src/agents/common/__init__.py` | 신규: common 패키지 초기화 (75줄) |
+| `src/agents/common/config.py` | 신규: 에이전트 설정 관리 (159줄) |
+| `src/agents/common/llm_client.py` | 신규: LLM 클라이언트 래퍼 (145줄) |
+| `src/agents/common/protocols.py` | 신규: 에이전트 프로토콜 정의 (77줄) |
+| `src/agents/common/schemas.py` | 신규: 에이전트 스키마 정의 (256줄) |
+| `config/app_config.py` | 신규: 앱 설정 모듈 (159줄) |
+
+#### 삭제 파일 (3개 — 개발자3 초기 구현본 대체)
+
+| 파일 | 변경 |
+|------|------|
+| `src/agents/podcast/batch_validator.py` | 삭제: 개발자3 초기 구현본 (-183줄) |
+| `src/agents/podcast/content_analyzer.py` | 삭제: 개발자3 초기 구현본 (-221줄) |
+| `src/agents/podcast/podcast_reasoning.py` | 삭제: 개발자3 초기 구현본 (-428줄) |
+
+#### 수정 파일 (4개)
+
+| 파일 | 변경 |
+|------|------|
+| `src/graph/workflow.py` | 수정: 신규 에이전트 노드 등록 (+65줄) |
+| `src/agents/shared/llm_client.py` | 수정: LLM 클라이언트 확장 (+31줄) |
+| `tests/conftest.py` | 수정: 테스트 fixture 추가 (+38줄) |
+| `tests/integration/conftest.py` | 수정: 통합 테스트 fixture 변경 |
+
+#### 테스트 (신규 4개, 삭제 3개)
+
+| 파일 | 변경 |
+|------|------|
+| `tests/agents/conversation/test_intent_classifier.py` | 신규 (210줄) |
+| `tests/agents/conversation/test_knowledge.py` | 신규 (59줄) |
+| `tests/agents/podcast/test_script_generator.py` | 신규 (65줄) |
+| `tests/agents/podcast/test_script_personalizer.py` | 신규 (281줄) |
+| `tests/agents/podcast/test_batch_validator.py` | 삭제 (-597줄) |
+| `tests/agents/podcast/test_content_analyzer.py` | 삭제 (-554줄) |
+| `tests/agents/podcast/test_podcast_reasoning.py` | 삭제 (-1,035줄) |
+
+#### 개발/임시 파일 (2개)
+
+| 파일 | 변경 |
+|------|------|
+| `test_ollama.py` | 임시: Ollama 연결 테스트 스크립트 |
+| `test_req.py` / `req_out.txt` | 임시: 요청 테스트 스크립트 + 결과 |
+
+---
+
+*마지막 업데이트: 2026-03-16*

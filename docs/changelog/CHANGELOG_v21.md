@@ -147,4 +147,74 @@ $ grep -rn "TODO(backend)" src/
 
 *Production 코드 변경: logger.py 1개 수정 (포맷터 분기 추가) | Protected 파일 수정: 없음*
 
-*마지막 업데이트: 2026-03-09*
+---
+
+## 팀 기여 (Team Contributions)
+
+> 같은 기간 다른 개발자가 머지한 PR. 해당 버전 시점에 코드베이스에 반영된 변경사항.
+
+### PR #9 — YAML 프롬프트 분리 및 리팩토링 (개발자1, Jun)
+
+- **머지**: 2026-03-04 | **브랜치**: `jun_prompt`
+- **규모**: +156 / -74 (10개 파일)
+
+| 파일 | 변경 |
+|------|------|
+| `prompts/conversation/intent_classifier.yaml` | 신규: Intent Classifier 프롬프트 외부화 (42줄) |
+| `prompts/conversation/knowledge.yaml` | 신규: Knowledge Agent 프롬프트 외부화 (24줄) |
+| `prompts/podcast/script_generator.yaml` | 신규: Script Generator 프롬프트 외부화 (60줄) |
+| `prompts/podcast/script_personalizer.yaml` | 신규: Script Personalizer 프롬프트 외부화 (4줄) |
+| `src/agents/conversation/intent_classifier.py` | 수정: 인라인 프롬프트 → YAML 로딩으로 변경 (-41줄) |
+| `src/agents/conversation/knowledge.py` | 수정: 인라인 프롬프트 → YAML 로딩으로 변경 (-15줄) |
+| `src/agents/podcast/script_generator.py` | 수정: 프롬프트 로딩 방식 변경 |
+| `src/agents/podcast/script_personalizer.py` | 수정: 프롬프트 로딩 방식 변경 |
+| `tests/agents/conversation/test_intent_classifier.py` | 수정: 테스트 적용 |
+| `.gitignore` | 수정 |
+
+---
+
+### PR #10 — Safety/Visualization 리팩토링 + safety_constants 모듈화 (개발자2, 한가은)
+
+- **머지**: 2026-03-04 | **브랜치**: `feature/agents-gaeun`
+- **규모**: +130 / -436 (3개 파일, 순감 -306줄)
+
+| 파일 | 변경 |
+|------|------|
+| `src/agents/podcast/safety.py` | 리팩토링: Safety Agent 간소화 (170줄, -130줄 감소) |
+| `src/agents/podcast/visualization.py` | 리팩토링: Visualization Agent 간소화 (375줄, -300줄 감소) |
+| `src/agents/shared/safety_constants.py` | 신규: Safety 상수 모듈 분리 (21줄) — 위험 키워드, 임계값 등 |
+
+---
+
+### PR #12 — 세그먼트 통합 개인화 리팩토링 (개발자1, Jun)
+
+- **머지**: 2026-03-06 | **브랜치**: `jun_segment`
+- **규모**: +63 / -185 (7개 파일, 순감 -122줄)
+
+| 파일 | 변경 |
+|------|------|
+| `src/agents/podcast/script_personalizer.py` | 리팩토링: 세그먼트 기반 개인화 로직 재구성 |
+| `tests/agents/podcast/test_script_personalizer.py` | 수정: 테스트 적용 |
+| `prompts/conversation/intent_classifier.yaml` | 삭제 (PR #9에서 추가, 여기서 제거) |
+| `prompts/conversation/knowledge.yaml` | 삭제 |
+| `prompts/podcast/script_generator.yaml` | 삭제 |
+| `prompts/podcast/script_personalizer.yaml` | 삭제 |
+| `.gitignore` | 수정 |
+
+> **참고**: PR #9에서 추가한 프롬프트 YAML 파일 4개가 이 PR에서 제거됨 — 프롬프트 관리 방식 재조정으로 인한 것.
+
+---
+
+### PR #14 — 세그먼트 통합 개인화 처리 (개발자1, Jun)
+
+- **머지**: 2026-03-09 | **브랜치**: `jun_segments`
+- **규모**: +1 / -2 (2개 파일)
+
+| 파일 | 변경 |
+|------|------|
+| `src/agents/podcast/script_personalizer.py` | 수정: 미사용 `segment_type` 파라미터 제거 (-1줄) |
+| `tests/agents/podcast/test_script_personalizer.py` | 수정: 테스트 적용 |
+
+---
+
+*마지막 업데이트: 2026-03-16*

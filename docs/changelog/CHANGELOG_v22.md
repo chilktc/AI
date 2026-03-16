@@ -154,4 +154,88 @@ $ python3 -c "from src.api.publisher import AgentDataPublisher"
 
 *Production 코드 변경: publisher.py 1개 추가 | Protected 파일 수정: 없음*
 
-*마지막 업데이트: 2026-03-11*
+---
+
+## 팀 기여 (Team Contributions)
+
+> 같은 기간 다른 개발자가 머지한 PR. 해당 버전 시점에 코드베이스에 반영된 변경사항.
+
+### PR #18 — Zone A API 코어 구현 (개발자1, Jun)
+
+- **머지**: 2026-03-10 | **브랜치**: `jun_Zone_A`
+- **규모**: +460 / -0 (6개 파일, 전량 신규)
+
+| 파일 | 변경 |
+|------|------|
+| `src/api/main.py` | 신규: FastAPI 앱 엔트리포인트 — 라우터 등록, CORS, 미들웨어 설정 (137줄) |
+| `src/api/routes/__init__.py` | 신규: 라우터 패키지 초기화 (9줄) |
+| `src/api/routes/health.py` | 신규: 헬스체크 엔드포인트 — `GET /health`, `GET /ready` (57줄) |
+| `src/api/routes/podcasts.py` | 신규: 팟캐스트 엔드포인트 — 에피소드 생성/조회 (179줄) |
+| `src/api/routes/sessions.py` | 신규: 세션 관리 엔드포인트 (72줄) |
+| `config/loader.py` | 수정: API 관련 설정 프로퍼티 추가 (+6줄) |
+
+---
+
+### PR #19 — Docker/CI 인프라 + 프롬프트 YAML + 테스트 도구 (개발자2, 한가은)
+
+- **머지**: 2026-03-10 | **브랜치**: `feature/agents-gaeun`
+- **규모**: +350 / -3 (18개 파일)
+
+#### 인프라 (3개)
+
+| 파일 | 변경 |
+|------|------|
+| `.dockerignore` | 신규: Docker 빌드 제외 목록 (27줄) |
+| `docker-compose.yml` | 신규: AI 서버 컨테이너 구성 (27줄) |
+| `config/settings.production.yaml` | 신규: 프로덕션 환경 설정 (13줄) |
+
+#### 프롬프트 YAML (4개)
+
+| 파일 | 변경 |
+|------|------|
+| `prompts/podcast/content_analyzer.yaml` | 신규: Content Analyzer 프롬프트 (33줄) |
+| `prompts/podcast/podcast_reasoning.yaml` | 신규: Podcast Reasoning 프롬프트 (34줄) |
+| `prompts/podcast/safety.yaml` | 신규: Safety Agent 프롬프트 (33줄) |
+| `prompts/podcast/visualization.yaml` | 신규: Visualization Agent 프롬프트 (33줄) |
+
+#### 수정 파일 (2개)
+
+| 파일 | 변경 |
+|------|------|
+| `config/loader.py` | 수정: 프로덕션 설정 로딩 분기 추가 (+26줄) |
+| `.env.example` | 수정: 환경변수 예시 확장 (+20줄) |
+
+#### 개발/테스트 도구 (3개)
+
+| 파일 | 변경 |
+|------|------|
+| `run_mem_test.py` | 신규: Memory Agent 테스트 스크립트 (57줄) |
+| `run_vis_test.py` | 신규: Visualization Agent 테스트 스크립트 (28줄) |
+| `mock_memory.json` | 신규: 테스트용 Mock 메모리 데이터 (22줄) |
+
+#### 이미지 파일 (6개)
+
+| 파일 | 변경 |
+|------|------|
+| `dev/live_tests/images/*.png` (6개) | Visualization Agent 테스트 결과 이미지 (~8MB 총합) |
+
+---
+
+### PR #20 — Episode Memory 확장 + base_memory 리팩토링 + CI (개발자2, 한가은)
+
+- **머지**: 2026-03-11 | **브랜치**: `feature/agents-gaeun`
+- **규모**: +324 / -100 (7개 파일)
+
+| 파일 | 변경 |
+|------|------|
+| `src/agents/podcast/episode_memory.py` | 수정: Episode Memory Agent 대규모 확장 (+127줄) — 에피소드 검색/저장 로직 구현 |
+| `src/agents/shared/base_memory.py` | 리팩토링: Memory 베이스 클래스 재구성 (+132 / -122줄) |
+| `.github/workflows/ci.yml` | 수정: CI 파이프라인 설정 추가 (+10줄) |
+| `mock_db.json` | 신규: 테스트용 Mock DB 데이터 (44줄) |
+| `test_kt_memory.py` | 신규: Memory 통합 테스트 (35줄) |
+| `test_memory_final.py` | 신규: Memory 최종 검증 테스트 (53줄) |
+| `test_save_memory.py` | 신규: Memory 저장 테스트 (23줄) |
+
+---
+
+*마지막 업데이트: 2026-03-16*
