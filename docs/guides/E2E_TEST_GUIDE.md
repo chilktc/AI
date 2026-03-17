@@ -120,31 +120,9 @@ python3 -m dev.live_tests.test_e2e_multi_provider --ollama-only --input test_inp
 
 ## LangGraph 워크플로우 실행 흐름
 
-`test_e2e_multi_provider.py`는 실제 LangGraph `ainvoke()`를 호출하여 전체 파이프라인을 실행한다.
+> TIER 기반 파이프라인 전체 구조는 [CLAUDE.md](../CLAUDE.md#팟캐스트모드-실행-흐름)를 참조하세요.
 
-```
-사용자 입력 (최소 상태: user_input + mode + user_id + session_id)
-    ↓
-build_unified_graph() → compile() → ainvoke(state)
-    ↓
-TIER 0: IntentClassifier (REAL — LLM 의도 분류)
-    ↓ route_after_tier0 → "tier1_podcast"
-TIER 1 (병렬 Fan-out):
-├─ Safety Agent (REAL)
-├─ Emotion Agent (REAL)
-├─ Content Analyzer (REAL)
-└─ Podcast Reasoning (REAL)
-    ↓ route_after_tier1 → "tier2"
-TIER 2: Script Generator (REAL)
-    ↓
-TIER 3: Batch Validator (REAL)
-    ↓ route_after_tier3_podcast → "tier4_podcast"
-TIER 4: Script Personalizer (REAL)
-    ↓
-비동기: Visualization (REAL) + Telemetry (STUB) + Learning (REAL)
-    ↓
-END → 최종 상태 반환
-```
+`test_e2e_multi_provider.py`는 실제 LangGraph `ainvoke()`를 호출하여 `build_unified_graph() → compile() → ainvoke(state)` 전체 파이프라인을 실행한다.
 
 ### Mock 최소화
 

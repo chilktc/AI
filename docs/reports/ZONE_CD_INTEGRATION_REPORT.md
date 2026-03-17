@@ -25,7 +25,7 @@ Zone C(관측성)와 Zone D(Backend 저장소 추상화) 인프라를 Zone A(API
 
 ### 배경
 
-`AI_Team_Work_Zone_Assignment.md`의 의존 관계에 따라 Zone A(API 서버) 기본 골격 완성 후 Zone C/D 통합을 진행:
+`INFRA_ZONE_ASSIGNMENT.md`의 의존 관계에 따라 Zone A(API 서버) 기본 골격 완성 후 Zone C/D 통합을 진행:
 
 ```
 Zone C (관측성) ← A + B 기본 완성 후 착수

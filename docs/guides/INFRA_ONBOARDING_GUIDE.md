@@ -3,6 +3,8 @@
 > 작성일: 2026-03-09
 > 기반 문서: 인프라팀 인수인계 보고서 (260308)
 > 인프라 레포: [chilktc/infra](https://github.com/chilktc/infra)
+>
+> 인프라 구현 상세는 [INFRA_DEPLOYMENT_GUIDE.md](INFRA_DEPLOYMENT_GUIDE.md)를 참조하세요.
 
 ---
 
