@@ -28,8 +28,12 @@ jobs:
             --instance-ids "${{ secrets.AWS_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
+              "mkdir -p /home/ubuntu/app",
+              "sudo chown -R ubuntu:ubuntu /home/ubuntu/app",
               "cd /home/ubuntu/app",
-              "git pull origin develop",
+              "if [ ! -d .git ]; then git clone -b develop ${{ github.server_url }}/${{ github.repository }}.git . ; fi",
+              "git fetch origin develop",
+              "git reset --hard origin/develop",
               "echo \"LANGCHAIN_TRACING_V2=${{ secrets.LANGCHAIN_TRACING_V2 }}\" > .env",
               "echo \"LANGCHAIN_API_KEY=${{ secrets.LANGCHAIN_API_KEY }}\" >> .env",
               "echo \"LANGCHAIN_PROJECT=${{ secrets.LANGCHAIN_PROJECT }}\" >> .env",
