@@ -80,7 +80,24 @@ class ScriptPersonalizerAgent(BaseAgent):
             # script_draft에서 Pydantic 객체 복원
             script_data = state.get("script_draft", {})
             validated_script = ValidatedScript(**script_data) if script_data else None
-            emotional_journey = None  # LangGraph 설계상 별도 추출 또는 계산 필요
+            
+            # AgentState에서 감정적 여정 정보 추출
+            content_analysis = state.get("content_analysis", {})
+            emotional_journey_data = content_analysis.get(
+                "emotional_journey", state.get("emotional_journey")
+            )
+            
+            emotional_journey = None
+            if emotional_journey_data:
+                try:
+                    emotional_journey = EmotionalJourney(
+                        opening=emotional_journey_data.get("opening", emotional_journey_data.get("start_emotion", "차분함")),
+                        development=emotional_journey_data.get("development", "공감"),
+                        resolution=emotional_journey_data.get("resolution", emotional_journey_data.get("resolution_emotion", "따뜻함")),
+                        journey_type=emotional_journey_data.get("journey_type", "healing")
+                    )
+                except Exception as e:
+                    self.logger.warning(f"[ScriptPersonalizer] Failed to parse EmotionalJourney: {e}")
 
             # 에피소드 ID 생성
             episode_id = f"ep_{uuid.uuid4().hex[:12]}"
