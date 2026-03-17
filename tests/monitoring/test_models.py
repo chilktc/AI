@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from src.monitoring.models import (
     AgentMetric,
     MonitoringEvent,
@@ -14,36 +16,38 @@ from src.monitoring.models import (
 class TestAgentMetric:
     """AgentMetric 데이터클래스 테스트."""
 
-    def test_default_values(self) -> None:
-        metric = AgentMetric(
-            agent_name="safety",
-            tier=1,
-            duration_ms=150,
-            llm_calls=1,
-        )
-        assert metric.input_tokens == 0
-        assert metric.output_tokens == 0
-        assert metric.model_id == ""
-        assert metric.status == "ok"
-        assert metric.error_message is None
-
-    def test_error_metric(self) -> None:
-        metric = AgentMetric(
-            agent_name="reasoning",
-            tier=1,
-            duration_ms=500,
-            llm_calls=2,
-            status="error",
-            error_message="LLM timeout",
-        )
-        assert metric.status == "error"
-        assert metric.error_message == "LLM timeout"
+    @pytest.mark.parametrize(
+        "kwargs, expected_status, expected_error",
+        [
+            (
+                {"agent_name": "safety", "tier": 1, "duration_ms": 150, "llm_calls": 1},
+                "ok",
+                None,
+            ),
+            (
+                {"agent_name": "reasoning", "tier": 1, "duration_ms": 500, "llm_calls": 2,
+                 "status": "error", "error_message": "LLM timeout"},
+                "error",
+                "LLM timeout",
+            ),
+        ],
+        ids=["default_values", "error_metric"],
+    )
+    def test_agent_metric(self, kwargs, expected_status, expected_error) -> None:
+        metric = AgentMetric(**kwargs)
+        assert metric.status == expected_status
+        assert metric.error_message == expected_error
+        if expected_status == "ok":
+            assert metric.input_tokens == 0
+            assert metric.output_tokens == 0
+            assert metric.model_id == ""
 
 
 class TestPipelineMetrics:
     """PipelineMetrics 테스트."""
 
-    def test_add_agent_metric_updates_total_tokens(self) -> None:
+    def test_add_agent_metrics(self) -> None:
+        """단일 + 복수 메트릭 추가 시 total_tokens와 agent_metrics 검증."""
         metrics = PipelineMetrics(run_id="run_001")
         metrics.add_agent_metric(
             AgentMetric(
@@ -58,18 +62,14 @@ class TestPipelineMetrics:
         assert metrics.total_tokens == 700
         assert len(metrics.agent_metrics) == 1
 
-    def test_add_multiple_metrics(self) -> None:
-        metrics = PipelineMetrics(run_id="run_002")
-        metrics.add_agent_metric(
-            AgentMetric("safety", 1, 100, 1, input_tokens=300, output_tokens=100)
-        )
         metrics.add_agent_metric(
             AgentMetric("emotion", 1, 120, 1, input_tokens=400, output_tokens=150)
         )
-        assert metrics.total_tokens == 950
+        assert metrics.total_tokens == 1250
         assert len(metrics.agent_metrics) == 2
 
     def test_get_tier_summary(self) -> None:
+        """정상 TIER 그룹화 + tier=None은 -1로 그룹화."""
         metrics = PipelineMetrics(run_id="run_003")
         metrics.add_agent_metric(
             AgentMetric("safety", 1, 100, 1, input_tokens=300, output_tokens=100)
@@ -80,6 +80,9 @@ class TestPipelineMetrics:
         metrics.add_agent_metric(
             AgentMetric("synthesis", 2, 500, 2, input_tokens=800, output_tokens=400)
         )
+        metrics.add_agent_metric(
+            AgentMetric("telemetry", None, 50, 0)
+        )
 
         summaries = metrics.get_tier_summary()
 
@@ -89,15 +92,7 @@ class TestPipelineMetrics:
         assert summaries[1].duration_ms == 150  # max of parallel agents
         assert summaries[1].total_llm_calls == 2
         assert summaries[2].agent_count == 1
-
-    def test_get_tier_summary_none_tier(self) -> None:
-        """tier=None인 에이전트는 -1로 그룹화된다."""
-        metrics = PipelineMetrics(run_id="run_004")
-        metrics.add_agent_metric(
-            AgentMetric("telemetry", None, 50, 0)
-        )
-
-        summaries = metrics.get_tier_summary()
+        # tier=None → -1
         assert -1 in summaries
         assert summaries[-1].agent_count == 1
 

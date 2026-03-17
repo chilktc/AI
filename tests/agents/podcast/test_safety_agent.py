@@ -24,9 +24,11 @@ def agent() -> SafetyAgent:
 
 @pytest.mark.asyncio
 async def test_safe_status_with_empty_required_in_script(agent: SafetyAgent) -> None:
-    """safe 판정 시 required_in_script가 빈 리스트로 보장된다."""
+    """safe 판정 시 required_in_script가 빈 리스트로 보장되고, LLM 응답이 그대로 전달된다."""
     llm_response = {
         "status": "safe",
+        "risk_level": 0,
+        "risk_score": 0.05,
         "reasons": [],
         "required_in_script": [],
         "forbidden_topics": [],
@@ -40,6 +42,8 @@ async def test_safe_status_with_empty_required_in_script(agent: SafetyAgent) -> 
     assert sf["status"] == "safe"
     assert isinstance(sf["required_in_script"], list)
     assert len(sf["required_in_script"]) == 0
+    # safe 시 crisis_response 라우팅 없음
+    assert "next_step" not in result
 
 
 @pytest.mark.asyncio
@@ -91,22 +95,3 @@ async def test_warning_status_gets_default_safety_text(agent: SafetyAgent) -> No
     assert len(sf["required_in_script"]) >= 2  # 기본 2개 문구
 
 
-@pytest.mark.asyncio
-async def test_safe_status_passes_through_llm_response(agent: SafetyAgent) -> None:
-    """safe 판정 시 LLM 응답이 그대로 safety_flags에 전달된다."""
-    llm_response = {
-        "status": "safe",
-        "risk_level": 0,
-        "risk_score": 0.05,
-        "reasons": [],
-        "required_in_script": [],
-        "forbidden_topics": [],
-    }
-    state = AgentState(user_input="테스트 입력", user_id="u", session_id="s", mode="podcast")
-
-    with patch.object(agent, "call_llm_json", new_callable=AsyncMock, return_value=llm_response):
-        result = await agent.process(state)
-
-    sf = result["safety_flags"]
-    assert sf["status"] == "safe"
-    assert "next_step" not in result  # safe 시 crisis_response 라우팅 없음

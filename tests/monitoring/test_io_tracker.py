@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from src.monitoring.io_tracker import AgentIOTracker, IOSnapshot, PipelineTrace
 
 
@@ -75,6 +77,7 @@ class TestAgentIOTracker:
         assert snap_id.startswith("snap_")
 
     def test_capture_output_completes_snapshot(self) -> None:
+        """capture_output이 스냅샷을 완료하고 메타데이터(token_usage, prompt_version 등)를 저장한다."""
         tracker = AgentIOTracker(session_id="sess_001")
         snap_id = tracker.capture_input(
             "safety",
@@ -89,6 +92,9 @@ class TestAgentIOTracker:
             duration_ms=120,
             llm_calls=1,
             status="ok",
+            token_usage={"input_tokens": 500, "output_tokens": 200},
+            prompt_version="v3.2",
+            ab_variant="variant_b",
         )
 
         snapshots = tracker.get_all_snapshots()
@@ -97,6 +103,10 @@ class TestAgentIOTracker:
         assert snapshots[0].tier == 1
         assert snapshots[0].duration_ms == 120
         assert "safety_flags" in snapshots[0].output_fields
+        # 메타데이터 검증
+        assert snapshots[0].token_usage == {"input_tokens": 500, "output_tokens": 200}
+        assert snapshots[0].prompt_version == "v3.2"
+        assert snapshots[0].ab_variant == "variant_b"
 
     def test_capture_output_without_input_creates_new_snapshot(self) -> None:
         """capture_input 없이 capture_output 호출 시 새 스냅샷 생성."""
@@ -144,76 +154,41 @@ class TestAgentIOTracker:
         assert len(trace.snapshots) == 2
         assert trace.total_duration_ms == 180
 
-    def test_sanitize_user_input_is_hashed(self) -> None:
-        """user_input 필드는 해시로 대체된다."""
-        tracker = AgentIOTracker(session_id="sess_001")
-        snap_id = tracker.capture_input(
-            "safety",
-            {"user_input": "민감한 사용자 입력", "mode": "conversation"},
-            run_id="r1",
-        )
-        tracker.capture_output("safety", {}, snap_id, duration_ms=50)
+    @pytest.mark.parametrize(
+        "agent, input_fields, max_chars, field_key, check",
+        [
+            (
+                "safety",
+                {"user_input": "민감한 사용자 입력", "mode": "conversation"},
+                500,
+                "user_input",
+                lambda v: isinstance(v, dict) and "_hash" in v and "_len" in v,
+            ),
+            (
+                "context",
+                {"context": "x" * 200},
+                100,
+                "context",
+                lambda v: isinstance(v, str) and v.endswith("...<truncated>"),
+            ),
+            (
+                "reasoning",
+                {"reasoning_result": {"key1": "v1", "key2": "v2", "key3": "v3"}},
+                500,
+                "reasoning_result",
+                lambda v: isinstance(v, dict) and "_keys" in v and v["_size"] == 3,
+            ),
+        ],
+        ids=["user_input_hashed", "long_string_truncated", "dict_summarized"],
+    )
+    def test_sanitize_input_fields(
+        self, agent: str, input_fields: dict, max_chars: int,
+        field_key: str, check,
+    ) -> None:
+        """입력 필드 유형별 정제(해시/truncation/요약)를 검증."""
+        tracker = AgentIOTracker(session_id="sess_001", max_chars=max_chars)
+        snap_id = tracker.capture_input(agent, input_fields, run_id="r1")
+        tracker.capture_output(agent, {}, snap_id, duration_ms=50)
 
         snap = tracker.get_all_snapshots()[0]
-        assert isinstance(snap.input_fields["user_input"], dict)
-        assert "_hash" in snap.input_fields["user_input"]
-        assert "_len" in snap.input_fields["user_input"]
-
-    def test_sanitize_long_string_truncated(self) -> None:
-        """긴 문자열은 truncation된다."""
-        tracker = AgentIOTracker(session_id="sess_001", max_chars=100)
-        long_text = "x" * 200
-        snap_id = tracker.capture_input(
-            "context", {"context": long_text}, run_id="r1"
-        )
-        tracker.capture_output("context", {}, snap_id, duration_ms=50)
-
-        snap = tracker.get_all_snapshots()[0]
-        assert snap.input_fields["context"].endswith("...<truncated>")
-        assert len(snap.input_fields["context"]) == 100 + len("...<truncated>")
-
-    def test_sanitize_dict_value_summarized(self) -> None:
-        """dict 값은 키 목록과 크기로 요약된다."""
-        tracker = AgentIOTracker(session_id="sess_001")
-        snap_id = tracker.capture_input(
-            "reasoning",
-            {"reasoning_result": {"key1": "v1", "key2": "v2", "key3": "v3"}},
-            run_id="r1",
-        )
-        tracker.capture_output("reasoning", {}, snap_id, duration_ms=50)
-
-        snap = tracker.get_all_snapshots()[0]
-        summarized = snap.input_fields["reasoning_result"]
-        assert "_keys" in summarized
-        assert "_size" in summarized
-        assert summarized["_size"] == 3
-
-    def test_token_usage_stored(self) -> None:
-        tracker = AgentIOTracker(session_id="sess_001")
-        snap_id = tracker.capture_input("safety", {}, run_id="r1")
-        tracker.capture_output(
-            "safety",
-            {},
-            snap_id,
-            duration_ms=100,
-            token_usage={"input_tokens": 500, "output_tokens": 200},
-        )
-
-        snap = tracker.get_all_snapshots()[0]
-        assert snap.token_usage == {"input_tokens": 500, "output_tokens": 200}
-
-    def test_prompt_version_and_ab_variant(self) -> None:
-        tracker = AgentIOTracker(session_id="sess_001")
-        snap_id = tracker.capture_input("safety", {}, run_id="r1")
-        tracker.capture_output(
-            "safety",
-            {},
-            snap_id,
-            duration_ms=100,
-            prompt_version="v3.2",
-            ab_variant="variant_b",
-        )
-
-        snap = tracker.get_all_snapshots()[0]
-        assert snap.prompt_version == "v3.2"
-        assert snap.ab_variant == "variant_b"
+        assert check(snap.input_fields[field_key])

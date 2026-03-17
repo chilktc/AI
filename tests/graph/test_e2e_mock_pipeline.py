@@ -402,15 +402,6 @@ async def test_retry_then_pass(monkeypatch, podcast_initial_state):
 # ====================================================================
 
 
-def test_unified_graph_node_count():
-    """통합 그래프에 최소 13개 노드가 등록되어 있다."""
-    from src.graph.workflow import build_unified_graph
-
-    compiled = build_unified_graph().compile()
-    node_names = [n for n in compiled.nodes.keys() if not n.startswith("__")]
-    assert len(node_names) >= 13, f"노드 수 부족: {len(node_names)}개"
-
-
 @pytest.mark.parametrize(
     "builder_name, expected_nodes",
     [

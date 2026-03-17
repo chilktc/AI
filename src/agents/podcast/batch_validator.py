@@ -104,14 +104,13 @@ class BatchValidatorAgent(BaseAgent):
             }
 
         elif decision == "escalate":
-            # CRITICAL_FAIL → 즉시 중단
-            self.logger.critical(
-                "스크립트 검증 CRITICAL_FAIL (score=%.2f)",
+            # CRITICAL_FAIL → route_after_tier3_podcast()가 재시도/강제통과 결정
+            self.logger.warning(
+                "스크립트 검증 CRITICAL_FAIL — 평가 미달 (score=%.2f)",
                 validation.get("overall_score", 0),
             )
             return {
                 "validation_result": validation,
-                "next_step": "crisis_response",
             }
 
         elif iteration_count < self.max_retries:

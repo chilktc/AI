@@ -205,58 +205,48 @@ def test_reasoning_depth_routing(
     assert agent_with_stubs._determine_reasoning_depth(complexity) == expected_depth
 
 
-# === 2. full 파이프라인 (GoT+ToT+CoT = 3회 호출) ===
+# === 2. full/minimal 파이프라인 LLM 호출 수 ===
 
 
 @pytest.mark.asyncio
-async def test_full_pipeline_calls_llm_3_times(
+async def test_pipeline_llm_call_count(
     agent: PodcastReasoningAgent,
     base_state: AgentState,
     mock_got_result: dict[str, Any],
     mock_tot_result: dict[str, Any],
     mock_cot_result: dict[str, Any],
 ) -> None:
-    """full depth일 때 GoT+ToT+CoT = LLM 3회 호출 확인."""
-    mock = AsyncMock(side_effect=[mock_got_result, mock_tot_result, mock_cot_result])
-    with patch.object(agent, "call_llm_json", mock):
-        result = await agent.process(base_state)
+    """full(3회) + minimal(1회) 파이프라인 LLM 호출 수 확인."""
+    # full depth (complexity=0.9, base_state)
+    mock_full = AsyncMock(side_effect=[mock_got_result, mock_tot_result, mock_cot_result])
+    with patch.object(agent, "call_llm_json", mock_full):
+        result_full = await agent.process(base_state)
 
-    assert mock.call_count == 3
-    reasoning = result["reasoning_result"]
-    assert reasoning["reasoning_depth"] == "full"
-    assert reasoning["reasoning_strategy"] == "GoT+ToT+CoT"
-    assert "got_result" in reasoning
-    assert "tot_result" in reasoning
+    assert mock_full.call_count == 3
+    assert result_full["reasoning_result"]["reasoning_depth"] == "full"
+    assert result_full["reasoning_result"]["reasoning_strategy"] == "GoT+ToT+CoT"
+    assert "got_result" in result_full["reasoning_result"]
+    assert "tot_result" in result_full["reasoning_result"]
 
-
-# === 3. minimal 파이프라인 (CoT = 1회 호출) ===
-
-
-@pytest.mark.asyncio
-async def test_minimal_pipeline_calls_llm_1_time(
-    agent: PodcastReasoningAgent,
-    mock_cot_result: dict[str, Any],
-) -> None:
-    """minimal depth일 때 CoT만 = LLM 1회 호출 확인."""
+    # minimal depth (complexity=0.3)
     agent.full_threshold = 0.8
     agent.standard_threshold = 0.5
-    state = AgentState(
+    state_min = AgentState(
         user_input="오늘 하루 어떻게 보냈는지 이야기해볼게요.",
         user_id="test_user_001",
         session_id="sess_test_001",
         mode="podcast",
         intent={"primary_intent": "daily_reflection", "complexity_score": 0.3},
     )
-    mock = AsyncMock(return_value=mock_cot_result)
-    with patch.object(agent, "call_llm_json", mock):
-        result = await agent.process(state)
+    mock_min = AsyncMock(return_value=mock_cot_result)
+    with patch.object(agent, "call_llm_json", mock_min):
+        result_min = await agent.process(state_min)
 
-    assert mock.call_count == 1
-    reasoning = result["reasoning_result"]
-    assert reasoning["reasoning_depth"] == "minimal"
-    assert reasoning["reasoning_strategy"] == "CoT"
-    assert "got_result" not in reasoning
-    assert "tot_result" not in reasoning
+    assert mock_min.call_count == 1
+    assert result_min["reasoning_result"]["reasoning_depth"] == "minimal"
+    assert result_min["reasoning_result"]["reasoning_strategy"] == "CoT"
+    assert "got_result" not in result_min["reasoning_result"]
+    assert "tot_result" not in result_min["reasoning_result"]
 
 
 # === 4. DI 호출 라우팅 ===
@@ -381,90 +371,57 @@ def test_di_injection(
         assert agent.knowledge_agent is mock_knowledge
 
 
-# === 7. GoT 단위 테스트 ===
+# === 7. GoT/ToT/CoT 단위 테스트 ===
 
 
 @pytest.mark.asyncio
-async def test_got_structure_and_context(
+async def test_got_tot_cot_structure_and_context(
     agent: PodcastReasoningAgent,
     mock_got_result: dict[str, Any],
-) -> None:
-    """GoT 결과에 필수 필드가 있고, user_input/intent가 프롬프트에 포함된다."""
-    mock = AsyncMock(return_value=mock_got_result)
-    with patch.object(agent, "call_llm_json", mock):
-        result = await agent._graph_of_thoughts(
-            user_input="스트레스 관리",
-            intent={"primary_intent": "coping", "complexity_score": 0.9},
-            memory_result=None,
-            knowledge_result=None,
-        )
-
-    assert "core_pattern" in result
-    assert "nodes" in result
-    assert "edges" in result
-    user_message = mock.call_args.kwargs.get(
-        "user_message", mock.call_args.args[1] if len(mock.call_args.args) > 1 else ""
-    )
-    assert "스트레스 관리" in user_message
-    assert "coping" in user_message
-
-
-# === 8. ToT 단위 테스트 ===
-
-
-@pytest.mark.asyncio
-async def test_tot_structure_and_context(
-    agent: PodcastReasoningAgent,
-    mock_got_result: dict[str, Any],
-    mock_tot_result: dict[str, Any],
-) -> None:
-    """ToT 결과에 필수 필드가 있고, GoT 결과가 프롬프트에 포함된다."""
-    mock = AsyncMock(return_value=mock_tot_result)
-    with patch.object(agent, "call_llm_json", mock):
-        result = await agent._tree_of_thoughts(
-            user_input="스트레스 관리",
-            intent={"primary_intent": "coping"},
-            got_result=mock_got_result,
-            memory_result=None,
-            knowledge_result=None,
-        )
-
-    assert "alternatives" in result
-    assert "selected" in result
-    user_message = mock.call_args.kwargs.get(
-        "user_message", mock.call_args.args[1] if len(mock.call_args.args) > 1 else ""
-    )
-    assert "GoT 그래프 분석 결과" in user_message
-
-
-# === 9. CoT 단위 테스트 ===
-
-
-@pytest.mark.asyncio
-async def test_cot_structure_and_context(
-    agent: PodcastReasoningAgent,
     mock_tot_result: dict[str, Any],
     mock_cot_result: dict[str, Any],
 ) -> None:
-    """CoT 결과에 필수 필드가 있고, ToT 결과가 프롬프트에 포함된다."""
-    mock = AsyncMock(return_value=mock_cot_result)
-    with patch.object(agent, "call_llm_json", mock):
-        result = await agent._chain_of_thoughts(
-            user_input="스트레스 관리",
-            intent={"primary_intent": "coping"},
-            got_result=None,
-            tot_result=mock_tot_result,
-            memory_result=None,
-            knowledge_result=None,
+    """GoT/ToT/CoT 각각의 필수 필드 + 프롬프트 컨텍스트 포함을 검증한다."""
+
+    def _get_user_message(m: AsyncMock) -> str:
+        return m.call_args.kwargs.get(
+            "user_message", m.call_args.args[1] if len(m.call_args.args) > 1 else ""
         )
 
-    assert "episode_structure" in result
-    assert "narrative_flow" in result
-    assert "confidence" in result
-    user_message = mock.call_args.kwargs.get(
-        "user_message", mock.call_args.args[1] if len(mock.call_args.args) > 1 else ""
-    )
-    assert "ToT 구조 탐색 결과" in user_message
+    # GoT
+    mock_g = AsyncMock(return_value=mock_got_result)
+    with patch.object(agent, "call_llm_json", mock_g):
+        got = await agent._graph_of_thoughts(
+            user_input="스트레스 관리",
+            intent={"primary_intent": "coping", "complexity_score": 0.9},
+            memory_result=None, knowledge_result=None,
+        )
+    assert "core_pattern" in got and "nodes" in got and "edges" in got
+    assert "스트레스 관리" in _get_user_message(mock_g)
+    assert "coping" in _get_user_message(mock_g)
+
+    # ToT
+    mock_t = AsyncMock(return_value=mock_tot_result)
+    with patch.object(agent, "call_llm_json", mock_t):
+        tot = await agent._tree_of_thoughts(
+            user_input="스트레스 관리",
+            intent={"primary_intent": "coping"},
+            got_result=mock_got_result, memory_result=None, knowledge_result=None,
+        )
+    assert "alternatives" in tot and "selected" in tot
+    assert "GoT 그래프 분석 결과" in _get_user_message(mock_t)
+
+    # CoT
+    mock_c = AsyncMock(return_value=mock_cot_result)
+    with patch.object(agent, "call_llm_json", mock_c):
+        cot = await agent._chain_of_thoughts(
+            user_input="스트레스 관리",
+            intent={"primary_intent": "coping"},
+            got_result=None, tot_result=mock_tot_result,
+            memory_result=None, knowledge_result=None,
+        )
+    assert "episode_structure" in cot and "narrative_flow" in cot and "confidence" in cot
+    assert "ToT 구조 탐색 결과" in _get_user_message(mock_c)
 
 
 # === 10. 하위 호환성 ===

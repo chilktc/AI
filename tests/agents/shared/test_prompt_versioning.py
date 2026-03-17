@@ -73,19 +73,16 @@ versions:
 # ===================================================================
 
 
-def test_load_multi_version_single_prompt(tmp_path: Path) -> None:
-    """특정 버전을 지정하여 단일 프롬프트를 로드한다."""
-    loader = _make_loader(tmp_path, "podcast", "test_agent", _SINGLE_PROMPT_YAML)
-
-    prompt = loader.load("podcast", "test_agent", version="1.1.0")
+def test_load_multi_version_single_and_multi_prompt(tmp_path: Path) -> None:
+    """단일 프롬프트(load) + 다중 프롬프트(load_all) 버전 로드를 검증한다."""
+    # 단일 프롬프트 — 특정 버전 로드
+    loader_s = _make_loader(tmp_path, "podcast", "test_agent", _SINGLE_PROMPT_YAML)
+    prompt = loader_s.load("podcast", "test_agent", version="1.1.0")
     assert prompt == "v1.1.0 개선된 프롬프트"
 
-
-def test_load_multi_version_multi_prompt(tmp_path: Path) -> None:
-    """특정 버전을 지정하여 다중 프롬프트(got/tot/cot)를 로드한다."""
-    loader = _make_loader(tmp_path, "podcast", "reasoning", _MULTI_PROMPT_YAML)
-
-    prompts = loader.load_all("podcast", "reasoning", version="1.1.0")
+    # 다중 프롬프트 — 특정 버전 로드
+    loader_m = _make_loader(tmp_path, "podcast", "reasoning", _MULTI_PROMPT_YAML)
+    prompts = loader_m.load_all("podcast", "reasoning", version="1.1.0")
     assert prompts["got"] == "GoT v1.1 개선"
     assert prompts["tot"] == "ToT v1.1 개선"
     assert prompts["cot"] == "CoT v1.1 개선"
@@ -116,14 +113,6 @@ def test_load_default_and_fallback(
     loader = _make_loader(tmp_path, "podcast", "test_agent", yaml_content)
     prompt = loader.load("podcast", "test_agent")
     assert prompt == expected
-
-
-def test_load_invalid_version_raises(tmp_path: Path) -> None:
-    """존재하지 않는 버전 요청 시 PromptLoadError."""
-    loader = _make_loader(tmp_path, "podcast", "test_agent", _SINGLE_PROMPT_YAML)
-
-    with pytest.raises(PromptLoadError, match="찾을 수 없음"):
-        loader.load("podcast", "test_agent", version="9.9.9")
 
 
 @pytest.mark.parametrize(
@@ -167,17 +156,19 @@ def test_legacy_backward_compat(tmp_path: Path) -> None:
             '    description: "프롬프트 없음"\n',
             "system_prompt.*또는.*prompts.*누락",
         ),
+        (_SINGLE_PROMPT_YAML, "찾을 수 없음"),
     ],
-    ids=["empty_versions", "missing_prompt_in_version"],
+    ids=["empty_versions", "missing_prompt_in_version", "invalid_version"],
 )
-def test_multi_version_errors(
+def test_version_errors(
     tmp_path: Path, yaml_content: str, match_pattern: str
 ) -> None:
-    """비정상 멀티버전 YAML에 대한 에러를 검증한다."""
+    """비정상 멀티버전 YAML + 존재하지 않는 버전 요청에 대한 에러를 검증한다."""
     loader = _make_loader(tmp_path, "podcast", "test_agent", yaml_content)
 
+    version = "9.9.9" if match_pattern == "찾을 수 없음" else None
     with pytest.raises(PromptLoadError, match=match_pattern):
-        loader.load("podcast", "test_agent")
+        loader.load("podcast", "test_agent", version=version)
 
 
 # ===================================================================

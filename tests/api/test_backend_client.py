@@ -75,10 +75,10 @@ class TestBackendClientSave:
     """BackendClient.save() 메서드 테스트."""
 
     @pytest.mark.asyncio
-    async def test_save_success(
+    async def test_save_success_and_serialization(
         self, backend_client, mock_httpx_client, valid_save_request,
     ) -> None:
-        """정상적인 save 요청 시 SaveResponse 반환."""
+        """정상적인 save 요청 시 SaveResponse 반환 + 올바른 직렬화 확인."""
         mock_httpx_client.post = AsyncMock(
             return_value=_make_response(200, {
                 "success": True,
@@ -87,24 +87,14 @@ class TestBackendClientSave:
             }),
         )
 
-        result = await backend_client.save("learning", valid_save_request)
+        result = await backend_client.save("conversations", valid_save_request)
 
+        # SaveResponse 검증
         assert isinstance(result, SaveResponse)
         assert result.success is True
         assert result.id == "saved_001"
 
-    @pytest.mark.asyncio
-    async def test_save_request_serialization(
-        self, backend_client, mock_httpx_client, valid_save_request,
-    ) -> None:
-        """SaveRequest가 올바른 JSON body로 직렬화되는지 확인."""
-        mock_httpx_client.post = AsyncMock(
-            return_value=_make_response(200, {"success": True}),
-        )
-
-        await backend_client.save("conversations", valid_save_request)
-
-        # post 호출 인자 확인
+        # 직렬화 검증
         call_args = mock_httpx_client.post.call_args
         url = call_args[0][0]
         json_body = call_args[1]["json"]
@@ -139,69 +129,47 @@ class TestBackendClientSave:
 class TestBackendClientLoad:
     """BackendClient.load() 메서드 테스트."""
 
+    @pytest.mark.parametrize(
+        "resource, kwargs, response_data, check",
+        [
+            (
+                "learning",
+                {"user_id": "user_123"},
+                {"success": True, "data": [{"id": "1", "content": "데이터"}], "total": 1, "page": 1},
+                lambda r, _: (
+                    isinstance(r, LoadResponse)
+                    and r.success is True
+                    and len(r.data) == 1
+                    and r.total == 1
+                ),
+            ),
+            (
+                "conversations",
+                {"user_id": "user_123", "type": "conversation", "limit": 10},
+                {"success": True, "data": [], "total": 0, "page": 1},
+                lambda r, mock: (
+                    r.data == []
+                    and r.total == 0
+                    and mock.get.call_args[1]["params"]["type"] == "conversation"
+                    and mock.get.call_args[1]["params"]["limit"] == 10
+                ),
+            ),
+        ],
+        ids=["success_with_data", "empty_with_query_params"],
+    )
     @pytest.mark.asyncio
-    async def test_load_success(
+    async def test_load(
         self, backend_client, mock_httpx_client,
+        resource, kwargs, response_data, check,
     ) -> None:
-        """정상적인 load 요청 시 LoadResponse 반환."""
+        """load 성공 + 쿼리 파라미터 전달 + 빈 결과 검증."""
         mock_httpx_client.get = AsyncMock(
-            return_value=_make_response(200, {
-                "success": True,
-                "data": [{"id": "1", "content": "데이터"}],
-                "total": 1,
-                "page": 1,
-            }),
+            return_value=_make_response(200, response_data),
         )
 
-        result = await backend_client.load("learning", user_id="user_123")
+        result = await backend_client.load(resource, **kwargs)
 
-        assert isinstance(result, LoadResponse)
-        assert result.success is True
-        assert len(result.data) == 1
-        assert result.total == 1
-
-    @pytest.mark.asyncio
-    async def test_load_query_params(
-        self, backend_client, mock_httpx_client,
-    ) -> None:
-        """user_id와 추가 params가 쿼리 파라미터로 전달되는지 확인."""
-        mock_httpx_client.get = AsyncMock(
-            return_value=_make_response(200, {
-                "success": True, "data": [], "total": 0, "page": 1,
-            }),
-        )
-
-        await backend_client.load(
-            "conversations",
-            user_id="user_123",
-            type="conversation",
-            limit=10,
-        )
-
-        call_args = mock_httpx_client.get.call_args
-        url = call_args[0][0]
-        params = call_args[1]["params"]
-
-        assert url == "http://test-backend:8080/api/v1/conversations"
-        assert params["user_id"] == "user_123"
-        assert params["type"] == "conversation"
-        assert params["limit"] == 10
-
-    @pytest.mark.asyncio
-    async def test_load_empty_result(
-        self, backend_client, mock_httpx_client,
-    ) -> None:
-        """빈 결과 → LoadResponse(data=[], total=0)."""
-        mock_httpx_client.get = AsyncMock(
-            return_value=_make_response(200, {
-                "success": True, "data": [], "total": 0, "page": 1,
-            }),
-        )
-
-        result = await backend_client.load("learning", user_id="user_123")
-
-        assert result.data == []
-        assert result.total == 0
+        assert check(result, mock_httpx_client)
 
 
 # ---------------------------------------------------------------------------
@@ -212,14 +180,11 @@ class TestBackendClientLifecycle:
     """BackendClient 리소스 관리 테스트."""
 
     @pytest.mark.asyncio
-    async def test_close_releases_resources(
+    async def test_lifecycle(
         self, backend_client, mock_httpx_client,
     ) -> None:
-        """close() 호출 시 httpx 클라이언트가 정리되는지 확인."""
-        await backend_client.close()
-
-        mock_httpx_client.aclose.assert_awaited_once()
-
-    def test_base_url_from_constructor(self, backend_client) -> None:
-        """생성자에서 전달한 base_url이 올바르게 설정."""
+        """base_url 설정 확인 + close() 호출 시 리소스 정리 검증."""
         assert backend_client._base_url == "http://test-backend:8080/api/v1"
+
+        await backend_client.close()
+        mock_httpx_client.aclose.assert_awaited_once()

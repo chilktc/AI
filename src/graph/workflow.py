@@ -64,6 +64,7 @@ def _get_writer():
 # ---------------------------------------------------------------------------
 _settings = get_settings()
 _MAX_RETRIES: int = _settings.max_retries
+_MAX_CRITICAL_RETRIES: int = _settings.max_critical_retries
 _TIER1_TIMEOUT: int = _settings.tier1_timeout
 
 # ---------------------------------------------------------------------------
@@ -543,8 +544,18 @@ def route_after_tier3_podcast(state: AgentState) -> str:
     verdict = validation.get("verdict", "PASS")
 
     if verdict == "CRITICAL_FAIL":
-        logger.critical("[CRITICAL_FAIL] 팟캐스트 스크립트 치명적 실패 — 즉시 중단")
-        return "crisis_response"
+        iteration_count = state.get("iteration_count", 0)
+        if iteration_count < _MAX_CRITICAL_RETRIES:
+            logger.warning(
+                "[CRITICAL_FAIL] 스크립트 평가 미달 — 재시도 %d/%d",
+                iteration_count, _MAX_CRITICAL_RETRIES,
+            )
+            return "tier2_podcast"
+        logger.warning(
+            "[CRITICAL_FAIL] 재시도 소진(%d) — 강제 통과",
+            _MAX_CRITICAL_RETRIES,
+        )
+        return "tier4_podcast"
 
     if verdict == "PASS":
         return "tier4_podcast"

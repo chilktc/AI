@@ -154,39 +154,31 @@ def test_settings_llm_provider_env_override(test_settings: Settings) -> None:
 
 
 @pytest.mark.parametrize(
-    "key, expected",
+    "getter, key, expected",
     [
-        ("haiku", "anthropic.claude-haiku-4-5-20251001-v1:0"),
-        ("sonnet", "anthropic.claude-sonnet-4-5-20250929-v2:0"),
-        ("opus", "anthropic.claude-opus-4-6-v1:0"),
+        ("get_bedrock_model_id", "haiku", "anthropic.claude-haiku-4-5-20251001-v1:0"),
+        ("get_bedrock_model_id", "sonnet", "anthropic.claude-sonnet-4-5-20250929-v2:0"),
+        ("get_bedrock_model_id", "opus", "anthropic.claude-opus-4-6-v1:0"),
+        ("get_openai_model_id", "haiku", "gpt-4o-mini"),
+        ("get_openai_model_id", "sonnet", "gpt-4o-mini"),
+        ("get_openai_model_id", "opus", "gpt-4o"),
+    ],
+    ids=[
+        "bedrock_haiku", "bedrock_sonnet", "bedrock_opus",
+        "openai_haiku", "openai_sonnet", "openai_opus",
     ],
 )
-def test_settings_bedrock_model_id(
-    test_settings: Settings, key: str, expected: str
+def test_settings_model_id_by_provider(
+    test_settings: Settings, getter: str, key: str, expected: str
 ) -> None:
-    """Bedrock 모델 ID를 키로 조회한다."""
-    assert test_settings.get_bedrock_model_id(key) == expected
+    """프로바이더별 모델 ID를 키로 조회한다."""
+    assert getattr(test_settings, getter)(key) == expected
 
 
 def test_settings_bedrock_model_id_env_override(test_settings: Settings) -> None:
     """환경변수로 Bedrock 모델 ID 오버라이드 가능."""
     with patch.dict("os.environ", {"LLM_BEDROCK_MODEL_SONNET": "custom-model"}):
         assert test_settings.get_bedrock_model_id("sonnet") == "custom-model"
-
-
-@pytest.mark.parametrize(
-    "key, expected",
-    [
-        ("haiku", "gpt-4o-mini"),
-        ("sonnet", "gpt-4o-mini"),
-        ("opus", "gpt-4o"),
-    ],
-)
-def test_settings_openai_model_id(
-    test_settings: Settings, key: str, expected: str
-) -> None:
-    """OpenAI 모델 ID를 키로 조회한다."""
-    assert test_settings.get_openai_model_id(key) == expected
 
 
 # ===================================================================
@@ -584,20 +576,7 @@ async def test_token_usage_lifecycle(
     assert client.total_usage["total_tokens"] == 0
     assert client.last_usage is not None  # last_usage는 리셋되지 않음
 
-
-@patch("src.agents.shared.llm_client.anthropic.AsyncAnthropic")
-@patch("src.agents.shared.llm_client.get_settings")
-def test_total_usage_returns_copy(
-    mock_settings: MagicMock, mock_anthropic: MagicMock
-) -> None:
-    """total_usage는 내부 dict의 복사본을 반환한다."""
-    mock_settings.return_value = _mock_settings_factory()
-
-    from src.agents.shared.llm_client import LLMClient
-
-    client = LLMClient(agent_name="content_analyzer")
-    total = client.total_usage
-    total["input_tokens"] = 99999  # 외부에서 변경
-
-    # 내부 상태는 영향 없음
+    # total_usage는 복사본 반환 — 외부 변경이 내부에 영향 없음
+    total_copy = client.total_usage
+    total_copy["input_tokens"] = 99999
     assert client.total_usage["input_tokens"] == 0
