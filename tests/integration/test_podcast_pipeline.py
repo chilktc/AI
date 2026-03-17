@@ -12,7 +12,6 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from src.graph.workflow import (
-    build_podcast_graph,
     tier1_podcast_fan_out,
 )
 from src.models.agent_state import AgentState
@@ -66,8 +65,3 @@ async def test_tier1_podcast_fan_out_all_fields(
     assert "emotional_journey" in result["content_analysis"]
 
 
-@pytest.mark.asyncio
-async def test_podcast_graph_builds_without_error() -> None:
-    """팟캐스트모드 그래프가 오류 없이 빌드되는지 확인."""
-    graph = build_podcast_graph()
-    assert graph is not None

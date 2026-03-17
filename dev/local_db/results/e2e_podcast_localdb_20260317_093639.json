@@ -1,0 +1,380 @@
+{
+  "test_info": {
+    "type": "e2e_podcast_localdb",
+    "timestamp": "2026-03-17 09:36:39",
+    "elapsed_seconds": 58.84,
+    "provider": "openai",
+    "model": "gpt-4o-mini"
+  },
+  "verification_b": {
+    "fields": {
+      "intent": "dict(7 keys)",
+      "safety_flags": "dict(5 keys)",
+      "emotion_vectors": "dict(7 keys)",
+      "content_analysis": "dict(13 keys)",
+      "reasoning_result": "dict(9 keys)",
+      "script_draft": "dict(6 keys)",
+      "validation_result": "dict(7 keys)",
+      "final_output": "str(3292자)"
+    },
+    "present": 8,
+    "total": 8,
+    "all_present": true
+  },
+  "verification_c1": {
+    "total_saves": 3,
+    "resources": {
+      "emotion_logs": 1,
+      "content_analyses": 1,
+      "learning": 1
+    }
+  },
+  "verification_c2": null,
+  "agent_outputs": {
+    "intent": {
+      "intent_type": "emotional_support",
+      "complexity_score": 0.7,
+      "detected_entities": {
+        "emotions": [
+          "짜증",
+          "실망",
+          "두려움",
+          "거리감"
+        ],
+        "topics": [
+          "직장 내 관계",
+          "후배",
+          "뒷담화",
+          "업무 스트레스"
+        ],
+        "persons": [
+          "후배",
+          "상사"
+        ]
+      },
+      "flags": {
+        "requires_memory": false,
+        "requires_knowledge": false,
+        "visualization_hint": false,
+        "urgency_level": 1,
+        "risk_flag": false
+      },
+      "reasoning": "사용자는 후배의 뒷담화로 인한 감정적 고통을 표현하고 있으며, 이에 대한 위로와 공감을 요청하는 것으로 보입니다. 따라서 'emotional_support'로 분류했습니다.",
+      "trace_id": "trace_0c7537a40827",
+      "classified_at": "2026-03-17 09:35:44.964947"
+    },
+    "safety_flags": {
+      "status": "warning",
+      "risk_level": 2,
+      "risk_score": 0.6,
+      "reasons": [
+        "후배의 뒷담화로 인한 실망감과 분노 표현",
+        "상사와의 소통 문제로 인한 스트레스와 고립감"
+      ],
+      "required_in_script": [
+        "현재 정서적으로 매우 힘든 상태이신 것 같습니다. 잠시 숨을 고르고 주변의 믿을만한 사람에게 이야기를 나눠보시는 건 어떨까요?",
+        "후배의 뒷담화로 인한 실망감과 분노 표현",
+        "상사와의 소통 문제로 인한 스트레스와 고립감"
+      ]
+    },
+    "emotion_vectors": {
+      "primary_emotion": "frustration",
+      "intensity": 0.8,
+      "valence": -0.5,
+      "arousal": 0.7,
+      "secondary_emotions": [
+        "disappointment",
+        "fear",
+        "detachment"
+      ],
+      "tone_recommendation": "empathetic and supportive",
+      "emotional_journey_hint": [
+        "Recognize the impact of betrayal from a close colleague.",
+        "Acknowledge the difficulty of managing workplace relationships.",
+        "Consider strategies for addressing the situation constructively."
+      ]
+    },
+    "content_analysis": {
+      "topic": "업무 내 갈등과 인간관계",
+      "main_theme": "친한 관계에서의 배신감과 갈등 해결",
+      "sub_themes": [
+        "후배와의 관계",
+        "상사와의 소통",
+        "자기 감정 관리"
+      ],
+      "target_audience": "직장인",
+      "target_duration": 4,
+      "narrative_structure": "reflection",
+      "narrative_outline": [
+        "상황 설정",
+        "감정 표현",
+        "상황 반응",
+        "해결 방안 모색"
+      ],
+      "key_takeaways": [
+        "신뢰는 관계의 기본이다",
+        "갈등을 피하지 말고 솔직하게 대화하라"
+      ],
+      "tone": "따뜻한",
+      "keywords": [
+        "뒷담화",
+        "신뢰",
+        "갈등",
+        "소통"
+      ],
+      "call_to_action": "솔직한 대화를 시도해보세요.",
+      "sensitive_notes": [],
+      "depth_level": "deep"
+    },
+    "reasoning_result": {
+      "reasoning_depth": "full",
+      "reasoning_strategy": "GoT+ToT+CoT",
+      "got_result": {
+        "core_pattern": "신뢰의 붕괴와 갈등",
+        "nodes": [
+          {
+            "id": "1",
+            "type": "emotion",
+            "label": "짜증",
+            "intensity": 0.9
+          },
+          {
+            "id": "2",
+            "type": "emotion",
+            "label": "실망",
+            "intensity": 0.85
+          },
+          {
+            "id": "3",
+            "type": "emotion",
+            "label": "두려움",
+            "intensity": 0.7
+          },
+          {
+            "id": "4",
+            "type": "experience",
+            "label": "뒷담화 경험",
+            "intensity": 0.8
+          },
+          {
+            "id": "5",
+            "type": "concept",
+            "label": "신뢰",
+            "intensity": 0.9
+          },
+          {
+            "id": "6",
+            "type": "experience",
+            "label": "업무 조율 경험",
+            "intensity": 0.75
+          },
+          {
+            "id": "7",
+            "type": "emotion",
+            "label": "거리감",
+            "intensity": 0.8
+          },
+          {
+            "id": "8",
+            "type": "emotion",
+            "label": "불만",
+            "intensity": 0.75
+          }
+        ],
+        "edges": [
+          {
+            "from": "1",
+            "to": "2",
+            "relationship": "reinforces"
+          },
+          {
+            "from": "2",
+            "to": "5",
+            "relationship": "contrasts"
+          },
+          {
+            "from": "4",
+            "to": "1",
+            "relationship": "triggers"
+          },
+          {
+            "from": "4",
+            "to": "3",
+            "relationship": "triggers"
+          },
+          {
+            "from": "6",
+            "to": "7",
+            "relationship": "reinforces"
+          },
+          {
+            "from": "7",
+            "to": "8",
+            "relationship": "triggers"
+          },
+          {
+            "from": "5",
+            "to": "1",
+            "relationship": "contrasts"
+          }
+        ],
+        "insights": [
+          "후배의 뒷담화는 신뢰의 붕괴를 초래하며, 이는 짜증과 실망의 감정을 강화한다.",
+          "업무 조율 경험이 거리감을 느끼게 하며, 이는 불만을 유발하는 요소로 작용한다."
+        ]
+      },
+      "tot_result": {
+        "alternatives": [
+          {
+            "id": 1,
+            "structure": "공감 위주의 서사",
+            "pros": "정서적 지지",
+            "cons": "해결책 부족"
+          },
+          {
+            "id": 2,
+            "structure": "해결책 중심의 가이드",
+            "pros": "실질적 도움",
+            "cons": "다소 딱딱함"
+          },
+          {
+            "id": 3,
+            "structure": "사건 분석 및 통찰",
+            "pros": "원인 파악 용이",
+            "cons": "어려울 수 있음"
+          }
+        ],
+        "selected": 1,
+        "selection_rationale": "사용자의 현재 불안도가 높으므로 공감 중심의 접근이 가장 적절함"
+      },
+      "episode_structure": [
+        "오프닝",
+        "고민 나누기",
+        "마음 들여다보기",
+        "작은 실천",
+        "클로징"
+      ],
+      "narrative_flow": "사용자의 불안을 먼저 다독인 후 신뢰의 붕괴와 갈등의 원인을 함께 찾아가는 흐름",
+      "key_points": [
+        "불안은 자연스러운 신호",
+        "자기 비난 멈추기",
+        "신뢰 회복의 중요성"
+      ],
+      "emotional_journey": [
+        "불안",
+        "안도",
+        "이해",
+        "희망",
+        "신뢰 회복"
+      ],
+      "confidence": 0.9
+    },
+    "script_draft": {
+      "episode_title": "배신감 극복과 갈등 해결하기",
+      "total_duration": 5,
+      "segments": [
+        {
+          "segment_id": "seg_1_3dc3",
+          "segment_type": "오프닝",
+          "duration_minutes": 1,
+          "script_text": "안녕하세요, 여러분. 오늘은 친한 관계에서 느낄 수 있는 배신감과 그것을 극복하는 방법에 대해 이야기해보려고 합니다. 우리가 사랑하고 아끼는 사람에게서 배신감을 느끼는 것은 정말 힘든 경험입니다. 그 감정은 깊은 상처를 남기기도 하죠. 하지만 이런 감정을 느끼는 것은 자연스러운 일이라는 것을 잊지 마세요.\n\n우선, 자신의 감정을 솔직하게 인정하는 것이 중요합니다. 배신감이 들 때, 그 감정이 왜 생겼는지, 어떤 상황에서 비롯되었는지 스스로에게 질문해보세요. 감정을 마주하는 것은 치유의 첫 걸음이 될 수 있습니다. \n\n또한, 갈등을 해결하기 위해서는 서로의 입장을 이해하려는 노력이 필요합니다. 대화를 통해 서로의 생각과 감정을 공유하고, 함께 해결책을 찾아가는 것이죠. 이런 과정을 통해 관계가 더욱 깊어질 수 있습니다. 여러분의 마음이 조금이나마 편안해지기를 바랍니다.",
+          "word_count": 101,
+          "emotional_tone": "차분함",
+          "tts_markers": []
+        },
+        {
+          "segment_id": "seg_2_5b50",
+          "segment_type": "고민 나누기",
+          "duration_minutes": 1,
+          "script_text": "이어서, 배신감이라는 감정은 정말로 힘든 경험입니다. 특히 가까운 사람에게서 그런 감정을 느끼면 더욱 괴롭고 혼란스러울 수 있죠. 하지만 이러한 감정을 제대로 다루지 않으면, 관계는 점점 더 소원해질 수 있습니다. \n\n먼저, 자신의 감정을 솔직하게 인정하는 것이 중요합니다. 배신감이 드는 이유를 스스로에게 물어보세요. 그 감정을 이해하는 것이 첫걸음입니다. 그리고 나서, 상대방과의 대화가 필요합니다. 감정이 격해지기 전에, 차분한 마음으로 자신의 느낌을 전달해 보세요. 상대방도 자신의 입장을 이야기할 기회를 주는 것이죠. \n\n이러한 과정이 힘들게 느껴질 수 있지만, 서로의 진심을 나누는 것은 관계를 회복하는 데 큰 도움이 됩니다. 여러분이 느끼는 모든 감정은 소중하며, 이를 통해 더 나은 관계를 만들어 갈 수 있습니다.",
+          "word_count": 97,
+          "emotional_tone": "차분함",
+          "tts_markers": []
+        },
+        {
+          "segment_id": "seg_3_1af7",
+          "segment_type": "마음 들여다보기",
+          "duration_minutes": 1,
+          "script_text": "이번 세그먼트에서는 배신감과 갈등을 어떻게 해결할 수 있을지에 대해 이야기해보겠습니다. 친한 관계에서의 배신감은 정말 깊은 상처가 될 수 있습니다. 하지만 이 감정을 직면하고, 서로의 입장을 이해하려는 노력이 필요합니다. \n\n먼저, 상대방에게 느끼는 감정을 솔직하게 표현해보세요. 그 과정에서 상대방의 반응을 경청하는 것도 매우 중요합니다. 여러분이 느끼는 배신감은 단순한 감정이 아니며, 그 아래에는 다양한 이유가 숨어 있을 수 있습니다. \n\n서로의 입장을 이해하다 보면, 갈등의 원인을 파악할 수 있습니다. 그리고 이를 통해 관계의 회복 가능성을 찾아낼 수 있죠. 여러분의 감정은 소중하며, 이러한 대화가 관계를 더욱 깊고 의미 있게 만들어 줄 것입니다. \n\n이제 다음 단계로 넘어가 보겠습니다.",
+          "word_count": 92,
+          "emotional_tone": "차분함",
+          "tts_markers": []
+        },
+        {
+          "segment_id": "seg_4_ba10",
+          "segment_type": "작은 실천",
+          "duration_minutes": 1,
+          "script_text": "이제 서로의 감정을 나누는 단계로 넘어가 볼까요? 배신감이 깊을수록, 그 감정을 솔직하게 표현하는 것이 중요합니다. 상대방에게 어떤 부분에서 상처를 받았는지, 어떤 생각이 드는지를 이야기해보세요. \n\n이 과정에서 상대방 또한 자신의 입장을 설명할 수 있는 기회를 주는 것이 좋습니다. 대화는 단순히 감정을 전달하는 것뿐만 아니라, 서로의 이해를 깊게 만들어 줍니다. \n\n배신감은 관계를 흔들 수 있지만, 이를 해결하고자 하는 의지를 가지고 함께 노력한다면, 오히려 관계가 더 깊어질 수 있습니다. 이해와 공감은 갈등의 해소에 큰 도움이 되는 요소입니다. \n\n이제 여러분의 감정을 차분하게 나누어 보세요. 이 대화가 여러분의 관계에 긍정적인 변화를 가져오기를 진심으로 바랍니다.",
+          "word_count": 89,
+          "emotional_tone": "차분함",
+          "tts_markers": []
+        },
+        {
+          "segment_id": "seg_5_8572",
+          "segment_type": "클로징",
+          "duration_minutes": 1,
+          "script_text": "이제 여러분의 감정을 차분하게 나누어 보세요. 배신감은 정말 힘든 감정입니다. 하지만 이런 감정을 솔직하게 표현하는 것이 관계를 회복하는 첫걸음이 될 수 있습니다. 상대방에게 여러분의 느낌을 이야기할 때는 비난보다는 이해의 자세로 접근하는 것이 중요합니다. \n\n“나는 이렇게 느꼈어”라는 표현으로 시작해 보세요. 이렇게 하면 상대방도 방어적인 태도를 덜 취하게 되고, 서로의 입장을 이해하는 데 도움이 될 것입니다. \n\n갈등은 관계의 일부이지만, 어떻게 해결하느냐에 따라 관계가 더 깊어질 수 있습니다. 각자의 감정을 존중하며 대화하는 과정을 통해 서로를 더욱 이해하게 되고, 신뢰를 쌓아갈 수 있습니다. \n\n이 대화를 통해 여러분의 관계에 긍정적인 변화가 생기기를 진심으로 바랍니다.",
+          "word_count": 89,
+          "emotional_tone": "차분함",
+          "tts_markers": []
+        }
+      ],
+      "key_insights": [
+        "자신의 감정을 솔직하게 인정하는 것이 중요하다.",
+        "상대방과의 대화를 통해 서로의 입장을 이해하려고 노력하자.",
+        "상대방에게 감정을 표현할 때 비난보다는 이해의 자세로 접근하자.",
+        "갈등을 해결하는 과정이 관계를 더욱 깊게 만든다.",
+        "각자의 감정을 존중하며 대화하여 신뢰를 쌓아가자."
+      ],
+      "themes": [
+        "친한 관계에서의 배신감과 갈등 해결",
+        "후배와의 관계",
+        "상사와의 소통",
+        "자기 감정 관리"
+      ],
+      "metadata": {
+        "generated_at": "2026-03-17T09:36:27.789321",
+        "main_theme": "친한 관계에서의 배신감과 갈등 해결",
+        "total_words": 468,
+        "segment_count": 5,
+        "processing_time": 26.055137
+      }
+    },
+    "validation_result": {
+      "deductions": [
+        {
+          "dimension": "content_quality",
+          "deduction": -0.05,
+          "reason": "범용 조언 발견: '상대방에게 감정을 표현할 때 비난보다는 이해의 자세로 접근하자.'"
+        },
+        {
+          "dimension": "engagement_potential",
+          "deduction": -0.05,
+          "reason": "구체적 사례 부족: 1개만 사용"
+        }
+      ],
+      "scores": {
+        "content_quality": 0.85,
+        "safety_compliance": 0.9,
+        "emotional_alignment": 0.9,
+        "structure_coherence": 0.9,
+        "engagement_potential": 0.85
+      },
+      "overall_score": 0.87,
+      "validation": {
+        "approved": true,
+        "failed_criteria": [],
+        "issues": []
+      },
+      "action": {
+        "decision": "approve",
+        "revision_instructions": null,
+        "priority_fixes": [],
+        "max_iterations_remaining": 2
+      },
+      "critical_issues": [],
+      "verdict": "PASS"
+    },
+    "final_output": "{\"episode_id\":\"ep_5aef498b9fba\",\"episode_title\":\"배신감 극복과 갈등 해결하기\",\"total_duration\":5,\"segments\":[{\"segment_id\":\"seg_1_3dc3\",\"segment_type\":\"오프닝\",\"duration_minutes\":1,\"script_text\":\"안녕하세요, 여러분. 오늘은 친한 관계에서 느낄 수 있는 배신감과 그것을 극복하는 방법에 대해 이야기해보려고 합니다. 우리가 사랑하고 아끼는 사람에게서 배신감을 느끼는 것은 정말 힘든 경험입니다. 그 감정은 깊은 상처를 남기기도 하죠. 하지만 이런 감정을 느끼는 것은 자연스러운 일이라는 것을 잊지 마세요.\\n\\n우선, 자신의 감정을 솔직하게 인정하는 것이 중요합니다. 배신감이 들 때, 그 감정이 왜 생겼는지, 어떤 상황에서 비롯되었는지 스스로에게 질문해보세요. 감정을 마주하는 것은 치유의 첫 걸음이 될 수 있습니다. \\n\\n또한, 갈등을 해결하기 위해서는 서로의 입장을 이해하려는 노력이 필요합니다. 대화를 통해 서로의 생각과 감정을 공유하고, 함께 해결책을 찾아가는 것이죠. 이런 과정을 통해 관계가 더욱 깊어질 수 있습니다. 여러분의 마음이 조금이나마 편안해지기를 바랍니다.\",\"word_count\":101,\"emotional_tone\":\"차분함\",\"tts_markers\":[]},{\"segment_id\":\"seg_2_5b50\",\"segment_type\":\"고민 나누기\",\"duration_minutes\":1,\"script_text\":\"이어서, 배신감이라는 감정은 정말로 힘든 경험입니다. 특히 가까운 사람에게서 그런 감정을 느끼면 더욱 괴롭고 혼란스러울 수 있죠. 하지만 이러한 감정을 제대로 다루지 않으면, 관계는 점점 더 소원해질 수 있습니다. \\n\\n먼저, 자신의 감정을 솔직하게 인정하는 것이 중요합니다. 배신감이 드는 이유를 스스로에게 물어보세요. 그 감정을 이해하는 것이 첫걸음입니다. 그리고 나서, 상대방과의 대화가 필요합니다. 감정이 격해지기 전에, 차분한 마음으로 자신의 느낌을 전달해 보세요. 상대방도 자신의 입장을 이야기할 기회를 주는 것이죠. \\n\\n이러한 과정이 힘들게 느껴질 수 있지만, 서로의 진심을 나누는 것은 관계를 회복하는 데 큰 도움이 됩니다. 여러분이 느끼는 모든 감정은 소중하며, 이를 통해 더 나은 관계를 만들어 갈 수 있습니다.\",\"word_count\":97,\"emotional_tone\":\"차분함\",\"tts_markers\":[]},{\"segment_id\":\"seg_3_1af7\",\"segment_type\":\"마음 들여다보기\",\"duration_minutes\":1,\"script_text\":\"이번 세그먼트에서는 배신감과 갈등을 어떻게 해결할 수 있을지에 대해 이야기해보겠습니다. 친한 관계에서의 배신감은 정말 깊은 상처가 될 수 있습니다. 하지만 이 감정을 직면하고, 서로의 입장을 이해하려는 노력이 필요합니다. \\n\\n먼저, 상대방에게 느끼는 감정을 솔직하게 표현해보세요. 그 과정에서 상대방의 반응을 경청하는 것도 매우 중요합니다. 여러분이 느끼는 배신감은 단순한 감정이 아니며, 그 아래에는 다양한 이유가 숨어 있을 수 있습니다. \\n\\n서로의 입장을 이해하다 보면, 갈등의 원인을 파악할 수 있습니다. 그리고 이를 통해 관계의 회복 가능성을 찾아낼 수 있죠. 여러분의 감정은 소중하며, 이러한 대화가 관계를 더욱 깊고 의미 있게 만들어 줄 것입니다. \\n\\n이제 다음 단계로 넘어가 보겠습니다.\",\"word_count\":92,\"emotional_tone\":\"차분함\",\"tts_markers\":[]},{\"segment_id\":\"seg_4_ba10\",\"segment_type\":\"작은 실천\",\"duration_minutes\":1,\"script_text\":\"이제 서로의 감정을 나누는 단계로 넘어가 볼까요? 배신감이 깊을수록, 그 감정을 솔직하게 표현하는 것이 중요합니다. 상대방에게 어떤 부분에서 상처를 받았는지, 어떤 생각이 드는지를 이야기해보세요. \\n\\n이 과정에서 상대방 또한 자신의 입장을 설명할 수 있는 기회를 주는 것이 좋습니다. 대화는 단순히 감정을 전달하는 것뿐만 아니라, 서로의 이해를 깊게 만들어 줍니다. \\n\\n배신감은 관계를 흔들 수 있지만, 이를 해결하고자 하는 의지를 가지고 함께 노력한다면, 오히려 관계가 더 깊어질 수 있습니다. 이해와 공감은 갈등의 해소에 큰 도움이 되는 요소입니다. \\n\\n이제 여러분의 감정을 차분하게 나누어 보세요. 이 대화가 여러분의 관계에 긍정적인 변화를 가져오기를 진심으로 바랍니다.\",\"word_count\":89,\"emotional_tone\":\"차분함\",\"tts_markers\":[]},{\"segment_id\":\"seg_5_8572\",\"segment_type\":\"클로징\",\"duration_minutes\":1,\"script_text\":\"이제 여러분의 감정을 차분하게 나누어 보세요. 배신감은 정말 힘든 감정입니다. 하지만 이런 감정을 솔직하게 표현하는 것이 관계를 회복하는 첫걸음이 될 수 있습니다. 상대방에게 여러분의 느낌을 이야기할 때는 비난보다는 이해의 자세로 접근하는 것이 중요합니다. \\n\\n“나는 이렇게 느꼈어”라는 표현으로 시작해 보세요. 이렇게 하면 상대방도 방어적인 태도를 덜 취하게 되고, 서로의 입장을 이해하는 데 도움이 될 것입니다. \\n\\n갈등은 관계의 일부이지만, 어떻게 해결하느냐에 따라 관계가 더 깊어질 수 있습니다. 각자의 감정을 존중하며 대화하는 과정을 통해 서로를 더욱 이해하게 되고, 신뢰를 쌓아갈 수 있습니다. \\n\\n이 대화를 통해 여러분의 관계에 긍정적인 변화가 생기기를 진심으로 바랍니다.\",\"word_count\":89,\"emotional_tone\":\"차분함\",\"tts_markers\":[]}],\"key_insights\":[\"자신의 감정을 솔직하게 인정하는 것이 중요하다.\",\"상대방과의 대화를 통해 서로의 입장을 이해하려고 노력하자.\",\"상대방에게 감정을 표현할 때 비난보다는 이해의 자세로 접근하자.\",\"갈등을 해결하는 과정이 관계를 더욱 깊게 만든다.\",\"각자의 감정을 존중하며 대화하여 신뢰를 쌓아가자.\"],\"themes\":[\"친한 관계에서의 배신감과 갈등 해결\",\"후배와의 관계\",\"상사와의 소통\"],\"personalization_meta\":{\"applied_style\":{\"formality\":\"medium\",\"emoji_usage\":false,\"sentence_length\":\"medium\",\"explanation_depth\":\"moderate\",\"attitude\":\"balanced\"},\"adjusted_segments\":[],\"attitude_applied\":\"balanced\"}}"
+  }
+}

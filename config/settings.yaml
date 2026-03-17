@@ -181,7 +181,8 @@ storage:
 
 # 파이프라인 설정
 pipeline:
-  max_retries: 2              # TIER 3 → TIER 2 재시도 상한
+  max_retries: 2              # TIER 3 → TIER 2 재시도 상한 (FAIL용)
+  max_critical_retries: 4     # CRITICAL_FAIL 전용 재시도 상한
   tier1_timeout_seconds: 15   # TIER 1 병렬 작업 타임아웃
   tier2_timeout_seconds: 20   # TIER 2 생성 작업 타임아웃
   async_timeout_seconds: 30   # 비동기 작업 타임아웃

@@ -59,53 +59,10 @@ class TestContentAnalyzerPublish:
     """ContentAnalyzerAgent가 AgentDataPublisher.publish()를 올바르게 호출하는지 검증."""
 
     @pytest.mark.asyncio
-    async def test_publish_called_with_correct_resource(
+    async def test_publish_called_with_correct_args(
         self, agent: ContentAnalyzerAgent, sample_llm_response: dict, sample_state: AgentState,
     ) -> None:
-        """publish()의 resource가 RESOURCE_CONTENT_ANALYSIS인지 확인."""
-        mock_publish = AsyncMock(return_value=True)
-
-        with (
-            patch.object(agent, "call_llm_json", new_callable=AsyncMock, return_value=sample_llm_response),
-            patch("src.agents.podcast.content_analyzer.AgentDataPublisher") as MockPublisher,
-        ):
-            MockPublisher.return_value.publish = mock_publish
-            await agent.process(sample_state)
-
-        mock_publish.assert_awaited_once()
-        call_kwargs = mock_publish.call_args
-        assert call_kwargs.kwargs["resource"] == RESOURCE_CONTENT_ANALYSIS
-
-    @pytest.mark.asyncio
-    async def test_publish_called_with_correct_user_session(
-        self, agent: ContentAnalyzerAgent, sample_llm_response: dict,
-    ) -> None:
-        """publish()에 state의 user_id, session_id가 전달되는지 확인."""
-        state = AgentState(
-            user_input="테스트 주제로 팟캐스트를 만들고 싶어요",
-            user_id="user_test_789",
-            session_id="sess_test_xyz",
-            mode="podcast",
-            intent={},
-        )
-        mock_publish = AsyncMock(return_value=True)
-
-        with (
-            patch.object(agent, "call_llm_json", new_callable=AsyncMock, return_value=sample_llm_response),
-            patch("src.agents.podcast.content_analyzer.AgentDataPublisher") as MockPublisher,
-        ):
-            MockPublisher.return_value.publish = mock_publish
-            await agent.process(state)
-
-        call_kwargs = mock_publish.call_args.kwargs
-        assert call_kwargs["user_id"] == "user_test_789"
-        assert call_kwargs["session_id"] == "sess_test_xyz"
-
-    @pytest.mark.asyncio
-    async def test_publish_called_with_validated_analysis(
-        self, agent: ContentAnalyzerAgent, sample_llm_response: dict, sample_state: AgentState,
-    ) -> None:
-        """publish()에 전달되는 data가 _validate_and_correct() 후의 결과와 동일한지 확인."""
+        """publish()가 올바른 resource, user/session, data로 호출되는지 통합 검증."""
         mock_publish = AsyncMock(return_value=True)
 
         with (
@@ -115,9 +72,15 @@ class TestContentAnalyzerPublish:
             MockPublisher.return_value.publish = mock_publish
             result = await agent.process(sample_state)
 
-        published_data = mock_publish.call_args.kwargs["data"]
-        expected_analysis = result["content_analysis"]
-        assert published_data == expected_analysis
+        mock_publish.assert_awaited_once()
+        call_kwargs = mock_publish.call_args.kwargs
+        # resource 검증
+        assert call_kwargs["resource"] == RESOURCE_CONTENT_ANALYSIS
+        # user/session 검증
+        assert call_kwargs["user_id"] == "user_456"
+        assert call_kwargs["session_id"] == "sess_def"
+        # data 검증
+        assert call_kwargs["data"] == result["content_analysis"]
 
     @pytest.mark.asyncio
     async def test_publish_called_with_empty_user_session_when_missing(

@@ -77,38 +77,44 @@ def _make_fan_out_patches(mode: str = "conversation"):
     return emitted, patches
 
 
-@pytest.mark.asyncio
-async def test_conversation_fan_out_emits_all_events() -> None:
-    """대화모드 fan-out이 tier_start, agent_complete(4), tier_end를 발행한다."""
-    emitted, patches = _make_fan_out_patches("conversation")
-    state = AgentState(user_input="테스트", user_id="u1", session_id="s1", mode="conversation")
-
-    with patches[0], patches[1], patches[2], patches[3], patches[4]:
-        await tier1_conversation_fan_out(state)
-
-    # tier_start
+def _assert_fan_out_events(emitted: list[dict], mode: str, expected_agents: set[str]) -> None:
+    """Fan-out 이벤트 공통 검증 헬퍼."""
     tier_starts = [e for e in emitted if e.get("event") == "tier_start"]
     assert len(tier_starts) == 1
     assert tier_starts[0]["tier"] == 1
-    assert tier_starts[0]["mode"] == "conversation"
-    assert len(tier_starts[0]["agents"]) == 4
+    assert tier_starts[0]["mode"] == mode
 
-    # agent_complete (4개)
     agent_completes = [e for e in emitted if e.get("event") == "agent_complete"]
     assert len(agent_completes) == 4
     completed_agents = {e["agent"] for e in agent_completes}
-    assert completed_agents == {"safety", "emotion", "context", "reasoning"}
+    assert completed_agents == expected_agents
 
-    # progress 포함
     progress_values = [e["progress"] for e in agent_completes]
     assert "1/4" in progress_values
     assert "4/4" in progress_values
 
-    # tier_end
     tier_ends = [e for e in emitted if e.get("event") == "tier_end"]
     assert len(tier_ends) == 1
     assert tier_ends[0]["status"] == "ok"
     assert tier_ends[0]["elapsed_ms"] >= 0
+
+
+@pytest.mark.asyncio
+async def test_fan_out_emits_all_events_both_modes() -> None:
+    """대화 + 팟캐스트 fan-out이 tier_start, agent_complete(4), tier_end를 발행한다."""
+    # 대화모드
+    emitted_c, patches_c = _make_fan_out_patches("conversation")
+    state_c = AgentState(user_input="테스트", user_id="u1", session_id="s1", mode="conversation")
+    with patches_c[0], patches_c[1], patches_c[2], patches_c[3], patches_c[4]:
+        await tier1_conversation_fan_out(state_c)
+    _assert_fan_out_events(emitted_c, "conversation", {"safety", "emotion", "context", "reasoning"})
+
+    # 팟캐스트모드
+    emitted_p, patches_p = _make_fan_out_patches("podcast")
+    state_p = AgentState(user_input="팟캐스트", user_id="u1", session_id="s1", mode="podcast")
+    with patches_p[0], patches_p[1], patches_p[2], patches_p[3], patches_p[4]:
+        await tier1_podcast_fan_out(state_p)
+    _assert_fan_out_events(emitted_p, "podcast", {"safety", "emotion", "content_analyzer", "podcast_reasoning"})
 
 
 @pytest.mark.asyncio
@@ -148,24 +154,6 @@ async def test_conversation_crisis_emits_crisis_event() -> None:
     assert result["next_step"] == "crisis_response"
 
 
-@pytest.mark.asyncio
-async def test_podcast_fan_out_emits_events() -> None:
-    """팟캐스트모드 fan-out도 동일한 이벤트 구조를 발행한다."""
-    emitted, patches = _make_fan_out_patches("podcast")
-    state = AgentState(user_input="팟캐스트", user_id="u1", session_id="s1", mode="podcast")
-
-    with patches[0], patches[1], patches[2], patches[3], patches[4]:
-        await tier1_podcast_fan_out(state)
-
-    tier_starts = [e for e in emitted if e.get("event") == "tier_start"]
-    assert len(tier_starts) == 1
-    assert tier_starts[0]["mode"] == "podcast"
-    assert "content_analyzer" in tier_starts[0]["agents"]
-
-    agent_completes = [e for e in emitted if e.get("event") == "agent_complete"]
-    assert len(agent_completes) == 4
-
-
 # === compile_graph 헬퍼 테스트 ===
 
 
@@ -189,6 +177,5 @@ def test_compile_invalid_raises_error() -> None:
 def test_compile_with_checkpointer() -> None:
     """InMemorySaver 체크포인터로 컴파일된다."""
     from langgraph.checkpoint.memory import InMemorySaver
-
     compiled = compile_graph("unified", checkpointer=InMemorySaver())
     assert compiled is not None

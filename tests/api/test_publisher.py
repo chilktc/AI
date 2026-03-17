@@ -43,20 +43,6 @@ class TestPublishSuccess:
     """publish() 정상 동작 테스트."""
 
     @pytest.mark.asyncio
-    async def test_publish_returns_true_on_success(
-        self, publisher: AgentDataPublisher,
-    ) -> None:
-        """정상 publish 시 True 반환."""
-        result = await publisher.publish(
-            resource="emotion_logs",
-            data={"primary_emotion": "calm", "intensity": 0.6},
-            user_id="user_123",
-            session_id="sess_abc",
-        )
-
-        assert result is True
-
-    @pytest.mark.asyncio
     async def test_publish_calls_save_with_correct_args(
         self,
         publisher: AgentDataPublisher,
@@ -85,83 +71,79 @@ class TestPublishSuccess:
         assert request.data["primary_emotion"] == "anxiety"
         assert request.data["intensity"] == 0.7
 
+    @pytest.mark.parametrize(
+        "data_type, expected_type",
+        [
+            (None, "emotion_logs"),
+            ("emotion_log", "emotion_log"),
+        ],
+        ids=["default_type", "custom_type"],
+    )
     @pytest.mark.asyncio
-    async def test_publish_uses_custom_data_type(
+    async def test_publish_data_type(
         self,
         publisher: AgentDataPublisher,
         mock_backend_client: AsyncMock,
+        data_type: str | None,
+        expected_type: str,
     ) -> None:
-        """data_type이 지정되면 SaveRequest.type에 해당 값이 사용된다."""
-        await publisher.publish(
+        """data_type 지정 여부에 따라 SaveRequest.type이 올바르게 설정된다."""
+        kwargs: dict[str, Any] = dict(
             resource="emotion_logs",
             data={"mode": "podcast"},
             user_id="user_123",
             session_id="sess_abc",
-            data_type="emotion_log",
         )
+        if data_type is not None:
+            kwargs["data_type"] = data_type
+
+        result = await publisher.publish(**kwargs)
+        assert result is True
 
         request: SaveRequest = mock_backend_client.save.call_args[0][1]
-        assert request.type == "emotion_log"
+        assert request.type == expected_type
 
+    @pytest.mark.parametrize(
+        "trace_id, expect_in_data",
+        [
+            ("trace_xyz789", True),
+            (None, False),
+        ],
+        ids=["with_trace_id", "without_trace_id"],
+    )
     @pytest.mark.asyncio
-    async def test_publish_includes_trace_id_in_payload(
+    async def test_publish_trace_id(
         self,
         publisher: AgentDataPublisher,
         mock_backend_client: AsyncMock,
+        trace_id: str | None,
+        expect_in_data: bool,
     ) -> None:
-        """trace_id가 지정되면 data payload에 포함된다."""
-        await publisher.publish(
+        """trace_id 유무에 따라 payload 포함 여부가 결정된다."""
+        kwargs: dict[str, Any] = dict(
             resource="content_analysis",
             data={"main_theme": "불안"},
             user_id="user_123",
             session_id="sess_abc",
-            trace_id="trace_xyz789",
         )
+        if trace_id is not None:
+            kwargs["trace_id"] = trace_id
+
+        await publisher.publish(**kwargs)
 
         request: SaveRequest = mock_backend_client.save.call_args[0][1]
-        assert request.data["trace_id"] == "trace_xyz789"
-        assert request.data["main_theme"] == "불안"
+        if expect_in_data:
+            assert request.data["trace_id"] == trace_id
+        else:
+            assert "trace_id" not in request.data
 
     @pytest.mark.asyncio
-    async def test_publish_without_trace_id_excludes_it(
+    async def test_publish_timestamp_and_immutability(
         self,
         publisher: AgentDataPublisher,
         mock_backend_client: AsyncMock,
     ) -> None:
-        """trace_id가 None이면 payload에 포함되지 않는다."""
-        await publisher.publish(
-            resource="emotion_logs",
-            data={"intensity": 0.5},
-            user_id="user_123",
-            session_id="sess_abc",
-        )
-
-        request: SaveRequest = mock_backend_client.save.call_args[0][1]
-        assert "trace_id" not in request.data
-
-    @pytest.mark.asyncio
-    async def test_publish_has_utc_timestamp(
-        self,
-        publisher: AgentDataPublisher,
-        mock_backend_client: AsyncMock,
-    ) -> None:
-        """SaveRequest.timestamp가 UTC timezone 정보를 포함한다."""
-        await publisher.publish(
-            resource="emotion_logs",
-            data={},
-            user_id="user_123",
-            session_id="sess_abc",
-        )
-
-        request: SaveRequest = mock_backend_client.save.call_args[0][1]
-        assert request.timestamp.tzinfo is not None
-
-    @pytest.mark.asyncio
-    async def test_publish_does_not_mutate_original_data(
-        self,
-        publisher: AgentDataPublisher,
-    ) -> None:
-        """원본 data dict가 변경되지 않는다 (방어적 복사 확인)."""
+        """UTC 타임스탬프 포함 + 원본 data dict 불변성."""
         original = {"primary_emotion": "calm"}
 
         await publisher.publish(
@@ -172,8 +154,9 @@ class TestPublishSuccess:
             trace_id="trace_001",
         )
 
-        # trace_id가 원본에 추가되지 않아야 함
-        assert "trace_id" not in original
+        request: SaveRequest = mock_backend_client.save.call_args[0][1]
+        assert request.timestamp.tzinfo is not None
+        assert "trace_id" not in original  # 원본 불변
 
 
 # ---------------------------------------------------------------------------
@@ -183,37 +166,24 @@ class TestPublishSuccess:
 class TestPublishFailure:
     """publish() 실패 시 예외 미전파 + False 반환 테스트."""
 
+    @pytest.mark.parametrize(
+        "error",
+        [RuntimeError("HTTP 500"), ConnectionError("네트워크 오류")],
+        ids=["runtime_error", "connection_error"],
+    )
     @pytest.mark.asyncio
-    async def test_publish_returns_false_on_save_error(
+    async def test_publish_returns_false_and_suppresses_exception(
         self,
         publisher: AgentDataPublisher,
         mock_backend_client: AsyncMock,
+        error: Exception,
     ) -> None:
-        """BackendClient.save()가 예외를 발생시키면 False 반환."""
-        mock_backend_client.save.side_effect = RuntimeError("HTTP 500")
+        """BackendClient.save() 예외 시 False 반환, 예외 미전파."""
+        mock_backend_client.save.side_effect = error
 
         result = await publisher.publish(
             resource="emotion_logs",
             data={"intensity": 0.5},
-            user_id="user_123",
-            session_id="sess_abc",
-        )
-
-        assert result is False
-
-    @pytest.mark.asyncio
-    async def test_publish_does_not_propagate_exception(
-        self,
-        publisher: AgentDataPublisher,
-        mock_backend_client: AsyncMock,
-    ) -> None:
-        """save() 예외가 publish() 바깥으로 전파되지 않는다."""
-        mock_backend_client.save.side_effect = ConnectionError("네트워크 오류")
-
-        # 예외가 발생하지 않아야 함
-        result = await publisher.publish(
-            resource="emotion_logs",
-            data={},
             user_id="user_123",
             session_id="sess_abc",
         )

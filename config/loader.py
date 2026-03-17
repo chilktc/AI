@@ -207,6 +207,11 @@ class Settings:
         return int(self._config["pipeline"]["max_retries"])
 
     @property
+    def max_critical_retries(self) -> int:
+        """CRITICAL_FAIL 전용 재시도 상한."""
+        return int(self._config["pipeline"].get("max_critical_retries", 4))
+
+    @property
     def tier1_timeout(self) -> int:
         """TIER 1 병렬 작업 타임아웃 (초)."""
         return int(self._config["pipeline"]["tier1_timeout_seconds"])

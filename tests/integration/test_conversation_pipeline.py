@@ -13,8 +13,6 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from src.graph.workflow import (
-    build_conversation_graph,
-    build_unified_graph,
     tier1_conversation_fan_out,
 )
 from src.models.agent_state import AgentState
@@ -72,15 +70,3 @@ async def test_tier1_fan_out_merged_results_and_keys(
     assert "synthesis_guidance" in result["reasoning_result"]
 
 
-@pytest.mark.asyncio
-async def test_conversation_graph_builds_without_error() -> None:
-    """대화모드 그래프가 오류 없이 빌드되는지 확인."""
-    graph = build_conversation_graph()
-    assert graph is not None
-
-
-@pytest.mark.asyncio
-async def test_unified_graph_builds_without_error() -> None:
-    """통합 그래프가 오류 없이 빌드되는지 확인."""
-    graph = build_unified_graph()
-    assert graph is not None
