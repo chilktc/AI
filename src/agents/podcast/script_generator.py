@@ -169,18 +169,12 @@ class ScriptGeneratorAgent(BaseAgent):
         
         prompts = self._prompt_loader.load_all("podcast", "script_generator")
         
-        prompt = (
-            "Create a compelling podcast episode title for mental health content.\n\n"
-            f"Main Theme: {main_theme}\n"
-            f"Sub-themes: {', '.join(sub_themes)}\n"
-            f"Emotional Journey: From {start_emotion} "
-            f"to {resolution_emotion}\n\n"
-            "Requirements:\n"
-            "- In Korean\n"
-            "- 10-30 characters\n"
-            "- Empathetic and engaging\n"
-            "- Avoid clickbait or sensationalism\n\n"
-            "Respond ONLY with the title text itself."
+        user_prompt = self._prompt_loader.load_user_prompt("podcast", "script_generator", "generate_title")
+        prompt = user_prompt.format(
+            main_theme=main_theme,
+            sub_themes=", ".join(sub_themes),
+            start_emotion=start_emotion,
+            resolution_emotion=resolution_emotion
         )
 
         try:
@@ -216,22 +210,17 @@ class ScriptGeneratorAgent(BaseAgent):
 
         key_points_text = "\n".join([f"- {kp}" for kp in segment.get("key_points", [])])
 
-        prompt = (
-            "You are writing a mental health podcast script in Korean.\n"
-            "Write the exact script for this specific segment.\n\n"
-            f"**Episode Title**: {episode_title}\n"
-            f"**Main Theme**: {main_theme}\n"
-            f"**Target Duration**: {duration_minutes} minutes (approx {word_count_target} words)\n\n"
-            f"**Segment Key Points**:\n{key_points_text}\n"
-            f"**Emotional Tone**: {segment.get('emotional_tone', 'neutral')}\n"
-            f"**Transition Hint**: {segment.get('transition_hint', 'natural transition')}\n\n"
-            f"**Previous Segment Context**: {previous_context or 'This is the opening segment.'}\n\n"
-            f"**Knowledge to Include (if relevant)**: {knowledge_summary}\n\n"
-            "**Writing Guidelines**:\n"
-            "1. Write in natural, warm conversational Korean (존댓말 사용)\n"
-            "2. Be empathetic and supportive, NO medical diagnosing or advising\n"
-            "3. Aim to be reasonably close to the target word count\n\n"
-            "Return ONLY the Korean script text."
+        user_prompt = self._prompt_loader.load_user_prompt("podcast", "script_generator", "generate_segment")
+        prompt = user_prompt.format(
+            episode_title=episode_title,
+            main_theme=main_theme,
+            duration_minutes=duration_minutes,
+            word_count_target=word_count_target,
+            key_points_text=key_points_text,
+            emotional_tone=segment.get("emotional_tone", "neutral"),
+            transition_hint=segment.get("transition_hint", "natural transition"),
+            previous_context=previous_context or "This is the opening segment.",
+            knowledge_summary=knowledge_summary
         )
 
         try:
@@ -283,10 +272,9 @@ class ScriptGeneratorAgent(BaseAgent):
             full_script = full_script[:5000] + "..."
 
         system_prompt = self.get_prompt("extract_insights")
-        user_message = (
-            "Extract 3-5 brief, actionable, positive key insights (in Korean) from the following script.\n"
-            'Return them strictly as a JSON list of strings, for example: ["인사이트1", "인사이트2"]\n\n'
-            f"Script:\n{full_script}"
+        user_prompt = self._prompt_loader.load_user_prompt("podcast", "script_generator", "extract_insights")
+        user_message = user_prompt.format(
+            full_script=full_script
         )
 
         try:
