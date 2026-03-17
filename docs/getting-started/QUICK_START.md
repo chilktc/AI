@@ -47,10 +47,9 @@ docker compose up -d
 
 | 순서 | 문서 | 내용 |
 |------|------|------|
-| 1 | CLAUDE.md | 아키텍처 요약, 협업 규칙, API 규약 |
-| 2 | docs/architecture/PROJECT_STRUCTURE.md | 폴더 구조 및 파일 역할 |
-| 3 | docs/guides/GIT_WORKFLOW.md | 브랜치 전략, 커밋 컨벤션 |
-| 4 | docs/guides/AI_Team_Work_Zone_Assignment.md | Zone A/B/C/D 작업 영역 분할 |
+| 1 | CLAUDE.md | 아키텍처 요약, 협업 규칙, 브랜치 전략, API 규약 |
+| 2 | docs/guides/AGENT_DEV_GUIDE.md | 에이전트 개발 템플릿, 테스트 패턴 |
+| 3 | docs/guides/INFRA_ZONE_ASSIGNMENT.md | Zone A/B/C/D 작업 영역 분할 |
 
 ### 에이전트 설계 문서
 
