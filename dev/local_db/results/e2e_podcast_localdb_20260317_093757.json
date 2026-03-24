@@ -1,0 +1,383 @@
+{
+  "test_info": {
+    "type": "e2e_podcast_localdb",
+    "timestamp": "2026-03-17 09:37:57",
+    "elapsed_seconds": 55.94,
+    "provider": "openai",
+    "model": "gpt-4o-mini"
+  },
+  "verification_b": {
+    "fields": {
+      "intent": "dict(7 keys)",
+      "safety_flags": "dict(5 keys)",
+      "emotion_vectors": "dict(7 keys)",
+      "content_analysis": "dict(13 keys)",
+      "reasoning_result": "dict(9 keys)",
+      "script_draft": "dict(6 keys)",
+      "validation_result": "dict(7 keys)",
+      "final_output": "str(33자)"
+    },
+    "present": 8,
+    "total": 8,
+    "all_present": true
+  },
+  "verification_c1": {
+    "total_saves": 2,
+    "resources": {
+      "emotion_logs": 1,
+      "content_analyses": 1
+    }
+  },
+  "verification_c2": {
+    "emotion_logs": true,
+    "content_analyses": true
+  },
+  "agent_outputs": {
+    "intent": {
+      "intent_type": "emotional_support",
+      "complexity_score": 0.7,
+      "detected_entities": {
+        "emotions": [
+          "짜증",
+          "실망",
+          "두려움",
+          "거리감"
+        ],
+        "topics": [
+          "직장 내 인간관계",
+          "뒷담화",
+          "업무 압박",
+          "감정 표현"
+        ],
+        "persons": [
+          "후배",
+          "상사"
+        ]
+      },
+      "flags": {
+        "requires_memory": false,
+        "requires_knowledge": false,
+        "visualization_hint": false,
+        "urgency_level": 1,
+        "risk_flag": false
+      },
+      "reasoning": "사용자는 후배의 뒷담화로 인한 감정적 고통과 실망을 표현하고 있으며, 이러한 상황에 대한 공감과 위로를 요청하는 것으로 보입니다. 따라서 'emotional_support'로 분류했습니다.",
+      "trace_id": "trace_837d62ee4a47",
+      "classified_at": "2026-03-17 09:37:07.222641"
+    },
+    "safety_flags": {
+      "status": "warning",
+      "risk_level": 2,
+      "risk_score": 0.6,
+      "reasons": [
+        "후배의 뒷담화로 인한 실망감과 분노가 쌓이고 있음.",
+        "상사와의 소통 문제로 인한 스트레스와 고립감.",
+        "감정적으로 거리감을 느끼고 있으며, 무의식적으로 반응이 경직됨."
+      ],
+      "required_in_script": [
+        "현재 정서적으로 매우 힘든 상태이신 것 같습니다. 잠시 숨을 고르고 주변의 믿을만한 사람에게 이야기를 나눠보시는 건 어떨까요?",
+        "후배의 뒷담화로 인한 실망감과 분노가 쌓이고 있음.",
+        "상사와의 소통 문제로 인한 스트레스와 고립감.",
+        "감정적으로 거리감을 느끼고 있으며, 무의식적으로 반응이 경직됨."
+      ]
+    },
+    "emotion_vectors": {
+      "primary_emotion": "frustration",
+      "intensity": 0.8,
+      "valence": -0.5,
+      "arousal": 0.7,
+      "secondary_emotions": [
+        "disappointment",
+        "fear",
+        "detachment"
+      ],
+      "tone_recommendation": "이해하고 공감하는 톤 유지",
+      "emotional_journey_hint": [
+        "상황을 정확히 이해하고, 후배와의 소통 방법을 고민하기",
+        "자신의 감정을 솔직하게 표현하는 방법 모색하기",
+        "상사와의 관계에서의 스트레스 해소 방안 찾아보기"
+      ]
+    },
+    "content_analysis": {
+      "topic": "직장 내 인간관계",
+      "main_theme": "후배의 뒷담화로 인한 실망과 갈등",
+      "sub_themes": [
+        "직장 내 신뢰",
+        "갈등 해결",
+        "의사소통"
+      ],
+      "target_audience": "직장인",
+      "target_duration": 4,
+      "narrative_structure": "reflection",
+      "narrative_outline": [
+        "상황 소개",
+        "감정 표현",
+        "행동 및 반응",
+        "동료의 반응",
+        "결론"
+      ],
+      "key_takeaways": [
+        "신뢰가 깨지면 관계가 경직된다",
+        "직장 내 소통의 중요성"
+      ],
+      "tone": "따뜻한",
+      "keywords": [
+        "후배",
+        "뒷담화",
+        "실망",
+        "갈등"
+      ],
+      "call_to_action": "직장 내에서 열린 대화를 시도해보세요.",
+      "sensitive_notes": [],
+      "depth_level": "deep"
+    },
+    "reasoning_result": {
+      "reasoning_depth": "full",
+      "reasoning_strategy": "GoT+ToT+CoT",
+      "got_result": {
+        "core_pattern": "신뢰의 붕괴와 갈등",
+        "nodes": [
+          {
+            "id": "1",
+            "type": "emotion",
+            "label": "짜증",
+            "intensity": 0.9
+          },
+          {
+            "id": "2",
+            "type": "emotion",
+            "label": "실망",
+            "intensity": 0.85
+          },
+          {
+            "id": "3",
+            "type": "emotion",
+            "label": "두려움",
+            "intensity": 0.7
+          },
+          {
+            "id": "4",
+            "type": "experience",
+            "label": "뒷담화 경험",
+            "intensity": 0.8
+          },
+          {
+            "id": "5",
+            "type": "concept",
+            "label": "신뢰",
+            "intensity": 0.9
+          },
+          {
+            "id": "6",
+            "type": "experience",
+            "label": "업무 조율",
+            "intensity": 0.75
+          },
+          {
+            "id": "7",
+            "type": "emotion",
+            "label": "거리감",
+            "intensity": 0.8
+          }
+        ],
+        "edges": [
+          {
+            "from": "1",
+            "to": "2",
+            "relationship": "reinforces"
+          },
+          {
+            "from": "2",
+            "to": "5",
+            "relationship": "contrasts"
+          },
+          {
+            "from": "4",
+            "to": "1",
+            "relationship": "triggers"
+          },
+          {
+            "from": "4",
+            "to": "7",
+            "relationship": "triggers"
+          },
+          {
+            "from": "6",
+            "to": "5",
+            "relationship": "reinforces"
+          },
+          {
+            "from": "7",
+            "to": "3",
+            "relationship": "triggers"
+          }
+        ],
+        "insights": [
+          "후배의 뒷담화는 신뢰를 크게 훼손하며, 이는 짜증과 실망으로 이어진다.",
+          "업무 조율을 통해 신뢰를 쌓으려는 노력에도 불구하고, 거리감이 생기면 두려움이 증가한다."
+        ]
+      },
+      "tot_result": {
+        "alternatives": [
+          {
+            "id": 1,
+            "structure": "공감 위주의 서사",
+            "pros": "정서적 지지",
+            "cons": "해결책 부족"
+          },
+          {
+            "id": 2,
+            "structure": "해결책 중심의 가이드",
+            "pros": "실질적 도움",
+            "cons": "다소 딱딱함"
+          },
+          {
+            "id": 3,
+            "structure": "사건 분석 및 통찰",
+            "pros": "원인 파악 용이",
+            "cons": "어려울 수 있음"
+          }
+        ],
+        "selected": 1,
+        "selection_rationale": "사용자의 현재 불안도가 높으므로 공감 중심의 접근이 가장 적절함"
+      },
+      "episode_structure": [
+        "오프닝",
+        "고민 나누기",
+        "마음 들여다보기",
+        "작은 실천",
+        "클로징"
+      ],
+      "narrative_flow": "사용자의 불안을 먼저 다독인 후 신뢰의 붕괴와 갈등의 원인을 함께 찾아가는 흐름",
+      "key_points": [
+        "불안은 자연스러운 신호",
+        "신뢰 회복을 위한 소통의 중요성"
+      ],
+      "emotional_journey": [
+        "불안",
+        "안도",
+        "이해",
+        "희망"
+      ],
+      "confidence": 0.9
+    },
+    "script_draft": {
+      "episode_title": "신뢰의 실종: 후배와의 갈등 해결하기",
+      "total_duration": 5,
+      "segments": [
+        {
+          "segment_id": "seg_1_859f",
+          "segment_type": "오프닝",
+          "duration_minutes": 1,
+          "script_text": "안녕하세요, 여러분. 오늘의 에피소드는 \"신뢰의 실종: 후배와의 갈등 해결하기\"라는 주제로 이야기해보려고 합니다. 많은 분들이 경험하셨을 법한 상황인데요, 특히 후배와의 관계에서 발생하는 갈등은 우리에게 큰 실망을 안길 수 있습니다.\n\n후배가 우리에 대해 뒷담화를 한다는 소식을 들으면, 그 마음이 얼마나 아플지 상상해 보세요. 신뢰의 기반이 흔들리는 듯한 기분이 드실 겁니다. 이런 상황에서는 감정적으로 상처받기 쉬운데요, 그 후배와의 관계를 회복하기 위해서는 먼저 자신의 감정을 솔직하게 들여다보는 것이 중요합니다.\n\n이런 감정을 털어놓고, 상대방과의 대화로 문제를 해결할 수 있는 방법을 찾아보는 것이 좋습니다. 갈등은 누구에게나 있을 수 있는 일이니, 서로의 입장을 이해하고 소통하는 것이 큰 도움이 될 것입니다. 다음 시간에는 이 문제를 어떻게 해결할 수 있을지 더 깊이 들어가 보겠습니다.",
+          "word_count": 105,
+          "emotional_tone": "차분함",
+          "tts_markers": []
+        },
+        {
+          "segment_id": "seg_2_c2b2",
+          "segment_type": "고민 나누기",
+          "duration_minutes": 1,
+          "script_text": "안녕하세요, 여러분. 오늘은 후배와의 갈등에서 발생한 실망에 대해 이야기해보겠습니다. 누군가의 뒷담화는 우리에게 큰 상처를 줄 수 있습니다. 특히, 그 상대가 가까운 사람일 때 더 그렇죠. 이런 상황에서 느끼는 감정은 매우 복잡합니다. 실망감, 배신감, 그리고 때로는 분노까지 느낄 수 있습니다. \n\n하지만, 이러한 감정이 드는 것은 매우 자연스러운 일입니다. 중요한 것은 이러한 감정을 어떻게 다루느냐입니다. 먼저, 감정을 인정하고 받아들이는 것이 필요합니다. 그리고 후배와의 소통을 시도해보는 것도 좋은 방법입니다. 상대방에게 직접적으로 이야기해보면, 오해가 풀리거나 서로의 입장을 이해할 수 있는 기회를 만들 수 있습니다. 갈등은 누구에게나 있을 수 있는 일이니, 서로의 입장을 이해하고 소통하는 것이 큰 도움이 될 것입니다. \n\n다음 시간에는 이 문제를 어떻게 해결할 수 있을지 더 깊이 들어가 보겠습니다.",
+          "word_count": 107,
+          "emotional_tone": "차분함",
+          "tts_markers": []
+        },
+        {
+          "segment_id": "seg_3_1637",
+          "segment_type": "마음 들여다보기",
+          "duration_minutes": 1,
+          "script_text": "안녕하세요, 여러분. 오늘은 후배와의 갈등을 다룰 텐데요. 후배의 뒷담화로 인해 실망하고 마음이 무거운 분들이 많으실 것 같습니다. 이런 상황은 정말 힘든 경험이지요. 누군가가 우리를 의도치 않게 상처 줄 때, 그 감정은 쉽게 사라지지 않습니다. \n\n하지만 이럴 때일수록 우리의 마음을 잘 들여다보는 것이 중요합니다. 후배가 왜 그런 행동을 했는지, 혹시 그 안에 숨겨진 이유가 있는지 생각해 보는 것도 좋습니다. 갈등이 생기면 서로의 감정을 이해하고 소통하는 것이 중요하니까요. \n\n다음 시간에는 좀 더 구체적으로 이 문제를 어떻게 해결할 수 있을지 알아보겠습니다. 여러분의 이야기도 언제든지 나누어 주세요. 함께 고민하고 나아가면 좋겠습니다. 감사합니다.",
+          "word_count": 88,
+          "emotional_tone": "차분함",
+          "tts_markers": []
+        },
+        {
+          "segment_id": "seg_4_5be8",
+          "segment_type": "작은 실천",
+          "duration_minutes": 1,
+          "script_text": "안녕하세요, 여러분. 오늘은 후배와의 갈등에 대해 이야기해보려고 합니다. 특히, 후배의 뒷담화로 인해 실망감을 느끼는 상황은 참으로 힘든 경험입니다. 우리가 믿었던 사람에게서 느끼는 배신감은 마음속 깊이 상처를 남기기 마련이죠.\n\n이런 갈등 상황에서 가장 먼저 해야 할 것은 감정을 솔직하게 표현하는 것입니다. 후배에게 직접 이야기해보는 것이 좋습니다. 어떤 점에서 실망했는지, 그리고 그로 인해 어떤 감정을 느꼈는지를 차분하게 전달하는 것이죠. 이렇게 함으로써 서로의 입장을 이해할 수 있는 기회를 마련할 수 있습니다.\n\n어렵고 불편한 대화일 수 있지만, 이 과정이 갈등을 해소하는 데 큰 도움이 될 수 있습니다. 다음 세그먼트에서는 구체적인 대화 방법에 대해 더 이야기해보겠습니다. 여러분의 소중한 경험도 언제든지 나누어 주세요. 함께 나아가면 큰 힘이 될 것입니다. 감사합니다.",
+          "word_count": 104,
+          "emotional_tone": "차분함",
+          "tts_markers": []
+        },
+        {
+          "segment_id": "seg_5_91b3",
+          "segment_type": "클로징",
+          "duration_minutes": 1,
+          "script_text": "안녕하세요, 여러분. 오늘은 후배의 뒷담화로 인해 느끼는 실망과 갈등에 대해 이야기해보겠습니다. 이런 상황은 우리 모두에게 어렵고 힘든 경험이죠. 특히, 신뢰가 깨졌을 때의 감정은 더욱 복잡하게 얽힙니다.\n\n후배가 우리를 뒷담화했다는 사실을 알게 되면, 배신감과 실망감이 밀려옵니다. 이럴 때 중요한 것은 감정을 솔직하게 표현하는 것입니다. 상대방에게 직접 이야기하는 것이 두려울 수 있지만, 대화를 통해 서로의 입장을 이해할 수 있는 기회를 만들 수 있습니다.\n\n대화를 시작할 때는 감정을 부드럽게 표현하고, 상대방의 이야기도 잘 들어주는 것이 중요합니다. 이렇게 함으로써 신뢰를 다시 쌓고, 갈등을 해결하는 데 한 걸음 더 나아갈 수 있습니다. 여러분도 이런 경험이 있다면, 언제든지 나누어 주세요. 함께 이겨낼 수 있습니다.",
+          "word_count": 98,
+          "emotional_tone": "차분함",
+          "tts_markers": []
+        }
+      ],
+      "key_insights": [
+        "감정을 솔직하게 표현하는 것이 중요하다.",
+        "후배와의 대화를 통해 오해를 풀 수 있는 기회를 만들어라.",
+        "서로의 입장을 이해하고 소통하는 것이 갈등 해결에 도움이 된다.",
+        "갈등 상황에서 상대방의 숨겨진 이유를 생각해보는 것이 좋다.",
+        "어렵고 불편한 대화일지라도 갈등 해소에 큰 도움이 된다."
+      ],
+      "themes": [
+        "후배의 뒷담화로 인한 실망과 갈등",
+        "직장 내 신뢰",
+        "갈등 해결",
+        "의사소통"
+      ],
+      "metadata": {
+        "generated_at": "2026-03-17T09:37:49.336044",
+        "main_theme": "후배의 뒷담화로 인한 실망과 갈등",
+        "total_words": 502,
+        "segment_count": 5,
+        "processing_time": 26.278931
+      }
+    },
+    "validation_result": {
+      "deductions": [
+        {
+          "dimension": "content_quality",
+          "deduction": -0.05,
+          "reason": "범용 조언 발견: '서로의 입장을 이해하고 소통하는 것이 갈등 해결에 도움이 된다.'"
+        },
+        {
+          "dimension": "engagement_potential",
+          "deduction": -0.05,
+          "reason": "구체적 사례 부족: 1개만 사용"
+        },
+        {
+          "dimension": "safety_compliance",
+          "deduction": -0.5,
+          "reason": "스크립트에 안전 경고 문구가 포함되어 있지 않음"
+        }
+      ],
+      "scores": {
+        "content_quality": 0.85,
+        "safety_compliance": 0.4,
+        "emotional_alignment": 0.9,
+        "structure_coherence": 0.9,
+        "engagement_potential": 0.85
+      },
+      "overall_score": 0.78,
+      "validation": {
+        "approved": false,
+        "failed_criteria": [
+          "safety_compliance"
+        ],
+        "issues": []
+      },
+      "action": {
+        "decision": "escalate",
+        "revision_instructions": "스크립트에 안전 경고 문구를 추가하세요.",
+        "priority_fixes": [
+          "안전 경고 문구 추가"
+        ],
+        "max_iterations_remaining": 2
+      },
+      "critical_issues": [
+        "Safety compliance issue"
+      ],
+      "verdict": "CRITICAL_FAIL"
+    },
+    "final_output": "지금 힘든 상황이시군요. 전문 상담사와 연결해 드리겠습니다."
+  }
+}

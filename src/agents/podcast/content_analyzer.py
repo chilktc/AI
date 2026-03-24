@@ -20,6 +20,8 @@ from typing import Any
 
 from config.loader import get_settings
 from src.agents.shared.base_agent import BaseAgent
+from src.api.backend_resources import RESOURCE_CONTENT_ANALYSIS
+from src.api.publisher import AgentDataPublisher
 from src.models.agent_state import AgentState
 
 # 시스템 프롬프트는 prompts/podcast/content_analyzer.yaml에서 로드한다.
@@ -97,6 +99,15 @@ class ContentAnalyzerAgent(BaseAgent):
 
         # STEP 3: 결과 검증 및 보정 — 스펙 기준에 맞게 후처리
         validated_analysis = self._validate_and_correct(analysis, depth_level)
+
+        # 백엔드에 분석 결과 직접 전달 (실패 시 예외 미전파)
+        publisher = AgentDataPublisher()
+        await publisher.publish(
+            resource=RESOURCE_CONTENT_ANALYSIS,
+            data=validated_analysis,
+            user_id=state.get("user_id", ""),
+            session_id=state.get("session_id", ""),
+        )
 
         return {
             "content_analysis": validated_analysis,

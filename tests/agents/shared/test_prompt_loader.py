@@ -29,7 +29,7 @@ def test_load_single_prompt() -> None:
 
     assert isinstance(prompt, str)
     assert len(prompt) > 0
-    assert "콘텐츠 분석" in prompt or "분석 전문가" in prompt
+    assert "콘텐츠 분석" in prompt or "분석 전문가" in prompt or "팟캐스트 분석가" in prompt
 
 
 def test_load_multi_prompt_by_key() -> None:

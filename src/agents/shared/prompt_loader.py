@@ -213,6 +213,47 @@ class PromptLoader:
             f"프롬프트 키 '{prompt_key}'를 찾을 수 없음: {mode}/{agent_name}.yaml"
         )
 
+    def load_user_prompt(
+        self,
+        mode: str,
+        agent_name: str,
+        prompt_key: str = "user_prompt",
+        *,
+        version: str | None = None,
+    ) -> str:
+        """
+        단일 프롬프트 에이전트나 다중 프롬프트 에이전트의 user_prompt를 로드한다.
+
+        Args:
+            mode: 에이전트 모드 ("podcast", "conversation", "shared")
+            agent_name: 에이전트 이름 (예: "script_generator")
+            prompt_key: 프롬프트 키 (기본: "user_prompt")
+            version: 로드할 버전 (None이면 기본 버전 사용, 멀티버전 전용)
+
+        Returns:
+            프롬프트 문자열
+
+        Raises:
+            PromptLoadError: 파일 없음, 키 없음, 버전 없음, 보안 위반 시
+        """
+        raw_data = self._load_yaml(mode, agent_name)
+        data = self._extract_version_data(raw_data, version)
+
+        # 다중 프롬프트 구조 (prompts.키.user_prompt)부터 확인
+        prompts_section = data.get("prompts", {})
+        if prompt_key in prompts_section:
+            sub = prompts_section[prompt_key]
+            if isinstance(sub, dict) and "user_prompt" in sub:
+                return str(sub["user_prompt"])
+            
+        # 단일 프롬프트 구조: 최상위에 user_prompt가 있을 때 (prompt_key 무시)
+        if "user_prompt" in data:
+            return str(data["user_prompt"])
+
+        raise PromptLoadError(
+            f"유저 프롬프트(키 '{prompt_key}')를 찾을 수 없음: {mode}/{agent_name}.yaml"
+        )
+
     def load_all(
         self,
         mode: str,

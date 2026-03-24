@@ -44,12 +44,6 @@ def test_conversation_routing(
     assert route_after_tier3_conversation(state) == expected_route
 
 
-def test_conversation_crisis_next_step() -> None:
-    """next_step이 crisis_response일 때 CRISIS 라우팅된다."""
-    state = AgentState(next_step="crisis_response", validation_result={})
-    assert route_after_tier3_conversation(state) == "crisis_response"
-
-
 # === 팟캐스트모드 라우팅 테스트 ===
 
 
@@ -59,9 +53,12 @@ def test_conversation_crisis_next_step() -> None:
         ("PASS", 0, "tier4_podcast"),
         ("FAIL", 0, "tier2_podcast"),
         ("FAIL", 2, "tier4_podcast"),  # 최대 재시도 초과 → 강제 통과
-        ("CRITICAL_FAIL", 0, "crisis_response"),
+        ("CRITICAL_FAIL", 0, "tier2_podcast"),      # 재시도
+        ("CRITICAL_FAIL", 3, "tier2_podcast"),      # 재시도 (4회 미만)
+        ("CRITICAL_FAIL", 4, "tier4_podcast"),      # 4회 소진 → 강제 통과
     ],
-    ids=["pass", "fail_retry", "fail_force_pass", "critical_fail"],
+    ids=["pass", "fail_retry", "fail_force_pass",
+         "critical_retry_first", "critical_retry_last", "critical_force_pass"],
 )
 def test_podcast_routing(
     verdict: str, iteration_count: int, expected_route: str
@@ -74,10 +71,18 @@ def test_podcast_routing(
     assert route_after_tier3_podcast(state) == expected_route
 
 
-def test_podcast_crisis_next_step() -> None:
+@pytest.mark.parametrize(
+    "router_func, expected_route",
+    [
+        (route_after_tier3_conversation, "crisis_response"),
+        (route_after_tier3_podcast, "crisis_response"),
+    ],
+    ids=["conversation_crisis", "podcast_crisis"],
+)
+def test_crisis_next_step(router_func, expected_route: str) -> None:
     """next_step이 crisis_response일 때 CRISIS 라우팅된다."""
     state = AgentState(next_step="crisis_response", validation_result={})
-    assert route_after_tier3_podcast(state) == "crisis_response"
+    assert router_func(state) == expected_route
 
 
 # === iteration_count 증가 테스트 ===
@@ -85,29 +90,15 @@ def test_podcast_crisis_next_step() -> None:
 
 @pytest.mark.parametrize(
     "initial, expected",
-    [(1, 2)],
-    ids=["one_to_two"],
+    [(None, 1), (0, 1), (1, 2)],
+    ids=["missing_to_one", "zero_to_one", "one_to_two"],
 )
 @pytest.mark.asyncio
-async def test_increment_iteration(initial: int, expected: int) -> None:
-    """iteration_count가 올바르게 증가한다."""
-    state = AgentState(iteration_count=initial)
+async def test_increment_iteration(initial, expected: int) -> None:
+    """iteration_count가 올바르게 증가한다 (없음/0/1 → 기대값)."""
+    state = AgentState() if initial is None else AgentState(iteration_count=initial)
     result = await increment_iteration_node(state)
     assert result["iteration_count"] == expected
-
-
-@pytest.mark.asyncio
-async def test_increment_default_when_missing() -> None:
-    """iteration_count 필드가 없거나 0일 때 0→1로 증가한다."""
-    # 필드 없음 → 0→1
-    state = AgentState()
-    result = await increment_iteration_node(state)
-    assert result["iteration_count"] == 1
-
-    # 명시적 0 → 1
-    state_zero = AgentState(iteration_count=0)
-    result_zero = await increment_iteration_node(state_zero)
-    assert result_zero["iteration_count"] == 1
 
 
 # === 엣지 케이스 테스트 ===

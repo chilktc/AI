@@ -67,6 +67,9 @@ TIER 4 (후처리): Personalization / Script Personalizer
 - Knowledge Agent, Visualization Agent
 - Telemetry Agent, Learning Agent
 
+> **파일 위치**: Safety/Emotion Agent는 `src/agents/podcast/`에 구현되어 양 모드에서 공용으로 사용된다.
+> Learning Agent는 `src/agents/shared/learning.py`에 위치한다.
+
 ### 대화모드 실행 흐름
 
 ```
@@ -253,6 +256,14 @@ class AgentState(TypedDict, total=False):
 | 개발자2 | emotion_vectors, risk_level, risk_score, safety_flags, memory_results, visual_data | 개발자1 쓰기 필드 + 개발자1 읽기 필드 |
 | 개발자3 | context, content_analysis, reasoning_result, validation_result | 전체 필드 읽기 가능 |
 
+> **예외**: Intent Classifier(개발자1)는 TIER 0에서 1차 위기 감지를 위해
+> risk_level, risk_score, safety_flags를 초기 설정한다.
+> Safety Agent(개발자2)가 TIER 1에서 이 값을 최종 덮어쓴다. (이슈 S-1)
+
+> **설정 참조**: 에이전트별 런타임 설정값(임계값, 토큰 예산, 타임아웃 등)은
+> `config/settings.yaml`이 단일 진실 소스(SSOT)이다.
+> 코드의 기본값은 settings.yaml 미설정 시 폴백용이며, 운영 환경에서는 settings.yaml 값이 우선한다.
+
 ### 에이전트 간 메시지 포맷 (v2.0)
 
 에이전트 간 통신은 **통합 메시지 엔벨로프 v2.0**을 사용한다:
@@ -300,7 +311,26 @@ class AgentState(TypedDict, total=False):
 
 ## 백엔드 API 규약
 
-백엔드 서버와는 REST API + JSON으로 통신한다. API 명세는 백엔드 팀이 작성하며, 프론트엔드 AI 파트는 아래 인터페이스를 따른다.
+### 서버 아키텍처
+
+```
+Frontend (app-4:3000) → Backend 서버 (app-3:8080) ↔ AI 서버 (app-2:8000)
+                                    ↓
+                                   DB
+```
+
+| 서버 | 역할 | 포트 |
+|------|------|------|
+| AI 서버 | LLM 파이프라인 실행, Backend 서버 전용 API 제공 | 8000 |
+| Backend 서버 | 데이터 영속화 (MySQL), 조회, 프론트엔드 API 제공 | 8080 |
+
+- 프론트엔드는 **Backend 서버에만** 접속한다. AI 서버와 직접 통신하지 않는다.
+- AI 서버와 양방향 통신하는 서버는 **오직 Backend 서버** 하나뿐이다.
+- Backend 서버가 프론트엔드 요청을 받아 AI 서버에 전달하고, 결과를 프론트엔드에 반환한다.
+- Save/Load API는 AI → Backend 내부 통신이다 (`BackendClient` 경유).
+- Backend 서버 API 계약서: `docs/architecture/API_SPEC.md` (v2.0, 5개 문서 모음)
+
+백엔드 서버와는 REST API + JSON으로 통신한다. API 스키마는 `src/api/contracts.py`에 정의되어 있으며, 리소스 경로/타입 상수는 `src/api/backend_resources.py`에서 관리한다.
 
 ### 저장 API (Save)
 
@@ -356,8 +386,14 @@ Content-Type: application/json
 
 - 모든 API 호출은 `src/api/` 모듈을 통해서만 한다 (직접 HTTP 호출 금지)
 - API 스키마 변경은 백엔드 팀과 합의 후 `src/api/contracts.py`에 반영
-- 타임아웃: 기본 5초, LLM 관련 30초
+- 리소스 경로 상수: `src/api/backend_resources.py` (RESOURCE_* 상수)
+- Save 타입 상수: `src/api/backend_resources.py` (TYPE_* 상수)
+- 타임아웃: 기본 5초, LLM 관련 30초 (config `api.timeout`, `api.llm_timeout`)
+- Backend URL 기본값: `http://localhost:8080/api/v1` (`BACKEND_API_URL` 환경변수로 오버라이드)
 - 실패 시 최대 3회 재시도 (exponential backoff)
+- 활성 리소스: learning, podcast_episodes, content_analyses, emotion_logs, visualizations
+- 대화모드 리소스: conversations, memories, sessions (`TODO(backend)` — 백엔드 팀 협의 필요)
+- 저장 모드(`config/settings.yaml`의 `storage.mode`): `local` | `proxy`(기본) | `hybrid`
 
 ---
 
@@ -453,11 +489,23 @@ class ReasoningAgent:
 
 ---
 
+## 프롬프트 관리
+
+에이전트 프롬프트는 `prompts/` 디렉토리의 YAML 파일로 관리하며, 멀티버전 형식을 지원한다.
+`config/settings.yaml`의 `prompts.versions` 섹션에서 에이전트별 사용 버전을 핀닝한다.
+
+현재 핀닝 (2026-03-13 최종 확정, Round 4):
+- Content Analyzer: v2.1.0 / Podcast Reasoning: v3.0.0 / Batch Validator: v2.3.0
+
+상세: `docs/guides/PROMPT_VERSIONING.md`
+
+---
+
 ## 기술 스택
 
 | 구분 | 기술 |
 |------|------|
-| LLM | Anthropic Claude (Opus 4.6, Sonnet 4, Haiku) / AWS Bedrock |
+| LLM | Anthropic Claude (Opus 4.6, Sonnet 4, Haiku) / AWS Bedrock / OpenAI / Ollama(개발용) |
 | 오케스트레이션 | LangGraph StateGraph (TIER 기반 파이프라인) |
 | 벡터 DB | Pinecone |
 | 관계형 DB | MySQL |
@@ -468,12 +516,34 @@ class ReasoningAgent:
 
 ---
 
+## 구현 현황 (2026-03-13 기준)
+
+| 모드 | 구현 에이전트 | 진행률 |
+|------|------------|--------|
+| **팟캐스트모드** | Content Analyzer, Podcast Reasoning, Script Generator, Batch Validator, Script Personalizer, Visualization, Episode Memory(스텁) | 7/7 (100%) |
+| **대화모드** | Intent Classifier, Knowledge, Learning | 3/13 (23%) |
+| **공용 에이전트** | Safety, Emotion | 팟캐스트모드에서 구현, 양 모드에서 재사용 |
+| **대화모드 스텁** | Context, Reasoning, Synthesis, Validator, Personalization, Telemetry | workflow.py에 빈 스텁 등록 |
+
+> 스텁 노드: workflow.py에 등록되어 그래프 구조는 완성되었으나, 실제 로직은 빈 dict를 반환한다.
+> Telemetry Agent는 전체 에이전트 완료 후 구현 예정.
+
+---
+
 ## 참고 문서
+
+### 프로젝트 문서 (저장소 내)
 
 - `docs/guides/GIT_WORKFLOW.md` — 브랜치/커밋/PR 상세 가이드
 - `docs/architecture/PROJECT_STRUCTURE.md` — 디렉토리 구조 설명
 - `docs/getting-started/QUICK_START.md` — 환경 설정 및 빠른 시작
 - `docs/architecture/AGENT_ROLES.md` — 에이전트별 역할·입출력·이슈 정의서
+- `docs/guides/PROMPT_VERSIONING.md` — 프롬프트 멀티버전 관리 가이드
+
+### 설계 원본 (저장소 외부 — 임의 수정 금지)
+
+> 아래 문서는 프로젝트 설계 원본으로, 저장소에 포함되지 않는다.
+
 - ProjectDocs/INDEX.md — 마스터 인덱스 (20개 에이전트 전체)
 - ProjectDocs/ARCHITECTURE_v4.0.md — v4.0 아키텍처 확정 명세
 - ProjectDocs/ARCHITECTURE_REDESIGN_v4.0.md — v4.0 재설계 과정 및 상세
@@ -482,4 +552,4 @@ class ReasoningAgent:
 
 ---
 
-*마지막 업데이트: 2026-02-14*
+*마지막 업데이트: 2026-03-13*

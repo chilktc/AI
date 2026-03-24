@@ -172,21 +172,26 @@ def test_build_context(
         assert text not in context
 
 
-def test_build_context_minimal_returns_default(agent: LearningAgent) -> None:
-    """최소 필드 상태에서 기본 메시지를 반환한다."""
-    state = AgentState(user_input="", user_id="u", session_id="s", mode="podcast")
-    assert agent._build_learning_context(state) == "세션 데이터가 부족합니다."
-
-
-def test_build_context_truncates_long_output(agent: LearningAgent) -> None:
-    """final_output이 500자를 초과하면 잘린다."""
-    state = AgentState(
-        user_input="테스트", user_id="u", session_id="s",
-        mode="podcast", final_output="A" * 1000,
-    )
-    context = agent._build_learning_context(state)
-    assert "..." in context
-    assert "A" * 500 in context
+@pytest.mark.parametrize(
+    "state_kwargs, check",
+    [
+        (
+            {"user_input": ""},
+            lambda ctx: ctx == "세션 데이터가 부족합니다.",
+        ),
+        (
+            {"user_input": "테스트", "final_output": "A" * 1000},
+            lambda ctx: "..." in ctx and "A" * 500 in ctx,
+        ),
+    ],
+    ids=["minimal_returns_default", "truncates_long_output"],
+)
+def test_build_context_edge_cases(
+    agent: LearningAgent, state_kwargs: dict, check,
+) -> None:
+    """최소 필드 → 기본 메시지, 긴 출력 → truncation."""
+    state = AgentState(user_id="u", session_id="s", mode="podcast", **state_kwargs)
+    assert check(agent._build_learning_context(state))
 
 
 # === 에러 처리 테스트 ===

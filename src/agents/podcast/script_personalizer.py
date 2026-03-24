@@ -80,7 +80,24 @@ class ScriptPersonalizerAgent(BaseAgent):
             # script_draft에서 Pydantic 객체 복원
             script_data = state.get("script_draft", {})
             validated_script = ValidatedScript(**script_data) if script_data else None
-            emotional_journey = None  # LangGraph 설계상 별도 추출 또는 계산 필요
+            
+            # AgentState에서 감정적 여정 정보 추출
+            content_analysis = state.get("content_analysis", {})
+            emotional_journey_data = content_analysis.get(
+                "emotional_journey", state.get("emotional_journey")
+            )
+            
+            emotional_journey = None
+            if emotional_journey_data:
+                try:
+                    emotional_journey = EmotionalJourney(
+                        opening=emotional_journey_data.get("opening", emotional_journey_data.get("start_emotion", "차분함")),
+                        development=emotional_journey_data.get("development", "공감"),
+                        resolution=emotional_journey_data.get("resolution", emotional_journey_data.get("resolution_emotion", "따뜻함")),
+                        journey_type=emotional_journey_data.get("journey_type", "healing")
+                    )
+                except Exception as e:
+                    self.logger.warning(f"[ScriptPersonalizer] Failed to parse EmotionalJourney: {e}")
 
             # 에피소드 ID 생성
             episode_id = f"ep_{uuid.uuid4().hex[:12]}"
@@ -395,45 +412,51 @@ class ScriptPersonalizerAgent(BaseAgent):
         strategy: Dict[str, Any],
         emotional_journey: Optional[EmotionalJourney],
     ) -> ValidatedScript:
-        """LLM을 사용한 심화 개인화"""
+        """LLM을 사용한 심화 개인화 (전체 대본 통합 처리)"""
 
         if not self.llm_client:
             return script
 
-        self.logger.info("[ScriptPersonalizer] Applying deep personalization with LLM")
+        self.logger.info("[ScriptPersonalizer] Applying deep personalization with LLM (Integrated)")
+
+        # 1. 문서 전체의 세그먼트 내용을 하나로 통합
+        integrated_text_blocks = []
+        for segment in script.segments:
+            integrated_text_blocks.append(
+                f"[Segment: {segment.segment_type}]\n{segment.script_text}"
+            )
+        full_script_text = "\n\n".join(integrated_text_blocks)
 
         new_segments = []
 
-        for segment in script.segments:
-            # 특정 세그먼트만 심화 개인화 (opening, closing 등)
-            if segment.segment_type in ["opening", "closing", "reflection"]:
-                try:
-                    adjusted_text = await self._personalize_segment_with_llm(
-                        segment_text=segment.script_text,
-                        segment_type=segment.segment_type,
-                        user_profile=user_profile,
-                        strategy=strategy,
-                        emotional_journey=emotional_journey,
-                    )
+        try:
+            # 2. 통합된 텍스트를 LLM에 한 번에 전달하여 단일 스크립트 확보
+            integrated_personalized_text = await self._personalize_integrated_script_with_llm(
+                full_script_text=full_script_text,
+                user_profile=user_profile,
+                strategy=strategy,
+                emotional_journey=emotional_journey,
+            )
 
-                    new_segment = ScriptSegment(
-                        segment_id=segment.segment_id,
-                        segment_type=segment.segment_type,
-                        duration_minutes=segment.duration_minutes,
-                        script_text=adjusted_text,
-                        word_count=len(adjusted_text.split()),
-                        emotional_tone=segment.emotional_tone,
-                        tts_markers=segment.tts_markers,
-                    )
-                    new_segments.append(new_segment)
+            # 3. 통합된 텍스트를 하나의 'full_episode' 세그먼트에 담아 반환 
+            # (Validation/Schemas 와의 호환성을 위해 단일 요소의 list로 처리)
+            single_segment = ScriptSegment(
+                segment_id="full_episode",
+                segment_type="integrated",
+                duration_minutes=script.total_duration,
+                script_text=integrated_personalized_text,
+                word_count=len(integrated_personalized_text.split()),
+                emotional_tone="mixed",
+                tts_markers=[],
+            )
+            new_segments.append(single_segment)
 
-                except Exception as e:
-                    self.logger.warning(
-                        f"[ScriptPersonalizer] LLM personalization failed for {segment.segment_id}: {str(e)}"
-                    )
-                    new_segments.append(segment)
-            else:
-                new_segments.append(segment)
+        except Exception as e:
+            self.logger.warning(
+                f"[ScriptPersonalizer] Integrated LLM personalization failed: {str(e)}"
+            )
+            # 실패 시 원본 그대로 반환
+            return script
 
         return ValidatedScript(
             episode_title=script.episode_title,
@@ -443,10 +466,9 @@ class ScriptPersonalizerAgent(BaseAgent):
             themes=script.themes,
         )
 
-    async def _personalize_segment_with_llm(
+    async def _personalize_integrated_script_with_llm(
         self,
-        segment_text: str,
-        segment_type: str,
+        full_script_text: str,
         user_profile: UserProfile,
         strategy: Dict[str, Any],
         emotional_journey: Optional[EmotionalJourney],
@@ -460,40 +482,24 @@ class ScriptPersonalizerAgent(BaseAgent):
         if emotional_journey:
             emotional_context = f"""
 Emotional Journey:
-- Start: {emotional_journey.start_emotion}
-- Peak: {emotional_journey.peak_emotion}
-- Resolution: {emotional_journey.resolution_emotion}
+- Opening: {emotional_journey.opening}
+- Development: {emotional_journey.development}
+- Resolution: {emotional_journey.resolution}
 - Type: {emotional_journey.journey_type}
 """
 
-        prompt = f"""Adjust this podcast segment to better match the user's interaction style.
-
-Original Segment ({segment_type}):
-{segment_text}
-
-User Profile:
-- Age Group: {user_profile.age_group}
-- Preferred Style: {user_profile.preferred_style}
-- Preferred Attitude: {user_profile.preferred_attitude}
-- Previous Interactions: {interaction_summary}
-
-{emotional_context}
-
-Personalization Strategy:
-- Formality: {strategy.get('formality', 'medium')}
-- Attitude: {strategy.get('attitude', 'balanced')}
-- Explanation Depth: {strategy.get('explanation_depth', 'moderate')}
-
-Adjust the language, examples, and pacing to better resonate with this user 
-while maintaining the core message and emotional tone.
-
-Important:
-- Keep the response in Korean
-- Maintain the original length approximately
-- Preserve key information and insights
-
-Return only the adjusted Korean text, no explanations.
-"""
+        user_prompt = self._prompt_loader.load_user_prompt("podcast", "script_personalizer")
+        prompt = user_prompt.format(
+            full_script_text=full_script_text,
+            age_group=user_profile.age_group,
+            preferred_style=user_profile.preferred_style,
+            preferred_attitude=user_profile.preferred_attitude,
+            interaction_summary=interaction_summary,
+            emotional_context=emotional_context,
+            formality=strategy.get('formality', 'medium'),
+            attitude=strategy.get('attitude', 'balanced'),
+            explanation_depth=strategy.get('explanation_depth', 'moderate')
+        )
 
         try:
             response = await self.call_llm(
@@ -502,7 +508,7 @@ Return only the adjusted Korean text, no explanations.
             return response.strip()
         except Exception as e:
             self.logger.error(f"[ScriptPersonalizer] LLM call failed: {str(e)}")
-            return segment_text
+            return full_script_text
 
     def _summarize_interactions(self, history: List[Dict[str, Any]]) -> str:
         """상호작용 이력 요약"""

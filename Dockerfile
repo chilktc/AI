@@ -27,5 +27,5 @@ ENV PYTHONUNBUFFERED=1
 # 포트 노출 (API 서버용)
 EXPOSE 8000
 
-# 기본 명령어
-CMD ["python", "-m", "src.api.main"]
+# 기본 명령어 — uvicorn으로 FastAPI 서버 시작
+CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

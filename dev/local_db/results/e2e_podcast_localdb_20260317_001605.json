@@ -1,0 +1,367 @@
+{
+  "test_info": {
+    "type": "e2e_podcast_localdb",
+    "timestamp": "2026-03-17 00:16:05",
+    "elapsed_seconds": 101.17,
+    "provider": "openai",
+    "model": "gpt-4o-mini"
+  },
+  "verification_b": {
+    "fields": {
+      "intent": "dict(7 keys)",
+      "safety_flags": "dict(5 keys)",
+      "emotion_vectors": "dict(7 keys)",
+      "content_analysis": "dict(13 keys)",
+      "reasoning_result": "dict(9 keys)",
+      "script_draft": "dict(6 keys)",
+      "validation_result": "dict(7 keys)",
+      "final_output": "str(3220자)"
+    },
+    "present": 8,
+    "total": 8,
+    "all_present": true
+  },
+  "verification_c1": {
+    "total_saves": 3,
+    "resources": {
+      "emotion_logs": 1,
+      "content_analyses": 1,
+      "learning": 1
+    }
+  },
+  "verification_c2": null,
+  "agent_outputs": {
+    "intent": {
+      "intent_type": "emotional_support",
+      "complexity_score": 0.7,
+      "detected_entities": {
+        "emotions": [
+          "짜증",
+          "실망",
+          "두려움",
+          "거리감"
+        ],
+        "topics": [
+          "직장 내 관계",
+          "뒷담화",
+          "상사와의 소통",
+          "후배와의 관계"
+        ],
+        "persons": [
+          "후배",
+          "상사"
+        ]
+      },
+      "flags": {
+        "requires_memory": false,
+        "requires_knowledge": false,
+        "visualization_hint": false,
+        "urgency_level": 1,
+        "risk_flag": false
+      },
+      "reasoning": "사용자는 후배의 뒷담화로 인해 느끼는 감정과 그로 인한 갈등을 표현하고 있으며, 이는 감정적인 지지와 공감을 필요로 하는 상황입니다. 따라서 'emotional_support'로 분류했습니다.",
+      "trace_id": "trace_9629fa74306a",
+      "classified_at": "2026-03-17 00:14:30.202301"
+    },
+    "safety_flags": {
+      "status": "warning",
+      "risk_level": 2,
+      "risk_score": 0.6,
+      "reasons": [
+        "후배의 뒷담화로 인한 실망감과 분노",
+        "상사와의 소통 문제로 인한 스트레스와 고립감"
+      ],
+      "required_in_script": [
+        "현재 정서적으로 매우 힘든 상태이신 것 같습니다. 잠시 숨을 고르고 주변의 믿을만한 사람에게 이야기를 나눠보시는 건 어떨까요?",
+        "후배의 뒷담화로 인한 실망감과 분노",
+        "상사와의 소통 문제로 인한 스트레스와 고립감"
+      ]
+    },
+    "emotion_vectors": {
+      "primary_emotion": "frustration",
+      "intensity": 0.8,
+      "valence": -0.6,
+      "arousal": 0.7,
+      "secondary_emotions": [
+        "disappointment",
+        "fear",
+        "alienation"
+      ],
+      "tone_recommendation": "Empathetic and supportive tone, encouraging open communication.",
+      "emotional_journey_hint": [
+        "Acknowledge your feelings of frustration and disappointment.",
+        "Consider discussing your feelings with the colleague directly in a constructive way.",
+        "Reflect on the importance of maintaining professional relationships despite conflicts."
+      ]
+    },
+    "content_analysis": {
+      "topic": "직장 내 인간관계와 갈등",
+      "main_theme": "신뢰의 중요성과 갈등 해결",
+      "sub_themes": [
+        "후배와의 관계",
+        "상사와의 관계",
+        "업무 스트레스"
+      ],
+      "target_audience": "직장인",
+      "target_duration": 4,
+      "narrative_structure": "reflection",
+      "narrative_outline": [
+        "상황 설명",
+        "감정의 복잡성",
+        "행동과 반응",
+        "갈등의 원인",
+        "해결 방안 모색"
+      ],
+      "key_takeaways": [
+        "신뢰가 깨지면 관계가 복잡해진다",
+        "갈등은 대화로 해결할 수 있다"
+      ],
+      "tone": "따뜻한",
+      "keywords": [
+        "직장 갈등",
+        "신뢰",
+        "소통"
+      ],
+      "call_to_action": "상대와의 대화를 통해 오해를 풀어보세요.",
+      "sensitive_notes": [],
+      "depth_level": "deep"
+    },
+    "reasoning_result": {
+      "reasoning_depth": "full",
+      "reasoning_strategy": "GoT+ToT+CoT",
+      "got_result": {
+        "core_pattern": "신뢰의 붕괴와 갈등",
+        "nodes": [
+          {
+            "id": "1",
+            "type": "emotion",
+            "label": "짜증",
+            "intensity": 0.9
+          },
+          {
+            "id": "2",
+            "type": "emotion",
+            "label": "실망",
+            "intensity": 0.85
+          },
+          {
+            "id": "3",
+            "type": "emotion",
+            "label": "두려움",
+            "intensity": 0.7
+          },
+          {
+            "id": "4",
+            "type": "experience",
+            "label": "뒷담화 경험",
+            "intensity": 0.8
+          },
+          {
+            "id": "5",
+            "type": "concept",
+            "label": "신뢰",
+            "intensity": 0.75
+          },
+          {
+            "id": "6",
+            "type": "experience",
+            "label": "업무 조율",
+            "intensity": 0.8
+          },
+          {
+            "id": "7",
+            "type": "emotion",
+            "label": "거리감",
+            "intensity": 0.7
+          }
+        ],
+        "edges": [
+          {
+            "from": "1",
+            "to": "4",
+            "relationship": "triggers"
+          },
+          {
+            "from": "2",
+            "to": "5",
+            "relationship": "contrasts"
+          },
+          {
+            "from": "3",
+            "to": "7",
+            "relationship": "triggers"
+          },
+          {
+            "from": "6",
+            "to": "5",
+            "relationship": "reinforces"
+          },
+          {
+            "from": "4",
+            "to": "1",
+            "relationship": "reinforces"
+          },
+          {
+            "from": "4",
+            "to": "2",
+            "relationship": "reinforces"
+          }
+        ],
+        "insights": [
+          "후배의 뒷담화는 신뢰의 붕괴를 초래하며, 이는 짜증과 실망을 유발한다.",
+          "업무 조율의 노력에도 불구하고 갈등이 발생하며, 이는 거리감을 느끼게 한다."
+        ]
+      },
+      "tot_result": {
+        "alternatives": [
+          {
+            "id": 1,
+            "structure": "공감 위주의 서사",
+            "pros": "정서적 지지",
+            "cons": "해결책 부족"
+          },
+          {
+            "id": 2,
+            "structure": "해결책 중심의 가이드",
+            "pros": "실질적 도움",
+            "cons": "다소 딱딱함"
+          },
+          {
+            "id": 3,
+            "structure": "사건 분석 및 통찰",
+            "pros": "원인 파악 용이",
+            "cons": "어려울 수 있음"
+          }
+        ],
+        "selected": 1,
+        "selection_rationale": "사용자의 현재 불안도가 높으므로 공감 중심의 접근이 가장 적절함"
+      },
+      "episode_structure": [
+        "오프닝",
+        "고민 나누기",
+        "마음 들여다보기",
+        "작은 실천",
+        "클로징"
+      ],
+      "narrative_flow": "사용자의 불안을 먼저 다독인 후 신뢰의 붕괴와 갈등의 원인을 함께 찾아가는 흐름",
+      "key_points": [
+        "불안은 자연스러운 신호",
+        "신뢰 회복을 위한 소통의 중요성"
+      ],
+      "emotional_journey": [
+        "불안",
+        "안도",
+        "이해",
+        "희망"
+      ],
+      "confidence": 0.9
+    },
+    "script_draft": {
+      "episode_title": "신뢰로 풀어가는 갈등의 길",
+      "total_duration": 5,
+      "segments": [
+        {
+          "segment_id": "seg_1_dc4f",
+          "segment_type": "오프닝",
+          "duration_minutes": 1,
+          "script_text": "안녕하세요, 여러분. 오늘은 \"신뢰로 풀어가는 갈등의 길\"이라는 주제로 이야기해보겠습니다. 갈등은 우리의 삶에서 피할 수 없는 부분이죠. 하지만 그 갈등을 어떻게 해결하느냐에 따라 우리의 관계가 깊어지기도 하고, 멀어지기도 합니다.\n\n신뢰는 갈등 해결의 핵심입니다. 서로에 대한 신뢰가 있을 때, 우리는 감정을 솔직하게 표현할 수 있고, 상대방의 입장을 이해하려고 노력하게 됩니다. 신뢰는 단순히 믿음만이 아니라, 상대방을 존중하고 소통하려는 의지에서 시작됩니다.\n\n갈등이 생겼을 때, 먼저 상대방의 이야기를 들어보세요. 자신의 감정과 생각을 솔직하게 전달하는 것도 중요합니다. 이렇게 서로의 마음을 나누다 보면, 갈등의 실마리를 찾을 수 있습니다. 신뢰를 바탕으로 한 소통이 갈등을 해결하는 첫걸음이 될 것입니다. \n\n이제 다음 이야기를 이어가겠습니다.",
+          "word_count": 94,
+          "emotional_tone": "차분함",
+          "tts_markers": []
+        },
+        {
+          "segment_id": "seg_2_2682",
+          "segment_type": "고민 나누기",
+          "duration_minutes": 1,
+          "script_text": "신뢰로 갈등을 해결해 나가는 과정은 때때로 쉽지 않을 수 있습니다. 하지만, 신뢰가 없이는 진정한 소통이 이루어지기 어렵습니다. 서로의 입장을 이해하고 존중하는 마음이 필요합니다. 갈등 상황에서 우리는 종종 방어적이 되기 쉽지만, 이럴 때일수록 상대방에게 마음을 열어야 합니다. \n\n갈등을 해결하기 위해서는 먼저 상대방의 감정을 인정하고, 자신의 감정도 솔직하게 표현해야 합니다. 이렇게 신뢰를 쌓아가는 과정은 조금씩 서로를 이해하는 데 큰 도움이 됩니다. \n\n마지막으로, 갈등을 해결하기 위한 대화에서는 비난보다는 이해와 공감의 언어를 사용하는 것이 중요합니다. 서로를 향한 신뢰가 쌓이면, 갈등은 더 이상 두려운 것이 아닌 성장의 기회가 될 수 있습니다. 여러분의 관계 속에서도 이런 신뢰를 키워나가길 바랍니다.",
+          "word_count": 93,
+          "emotional_tone": "차분함",
+          "tts_markers": []
+        },
+        {
+          "segment_id": "seg_3_6b1f",
+          "segment_type": "마음 들여다보기",
+          "duration_minutes": 1,
+          "script_text": "신뢰는 갈등 해결의 핵심입니다. 우리가 서로를 신뢰할 수 있을 때, 갈등은 단순한 문제가 아닌, 서로를 더 깊이 이해할 수 있는 기회로 변모합니다. 신뢰를 쌓기 위해서는 솔직한 대화가 필요합니다. 상대방의 말을 귀 기울여 듣고, 그들의 감정을 존중하는 것이죠. 이러한 과정 속에서 우리는 서로의 시각을 이해하고, 더 나아가 함께 해결책을 찾아갈 수 있습니다.\n\n갈등이 생겼을 때, 이 신뢰를 기반으로 대화를 이어간다면, 우리는 더욱 강한 관계를 만들어갈 수 있습니다. 어려운 순간에도 서로를 지지하고, 이해하며 나아간다면, 신뢰는 더욱 단단해질 것입니다. 여러분의 일상 속에서도 이러한 신뢰를 쌓아가며, 갈등을 긍정적인 방향으로 이끌어가길 바랍니다.",
+          "word_count": 87,
+          "emotional_tone": "차분함",
+          "tts_markers": []
+        },
+        {
+          "segment_id": "seg_4_40d4",
+          "segment_type": "작은 실천",
+          "duration_minutes": 1,
+          "script_text": "신뢰는 갈등을 해결하는 데 있어 정말 중요한 요소입니다. 우리는 모두 서로 다른 배경과 경험을 가지고 있기 때문에 갈등이 생기는 것은 자연스러운 일입니다. 하지만 이 갈등을 어떻게 해결하느냐가 우리의 관계에 큰 영향을 미치죠. \n\n신뢰가 바탕이 된 대화는 서로의 입장을 이해하고 존중하는 데 큰 도움이 됩니다. 예를 들어, 갈등 상황에서 상대방의 이야기를 귀 기울여 듣는 것이죠. 이렇게 서로의 감정을 나누다 보면, 오해가 풀리고 해결책도 찾아갈 수 있습니다. \n\n갈등이 생겼을 때, 그 상황을 어떻게 바라보느냐가 중요합니다. 신뢰를 쌓아온 관계라면, 서로의 다름을 인정하고 함께 나아갈 수 있는 기회로 삼아 보세요. 신뢰를 통해 갈등을 긍정적인 방향으로 이끌어가는 여러분의 모습을 응원합니다.",
+          "word_count": 95,
+          "emotional_tone": "차분함",
+          "tts_markers": []
+        },
+        {
+          "segment_id": "seg_5_2915",
+          "segment_type": "클로징",
+          "duration_minutes": 1,
+          "script_text": "갈등이 발생했을 때, 그 갈등을 해결하는 열쇠는 바로 '신뢰'입니다. 신뢰가 쌓인 관계에서는, 서로의 의견이 다를 때에도 그 차이를 인정하고 존중하는 것이 가능해집니다. 이런 과정 속에서 우리는 새로운 이해를 얻고, 더욱 깊은 관계로 나아갈 수 있습니다.\n\n신뢰는 단순히 믿음의 문제뿐만 아니라, 서로의 감정을 이해하고 지지하는 것이기도 합니다. 갈등 상황에서 신뢰를 바탕으로 대화하면, 감정의 상처를 줄이고 협력할 수 있는 길이 열리게 됩니다. 여러분의 관계 속에서도 이러한 신뢰를 쌓아가는 노력을 해보세요. \n\n신뢰가 있는 관계라면, 갈등도 결국에는 서로를 더 잘 이해하는 계기가 될 수 있습니다. 여러분의 마음속에 있는 신뢰의 씨앗을 키워가길 바랍니다.",
+          "word_count": 88,
+          "emotional_tone": "차분함",
+          "tts_markers": []
+        }
+      ],
+      "key_insights": [
+        "갈등 해결의 핵심은 신뢰입니다.",
+        "상대방의 이야기를 귀 기울여 듣고 솔직하게 감정을 표현하세요.",
+        "비난보다 이해와 공감의 언어를 사용하세요.",
+        "서로의 다름을 인정하고 신뢰를 통해 긍정적인 방향으로 나아가세요.",
+        "신뢰를 쌓아가는 과정이 관계를 더욱 깊게 만듭니다."
+      ],
+      "themes": [
+        "신뢰의 중요성과 갈등 해결",
+        "후배와의 관계",
+        "상사와의 관계",
+        "업무 스트레스"
+      ],
+      "metadata": {
+        "generated_at": "2026-03-17T00:15:55.753763",
+        "main_theme": "신뢰의 중요성과 갈등 해결",
+        "total_words": 457,
+        "segment_count": 5,
+        "processing_time": 31.59465
+      }
+    },
+    "validation_result": {
+      "deductions": [
+        {
+          "dimension": "content_quality",
+          "deduction": -0.05,
+          "reason": "범용 조언 발견: '긍정적인 방향으로 나아가세요'"
+        },
+        {
+          "dimension": "engagement_potential",
+          "deduction": -0.05,
+          "reason": "구체적 사례 부족: 1개만 사용"
+        }
+      ],
+      "scores": {
+        "content_quality": 0.85,
+        "safety_compliance": 0.9,
+        "emotional_alignment": 0.9,
+        "structure_coherence": 0.9,
+        "engagement_potential": 0.8
+      },
+      "overall_score": 0.85,
+      "validation": {
+        "approved": true,
+        "failed_criteria": [],
+        "issues": []
+      },
+      "action": {
+        "decision": "approve",
+        "revision_instructions": null,
+        "priority_fixes": [],
+        "max_iterations_remaining": 2
+      },
+      "critical_issues": [],
+      "verdict": "PASS"
+    },
+    "final_output": "{\"episode_id\":\"ep_b350cf5c1ace\",\"episode_title\":\"신뢰로 풀어가는 갈등의 길\",\"total_duration\":5,\"segments\":[{\"segment_id\":\"seg_1_dc4f\",\"segment_type\":\"오프닝\",\"duration_minutes\":1,\"script_text\":\"안녕하세요, 여러분. 오늘은 \\\"신뢰로 풀어가는 갈등의 길\\\"이라는 주제로 이야기해보겠습니다. 갈등은 우리의 삶에서 피할 수 없는 부분이죠. 하지만 그 갈등을 어떻게 해결하느냐에 따라 우리의 관계가 깊어지기도 하고, 멀어지기도 합니다.\\n\\n신뢰는 갈등 해결의 핵심입니다. 서로에 대한 신뢰가 있을 때, 우리는 감정을 솔직하게 표현할 수 있고, 상대방의 입장을 이해하려고 노력하게 됩니다. 신뢰는 단순히 믿음만이 아니라, 상대방을 존중하고 소통하려는 의지에서 시작됩니다.\\n\\n갈등이 생겼을 때, 먼저 상대방의 이야기를 들어보세요. 자신의 감정과 생각을 솔직하게 전달하는 것도 중요합니다. 이렇게 서로의 마음을 나누다 보면, 갈등의 실마리를 찾을 수 있습니다. 신뢰를 바탕으로 한 소통이 갈등을 해결하는 첫걸음이 될 것입니다. \\n\\n이제 다음 이야기를 이어가겠습니다.\",\"word_count\":94,\"emotional_tone\":\"차분함\",\"tts_markers\":[]},{\"segment_id\":\"seg_2_2682\",\"segment_type\":\"고민 나누기\",\"duration_minutes\":1,\"script_text\":\"신뢰로 갈등을 해결해 나가는 과정은 때때로 쉽지 않을 수 있습니다. 하지만, 신뢰가 없이는 진정한 소통이 이루어지기 어렵습니다. 서로의 입장을 이해하고 존중하는 마음이 필요합니다. 갈등 상황에서 우리는 종종 방어적이 되기 쉽지만, 이럴 때일수록 상대방에게 마음을 열어야 합니다. \\n\\n갈등을 해결하기 위해서는 먼저 상대방의 감정을 인정하고, 자신의 감정도 솔직하게 표현해야 합니다. 이렇게 신뢰를 쌓아가는 과정은 조금씩 서로를 이해하는 데 큰 도움이 됩니다. \\n\\n마지막으로, 갈등을 해결하기 위한 대화에서는 비난보다는 이해와 공감의 언어를 사용하는 것이 중요합니다. 서로를 향한 신뢰가 쌓이면, 갈등은 더 이상 두려운 것이 아닌 성장의 기회가 될 수 있습니다. 여러분의 관계 속에서도 이런 신뢰를 키워나가길 바랍니다.\",\"word_count\":93,\"emotional_tone\":\"차분함\",\"tts_markers\":[]},{\"segment_id\":\"seg_3_6b1f\",\"segment_type\":\"마음 들여다보기\",\"duration_minutes\":1,\"script_text\":\"신뢰는 갈등 해결의 핵심입니다. 우리가 서로를 신뢰할 수 있을 때, 갈등은 단순한 문제가 아닌, 서로를 더 깊이 이해할 수 있는 기회로 변모합니다. 신뢰를 쌓기 위해서는 솔직한 대화가 필요합니다. 상대방의 말을 귀 기울여 듣고, 그들의 감정을 존중하는 것이죠. 이러한 과정 속에서 우리는 서로의 시각을 이해하고, 더 나아가 함께 해결책을 찾아갈 수 있습니다.\\n\\n갈등이 생겼을 때, 이 신뢰를 기반으로 대화를 이어간다면, 우리는 더욱 강한 관계를 만들어갈 수 있습니다. 어려운 순간에도 서로를 지지하고, 이해하며 나아간다면, 신뢰는 더욱 단단해질 것입니다. 여러분의 일상 속에서도 이러한 신뢰를 쌓아가며, 갈등을 긍정적인 방향으로 이끌어가길 바랍니다.\",\"word_count\":87,\"emotional_tone\":\"차분함\",\"tts_markers\":[]},{\"segment_id\":\"seg_4_40d4\",\"segment_type\":\"작은 실천\",\"duration_minutes\":1,\"script_text\":\"신뢰는 갈등을 해결하는 데 있어 정말 중요한 요소입니다. 우리는 모두 서로 다른 배경과 경험을 가지고 있기 때문에 갈등이 생기는 것은 자연스러운 일입니다. 하지만 이 갈등을 어떻게 해결하느냐가 우리의 관계에 큰 영향을 미치죠. \\n\\n신뢰가 바탕이 된 대화는 서로의 입장을 이해하고 존중하는 데 큰 도움이 됩니다. 예를 들어, 갈등 상황에서 상대방의 이야기를 귀 기울여 듣는 것이죠. 이렇게 서로의 감정을 나누다 보면, 오해가 풀리고 해결책도 찾아갈 수 있습니다. \\n\\n갈등이 생겼을 때, 그 상황을 어떻게 바라보느냐가 중요합니다. 신뢰를 쌓아온 관계라면, 서로의 다름을 인정하고 함께 나아갈 수 있는 기회로 삼아 보세요. 신뢰를 통해 갈등을 긍정적인 방향으로 이끌어가는 여러분의 모습을 응원합니다.\",\"word_count\":95,\"emotional_tone\":\"차분함\",\"tts_markers\":[]},{\"segment_id\":\"seg_5_2915\",\"segment_type\":\"클로징\",\"duration_minutes\":1,\"script_text\":\"갈등이 발생했을 때, 그 갈등을 해결하는 열쇠는 바로 '신뢰'입니다. 신뢰가 쌓인 관계에서는, 서로의 의견이 다를 때에도 그 차이를 인정하고 존중하는 것이 가능해집니다. 이런 과정 속에서 우리는 새로운 이해를 얻고, 더욱 깊은 관계로 나아갈 수 있습니다.\\n\\n신뢰는 단순히 믿음의 문제뿐만 아니라, 서로의 감정을 이해하고 지지하는 것이기도 합니다. 갈등 상황에서 신뢰를 바탕으로 대화하면, 감정의 상처를 줄이고 협력할 수 있는 길이 열리게 됩니다. 여러분의 관계 속에서도 이러한 신뢰를 쌓아가는 노력을 해보세요. \\n\\n신뢰가 있는 관계라면, 갈등도 결국에는 서로를 더 잘 이해하는 계기가 될 수 있습니다. 여러분의 마음속에 있는 신뢰의 씨앗을 키워가길 바랍니다.\",\"word_count\":88,\"emotional_tone\":\"차분함\",\"tts_markers\":[]}],\"key_insights\":[\"갈등 해결의 핵심은 신뢰입니다.\",\"상대방의 이야기를 귀 기울여 듣고 솔직하게 감정을 표현하세요.\",\"비난보다 이해와 공감의 언어를 사용하세요.\",\"서로의 다름을 인정하고 신뢰를 통해 긍정적인 방향으로 나아가세요.\",\"신뢰를 쌓아가는 과정이 관계를 더욱 깊게 만듭니다.\"],\"themes\":[\"신뢰의 중요성과 갈등 해결\",\"후배와의 관계\",\"상사와의 관계\"],\"personalization_meta\":{\"applied_style\":{\"formality\":\"medium\",\"emoji_usage\":false,\"sentence_length\":\"medium\",\"explanation_depth\":\"moderate\",\"attitude\":\"balanced\"},\"adjusted_segments\":[],\"attitude_applied\":\"balanced\"}}"
+  }
+}

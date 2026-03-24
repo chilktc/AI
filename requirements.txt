@@ -25,6 +25,10 @@ httpx>=0.27.0
 # === Image ===
 Pillow>=10.0.0
 
+# === Monitoring ===
+python-json-logger>=2.0.0      # C-1: 구조화 JSON 로깅
+prometheus-client>=0.20.0      # C-2: Prometheus 메트릭
+
 # === Utils ===
 pyyaml>=6.0.0
 
