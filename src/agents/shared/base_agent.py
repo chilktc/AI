@@ -254,6 +254,24 @@ class BaseAgent(ABC):
         except PromptLoadError:
             return None
 
+    def _load_agent_config(self, defaults: dict[str, Any]) -> dict[str, Any]:
+        """settings.yaml에서 에이전트 설정을 로드하고 기본값과 병합한다.
+
+        각 에이전트의 _load_config()에서 반복되는 try/except + field extraction 패턴을
+        통합한다. 설정 로드 실패 시 defaults를 그대로 반환한다.
+
+        Args:
+            defaults: 기본값 dict (키: 설정명, 값: 기본값)
+
+        Returns:
+            settings.yaml 값이 병합된 설정 dict
+        """
+        try:
+            cfg = get_settings().get_agent_config(self.name)
+        except Exception:
+            cfg = {}
+        return {k: cfg.get(k, v) for k, v in defaults.items()}
+
     def _resolve_mode(self) -> str:
         """
         에이전트가 속한 모드를 추론한다.

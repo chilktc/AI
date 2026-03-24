@@ -856,7 +856,7 @@ def compile_graph(
 
         # 상태 이력 조회 (Time-travel 디버깅)
         for state_snapshot in compiled.get_state_history(config):
-            print(state_snapshot)
+            logger.debug("state_snapshot: %s", state_snapshot)
     """
     builders = {
         "unified": build_unified_graph,

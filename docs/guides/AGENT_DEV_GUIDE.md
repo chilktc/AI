@@ -411,4 +411,62 @@ prompts/shared/emotion.yaml    ← 공용 Emotion Agent
 
 ---
 
-*마지막 업데이트: 2026-03-13*
+## 8. 공용 유틸리티 (context_utils)
+
+에이전트 구현 시 반복되는 패턴을 통합한 유틸리티 모듈.
+위치: `src/agents/shared/context_utils.py`
+
+### build_section(label, data, keys)
+
+dict에서 지정된 키를 추출하여 LLM 컨텍스트 섹션으로 포맷한다.
+
+```python
+from src.agents.shared.context_utils import build_section
+
+# 감정 분석 결과를 컨텍스트로 변환
+section = build_section("감정 분석", emotion_vectors, keys=["primary_emotion", "intensity"])
+# 결과: "[감정 분석]\n- primary_emotion: 불안\n- intensity: 0.8"
+```
+
+### build_context(*sections)
+
+비어있지 않은 섹션들을 `\n\n`으로 결합한다.
+
+```python
+from src.agents.shared.context_utils import build_context, build_section
+
+context = build_context(
+    build_section("감정 분석", emotion_vectors),
+    build_section("콘텐츠 분석", content_analysis, keys=["main_theme", "depth_level"]),
+)
+```
+
+### clamp(value, lo, hi, default)
+
+숫자 값을 범위 내로 제한한다. 타입 변환 실패 시 default를 반환.
+
+```python
+from src.agents.shared.context_utils import clamp
+
+intensity = clamp(raw_intensity, 0.0, 1.0, default=0.5)
+duration = clamp(target_duration, min_duration, max_duration)
+```
+
+### BaseAgent._load_agent_config(defaults)
+
+`settings.yaml`에서 에이전트별 설정을 로드하고 기본값과 병합한다.
+각 에이전트의 `_load_config()`에서 호출.
+
+```python
+def _load_config(self) -> None:
+    cfg = self._load_agent_config({
+        "full_threshold": 0.8,
+        "standard_threshold": 0.5,
+    })
+    self.full_threshold = cfg["full_threshold"]
+    self.standard_threshold = cfg["standard_threshold"]
+```
+
+---
+
+*마지막 업데이트: 2026-03-24*

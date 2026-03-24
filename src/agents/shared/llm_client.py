@@ -115,7 +115,7 @@ class LLMClient:
             import openai
 
             self._openai_client = openai.AsyncOpenAI(
-                api_key=os.getenv("OPENAI_API_KEY", "dummy-key-for-tests")
+                api_key=os.getenv("OPENAI_API_KEY")
             )
             # OpenAI 전용 모델 ID — agent_config.model_id는 Anthropic 직접 API ID이므로
             # OpenAI에서는 반드시 get_openai_model_id()를 사용해야 한다.
