@@ -23,7 +23,6 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from config.loader import get_settings
 from src.agents.shared.base_agent import BaseAgent
 from src.agents.shared.stubs import EpisodeMemoryStub, KnowledgeAgentStub
 from src.models.agent_state import AgentState
@@ -127,12 +126,12 @@ class PodcastReasoningAgent(BaseAgent):
 
     def _load_config(self) -> None:
         """settings.yaml에서 추론 깊이 임계값을 로드한다. 실패 시 기본값 사용."""
-        try:
-            cfg = get_settings().get_agent_config("podcast_reasoning")
-        except Exception:
-            cfg = {}
-        self.full_threshold: float = cfg.get("full_threshold", 0.8)
-        self.standard_threshold: float = cfg.get("standard_threshold", 0.5)
+        cfg = self._load_agent_config({
+            "full_threshold": 0.8,
+            "standard_threshold": 0.5,
+        })
+        self.full_threshold: float = cfg["full_threshold"]
+        self.standard_threshold: float = cfg["standard_threshold"]
 
     # === 추론 깊이 결정 ===
 

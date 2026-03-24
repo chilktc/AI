@@ -63,6 +63,7 @@ Mind-Log 프로젝트 문서 마스터 네비게이션입니다.
 | [CHANGELOG_v7.md](changelog/CHANGELOG_v7.md) | v7 변경이력 |
 | [CHANGELOG_v6.md](changelog/CHANGELOG_v6.md) | v6 변경이력 |
 | [CHANGELOG_v1-v5.md](changelog/CHANGELOG_v1-v5.md) | v1~v5 변경이력 |
+| [CODE_AUDIT_CHANGELOG.md](changelog/CODE_AUDIT_CHANGELOG.md) | 코드 점검 체인지로그 (2026-03-24) — 보안, 데드코드, 중복, 배포 안전성 |
 
 ---
 

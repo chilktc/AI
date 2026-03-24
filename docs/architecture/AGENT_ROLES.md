@@ -36,10 +36,10 @@ Peak State Size: ~12~18 KB (추정, 미구현)
 
 | 상태 | 에이전트 |
 |------|----------|
-| **구현 완료 (10개)** | Intent Classifier, Safety, Emotion, Knowledge, Content Analyzer, Podcast Reasoning, Script Generator, Batch Validator, Script Personalizer, Visualization |
+| **구현 완료 (11개)** | Intent Classifier, Safety, Emotion, Knowledge, Content Analyzer, Podcast Reasoning, Script Generator, Batch Validator, Script Personalizer, Visualization, Episode Memory |
 | **공용 구현 완료 (1개)** | Learning |
 | **미구현 (8개)** | Context, Reasoning(대화), Memory, Synthesis, Validator(대화), Personalization, Telemetry |
-| **스텁 (1개)** | Episode Memory (BaseMemoryAgent 확장) |
+| **스텁 (0개)** | — |
 
 ---
 
@@ -324,7 +324,7 @@ Peak State Size: ~12~18 KB (추정, 미구현)
 
 - **목적**: 과거 팟캐스트 에피소드 기억을 검색하여 일관성과 연속성을 확보한다.
 - **모델**: Sonnet 4 (BaseMemoryAgent 상속)
-- **구현 상태**: 스텁 (BaseMemoryAgent 확장)
+- **구현 상태**: 완료 (KT Cloud RAG Suite 연동)
 
 **입력**: DI 호출 -- `search(query, user_id)`
 

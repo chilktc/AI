@@ -59,6 +59,39 @@ async def lifespan(app: FastAPI):
         backend_client._base_url,
     )
 
+    # 프로덕션 환경 안전 검증
+    import os as _os
+    app_env = _os.getenv("APP_ENV", "development")
+
+    # 3a. CORS 와일드카드 경고
+    if "*" in settings.allowed_origins and app_env == "production":
+        logger.warning(
+            "프로덕션에서 CORS 와일드카드('*') 감지. ALLOWED_ORIGINS 환경변수를 설정하세요."
+        )
+
+    # 3b. 필수 자격증명 검증
+    llm_provider = _os.getenv("LLM_PROVIDER", "anthropic")
+    required_vars: dict[str, list[str]] = {
+        "anthropic": ["ANTHROPIC_API_KEY"],
+        "bedrock": ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"],
+        "openai": ["OPENAI_API_KEY"],
+    }
+    missing = [v for v in required_vars.get(llm_provider, []) if not _os.getenv(v)]
+    if missing and app_env == "production":
+        raise RuntimeError(f"프로덕션 필수 환경변수 누락: {missing}")
+    elif missing:
+        logger.warning("환경변수 미설정 (비프로덕션): %s", missing)
+
+    # 3c. prompts 디렉토리 존재 확인
+    from pathlib import Path as _Path
+    prompts_dir = _Path(_os.getenv("PROMPT_DIR", "prompts"))
+    if not prompts_dir.exists() or not any(prompts_dir.iterdir()):
+        logger.warning(
+            "prompts 디렉토리가 비어있거나 존재하지 않음: %s. "
+            "docker-compose로 볼륨 마운트가 필요합니다.",
+            prompts_dir,
+        )
+
     yield
 
     # 앱 종료 시 리소스 정리

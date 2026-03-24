@@ -520,13 +520,17 @@ class ReasoningAgent:
 
 | 모드 | 구현 에이전트 | 진행률 |
 |------|------------|--------|
-| **팟캐스트모드** | Content Analyzer, Podcast Reasoning, Script Generator, Batch Validator, Script Personalizer, Visualization, Episode Memory(스텁) | 7/7 (100%) |
+| **팟캐스트모드** | Content Analyzer, Podcast Reasoning, Script Generator, Batch Validator, Script Personalizer, Visualization, Episode Memory | 7/7 (100%) |
 | **대화모드** | Intent Classifier, Knowledge, Learning | 3/13 (23%) |
 | **공용 에이전트** | Safety, Emotion | 팟캐스트모드에서 구현, 양 모드에서 재사용 |
 | **대화모드 스텁** | Context, Reasoning, Synthesis, Validator, Personalization, Telemetry | workflow.py에 빈 스텁 등록 |
 
 > 스텁 노드: workflow.py에 등록되어 그래프 구조는 완성되었으나, 실제 로직은 빈 dict를 반환한다.
 > Telemetry Agent는 전체 에이전트 완료 후 구현 예정.
+
+> **메시지 프로토콜 v2.0 현황**: `BaseAgent.create_message()`로 `MessageEnvelope` 생성이 가능하나,
+> 현재 독립 에이전트 호출은 DI 패턴(직접 메서드 호출)으로 구현되어 엔벨로프가 미사용 상태이다.
+> 대화모드 통합 및 백엔드 통신 확장 시 활성화를 검토한다.
 
 ---
 
