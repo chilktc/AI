@@ -30,6 +30,11 @@ class VisualizationAgent(BaseAgent):
         if os.environ.get("SKIP_VISUALIZATION") == "true":
             return {"visual_data": {"status": "skipped"}}
 
+        # 0-1. OPENAI_API_KEY 미설정 시 경고 후 스킵
+        if not os.getenv("OPENAI_API_KEY"):
+            self.logger.warning("OPENAI_API_KEY 미설정: 이미지 생성이 건너뛰어집니다.")
+            return {"visual_data": {"status": "skipped", "reason": "OPENAI_API_KEY not set"}}
+
         # 1. 입력값 최적화: 의논된 대로 감정 벡터와 콘텐츠 분석 데이터만 사용
         # final_output 등 불필요한 필드는 참조하지 않음으로써 토큰 효율 극대화
         emotion = state.get("emotion_vectors", {})
@@ -54,13 +59,23 @@ class VisualizationAgent(BaseAgent):
         
         # 3. [실행 단계] 실제 이미지 생성 API(DALL-E 3 등) 호출
         # 가이드라인에 따라 1024x1024 정사각형 PNG 생성을 보장한다.
-        generation_result = await self.call_image_gen(
-            prompt=image_prompt,
-            model="dall-e-3", # 고품질 추상화 생성을 위해 DALL-E 3 사용
-            size="1024x1024", # 1:1 정사각형 해상도 명시
-            quality="standard"
-        )
-        
+        try:
+            generation_result = await self.call_image_gen(
+                prompt=image_prompt,
+                model="dall-e-3", # 고품질 추상화 생성을 위해 DALL-E 3 사용
+                size="1024x1024", # 1:1 정사각형 해상도 명시
+                quality="standard"
+            )
+        except Exception as e:
+            self.logger.error("이미지 생성 실패 (call_image_gen): %s", e, exc_info=True)
+            return {
+                "visual_data": {
+                    "status": "error",
+                    "error": str(e),
+                    "original_prompt": image_prompt,
+                }
+            }
+
         # 4. [중요] 필드명 동기화: visualization_result -> visual_data (이슈 S-2 해결)
         # 최종 PNG URL과 해석을 AgentState 규격에 맞춰 반환한다.
         return {
