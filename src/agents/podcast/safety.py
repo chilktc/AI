@@ -1,7 +1,7 @@
 """
 Safety Agent — 사용자 입력의 안전성 판정 및 위기 선점.
 
-TIER 1 (병렬) | 모델: Sonnet 4
+TIER 1 (병렬) | 모델: settings.yaml 설정을 따름 (기본 Sonnet)
 """
 from __future__ import annotations
 
@@ -14,7 +14,8 @@ class SafetyAgent(BaseAgent):
     """사용자 입력의 위험도를 평가하고, CRISIS 시 즉시 대응 로직을 트리거한다."""
 
     def __init__(self) -> None:
-        # AGENT_ROLES.md에 정의된 TIER 1 병렬 노드 설정
+        # [정석 복구] 하드코딩을 제거하고 BaseAgent의 자동 설정 로드 방식을 따릅니다.
+        # super().__init__ 호출 시 name="safety"를 통해 settings.yaml의 설정을 읽어옵니다.
         super().__init__(name="safety", tier=1)
 
     async def process(self, state: AgentState) -> dict[str, Any]:
@@ -27,9 +28,15 @@ class SafetyAgent(BaseAgent):
         
         # LLM 컨텍스트 구성 (토큰 절약형)
         intent_ref = f"[Intent 위기감지 참고] risk_flag: {risk_flag}\n\n" if risk_flag else ""
-        user_message = f"{intent_ref}사용자 입력 분석 요청:\n{user_input}"
         
-        # 1. LLM 호출 (시스템 프롬프트는 YAML에서 자동 로드)
+        # [품질 강화] 모델이 답변 뒤에 사족을 붙여 JSON 파싱 에러(Extra data)가 나는 것을 방지하기 위해 지시문 추가
+        user_message = (
+            f"{intent_ref}사용자 입력 분석 요청:\n{user_input}\n\n"
+            "IMPORTANT: Respond ONLY with a valid JSON object. "
+            "No preamble, no explanation, no markdown backticks."
+        )
+        
+        # 1. LLM 호출 (시스템 프롬프트는 YAML에서 정의된 경로를 통해 자동 로드됨)
         result = await self.call_llm_json(
             system_prompt=self.get_prompt("system_prompt"),
             user_message=user_message
@@ -48,7 +55,6 @@ class SafetyAgent(BaseAgent):
             result["required_in_script"] = [system_msg] + llm_reasons
         
         # 4. [제어 로직] CLAUDE.md의 CRISIS 선점 메커니즘 지원
-        # status가 crisis인 경우 워크플로우를 즉시 중단시키기 위한 플래그 설정
         update_data = {
             "safety_flags": result,
             "risk_level": risk_level,
@@ -62,6 +68,7 @@ class SafetyAgent(BaseAgent):
         return update_data
 
 # --- 싱글톤 + 노드 래퍼 ---
+# 인스턴스 생성 시점에 settings.yaml을 참조하여 llm_client가 초기화됩니다.
 safety_agent = SafetyAgent()
 
 async def safety_node(state: AgentState) -> dict[str, Any]:

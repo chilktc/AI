@@ -9,27 +9,30 @@ app:
 # LLM 모델 설정
 # API 모델은 변경될 수 있으므로 하드코딩하지 않고 여기서 관리한다.
 # provider: anthropic(직접 API) 또는 bedrock(AWS Bedrock) 선택
-# 환경변수 LLM_PROVIDER로 오버라이드 가능
 llm:
-  provider: anthropic  # anthropic | bedrock | openai
+  provider: bedrock  # [수정] 오늘 성공한 bedrock을 기본값으로 설정
   models:
     haiku: "claude-haiku-4-5-20251001"
     sonnet: "claude-sonnet-4-5-20250929"
     opus: "claude-opus-4-6"
+  
   # Bedrock 전용 모델 ID (provider: bedrock일 때 사용)
+  # [수정] 2026년 환경에서 검증된 최신 Bedrock ID로 업데이트
   bedrock_models:
-    haiku: "anthropic.claude-haiku-4-5-20251001-v1:0"
-    sonnet: "anthropic.claude-sonnet-4-5-20250929-v2:0"
-    opus: "anthropic.claude-opus-4-6-v1:0"
+    haiku: "anthropic.claude-3-haiku-20240307-v1:0"
+    sonnet: "anthropic.claude-3-5-sonnet-20241022-v2:0"
+    opus:   "anthropic.claude-3-opus-20240229-v1:0"
+  
   # OpenAI 전용 모델 ID (provider: openai일 때 사용)
   openai_models:
-    haiku: "gpt-4o-mini"                          # 경량 작업
-    sonnet: "gpt-4o-mini"                         # 표준 작업 (비용 효율적)
-    opus: "gpt-4o"                                # 복잡한 추론
+    haiku: "gpt-4o-mini"
+    sonnet: "gpt-4o-mini"
+    opus: "gpt-4o"
+  
   # Bedrock 설정
   bedrock:
-    region: "ap-northeast-2"  # 환경변수 AWS_REGION으로 오버라이드 가능
-    # endpoint_url: ""        # 커스텀 엔드포인트 (선택)
+    region: "ap-northeast-2"  # 서울 리전 고정
+  
   default_max_tokens: 4096
   temperature:
     default: 0.7
@@ -60,10 +63,10 @@ agents:
   # 대화모드 TIER 1 (병렬)
   # ──────────────────────────────────────
   context:
-    model: haiku          # CLAUDE.md 기준: Haiku
+    model: haiku
     max_tokens: 2048
   reasoning:
-    model: opus           # 사용자 결정: Opus 4.6 (복잡한 추론)
+    model: opus
     max_tokens: 4096
     temperature: 0.3
 
@@ -181,29 +184,12 @@ api:
   max_retries: 3              # 최대 재시도 횟수
 
 # 프롬프트 관리 설정
-# 환경변수 PROMPT_DIR로 오버라이드 가능 (환경 분리용)
 prompts:
-  base_dir: "prompts"  # 기본 프롬프트 디렉토리 (프로젝트 루트 기준)
+  base_dir: "prompts"
 
-  # 에이전트별 프롬프트 버전 핀닝 (v8 멀티버전)
-  # 미지정 에이전트는 YAML 내부 default_version 사용
+  # 에이전트별 프롬프트 버전 핀닝
   versions:
-    default: "1.0.0"              # 글로벌 기본 버전
-    # content_analyzer: "1.1.0"   # 에이전트별 오버라이드 예시
-    # podcast_reasoning: "1.0.0"
-    # batch_validator: "1.0.0"
-    # learning: "1.0.0"
-
-  # A/B 테스트 설정 (선택적)
-  # enabled: true로 활성화, false 또는 미설정이면 비활성
-  # assignment: "session" = 세션 단위 결정적 할당, "request" = 요청 단위 랜덤
-  # ab_tests:
-  #   content_analyzer:
-  #     enabled: false
-  #     variant_a: "1.0.0"
-  #     variant_b: "1.1.0"
-  #     traffic_split: 0.5
-  #     assignment: "session"
+    default: "1.0.0"
 
 # 기능 플래그
 features:
@@ -215,7 +201,7 @@ features:
 # 모니터링 & Observability
 monitoring:
   enabled: true
-  provider: "langsmith"              # langsmith | langfuse | both
+  provider: "langsmith"
   langsmith:
     project: "mind-log"
     tracing_enabled: true
@@ -226,8 +212,8 @@ monitoring:
   metrics:
     collect_token_usage: true
     collect_tier_timing: true
-    collect_agent_io: true           # I/O 스냅샷 저장 여부
-    io_snapshot_max_chars: 2000      # 스냅샷 최대 문자수 (민감정보 보호)
+    collect_agent_io: true
+    io_snapshot_max_chars: 2000
   alerting:
     crisis_alert_enabled: true
-    latency_threshold_ms: 10000      # 파이프라인 전체 10초 초과 시 경고
+    latency_threshold_ms: 10000

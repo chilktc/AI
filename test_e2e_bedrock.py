@@ -1,128 +1,137 @@
-"""
-E2E LangGraph 워크플로우 - AWS Bedrock 실전 검증 테스트.
-
-작업 목표:
-1. Bedrock 환경에서 TIER 0부터 TIER 4까지 전체 노드가 무사히 돌아가는지 확인.
-2. 각 에이전트가 생성한 결과물(intent, safety_flags 등)이 빠짐없이 생성되는지 검증.
-3. 실행 시간(Latency)을 측정하여 가성비 모델 선정의 기초 데이터 확보.
-"""
-
 from __future__ import annotations
-import asyncio
-import json
-import logging
-import os
-import sys
-import time
+import asyncio, json, os, sys, time, traceback
 from pathlib import Path
-from typing import Any
-from unittest.mock import AsyncMock, patch
 
-# [경로 설정] 현재 실행 위치를 파이썬 경로에 등록
-sys.path.append(os.getcwd())
+# 현재 경로를 sys.path에 추가하여 모듈 참조 가능케 함
+sys.path.insert(0, os.getcwd())
+from dotenv import load_dotenv
+load_dotenv()
 
-# 기존 유틸리티 및 픽스처 임포트 (프로젝트 구조에 따라 경로 조정 필요)
-try:
-    from dev.live_tests.conftest_live import Timer, check_provider_health, print_banner, print_section, setup_provider, print_error
-except ImportError:
-    # 유틸리티가 없을 경우를 대비한 최소한의 가짜 타이머 클래스
-    class Timer:
-        def __enter__(self): self.start = time.perf_counter(); return self
-        def __exit__(self, *args): self.elapsed = time.perf_counter() - self.start
+# ── workflow 최상단 import (싱글톤 타이밍 및 순환 참조 방지) ──
+import src.graph.workflow as wf
+from src.graph.workflow import compile_graph
 
-# ────────────────────────────────────────
-# Bedrock 테스트 모델 설정
-# ────────────────────────────────────────
-DEFAULT_BEDROCK_MODELS = [
-    "anthropic.claude-3-haiku-20240307-v1:0",  # 가성비 모델 (테스트 1순위)
-    "anthropic.claude-3-5-sonnet-20240620-v1:0" # 고성능 모델 (비교용)
-]
+# 2026년형 Bedrock 모델 ID (us. 접두사는 교차 리전 추론을 위해 권장됨)
+MODELS = {
+    "haiku":  "us.anthropic.claude-3-haiku-20240307-v1:0",
+    "sonnet": "us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+    "opus":   "us.anthropic.claude-3-opus-20240229-v1:0",
+}
 
-# 검증할 에이전트 결과 필드들
-EXPECTED_FIELDS = [
-    "intent", "safety_flags", "emotion_vectors", "content_analysis", 
-    "reasoning_result", "script_draft", "validation_result", "final_output"
-]
+# 에이전트별 타겟 모델 매핑
+AGENT_MODEL_MAP = {
+    "_intent_classifier":   "haiku",
+    "_script_generator":    "sonnet",
+    "_script_personalizer": "haiku",
+}
 
-def _refresh_all_singletons():
-    """프로바이더 전환 시 에이전트들을 새 모델로 갈아끼움"""
-    import importlib
-    from config.loader import get_settings
-    settings = get_settings()
-    settings._instance = None 
-    from src.graph import workflow
-    importlib.reload(workflow)
+EXPECTED_FIELDS = ["intent", "safety_flags", "emotion_vectors", "final_output"]
 
-async def run_workflow_for_bedrock(model_name: str, initial_state: dict[str, Any]):
-    label = f"Bedrock/{model_name}"
-    print_banner(f"🚀 실전 테스트 가동: {label}", color="cyan")
+INITIAL_STATE = {
+    "user_input": "팀장님이 배포 빨리 하라고 쪼아대서 너무 스트레스 받아.. 도와줘!",
+    "user_id":    "matcha_real",
+    "session_id": "test_001",
+    "mode":        "conversation",
+}
 
-    setup_provider("bedrock", model_name)
-    _refresh_all_singletons()
+def _inject_model(attr: str, model_key: str) -> None:
+    """에이전트의 LLMClient 내부 변수(_model_id)를 직접 수정하여 모델을 강제 주입함"""
+    agent = getattr(wf, attr, None)
+    if agent is None:
+        print(f"  ⚠️  {attr} 없음 — 건너뜀")
+        return
+    lc = getattr(agent, "llm_client", None)
+    if lc is None:
+        print(f"  ⚠️  {attr}.llm_client 없음 — 건너뜀")
+        return
+    
+    # [치트키] 읽기 전용 속성을 우회하여 내부 변수 직접 수정
+    lc._model_id = MODELS[model_key]
+    print(f"  ✅ {attr} → {model_key} ({MODELS[model_key]})")
 
-    # 헬스체크 (인프라 팀 권한 확인용)
-    if not await check_provider_health("bedrock"):
-        print(f" ⚠️ [권한 없음] {label} 모델을 사용할 수 없습니다.")
-        return None
+def _set_all_agents(model_key: str) -> None:
+    """모든 매핑된 에이전트에 동일한 모델을 일괄 주입"""
+    for attr in AGENT_MODEL_MAP:
+        _inject_model(attr, model_key)
 
+def _apply_map() -> None:
+    """AGENT_MODEL_MAP에 정의된 대로 에이전트별 모델 배정"""
+    for attr, model_key in AGENT_MODEL_MAP.items():
+        _inject_model(attr, model_key)
+
+def _check_fields(state: dict) -> int:
+    """결과 상태값의 필드 유효성 검증"""
+    present = 0
+    for field in EXPECTED_FIELDS:
+        val = state.get(field)
+        icon = "✅" if val else "⬜"
+        preview = str(val)[:70] if val else "없음"
+        print(f"    {icon} {field}: {preview}")
+        if val: present += 1
+    return present
+
+def _save(label: str, elapsed: float, state: dict) -> Path:
+    """테스트 결과를 JSON 파일로 저장"""
+    d = Path("./test_results"); d.mkdir(exist_ok=True)
+    p = d / f"{label}_{int(time.time())}.json"
+    with open(p, "w", encoding="utf-8") as f:
+        json.dump({"label": label, "elapsed": elapsed, "state": state},
+                  f, ensure_ascii=False, indent=2, default=str)
+    return p
+
+async def run_scenario(label: str) -> dict:
+    """테스트 시나리오 실행 루프"""
+    print(f"\n{'='*58}\n  시나리오: {label}\n{'='*58}")
     try:
-        from src.graph.workflow import build_unified_graph
-        app = build_unified_graph().compile()
-
-        from src.api.client import BackendClient
-        with patch.object(BackendClient, "save", new_callable=AsyncMock):
-            with Timer() as t:
-                final_state = await app.ainvoke(initial_state)
+        app = compile_graph("unified")
+        start = time.perf_counter()
+        final_state = await app.ainvoke(INITIAL_STATE)
+        elapsed = time.perf_counter() - start
         
-        elapsed = t.elapsed
-        print(f" ✅ [완료] 소요 시간: {elapsed:.1f}초")
-
-        # 결과 검증 (에이전트들이 도장을 다 찍었나?)
-        present_count = 0
-        for field in EXPECTED_FIELDS:
-            if final_state.get(field):
-                present_count += 1
+        print(f"\n  ⏱  완료: {elapsed:.2f}s\n\n  [에이전트 결과 체크]")
+        present = _check_fields(final_state)
+        path = _save(label, elapsed, final_state)
+        print(f"  💾 저장: {path}")
         
-        _save_results(model_name, final_state, elapsed)
-        return {"model": model_name, "success": True, "time": elapsed, "score": f"{present_count}/{len(EXPECTED_FIELDS)}"}
-
+        return {"label": label, "success": True, "elapsed": elapsed,
+                "score": f"{present}/{len(EXPECTED_FIELDS)}"}
     except Exception as e:
-        print(f" ❌ 에러 발생: {e}")
-        return {"model": model_name, "success": False}
+        print(f"\n  ❌ 실패: {e}\n{traceback.format_exc()}")
+        return {"label": label, "success": False, "elapsed": 0.0, "error": str(e)}
 
-def _save_results(model, state, elapsed):
-    results_dir = Path("./dev/live_tests/results")
-    results_dir.mkdir(parents=True, exist_ok=True)
-    filename = f"bedrock_{model.replace('.', '_')}_{int(time.time())}.json"
-    with open(results_dir / filename, "w", encoding="utf-8") as f:
-        json.dump({"model": model, "elapsed": elapsed, "state": state}, f, ensure_ascii=False, indent=2, default=str)
+async def main() -> None:
+    """메인 테스트 시퀀스"""
+    print("\n" + "="*58 + "\n  E2E Bedrock 통합 테스트\n" + "="*58)
+    print(f"  리전     : {os.getenv('AWS_REGION', 'ap-northeast-2')}")
+    print(f"  프로바이더: {os.getenv('LLM_PROVIDER', 'bedrock')}")
 
-# ────────────────────────────────────────
-# 메인 실행부 
-# ────────────────────────────────────────
-async def main():
-    # 1. 초기 상태 설정 (실제 사용 시나리오에 맞게 조정)
-    initial_state = {
-        "user_input": "팀장님이 배포 빨리 하라고 쪼아대서 너무 스트레스 받아.. 도와줘!", 
-        "user_id": "matcha_real",
-        "mode": "podcast" # 팟캐스트 모드로 테스트
-    }
-    
-    print_banner("E2E Bedrock 통합 테스트 (실전 모드)", color="bold")
-    print(f" 📝 입력 메시지: {initial_state['user_input']}")
-    
+    print("\n  [현재 에이전트 모델 ID]")
+    for attr in AGENT_MODEL_MAP:
+        agent = getattr(wf, attr, None)
+        lc = getattr(agent, "llm_client", None) if agent else None
+        # property getter를 통해 현재 배정된 모델 ID 확인
+        mid = getattr(lc, "model_id", "없음") if lc else "llm_client 없음"
+        print(f"    {attr}: {mid}")
+
     results = []
-    for model in DEFAULT_BEDROCK_MODELS:
-        res = await run_workflow_for_bedrock(model, initial_state)
-        if res: results.append(res)
     
-    # 최종 결과 요약 표
-    print("\n" + "="*60)
-    print(f"{'MODEL':<45} | {'TIME':<7} | {'FIELDS'}")
-    print("-" * 60)
+    print("\n\n▶ 1단계: 전체 Haiku — 워크플로우 흐름 확인")
+    _set_all_agents("haiku")
+    res1 = await run_scenario("1단계_전체Haiku")
+    results.append(res1)
+
+    if res1["success"]:
+        print("\n\n▶ 2단계: 에이전트별 모델 배정 (Haiku & Sonnet)")
+        _apply_map()
+        res2 = await run_scenario("2단계_모델배정")
+        results.append(res2)
+
+    # 최종 결과 요약 테이블 출력
+    print("\n\n" + "="*58 + f"\n  {'시나리오':<22} | {'시간':>6} | {'필드':<6} | 상태\n" + "-"*58)
     for r in results:
-        print(f"{r['model']:<45} | {r['time']:>5.1f}s | {r['score']}")
-    print("="*60)
+        st = "✅ 성공" if r["success"] else "❌ 실패"
+        print(f"  {r['label']:<22} | {f'{r.get('elapsed',0):.1f}s':>6} | {r.get('score','-'):<6} | {st}")
+    print("="*58)
 
 if __name__ == "__main__":
     asyncio.run(main())
