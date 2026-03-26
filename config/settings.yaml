@@ -184,10 +184,14 @@ storage:
 
 # 파이프라인 설정
 pipeline:
-  max_retries: 2              # TIER 3 → TIER 2 재시도 상한
-  tier1_timeout_seconds: 15   # TIER 1 병렬 작업 타임아웃
-  tier2_timeout_seconds: 20   # TIER 2 생성 작업 타임아웃
-  async_timeout_seconds: 30   # 비동기 작업 타임아웃
+  max_retries: 2              # TIER 3 → TIER 2 재시도 상한 (FAIL용)
+  max_critical_retries: 4     # CRITICAL_FAIL 전용 재시도 상한
+  tier0_timeout_seconds: 10    # TIER 0: Intent Classifier 단독
+  tier1_timeout_seconds: 30    # TIER 1: 병렬 4개 중 Podcast Reasoning 기준 (실측 최대 15.4s × 1.5)
+  tier2_timeout_seconds: 140   # TIER 2: Script Generator + Visualization 병렬 (실측 최대 90.3s × 1.5)
+  tier3_timeout_seconds: 50    # TIER 3: Batch Validator 재시도 포함 (실측 최대 30.3s × 1.5)
+  tier4_timeout_seconds: 10    # TIER 4: Script Personalizer (rule-based, LLM 활성 시 대비)
+  async_timeout_seconds: 30    # 비동기: Visualization + Learning
 
 # 백엔드 API 설정
 api:
@@ -202,22 +206,7 @@ prompts:
   # 에이전트별 프롬프트 버전 핀닝
   versions:
 
-    default: "1.0.0"              # 글로벌 기본 버전
-    content_analyzer: "2.1.0"     # Round 4 최적 조합 A (2026-03-06, OpenAI)
-    podcast_reasoning: "3.0.0"    # Round 4 최적 — ToT Branch Scoring (2026-03-06)
-    batch_validator: "2.3.0"      # Round 4 최적 — 감점 규칙 (2026-03-06, avg 0.863±0.006)
-    # learning: "1.0.0"
-
-  # A/B 테스트 설정 (선택적)
-  # enabled: true로 활성화, false 또는 미설정이면 비활성
-  # assignment: "session" = 세션 단위 결정적 할당, "request" = 요청 단위 랜덤
-  # ab_tests:
-  #   content_analyzer:
-  #     enabled: false
-  #     variant_a: "1.0.0"
-  #     variant_b: "1.1.0"
-  #     traffic_split: 0.5
-  #     assignment: "session"
+    default: "1.0.0"
 
 
 # 기능 플래그

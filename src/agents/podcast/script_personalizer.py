@@ -80,7 +80,24 @@ class ScriptPersonalizerAgent(BaseAgent):
             # script_draft에서 Pydantic 객체 복원
             script_data = state.get("script_draft", {})
             validated_script = ValidatedScript(**script_data) if script_data else None
-            emotional_journey = None  # LangGraph 설계상 별도 추출 또는 계산 필요
+            
+            # AgentState에서 감정적 여정 정보 추출
+            content_analysis = state.get("content_analysis", {})
+            emotional_journey_data = content_analysis.get(
+                "emotional_journey", state.get("emotional_journey")
+            )
+            
+            emotional_journey = None
+            if emotional_journey_data:
+                try:
+                    emotional_journey = EmotionalJourney(
+                        opening=emotional_journey_data.get("opening", emotional_journey_data.get("start_emotion", "차분함")),
+                        development=emotional_journey_data.get("development", "공감"),
+                        resolution=emotional_journey_data.get("resolution", emotional_journey_data.get("resolution_emotion", "따뜻함")),
+                        journey_type=emotional_journey_data.get("journey_type", "healing")
+                    )
+                except Exception as e:
+                    self.logger.warning(f"[ScriptPersonalizer] Failed to parse EmotionalJourney: {e}")
 
             # 에피소드 ID 생성
             episode_id = f"ep_{uuid.uuid4().hex[:12]}"
@@ -471,33 +488,18 @@ Emotional Journey:
 - Type: {emotional_journey.journey_type}
 """
 
-        prompt = f"""Rewrite and personalize the following entire podcast script into a single, cohesive episode.
-
-Original Integrated Script:
-{full_script_text}
-
-User Profile:
-- Age Group: {user_profile.age_group}
-- Preferred Style: {user_profile.preferred_style}
-- Preferred Attitude: {user_profile.preferred_attitude}
-- Previous Interactions: {interaction_summary}
-
-{emotional_context}
-
-Personalization Strategy:
-- Formality: {strategy.get('formality', 'medium')}
-- Attitude: {strategy.get('attitude', 'balanced')}
-- Explanation Depth: {strategy.get('explanation_depth', 'moderate')}
-
-Adjust the language, examples, and pacing to better resonate with this user 
-while ensuring that all parts flow naturally into one immersive episode.
-
-Important:
-- Keep the response in Korean.
-- Return ONLY the final integrated script text, without breakdown by segment tags like [Segment: opening].
-- Preserve key information and insights.
-- Do not add conversational explanations before or after the script (e.g. "Here is your script:").
-"""
+        user_prompt = self._prompt_loader.load_user_prompt("podcast", "script_personalizer")
+        prompt = user_prompt.format(
+            full_script_text=full_script_text,
+            age_group=user_profile.age_group,
+            preferred_style=user_profile.preferred_style,
+            preferred_attitude=user_profile.preferred_attitude,
+            interaction_summary=interaction_summary,
+            emotional_context=emotional_context,
+            formality=strategy.get('formality', 'medium'),
+            attitude=strategy.get('attitude', 'balanced'),
+            explanation_depth=strategy.get('explanation_depth', 'moderate')
+        )
 
         try:
             response = await self.call_llm(

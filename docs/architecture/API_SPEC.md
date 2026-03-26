@@ -23,27 +23,7 @@ v2.0에서 단일 문서(1,865행)를 5개 문서로 분할했습니다. 내용 
 
 ## 서버 구분
 
-Mind-Log는 두 개의 독립 서버로 구성됩니다.
-
-| 서버 | 프레임워크 | 포트 | 역할 |
-|------|-----------|------|------|
-| **AI 서버** | FastAPI + Uvicorn | 8000 | LLM 파이프라인 실행, Backend 서버 전용 API |
-| **Backend 서버** | Spring Boot | 8080 | 데이터 영속화 (MySQL), 조회, 프론트엔드 API 제공 |
-
-```
-통신 흐름:
-  Frontend (app-4:3000) → Backend 서버 (app-3:8080) ↔ AI 서버 (app-2:8000)
-                                      ↓                        ↕
-                                     DB                  AWS (배포 시)
-```
-
-- 프론트엔드는 **Backend 서버에만** 접속합니다. AI 서버와 직접 통신하지 않습니다.
-- AI 서버와 양방향 통신하는 서버는 **Backend 서버** 하나뿐입니다.
-- Backend 서버가 프론트엔드 요청을 수신하여 AI 서버에 전달합니다.
-- AI 서버 내부에서 `BackendClient` (`src/api/client.py`)를 통해 Backend 서버와 통신합니다.
-- AWS 배포 시 ALB 헬스체크 등 AWS 시스템도 AI 서버에 접근 가능합니다.
-
-> 인증 방식, Swagger 경로, 미들웨어 상세 → [API_ARCHITECTURE.md](API_ARCHITECTURE.md)
+> 서버 아키텍처 및 통신 흐름은 [CLAUDE.md](../CLAUDE.md#백엔드-api-규약), 상세는 [API_ARCHITECTURE.md](API_ARCHITECTURE.md)를 참조하세요.
 
 ---
 

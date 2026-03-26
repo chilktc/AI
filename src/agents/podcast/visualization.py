@@ -8,7 +8,6 @@ import asyncio
 import boto3 # type: ignore
 import uuid
 import logging
-import os
 from typing import Any
 from src.agents.shared.base_agent import BaseAgent
 from src.models.agent_state import AgentState
@@ -26,16 +25,6 @@ class VisualizationAgent(BaseAgent):
     async def process(self, state: AgentState) -> dict[str, Any]:
         """이미지 기획부터 최종 S3 업로드까지 수행"""
         
-        """
-        입력을 최적화하여 이미지 프롬프트를 기획하고,
-        실제 이미지 생성 API를 통해 PNG를 획득한다.
-        """
-        # 0. SKIP_VISUALIZATION 환경변수로 이미지 생성 스킵 (프롬프트 최적화 시)
-        if os.environ.get("SKIP_VISUALIZATION") == "true":
-            return {"visual_data": {"status": "skipped"}}
-
-        # 1. 입력값 최적화: 의논된 대로 감정 벡터와 콘텐츠 분석 데이터만 사용
-        # final_output 등 불필요한 필드는 참조하지 않음으로써 토큰 효율 극대화
         emotion = state.get("emotion_vectors", {})
         content = state.get("content_analysis", {})
         user_id = state.get("user_id", "anonymous")

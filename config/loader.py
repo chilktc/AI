@@ -207,9 +207,39 @@ class Settings:
         return int(self._config["pipeline"]["max_retries"])
 
     @property
+    def max_critical_retries(self) -> int:
+        """CRITICAL_FAIL 전용 재시도 상한."""
+        return int(self._config["pipeline"].get("max_critical_retries", 4))
+
+    @property
+    def tier0_timeout(self) -> int:
+        """TIER 0 타임아웃 (초)."""
+        return int(self._config.get("pipeline", {}).get("tier0_timeout_seconds", 10))
+
+    @property
     def tier1_timeout(self) -> int:
-        """TIER 1 병렬 작업 타임아웃 (초)."""
-        return int(self._config["pipeline"]["tier1_timeout_seconds"])
+        """TIER 1 타임아웃 (초)."""
+        return int(self._config.get("pipeline", {}).get("tier1_timeout_seconds", 30))
+
+    @property
+    def tier2_timeout(self) -> int:
+        """TIER 2 타임아웃 (초)."""
+        return int(self._config.get("pipeline", {}).get("tier2_timeout_seconds", 140))
+
+    @property
+    def tier3_timeout(self) -> int:
+        """TIER 3 타임아웃 (초)."""
+        return int(self._config.get("pipeline", {}).get("tier3_timeout_seconds", 50))
+
+    @property
+    def tier4_timeout(self) -> int:
+        """TIER 4 타임아웃 (초)."""
+        return int(self._config.get("pipeline", {}).get("tier4_timeout_seconds", 10))
+
+    @property
+    def async_timeout(self) -> int:
+        """비동기 작업 타임아웃 (초)."""
+        return int(self._config.get("pipeline", {}).get("async_timeout_seconds", 30))
 
     # --- API 설정 ---
 

@@ -17,6 +17,7 @@ from typing import Any
 
 from config.loader import get_settings
 from src.agents.shared.base_agent import BaseAgent
+from src.agents.shared.context_utils import build_context, build_section
 from src.models.agent_state import AgentState
 
 # 시스템 프롬프트는 prompts/podcast/batch_validator.yaml에서 로드한다.
@@ -104,14 +105,13 @@ class BatchValidatorAgent(BaseAgent):
             }
 
         elif decision == "escalate":
-            # CRITICAL_FAIL → 즉시 중단
-            self.logger.critical(
-                "스크립트 검증 CRITICAL_FAIL (score=%.2f)",
+            # CRITICAL_FAIL → route_after_tier3_podcast()가 재시도/강제통과 결정
+            self.logger.warning(
+                "스크립트 검증 CRITICAL_FAIL — 평가 미달 (score=%.2f)",
                 validation.get("overall_score", 0),
             )
             return {
                 "validation_result": validation,
-                "next_step": "crisis_response",
             }
 
         elif iteration_count < self.max_retries:
@@ -193,29 +193,33 @@ class BatchValidatorAgent(BaseAgent):
         """콘텐츠 분석·추론·감정·Safety 정보를 검증 섹션으로 구성한다."""
         parts: list[str] = []
 
-        if content_analysis:
-            parts.append(
-                f"[원본 콘텐츠 분석]\n"
-                f"- 주제: {content_analysis.get('main_theme', 'N/A')}\n"
-                f"- 서사 구조: {content_analysis.get('narrative_structure', 'N/A')}\n"
-                f"- 깊이: {content_analysis.get('depth_level', 'N/A')}"
-            )
+        content_sec = build_section(
+            "원본 콘텐츠 분석",
+            content_analysis,
+            ["main_theme", "narrative_structure", "depth_level"],
+        )
+        if content_sec:
+            parts.append(content_sec)
 
-        if reasoning_result:
-            parts.append(
-                f"[추론 결과]\n"
-                f"- 내러티브: {reasoning_result.get('narrative_flow', 'N/A')}\n"
-                f"- 핵심 포인트: {reasoning_result.get('key_points', [])}"
-            )
+        reasoning_sec = build_section(
+            "추론 결과",
+            reasoning_result,
+            ["narrative_flow", "key_points"],
+        )
+        if reasoning_sec:
+            parts.append(reasoning_sec)
 
         if emotion_vectors:
-            parts.append(
-                f"[사용자 감정 상태]\n"
-                f"- 주요 감정: {emotion_vectors.get('primary_emotion', 'N/A')}\n"
-                f"- 감정 강도: {emotion_vectors.get('intensity', 'N/A')}\n"
-                f"- 주의: 스크립트의 톤이 위 감정 상태에 적합한지 검증 필요"
+            emotion_sec = build_section(
+                "사용자 감정 상태",
+                emotion_vectors,
+                ["primary_emotion", "intensity"],
             )
+            if emotion_sec:
+                emotion_sec += "\n- 주의: 스크립트의 톤이 위 감정 상태에 적합한지 검증 필요"
+                parts.append(emotion_sec)
 
+        # Safety 섹션은 상태별 조건 문구가 있으므로 수동 구성 유지
         if safety_flags:
             status = safety_flags.get("status", "safe")
             safety_parts = [f"[Safety 상태]\n- 상태: {status}"]

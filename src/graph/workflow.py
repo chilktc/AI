@@ -64,7 +64,13 @@ def _get_writer():
 # ---------------------------------------------------------------------------
 _settings = get_settings()
 _MAX_RETRIES: int = _settings.max_retries
+_MAX_CRITICAL_RETRIES: int = _settings.max_critical_retries
+_TIER0_TIMEOUT: int = _settings.tier0_timeout
 _TIER1_TIMEOUT: int = _settings.tier1_timeout
+_TIER2_TIMEOUT: int = _settings.tier2_timeout
+_TIER3_TIMEOUT: int = _settings.tier3_timeout
+_TIER4_TIMEOUT: int = _settings.tier4_timeout
+_ASYNC_TIMEOUT: int = _settings.async_timeout
 
 # ---------------------------------------------------------------------------
 # 구현된 에이전트 노드 — 실제 import
@@ -110,26 +116,35 @@ async def tier2_podcast_fan_out(state: AgentState) -> dict[str, Any]:
     if writer:
         writer({"event": "tier2_podcast_start"})
 
-    # Script Generator는 항상 실행 (재시도 시에도)
-    script_task = asyncio.create_task(script_generator_node(state))
+    async def _run_tier2_podcast() -> dict[str, Any]:
+        # Script Generator는 항상 실행 (재시도 시에도)
+        script_task = asyncio.create_task(script_generator_node(state))
 
-    # Visualization은 이미 생성된 경우 건너뜀 (재시도 시 중복 방지)
-    vis_task = None
-    if not state.get("visual_data"):
-        vis_task = asyncio.create_task(visualization_node(state))
+        # Visualization은 이미 생성된 경우 건너뜀 (재시도 시 중복 방지)
+        vis_task = None
+        if not state.get("visual_data"):
+            vis_task = asyncio.create_task(visualization_node(state))
 
-    # Script Generator 결과는 필수 — 예외 시 전파
-    script_result = await script_task
+        # Script Generator 결과는 필수 — 예외 시 전파
+        script_result = await script_task
 
-    # Visualization 결과는 선택 — 실패 시 무시
-    vis_result: dict[str, Any] = {}
-    if vis_task is not None:
-        try:
-            vis_result = await vis_task
-        except Exception:
-            logger.warning("[TIER 2] Visualization 실패 — 무시하고 계속 진행", exc_info=True)
+        # Visualization 결과는 선택 — 실패 시 무시
+        vis_result: dict[str, Any] = {}
+        if vis_task is not None:
+            try:
+                vis_result = await vis_task
+            except Exception:
+                logger.warning("[TIER 2] Visualization 실패 — 무시하고 계속 진행", exc_info=True)
 
-    merged = {**script_result, **vis_result}
+        return {**script_result, **vis_result}
+
+    try:
+        merged = await asyncio.wait_for(_run_tier2_podcast(), timeout=_TIER2_TIMEOUT)
+    except asyncio.TimeoutError:
+        logger.error(
+            "[TIER 2] 팟캐스트모드 타임아웃 (%ds) — Script Generator 미완료", _TIER2_TIMEOUT,
+        )
+        raise
 
     if writer:
         writer({"event": "tier2_podcast_end"})
@@ -318,51 +333,63 @@ async def tier1_conversation_fan_out(state: AgentState) -> dict[str, Any]:
         run_with_cancel(reasoning_node(state), cancel_event, "reasoning"),
     ]
 
-    merged: dict[str, Any] = {}
-    completed_count = 0
-    for coro in asyncio.as_completed(tasks):
-        name, result = await coro
-        completed_count += 1
-        elapsed_ms = int((time.monotonic() - tier_start) * 1000)
+    async def _run_tier1_conv() -> dict[str, Any]:
+        nonlocal tasks
+        merged: dict[str, Any] = {}
+        completed_count = 0
+        for coro in asyncio.as_completed(tasks):
+            name, result = await coro
+            completed_count += 1
+            elapsed_ms = int((time.monotonic() - tier_start) * 1000)
 
-        if name == "safety" and result.get("safety_flags", {}).get("status") == "crisis":
-            # ■ CRISIS: 나머지 모두 취소 → Safety 심화 → 즉시 응답
-            cancel_event.set()
+            if name == "safety" and result.get("safety_flags", {}).get("status") == "crisis":
+                # ■ CRISIS: 나머지 모두 취소 → Safety 심화 → 즉시 응답
+                cancel_event.set()
+                writer({
+                    "event": "crisis_detected",
+                    "tier": 1,
+                    "agent": "safety",
+                    "risk_level": result.get("risk_level", 4),
+                    "elapsed_ms": elapsed_ms,
+                })
+                deep_result = await _safety_deep_crisis(result)
+                writer({
+                    "event": "tier_end",
+                    "tier": 1,
+                    "mode": "conversation",
+                    "status": "crisis",
+                    "elapsed_ms": int((time.monotonic() - tier_start) * 1000),
+                })
+                return {**deep_result, "next_step": "crisis_response"}
+
             writer({
-                "event": "crisis_detected",
+                "event": "agent_complete",
                 "tier": 1,
-                "agent": "safety",
-                "risk_level": result.get("risk_level", 4),
+                "agent": name,
                 "elapsed_ms": elapsed_ms,
+                "progress": f"{completed_count}/{len(agent_names)}",
             })
-            deep_result = await _safety_deep_crisis(result)
-            writer({
-                "event": "tier_end",
-                "tier": 1,
-                "mode": "conversation",
-                "status": "crisis",
-                "elapsed_ms": int((time.monotonic() - tier_start) * 1000),
-            })
-            return {**deep_result, "next_step": "crisis_response"}
+            merged.update(result)
 
-        writer({
-            "event": "agent_complete",
-            "tier": 1,
-            "agent": name,
-            "elapsed_ms": elapsed_ms,
-            "progress": f"{completed_count}/{len(agent_names)}",
-        })
-        merged.update(result)
+        return merged
+
+    try:
+        merged = await asyncio.wait_for(_run_tier1_conv(), timeout=_TIER1_TIMEOUT)
+    except asyncio.TimeoutError:
+        logger.warning(
+            "[TIER 1] 대화모드 타임아웃 (%ds) — 부분 결과로 계속 진행", _TIER1_TIMEOUT,
+        )
+        cancel_event.set()
+        merged = {}
 
     writer({
         "event": "tier_end",
         "tier": 1,
         "mode": "conversation",
-        "status": "ok",
+        "status": "ok" if "next_step" not in merged else merged.get("next_step", "ok"),
         "elapsed_ms": int((time.monotonic() - tier_start) * 1000),
     })
 
-    # 정상: 4개 결과 모두 TIER 2로 전달
     return merged
 
 
@@ -394,46 +421,59 @@ async def tier1_podcast_fan_out(state: AgentState) -> dict[str, Any]:
         run_with_cancel(podcast_reasoning_node(state), cancel_event, "podcast_reasoning"),
     ]
 
-    merged: dict[str, Any] = {}
-    completed_count = 0
-    for coro in asyncio.as_completed(tasks):
-        name, result = await coro
-        completed_count += 1
-        elapsed_ms = int((time.monotonic() - tier_start) * 1000)
+    async def _run_tier1_pod() -> dict[str, Any]:
+        nonlocal tasks
+        merged: dict[str, Any] = {}
+        completed_count = 0
+        for coro in asyncio.as_completed(tasks):
+            name, result = await coro
+            completed_count += 1
+            elapsed_ms = int((time.monotonic() - tier_start) * 1000)
 
-        if name == "safety" and result.get("safety_flags", {}).get("status") == "crisis":
-            cancel_event.set()
+            if name == "safety" and result.get("safety_flags", {}).get("status") == "crisis":
+                cancel_event.set()
+                writer({
+                    "event": "crisis_detected",
+                    "tier": 1,
+                    "agent": "safety",
+                    "risk_level": result.get("risk_level", 4),
+                    "elapsed_ms": elapsed_ms,
+                })
+                deep_result = await _safety_deep_crisis(result)
+                writer({
+                    "event": "tier_end",
+                    "tier": 1,
+                    "mode": "podcast",
+                    "status": "crisis",
+                    "elapsed_ms": int((time.monotonic() - tier_start) * 1000),
+                })
+                return {**deep_result, "next_step": "crisis_response"}
+
             writer({
-                "event": "crisis_detected",
+                "event": "agent_complete",
                 "tier": 1,
-                "agent": "safety",
-                "risk_level": result.get("risk_level", 4),
+                "agent": name,
                 "elapsed_ms": elapsed_ms,
+                "progress": f"{completed_count}/{len(agent_names)}",
             })
-            deep_result = await _safety_deep_crisis(result)
-            writer({
-                "event": "tier_end",
-                "tier": 1,
-                "mode": "podcast",
-                "status": "crisis",
-                "elapsed_ms": int((time.monotonic() - tier_start) * 1000),
-            })
-            return {**deep_result, "next_step": "crisis_response"}
+            merged.update(result)
 
-        writer({
-            "event": "agent_complete",
-            "tier": 1,
-            "agent": name,
-            "elapsed_ms": elapsed_ms,
-            "progress": f"{completed_count}/{len(agent_names)}",
-        })
-        merged.update(result)
+        return merged
+
+    try:
+        merged = await asyncio.wait_for(_run_tier1_pod(), timeout=_TIER1_TIMEOUT)
+    except asyncio.TimeoutError:
+        logger.warning(
+            "[TIER 1] 팟캐스트모드 타임아웃 (%ds) — 부분 결과로 계속 진행", _TIER1_TIMEOUT,
+        )
+        cancel_event.set()
+        merged = {}
 
     writer({
         "event": "tier_end",
         "tier": 1,
         "mode": "podcast",
-        "status": "ok",
+        "status": "ok" if "next_step" not in merged else merged.get("next_step", "ok"),
         "elapsed_ms": int((time.monotonic() - tier_start) * 1000),
     })
 
@@ -449,6 +489,7 @@ async def async_post_processing_node(state: AgentState) -> dict[str, Any]:
 
     최종 응답 출력 후 백그라운드에서 실행.
     실패해도 파이프라인에 영향 없음.
+    _ASYNC_TIMEOUT 적용: 전체 후처리가 타임아웃 내에 완료되지 않으면 부분 결과 반환.
 
     Note: Visualization은 TIER 2에서 Script Generator와 병렬 실행으로 이동됨.
     """
@@ -457,15 +498,23 @@ async def async_post_processing_node(state: AgentState) -> dict[str, Any]:
         asyncio.create_task(learning_node(state)),
     ]
 
-    results: dict[str, Any] = {}
-    for task in asyncio.as_completed(tasks):
-        try:
-            result = await task
-            results.update(result)
-        except Exception:
-            logger.exception("[ASYNC] 비동기 후처리 태스크 실패 — 무시")
+    async def _run_async_tasks() -> dict[str, Any]:
+        results: dict[str, Any] = {}
+        for task in asyncio.as_completed(tasks):
+            try:
+                result = await task
+                results.update(result)
+            except Exception:
+                logger.exception("[ASYNC] 비동기 후처리 태스크 실패 — 무시")
+        return results
 
-    return results
+    try:
+        return await asyncio.wait_for(_run_async_tasks(), timeout=_ASYNC_TIMEOUT)
+    except asyncio.TimeoutError:
+        logger.warning(
+            "[ASYNC] 비동기 후처리 타임아웃 (%ds) — 부분 결과 반환", _ASYNC_TIMEOUT,
+        )
+        return {}
 
 
 # ===================================================================
@@ -543,8 +592,18 @@ def route_after_tier3_podcast(state: AgentState) -> str:
     verdict = validation.get("verdict", "PASS")
 
     if verdict == "CRITICAL_FAIL":
-        logger.critical("[CRITICAL_FAIL] 팟캐스트 스크립트 치명적 실패 — 즉시 중단")
-        return "crisis_response"
+        iteration_count = state.get("iteration_count", 0)
+        if iteration_count < _MAX_CRITICAL_RETRIES:
+            logger.warning(
+                "[CRITICAL_FAIL] 스크립트 평가 미달 — 재시도 %d/%d",
+                iteration_count, _MAX_CRITICAL_RETRIES,
+            )
+            return "tier2_podcast"
+        logger.warning(
+            "[CRITICAL_FAIL] 재시도 소진(%d) — 강제 통과",
+            _MAX_CRITICAL_RETRIES,
+        )
+        return "tier4_podcast"
 
     if verdict == "PASS":
         return "tier4_podcast"
@@ -600,9 +659,9 @@ def build_conversation_graph() -> StateGraph:
 
     # --- 노드 등록 ---
     graph.add_node("tier1_conversation", tier1_conversation_fan_out)
-    graph.add_node("synthesis", synthesis_node)
-    graph.add_node("validator", validator_node)
-    graph.add_node("personalization", personalization_node)
+    graph.add_node("synthesis", synthesis_node)  # TODO: _TIER2_TIMEOUT 적용 — 대화모드 TIER 2 노드 래퍼 필요
+    graph.add_node("validator", validator_node)  # TODO: _TIER3_TIMEOUT 적용 — 노드 래퍼 필요
+    graph.add_node("personalization", personalization_node)  # TODO: _TIER4_TIMEOUT 적용 — 노드 래퍼 필요
     graph.add_node("crisis_response", crisis_response_node)
     graph.add_node("async_post", async_post_processing_node)
     graph.add_node("increment_iteration", increment_iteration_node)
@@ -662,8 +721,8 @@ def build_podcast_graph() -> StateGraph:
     # --- 노드 등록 ---
     graph.add_node("tier1_podcast", tier1_podcast_fan_out)
     graph.add_node("tier2_podcast", tier2_podcast_fan_out)
-    graph.add_node("batch_validator", batch_validator_node)
-    graph.add_node("script_personalizer", script_personalizer_node)
+    graph.add_node("batch_validator", batch_validator_node)  # TODO: _TIER3_TIMEOUT 적용 — 노드 래퍼 필요
+    graph.add_node("script_personalizer", script_personalizer_node)  # TODO: _TIER4_TIMEOUT 적용 — 노드 래퍼 필요
     graph.add_node("crisis_response", crisis_response_node)
     graph.add_node("async_post", async_post_processing_node)
     graph.add_node("increment_iteration", increment_iteration_node)
@@ -845,7 +904,7 @@ def compile_graph(
 
         # 상태 이력 조회 (Time-travel 디버깅)
         for state_snapshot in compiled.get_state_history(config):
-            print(state_snapshot)
+            logger.debug("state_snapshot: %s", state_snapshot)
     """
     builders = {
         "unified": build_unified_graph,

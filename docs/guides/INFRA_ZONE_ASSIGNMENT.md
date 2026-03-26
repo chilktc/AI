@@ -2,7 +2,9 @@
 
 > **Date**: 2026-03-09
 > **Target**: app-2 (EC2 t3.medium, FastAPI:8000)
-> **Base Document**: INFRA_DEPLOYMENT_GUIDE.md
+> **Base Document**: [INFRA_DEPLOYMENT_GUIDE.md](INFRA_DEPLOYMENT_GUIDE.md)
+>
+> 본 문서는 [INFRA_DEPLOYMENT_GUIDE.md](INFRA_DEPLOYMENT_GUIDE.md)의 작업을 Zone별로 분할한 배정표입니다.
 
 ---
 

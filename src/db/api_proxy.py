@@ -11,6 +11,7 @@ STORAGE_MODE=proxy 또는 hybrid 모드에서 사용.
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from typing import Any
 
 from src.api.backend_resources import (
@@ -56,9 +57,7 @@ class VectorProxyClient(BaseVectorClient):
                 "top_k": top_k,
                 **kwargs,
             },
-            timestamp=__import__("datetime").datetime.now(
-                __import__("datetime").timezone.utc
-            ),
+            timestamp=datetime.now(timezone.utc),
         )
         response = await self._client.save(RESOURCE_VECTOR_SEARCH, request)
         return {"success": response.success, "id": response.id}
@@ -82,9 +81,7 @@ class VectorProxyClient(BaseVectorClient):
                 "vectors": vectors,
                 "namespace": namespace,
             },
-            timestamp=__import__("datetime").datetime.now(
-                __import__("datetime").timezone.utc
-            ),
+            timestamp=datetime.now(timezone.utc),
         )
         response = await self._client.save(RESOURCE_VECTOR_SEARCH, request)
         return {"success": response.success, "id": response.id}
@@ -122,9 +119,7 @@ class GraphProxyClient(BaseGraphClient):
                 "query": query,
                 "params": params or {},
             },
-            timestamp=__import__("datetime").datetime.now(
-                __import__("datetime").timezone.utc
-            ),
+            timestamp=datetime.now(timezone.utc),
         )
         response = await self._client.save(RESOURCE_GRAPH_QUERY, request)
         return [{"success": response.success, "id": response.id}]
@@ -172,9 +167,7 @@ class RDBProxyClient(BaseRDBClient):
             session_id="",
             type="rdb_execute",
             data={"query": query, "params": params},
-            timestamp=__import__("datetime").datetime.now(
-                __import__("datetime").timezone.utc
-            ),
+            timestamp=datetime.now(timezone.utc),
         )
         response = await self._client.save("data", request)
         return 1 if response.success else 0
@@ -229,9 +222,7 @@ class StorageProxyClient(BaseStorageClient):
                 "content": base64.b64encode(data).decode(),
                 "content_type": content_type,
             },
-            timestamp=__import__("datetime").datetime.now(
-                __import__("datetime").timezone.utc
-            ),
+            timestamp=datetime.now(timezone.utc),
         )
         response = await self._client.save(RESOURCE_STORAGE_UPLOAD, request)
         return {"success": response.success, "id": response.id}

@@ -15,7 +15,6 @@ Mind-Log 프로젝트 문서 마스터 네비게이션입니다.
 
 | 문서 | 설명 |
 |------|------|
-| [PROJECT_STRUCTURE.md](architecture/PROJECT_STRUCTURE.md) | 디렉토리 구조 및 파일 역할 |
 | [AGENT_ROLES.md](architecture/AGENT_ROLES.md) | 에이전트별 역할·입출력·스키마·이슈 정의서 |
 | [API_SPEC.md](architecture/API_SPEC.md) | REST API 명세 인덱스 (v2.0, 5개 문서 모음) |
 | [API_ARCHITECTURE.md](architecture/API_ARCHITECTURE.md) | API 아키텍처 — 서버 구조 & 파이프라인 실행 흐름 |
@@ -23,30 +22,26 @@ Mind-Log 프로젝트 문서 마스터 네비게이션입니다.
 | [API_ENDPOINTS_INTERNAL.md](architecture/API_ENDPOINTS_INTERNAL.md) | 발신 API (AI→Backend) 5개 + Load API |
 | [API_COMMON.md](architecture/API_COMMON.md) | 스트리밍 이벤트, 에러 코드, 재시도 정책 |
 | [DATA_SCHEMA.md](architecture/DATA_SCHEMA.md) | 데이터 스키마 명세 (MySQL 7테이블 + Pinecone 2인덱스 + Neo4j 5노드 + S3) |
-| [DATA_SCHEMA_PLAN.md](architecture/DATA_SCHEMA_PLAN.md) | 데이터 스키마 설계 계획 (참고용) |
 
 ## 가이드 (Guides)
 
 | 문서 | 설명 |
 |------|------|
 | [AGENT_DEV_GUIDE.md](guides/AGENT_DEV_GUIDE.md) | 에이전트 개발 상세 가이드 (템플릿, 테스트 패턴) |
-| [GIT_WORKFLOW.md](guides/GIT_WORKFLOW.md) | 브랜치 전략, 커밋 컨벤션, PR 가이드 |
 | [E2E_TEST_GUIDE.md](guides/E2E_TEST_GUIDE.md) | E2E 테스트 가이드 |
 | [PROMPT_VERSIONING.md](guides/PROMPT_VERSIONING.md) | 프롬프트 멀티버전 관리 및 A/B 테스트 가이드 |
 | [INFRA_DEPLOYMENT_GUIDE.md](guides/INFRA_DEPLOYMENT_GUIDE.md) | 인프라 배포 가이드 (Docker, AWS) |
-| [AI_Team_Work_Zone_Assignment.md](guides/AI_Team_Work_Zone_Assignment.md) | AI 팀 작업 영역(Zone) 배정표 |
-| [ZONE_CD_INTEGRATION_AND_BACKEND_TEST_GUIDE.md](guides/ZONE_CD_INTEGRATION_AND_BACKEND_TEST_GUIDE.md) | Zone C/D 통합 및 백엔드 연동 테스트 가이드 |
-| [인프라_적용_가이드.md](guides/인프라_적용_가이드.md) | 인프라 적용 가이드 (한국어) |
+| [INFRA_ZONE_ASSIGNMENT.md](guides/INFRA_ZONE_ASSIGNMENT.md) | AI 팀 작업 영역(Zone A~D) 배정표 |
+| [INFRA_ONBOARDING_GUIDE.md](guides/INFRA_ONBOARDING_GUIDE.md) | 인프라 접속 및 환경 설정 온보딩 가이드 |
 
 ## 보고서 (Reports)
 
 | 문서 | 설명 |
 |------|------|
-| [PROJECT_SUMMARY.md](reports/PROJECT_SUMMARY.md) | 프로젝트 현황 종합 보고서 |
-| [AGENT_IO_ANALYSIS.md](reports/AGENT_IO_ANALYSIS.md) | 에이전트 I/O 분석 보고서 |
+| [PROJECT_DECISIONS.md](reports/PROJECT_DECISIONS.md) | 프로젝트 설계 결정 및 변경 이력 |
 | [OLLAMA_MODEL_TEST_REPORT.md](reports/OLLAMA_MODEL_TEST_REPORT.md) | Ollama 모델 테스트 결과 |
 | [REFACTORING_LOG.md](reports/REFACTORING_LOG.md) | 리팩토링 이력 |
-| [CODE_REVIEW_2026-03-06.md](reports/CODE_REVIEW_2026-03-06.md) | 코드 리뷰 (2026-03-06) |
+| [ZONE_CD_INTEGRATION_REPORT.md](reports/ZONE_CD_INTEGRATION_REPORT.md) | Zone C/D 통합 실행 보고서 |
 
 ## 변경 이력 (Changelog)
 
@@ -68,6 +63,7 @@ Mind-Log 프로젝트 문서 마스터 네비게이션입니다.
 | [CHANGELOG_v7.md](changelog/CHANGELOG_v7.md) | v7 변경이력 |
 | [CHANGELOG_v6.md](changelog/CHANGELOG_v6.md) | v6 변경이력 |
 | [CHANGELOG_v1-v5.md](changelog/CHANGELOG_v1-v5.md) | v1~v5 변경이력 |
+| [CODE_AUDIT_CHANGELOG.md](changelog/CODE_AUDIT_CHANGELOG.md) | 코드 점검 체인지로그 (2026-03-24) — 보안, 데드코드, 중복, 배포 안전성 |
 
 ---
 
@@ -87,4 +83,4 @@ Mind-Log 프로젝트 문서 마스터 네비게이션입니다.
 
 ---
 
-*마지막 업데이트: 2026-03-16*
+*마지막 업데이트: 2026-03-17*

@@ -62,52 +62,10 @@ class TestEmotionPublish:
     """EmotionAgent가 AgentDataPublisher.publish()를 올바르게 호출하는지 검증."""
 
     @pytest.mark.asyncio
-    async def test_publish_called_with_correct_resource(
+    async def test_publish_called_with_correct_args(
         self, agent: EmotionAgent, sample_llm_response: dict, sample_state: AgentState,
     ) -> None:
-        """publish()의 resource가 RESOURCE_EMOTION_LOG인지 확인."""
-        mock_publish = AsyncMock(return_value=True)
-
-        with (
-            patch.object(agent, "call_llm_json", new_callable=AsyncMock, return_value=sample_llm_response),
-            patch("src.agents.podcast.emotion.AgentDataPublisher") as MockPublisher,
-        ):
-            MockPublisher.return_value.publish = mock_publish
-            await agent.process(sample_state)
-
-        mock_publish.assert_awaited_once()
-        call_kwargs = mock_publish.call_args
-        assert call_kwargs.kwargs["resource"] == RESOURCE_EMOTION_LOG
-
-    @pytest.mark.asyncio
-    async def test_publish_called_with_correct_user_session(
-        self, agent: EmotionAgent, sample_llm_response: dict,
-    ) -> None:
-        """publish()에 state의 user_id, session_id가 전달되는지 확인."""
-        state = AgentState(
-            user_input="테스트 입력",
-            user_id="user_789",
-            session_id="sess_xyz",
-            mode="podcast",
-        )
-        mock_publish = AsyncMock(return_value=True)
-
-        with (
-            patch.object(agent, "call_llm_json", new_callable=AsyncMock, return_value=sample_llm_response),
-            patch("src.agents.podcast.emotion.AgentDataPublisher") as MockPublisher,
-        ):
-            MockPublisher.return_value.publish = mock_publish
-            await agent.process(state)
-
-        call_kwargs = mock_publish.call_args.kwargs
-        assert call_kwargs["user_id"] == "user_789"
-        assert call_kwargs["session_id"] == "sess_xyz"
-
-    @pytest.mark.asyncio
-    async def test_publish_called_with_emotion_data(
-        self, agent: EmotionAgent, sample_llm_response: dict, sample_state: AgentState,
-    ) -> None:
-        """publish()에 전달되는 data가 emotion_vectors와 동일한지 확인."""
+        """publish()가 올바른 resource, user/session, data로 호출되는지 통합 검증."""
         mock_publish = AsyncMock(return_value=True)
 
         with (
@@ -117,9 +75,15 @@ class TestEmotionPublish:
             MockPublisher.return_value.publish = mock_publish
             result = await agent.process(sample_state)
 
-        published_data = mock_publish.call_args.kwargs["data"]
-        expected_vectors = result["emotion_vectors"]
-        assert published_data == expected_vectors
+        mock_publish.assert_awaited_once()
+        call_kwargs = mock_publish.call_args.kwargs
+        # resource 검증
+        assert call_kwargs["resource"] == RESOURCE_EMOTION_LOG
+        # user/session 검증
+        assert call_kwargs["user_id"] == "user_123"
+        assert call_kwargs["session_id"] == "sess_abc"
+        # data 검증
+        assert call_kwargs["data"] == result["emotion_vectors"]
 
     @pytest.mark.asyncio
     async def test_publish_called_with_empty_user_session_when_missing(

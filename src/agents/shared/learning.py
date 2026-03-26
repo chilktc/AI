@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from src.agents.shared.base_agent import BaseAgent
+from src.agents.shared.context_utils import build_context, build_section
 from src.api.backend_resources import RESOURCE_LEARNING, TYPE_LEARNING
 from src.api.client import BackendClient
 from src.api.contracts import SaveRequest
@@ -72,39 +73,32 @@ class LearningAgent(BaseAgent):
 
     def _build_learning_context(self, state: AgentState) -> str:
         """학습 분석에 필요한 세션 컨텍스트를 조합한다."""
-        parts = []
-
-        # 사용자 입력
+        # 사용자 입력 (plain text이므로 build_section 대신 직접 포맷)
         user_input = state.get("user_input", "")
-        if user_input:
-            parts.append(f"[사용자 입력]\n{user_input}")
+        user_input_sec = f"[사용자 입력]\n{user_input}" if user_input else ""
 
-        # 감정 분석 결과
-        emotion = state.get("emotion_vectors", {})
-        if emotion:
-            parts.append(
-                f"[감정 분석]\n"
-                f"- 주요 감정: {emotion.get('primary_emotion', 'N/A')}\n"
-                f"- 강도: {emotion.get('intensity', 'N/A')}"
-            )
+        emotion_sec = build_section(
+            "감정 분석",
+            state.get("emotion_vectors", {}),
+            ["primary_emotion", "intensity"],
+        )
 
-        # 콘텐츠 분석 결과
-        content = state.get("content_analysis", {})
-        if content:
-            parts.append(
-                f"[콘텐츠 분석]\n"
-                f"- 주제: {content.get('topic', 'N/A')}\n"
-                f"- 유형: {content.get('episode_type', 'N/A')}"
-            )
+        content_sec = build_section(
+            "콘텐츠 분석",
+            state.get("content_analysis", {}),
+            ["topic", "episode_type"],
+        )
 
-        # 최종 출력
+        # 최종 출력 — 너무 길면 앞부분만 포함
         final_output = state.get("final_output", "")
         if final_output:
-            # 너무 길면 앞부분만 포함
             truncated = final_output[:500] + ("..." if len(final_output) > 500 else "")
-            parts.append(f"[최종 출력 (요약)]\n{truncated}")
+            output_sec = f"[최종 출력 (요약)]\n{truncated}"
+        else:
+            output_sec = ""
 
-        return "\n\n".join(parts) if parts else "세션 데이터가 부족합니다."
+        result = build_context(user_input_sec, emotion_sec, content_sec, output_sec)
+        return result if result else "세션 데이터가 부족합니다."
 
     async def _save_learning_result(
         self,
