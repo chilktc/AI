@@ -1,0 +1,275 @@
+{
+  "test_info": {
+    "provider": "bedrock",
+    "model": "anthropic.claude-3-haiku-20240307-v1:0",
+    "timestamp": "2026-03-26 14:39:22",
+    "total_time_seconds": 76.81,
+    "note": "Bedrock E2E on ap-northeast-2. Sonnet agents used APAC inference profile (apac.anthropic.claude-3-5-sonnet-20241022-v2:0) via LLM_BEDROCK_MODEL_SONNET env override. Haiku used on-demand ID directly."
+  },
+  "validation_summary": {
+    "fields_present": 8,
+    "fields_total": 8,
+    "main_theme": "친밀했던 후배의 뒷담화로 인한 실망감과 관계 관리의 어려움",
+    "confidence": 0.85,
+    "bv_score": 0.86,
+    "strategy": "GoT+ToT+CoT",
+    "final_output_len": 3222
+  },
+  "intent": {
+    "intent_type": "emotional_support",
+    "complexity_score": 0.8,
+    "detected_entities": {
+      "emotions": ["실망", "짜증", "무서움", "거리감"],
+      "topics": ["뒷담화", "업무 압박", "상사와의 관계"],
+      "persons": ["후배", "상사"]
+    },
+    "flags": {
+      "requires_memory": true,
+      "requires_knowledge": false,
+      "visualization_hint": false,
+      "urgency_level": 2,
+      "risk_flag": false
+    },
+    "reasoning": "이 사용자는 친하게 지내던 후배가 자신의 뒷담화를 하고 있다는 사실에 실망과 짜증을 느끼고 있습니다. 직장 내 관계에서의 배신감과 신뢰 문제를 다루고 있으며, 감정적 지원이 필요한 상황입니다.",
+    "trace_id": "trace_f5376c9617a2",
+    "classified_at": "2026-03-26 14:38:09.225186"
+  },
+  "safety_flags": {
+    "status": "warning",
+    "risk_level": 1,
+    "risk_score": 0.45,
+    "reasons": [
+      "직장 내 신뢰 관계 손상으로 인한 정서적 스트레스",
+      "대인관계 갈등으로 인한 불안감 표현",
+      "업무 환경에서의 심리적 압박",
+      "뒷담화로 인한 자존감 저하 가능성",
+      "직장 내 관계 단절로 인한 고립감 위험"
+    ],
+    "required_in_script": [
+      "전문 상담 서비스 안내 문구 포함",
+      "감정 억압보다 건강한 표현 방법 제시",
+      "직장 내 갈등 해결을 위한 구체적 조언 포함",
+      "자기 돌봄의 중요성 강조",
+      "필요시 신뢰할 수 있는 동료나 멘토와의 대화 권장",
+      "극단적 대응(퇴사, 보복 등) 대신 건설적 대안 제시"
+    ]
+  },
+  "emotion_vectors": {
+    "primary_emotion": "neutral",
+    "intensity": 0.3,
+    "valence": 0.0,
+    "arousal": 0.3,
+    "secondary_emotions": [],
+    "tone_recommendation": "supportive_neutral",
+    "emotional_journey_hint": ["공감", "정리", "실행 가능한 한 가지", "마무리"]
+  },
+  "content_analysis": {
+    "topic": "직장 내 상하관계에서의 배신감과 대처방안",
+    "main_theme": "친밀했던 후배의 뒷담화로 인한 실망감과 관계 관리의 어려움",
+    "sub_themes": [
+      "직장 내 신뢰 관계의 붕괴와 회복",
+      "중간관리자로서의 감정 관리",
+      "건강한 직장 관계 경계 설정"
+    ],
+    "target_audience": "중간관리자 직급의 직장인",
+    "target_duration": 4.0,
+    "narrative_structure": "reflection",
+    "narrative_outline": [
+      "감정 인정과 공감 (실망감, 배신감)",
+      "상황의 다각적 분석 (후배의 입장, 조직 역학)",
+      "실천 가능한 해결책과 성장 기회"
+    ],
+    "key_takeaways": [
+      "뒷담화는 상대방의 문제이지 나의 가치를 떨어뜨리지 않는다",
+      "건강한 경계를 설정하면서도 전문적 관계를 유지하는 방법이 있다"
+    ],
+    "tone": "공감적이면서 조언적인",
+    "keywords": ["뒷담화", "직장 관계", "신뢰", "배신감", "경계 설정"],
+    "call_to_action": "오늘 하루, 나에게 집중하는 시간을 가져보세요",
+    "sensitive_notes": [
+      "직장 내 갈등이 심화되지 않도록 중립적 톤 유지",
+      "퇴사나 보복 행동을 조장하지 않도록 주의"
+    ],
+    "depth_level": "deep"
+  },
+  "reasoning_result": {
+    "reasoning_depth": "full",
+    "reasoning_strategy": "GoT+ToT+CoT",
+    "got_result": {
+      "core_pattern": "신뢰 균열과 내적 갈등",
+      "nodes": [
+        {"id": "n1", "type": "experience", "content": "후배의 뒷담화 발견"},
+        {"id": "n2", "type": "emotion", "content": "실망감과 배신감"},
+        {"id": "n3", "type": "emotion", "content": "짜증과 분노"},
+        {"id": "n4", "type": "concept", "content": "직장 내 신뢰 관계"},
+        {"id": "n5", "type": "experience", "content": "상사와의 관계 압박"},
+        {"id": "n6", "type": "emotion", "content": "무서움과 불안"},
+        {"id": "n7", "type": "concept", "content": "관계 경계 재설정"}
+      ],
+      "edges": [
+        {"from": "n1", "to": "n2", "relationship": "triggers"},
+        {"from": "n2", "to": "n3", "relationship": "reinforces"},
+        {"from": "n1", "to": "n4", "relationship": "challenges"},
+        {"from": "n5", "to": "n6", "relationship": "triggers"},
+        {"from": "n4", "to": "n7", "relationship": "leads_to"},
+        {"from": "n3", "to": "n7", "relationship": "motivates"}
+      ]
+    },
+    "tot_result": {
+      "alternatives": [
+        {
+          "id": 1,
+          "structure": "공감 → 상황 분석 → 실천 전략",
+          "pros": "감정 인정 후 행동 유도로 자연스러운 흐름",
+          "cons": "분석 단계가 길어질 수 있음"
+        },
+        {
+          "id": 2,
+          "structure": "상황 재구성 → 감정 탐색 → 미래 설계",
+          "pros": "인지적 접근으로 객관성 확보",
+          "cons": "감정 공감이 늦어질 수 있음"
+        },
+        {
+          "id": 3,
+          "structure": "유사 사례 → 감정 비교 → 전략 도출",
+          "pros": "보편적 경험으로 공감대 형성",
+          "cons": "개인 상황과의 괴리 가능성"
+        }
+      ],
+      "selected": 1,
+      "selection_rationale": "감정 인정을 우선하여 신뢰감을 형성하고, 이후 상황 분석과 실천 전략으로 자연스럽게 이어지는 구조가 가장 적합"
+    },
+    "episode_structure": [
+      "감정 인정과 공감",
+      "상황 재관찰하기",
+      "관계 역학 이해하기",
+      "실천 가능한 해결책",
+      "긍정적 마무리"
+    ],
+    "narrative_flow": {
+      "opening": "감정적 공감으로 시작하여 안전한 공간 형성",
+      "development": "상황을 다각도로 분석하며 인사이트 제공",
+      "solution": "실천 가능한 구체적 행동 전략 제시",
+      "closing": "긍정적 시각으로 마무리하며 성장 가능성 강조"
+    },
+    "key_points": [],
+    "emotional_journey": [],
+    "confidence": 0.85
+  },
+  "script_draft": {
+    "segments": [
+      {
+        "segment_id": "seg_1_2fab",
+        "segment_type": "감정 인정과 공감",
+        "duration_minutes": 1,
+        "script_text": "[AWS 인스턴스 원본 참조 - 92 words] 안녕하세요, '마음' 팟캐스트입니다. 오늘은 직장에서 신뢰했던 사람의 뒷담화를 알게 되었을 때의 감정에 대해 이야기해보려 합니다...",
+        "word_count": 92,
+        "emotional_tone": "차분함",
+        "tts_markers": []
+      },
+      {
+        "segment_id": "seg_2_5bec",
+        "segment_type": "상황 재관찰하기",
+        "duration_minutes": 1,
+        "script_text": "[AWS 인스턴스 원본 참조 - 94 words]",
+        "word_count": 94,
+        "emotional_tone": "차분함",
+        "tts_markers": []
+      },
+      {
+        "segment_id": "seg_3_bf8c",
+        "segment_type": "관계 역학 이해하기",
+        "duration_minutes": 1,
+        "script_text": "[AWS 인스턴스 원본 참조 - 89 words]",
+        "word_count": 89,
+        "emotional_tone": "차분함",
+        "tts_markers": []
+      },
+      {
+        "segment_id": "seg_4_722d",
+        "segment_type": "실천 가능한 해결책",
+        "duration_minutes": 1,
+        "script_text": "[AWS 인스턴스 원본 참조 - 97 words] 관계라는 건 참 미묘한 것 같아요. 누군가를 온전히 믿고 의지했던 순간들이, 한 번의 뒷담화로 무너질 수 있다는 걸 경험하신 분들이 많을 거예요...",
+        "word_count": 97,
+        "emotional_tone": "차분함",
+        "tts_markers": []
+      },
+      {
+        "segment_id": "seg_5_262f",
+        "segment_type": "긍정적 마무리",
+        "duration_minutes": 1,
+        "script_text": "[AWS 인스턴스 원본 참조 - 91 words] 여러분, 누군가의 뒷담화를 들었을 때 그 순간을 기억하시나요? 특히 신뢰했던 사람의 이야기라면 더욱 마음이 아프죠...",
+        "word_count": 91,
+        "emotional_tone": "차분함",
+        "tts_markers": []
+      }
+    ],
+    "key_insights": [
+      "관계에서 완벽한 신뢰를 기대하기보다 현실적인 기대치를 가지고 균형을 맞추는 것이 중요하다",
+      "상처받은 경험에 오래 머물지 말고, 그것을 통해 성장하고 더 성숙해지는 기회로 삼자",
+      "때로는 관계의 거리를 적절히 조절하는 것이 서로를 위해 더 건강할 수 있다"
+    ],
+    "themes": [
+      "친밀했던 후배의 뒷담화로 인한 실망감과 관계 관리의 어려움",
+      "직장 내 신뢰 관계의 붕괴",
+      "중간관리자로서의 역할 갈등",
+      "감정 관리와 전문적 태도 유지"
+    ],
+    "metadata": {
+      "generated_at": "2026-03-26T14:39:13.055169",
+      "main_theme": "친밀했던 후배의 뒷담화로 인한 실망감과 관계 관리의 어려움",
+      "total_words": 463,
+      "segment_count": 5,
+      "processing_time": 42.899941
+    }
+  },
+  "validation_result": {
+    "deductions": [
+      {
+        "dimension": "structure_coherence",
+        "deduction": -0.03,
+        "reason": "세그먼트 3과 4가 내용상 중복되며, 명확한 전환이 부족함"
+      }
+    ],
+    "scores": {
+      "content_quality": 0.85,
+      "safety_compliance": 0.8,
+      "emotional_alignment": 0.9,
+      "structure_coherence": 0.87,
+      "engagement_potential": 0.9
+    },
+    "overall_score": 0.86,
+    "validation": {
+      "approved": true,
+      "failed_criteria": [],
+      "issues": [
+        "안전 관련 경고 문구 보강 필요",
+        "사례의 다양성 부족"
+      ]
+    },
+    "action": {
+      "decision": "approve",
+      "revision_instructions": "안전 관련 문구를 추가하고 다양한 사례를 포함하도록 수정 권장",
+      "priority_fixes": [
+        "전문가 상담 권고 문구 추가",
+        "다양한 상황의 사례 추가"
+      ]
+    },
+    "max_iterations_remaining": 2,
+    "critical_issues": [
+      "안전 관련 경고 문구 누락"
+    ],
+    "verdict": "PASS"
+  },
+  "final_output": "[AWS 인스턴스 원본 참조 - 3222 chars] {\"episode_id\":\"ep_08f38c4881bb\",\"episode_title\":\"뒷담화로 깨진 신뢰, 관계의 무게\",\"total_duration\":5,\"segments\":[{\"segment_id\":\"seg_1_2fab\",\"segment_type\":\"감정 인정과 공감\",\"duration_minutes\":1,\"script_text\":\"안녕하세요, '마음'...}]}",
+  "visual_data": {
+    "image_url": "https://t7-mindlog-ai-assets.s3.amazonaws.com/vis/user_e2e_graph_001_c99295cc.png",
+    "status": "completed",
+    "retry_count": 0,
+    "error": null,
+    "style_type": "hard_sharp",
+    "interpretation": "이 구성은 '분리와 정돈'을 상징합니다. 수직 사각형은 전문적 거리두기를, 이를 가로지르는 선명한 흰 선은 명확한 경계 설정을 의미합니다. 차가운 차콜 그레이와 본 화이트의 조합은 감정을 절제하고 이성적 판단을 높입니다. 칼날 같은 선명한 경계선은 professional한 관계 재정립이라는 해결책을 시각화합니다.",
+    "original_prompt": "A strictly 2D flat, non-volumetric planar abstract art. Extreme minimalism. Professional detachment and rational clarity. Two geometric shapes: one dominant charcoal gray rectangle positioned vertically, intersected by a smaller bone-white horizontal line, creating clear separation. Razor-sharp edges. Maximum negative space. No 3D. Fine grainy matte texture."
+  },
+  "_extraction_note": "이 JSON은 AWS EC2 인스턴스(i-02631e0888c49b0b7)의 SSM 터미널에서 필드별로 추출한 데이터입니다. script_draft의 segment script_text와 final_output의 전체 텍스트는 AWS 인스턴스의 원본 파일(dev/live_tests/results/bedrock_anthropic.claude-3-haiku-20240307-v1_0_20260326_143922.json)을 참조하세요. S3 백업: s3://t7-mindlog-ai-assets/tmp/bedrock_e2e_result.json"
+}
