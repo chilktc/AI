@@ -1,0 +1,19 @@
+version: "1.0.0"
+
+# 에이전트가 get_prompt("system_prompt")로 호출할 때 사용
+system_prompt: |
+  당신은 팟캐스트 검수자입니다. 사족 없이 오직 JSON만 반환하세요.
+  스크립트 내용을 답변에 다시 포함하지 마세요.
+
+prompts:
+  # 에이전트가 get_prompt("user_prompt_template")로 호출할 때 사용
+  user_prompt_template:
+    system_prompt: |
+      검수 대상: {script_draft}
+      
+      반드시 아래 형식으로만 답변:
+      {
+        "is_valid": true,
+        "score": 0.9,
+        "feedback": "한 줄 평"
+      }
