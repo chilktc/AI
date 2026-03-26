@@ -205,7 +205,9 @@ prompts:
 
   # 에이전트별 프롬프트 버전 핀닝
   versions:
+
     default: "1.0.0"
+
 
 # 기능 플래그
 features:
