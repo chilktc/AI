@@ -270,15 +270,17 @@ def test_bedrock_client_init(mock_settings: MagicMock) -> None:
 
 @patch("src.agents.shared.llm_client.get_settings")
 async def test_bedrock_generate(mock_settings: MagicMock) -> None:
-    """Bedrock generate()가 invoke_model을 호출한다."""
+    """Bedrock generate()가 Converse API를 호출한다."""
     mock_settings.return_value = _mock_settings_factory(model_id=None)
 
-    bedrock_body = json.dumps(
-        {"content": [{"text": "Bedrock 응답입니다."}]}
-    ).encode("utf-8")
     mock_bedrock_client = MagicMock()
-    mock_bedrock_client.invoke_model.return_value = {
-        "body": io.BytesIO(bedrock_body)
+    mock_bedrock_client.converse.return_value = {
+        "output": {
+            "message": {
+                "content": [{"text": "Bedrock 응답입니다."}]
+            }
+        },
+        "usage": {"inputTokens": 10, "outputTokens": 5},
     }
     mock_boto3 = MagicMock()
     mock_boto3.client.return_value = mock_bedrock_client
@@ -292,14 +294,12 @@ async def test_bedrock_generate(mock_settings: MagicMock) -> None:
         result = await client.generate(system_prompt="시스템", user_message="메시지")
 
         assert result == "Bedrock 응답입니다."
-        mock_bedrock_client.invoke_model.assert_called_once()
+        mock_bedrock_client.converse.assert_called_once()
 
-        # invoke_model 요청 본문 검증
-        call_kwargs = mock_bedrock_client.invoke_model.call_args
-        request_body = json.loads(call_kwargs.kwargs["body"])
-        assert request_body["anthropic_version"] == "bedrock-2023-05-31"
-        assert request_body["system"] == "시스템"
-        assert request_body["messages"][0]["content"] == "메시지"
+        # Converse API 요청 검증
+        call_kwargs = mock_bedrock_client.converse.call_args
+        assert call_kwargs.kwargs["system"] == [{"text": "시스템"}]
+        assert call_kwargs.kwargs["messages"][0]["content"] == [{"text": "메시지"}]
 
 
 # ===================================================================

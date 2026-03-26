@@ -107,6 +107,8 @@ agents:
   visualization:
     model: sonnet
     max_tokens: 2048
+    image_model: "amazon.titan-image-generator-v2:0"  # text-to-image (생성 단계)
+    image_region: "us-east-1"                         # 이미지 모델 전용 리전 (서울에 없음)
 
   # ──────────────────────────────────────
   # 팟캐스트모드 TIER 1 (병렬)
@@ -203,10 +205,13 @@ api:
 prompts:
   base_dir: "prompts"
 
-  # 에이전트별 프롬프트 버전 핀닝
+  # 에이전트별 프롬프트 버전 핀닝 (Round 4 최적, 2026-03-06 확정)
+  # 미지정 에이전트는 YAML 내부 default_version 사용
   versions:
-
     default: "1.0.0"
+    content_analyzer: "2.1.0"     # Round 4 최적 조합 A (OpenAI)
+    podcast_reasoning: "3.0.0"    # Round 4 최적 — ToT Branch Scoring
+    batch_validator: "2.3.0"      # Round 4 최적 — 감점 규칙 (avg 0.863±0.006)
 
 
 # 기능 플래그

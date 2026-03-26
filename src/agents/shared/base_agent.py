@@ -572,26 +572,95 @@ class BaseAgent(ABC):
     async def call_image_gen(
         self,
         prompt: str,
-        model: str = "dall-e-3",
+        model: str | None = None,
         size: str = "1024x1024",
         quality: str = "standard",
     ) -> dict[str, Any]:
         """
-        이미지 생성 API를 호출하고 로컬에 저장한다.
+        이미지 생성 API를 호출한다.
 
         Visualization Agent에서 사용한다.
-        LLM 프로바이더와 무관하게 항상 OpenAI Images API를 통해 이미지를 생성한다.
-        생성된 이미지는 data/outputs/images/ 폴더에 PNG로 저장된다.
+        model이 amazon.* 이면 Bedrock, 아니면 OpenAI Images API를 사용한다.
+        model이 None이면 settings.yaml의 에이전트별 image_model 설정을 사용한다.
 
         Args:
             prompt: 이미지 생성 프롬프트 (영문 권장)
-            model: 이미지 모델 (기본: dall-e-3)
-            size: 이미지 크기 (기본: 1024x1024)
+            model: 이미지 모델 (None이면 settings에서 조회, amazon.*이면 Bedrock)
+            size: 이미지 크기 (기본: 1024x1024, OpenAI 전용)
             quality: 이미지 품질 (standard / hd)
 
         Returns:
-            {"url": "임시 URL", "local_path": "로컬 저장 경로"} 형태의 dict
+            Bedrock: {"image_binary": bytes} 형태의 dict
+            OpenAI: {"url": "임시 URL", "local_path": "로컬 저장 경로"} 형태의 dict
         """
+        if model is None:
+            from config.loader import get_settings
+            agent_config = get_settings().get_agent_config(self.name)
+            model = agent_config.get("image_model", "dall-e-3")
+
+        if model.startswith("amazon."):
+            return await self._generate_image_bedrock(prompt, model, quality)
+        else:
+            return await self._generate_image_openai(prompt, model, size, quality)
+
+    async def _generate_image_bedrock(
+        self,
+        prompt: str,
+        model: str,
+        quality: str = "standard",
+    ) -> dict[str, Any]:
+        """
+        AWS Bedrock 이미지 생성 (Titan Image Generator).
+
+        이미지 모델은 Converse API 미지원이므로 invoke_model을 사용한다.
+        리전은 settings.yaml의 에이전트별 image_region 설정을 사용한다.
+        """
+        import asyncio
+        import json
+        import base64
+
+        import boto3  # type: ignore
+
+        from config.loader import get_settings
+        settings = get_settings()
+        agent_config = settings.get_agent_config(self.name)
+        image_region = agent_config.get("image_region", "us-east-1")
+
+        bedrock_client = boto3.client("bedrock-runtime", region_name=image_region)
+
+        request_body = json.dumps({
+            "taskType": "TEXT_IMAGE",
+            "textToImageParams": {"text": prompt},
+            "imageGenerationConfig": {
+                "numberOfImages": 1,
+                "quality": quality,
+                "cfgScale": 8.0,
+                "height": 1024,
+                "width": 1024,
+            },
+        })
+
+        response = await asyncio.to_thread(
+            bedrock_client.invoke_model,
+            modelId=model,
+            body=request_body,
+            contentType="application/json",
+            accept="application/json",
+        )
+
+        response_body = json.loads(response["body"].read())
+        image_binary = base64.b64decode(response_body["images"][0])
+        self.logger.info("Bedrock 이미지 생성 완료: model=%s, region=%s", model, image_region)
+        return {"image_binary": image_binary}
+
+    async def _generate_image_openai(
+        self,
+        prompt: str,
+        model: str,
+        size: str = "1024x1024",
+        quality: str = "standard",
+    ) -> dict[str, Any]:
+        """OpenAI Images API를 통한 이미지 생성. 기존 로직 보존."""
         import os
         from pathlib import Path
 

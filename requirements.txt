@@ -14,9 +14,6 @@ pinecone-client>=3.0.0
 neo4j>=5.0.0
 
 
-# === Embeddings ===
-sentence-transformers>=3.0.0
-
 # === API ===
 fastapi>=0.110.0
 uvicorn>=0.30.0

@@ -536,22 +536,23 @@ Peak State Size: ~12~18 KB (추정, 미구현)
 
 ### Visualization Agent -- TIER 2 (병렬) / 공용
 
-- **목적**: 감정 벡터 기반으로 시각화 이미지 메타데이터와 해석 텍스트를 생성한다.
-- **모델**: Sonnet 4
+- **목적**: 감정 벡터 기반으로 시각화 이미지를 생성하고 S3에 업로드한다.
+- **모델**: Sonnet 4 (기획 LLM) + Amazon Titan Image Generator v2 (이미지 생성)
 - **구현 상태**: 완료
 - **TIER 위치**: TIER 2 — Script Generator와 병렬 실행 (`tier2_podcast_fan_out`)
 - **재시도 동작**: `visual_data`가 이미 state에 존재하면 건너뜀 (TIER 3 실패 → TIER 2 재시도 시 중복 방지)
 - **실패 허용**: Visualization 실패 시 파이프라인에 영향 없음 (Script Generator 결과만 필수)
+- **설정 기반**: 모든 런타임 값(모델/버킷/리전/경로/재시도)은 `config/settings.yaml`에서 관리. 코드 내 하드코딩 없음 (v26)
+- **스킵 모드**: `SKIP_VISUALIZATION=true` 환경변수로 이미지 생성 건너뜀 (테스트/배포 시 비용 절감)
 
 **입력 (AgentState 읽기)**
 
 | 필드 | 출처 | 필수 |
 |------|------|------|
 | `emotion_vectors` | Emotion Agent | O |
-| `safety_flags` | Safety Agent | O |
+| `content_analysis` | Content Analyzer | O |
 | `mode` | Intent Classifier | O |
-| `session_id` | 세션 | O |
-| `final_output` / `script_draft` | 여러 | X (우선순위 폴백) |
+| `user_id` | 세션 | O |
 
 **출력 (AgentState 쓰기)**
 
@@ -559,9 +560,36 @@ Peak State Size: ~12~18 KB (추정, 미구현)
 |------|------|------|
 | `visual_data` | dict | 1~2 KB |
 
+**출력 스키마**:
+```python
+{
+    "visual_data": {
+        "image_url": str | None,     # S3 URL
+        "status": "completed" | "failed" | "skipped",
+        "retry_count": int,
+        "error": str | None,
+        "style_type": str,           # LLM 기획 결과
+        "interpretation": str,       # LLM 해석 텍스트
+        "original_prompt": str,      # 이미지 생성 프롬프트
+    }
+}
+```
+
+**settings.yaml 설정**:
+```yaml
+agents:
+  visualization:
+    model: sonnet                                     # 기획 LLM
+    max_tokens: 2048
+    image_model: "amazon.titan-image-generator-v2:0"  # 이미지 생성 모델
+    image_region: "us-east-1"                         # 이미지 모델 리전 (서울에 없음)
+```
+
 - **데이터 효율**: 100%
 - **알려진 이슈**:
-  - ~~[S-2] `visualization_result` 반환 vs AgentState `visual_data` 정의 -- 키 이름 불일치~~ (RESOLVED: visualization.py:64에서 수정됨)
+  - ~~[S-2] `visualization_result` 반환 vs AgentState `visual_data` 정의 -- 키 이름 불일치~~ (RESOLVED: v10에서 수정됨)
+  - ~~[S-3] 하드코딩 6건 (모델/버킷/리전/경로/재시도) -- settings.yaml 미사용~~ (RESOLVED: v26에서 전면 제거)
+  - ~~[S-4] `call_llm_json(model=...)` TypeError -- LLMClient가 model 파라미터 미지원~~ (RESOLVED: v26에서 model 파라미터 제거)
 
 ---
 
@@ -666,7 +694,7 @@ Peak State Size: ~12~18 KB (추정, 미구현)
 | # | 심각도 | 이슈 | 파일 | 담당 |
 |---|--------|------|------|------|
 | B-1 | CRITICAL | Conversation/Podcast 그래프 TIER 0 건너뜀 | workflow.py:609,659 | 3인합의 |
-| B-2 | CRITICAL | Crisis Deep Response TODO 스텁 | workflow.py:225~248 | 개발자2 |
+| B-2 | ~~CRITICAL~~ RESOLVED | Crisis Deep Response — `required_in_script` 활용으로 법적 고지/상담 번호 전달 (v26) | workflow.py:278~301 | 개발자2 |
 | B-3 | HIGH | 이중 위험평가 (Intent + Safety 중복) | intent_classifier.py, safety.py | 개발자1+2 |
 | B-4 | HIGH | Safety/Emotion이 전체 intent dict를 LLM에 전달 (200~400토큰 낭비) | safety.py:54, emotion.py:36 | 개발자2 |
 | B-5 | MEDIUM | Script Personalizer emotional_journey = None 하드코딩 | script_personalizer.py:83 | 개발자1 |
@@ -704,4 +732,4 @@ Peak State Size: ~12~18 KB (추정, 미구현)
 
 ---
 
-*마지막 업데이트: 2026-03-13*
+*마지막 업데이트: 2026-03-26*

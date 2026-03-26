@@ -407,7 +407,7 @@ async def test_retry_then_pass(monkeypatch, podcast_initial_state):
     [
         (
             "podcast",
-            {"tier1_podcast", "script_generator", "batch_validator",
+            {"tier1_podcast", "tier2_podcast", "batch_validator",
              "script_personalizer", "crisis_response", "async_post", "increment_iteration"},
         ),
         (
