@@ -1,0 +1,483 @@
+{
+  "mysql": {
+    "users": [
+      {
+        "user_id": "test-user-001",
+        "display_name": "테스트유저",
+        "age_group": "30s",
+        "preferred_style": "warm",
+        "preferred_attitude": "supportive",
+        "accessibility_needs": [],
+        "notification_enabled": true,
+        "total_sessions": 2,
+        "total_episodes": 3
+      },
+      {
+        "user_id": "test-user-002",
+        "display_name": "개발자테스트",
+        "age_group": "20s",
+        "preferred_style": "casual",
+        "preferred_attitude": "balanced",
+        "accessibility_needs": [],
+        "notification_enabled": true,
+        "total_sessions": 1,
+        "total_episodes": 1
+      }
+    ],
+    "sessions": [
+      {
+        "session_id": "sess_test000001",
+        "user_id": "test-user-001",
+        "mode": "podcast",
+        "status": "closed",
+        "turn_count": 0,
+        "episode_count": 2,
+        "feedback_rating": 4,
+        "feedback_helpful": true,
+        "feedback_comment": "도움이 되었어요"
+      },
+      {
+        "session_id": "sess_test000002",
+        "user_id": "test-user-001",
+        "mode": "podcast",
+        "status": "active",
+        "turn_count": 0,
+        "episode_count": 1
+      },
+      {
+        "session_id": "sess_test000003",
+        "user_id": "test-user-002",
+        "mode": "podcast",
+        "status": "active",
+        "turn_count": 0,
+        "episode_count": 1
+      }
+    ],
+    "emotion_logs": [
+      {
+        "log_id": "emo-log-001",
+        "session_id": "sess_test000001",
+        "user_id": "test-user-001",
+        "mode": "podcast",
+        "episode_id": "ep-test-001",
+        "primary_emotion": "anxiety",
+        "intensity": 0.72,
+        "valence": -0.45,
+        "arousal": 0.68,
+        "secondary_emotions": ["stress", "fatigue"],
+        "tone_recommendation": "warm_supportive",
+        "trace_id": "trace_test000001"
+      },
+      {
+        "log_id": "emo-log-002",
+        "session_id": "sess_test000002",
+        "user_id": "test-user-001",
+        "mode": "podcast",
+        "episode_id": "ep-test-002",
+        "primary_emotion": "hope",
+        "intensity": 0.55,
+        "valence": 0.60,
+        "arousal": 0.42,
+        "secondary_emotions": ["relief"],
+        "tone_recommendation": "encouraging",
+        "trace_id": "trace_test000002"
+      }
+    ],
+    "podcast_episodes": [
+      {
+        "episode_id": "ep-test-001",
+        "session_id": "sess_test000001",
+        "user_id": "test-user-001",
+        "episode_title": "직장 스트레스와 불안 다루기",
+        "total_duration": 8.5,
+        "total_words": 1200,
+        "segment_count": 3,
+        "key_insights": ["업무 과부하가 불안의 주요 원인", "점진적 이완 기법 활용", "경계 설정의 중요성"],
+        "themes": ["직장스트레스", "불안관리", "워라밸"],
+        "reasoning_depth": "standard",
+        "intent_type": "stress_management",
+        "complexity_score": 0.65,
+        "safety_status": "safe",
+        "validation_score": 0.86,
+        "retry_count": 0,
+        "pipeline_duration_ms": 12500,
+        "trace_id": "trace_test000001",
+        "correlation_id": "corr_test000001"
+      },
+      {
+        "episode_id": "ep-test-002",
+        "session_id": "sess_test000002",
+        "user_id": "test-user-001",
+        "episode_title": "수면 장애와 불면증 극복하기",
+        "total_duration": 9.0,
+        "total_words": 1350,
+        "segment_count": 4,
+        "key_insights": ["수면 위생의 기본 원칙", "카페인과 수면의 관계", "이완 호흡법", "일관된 수면 스케줄"],
+        "themes": ["수면장애", "불면증", "생활습관"],
+        "reasoning_depth": "full",
+        "intent_type": "sleep_improvement",
+        "complexity_score": 0.72,
+        "safety_status": "safe",
+        "validation_score": 0.91,
+        "retry_count": 0,
+        "pipeline_duration_ms": 15200,
+        "trace_id": "trace_test000002",
+        "correlation_id": "corr_test000002"
+      }
+    ],
+    "podcast_segments": [
+      {
+        "segment_id": "seg-test-001",
+        "episode_id": "ep-test-001",
+        "segment_order": 0,
+        "segment_type": "opening",
+        "duration_minutes": 2.0,
+        "script_text": "안녕하세요, 오늘은 직장에서 느끼는 스트레스와 불안에 대해 이야기해 보겠습니다. 많은 분들이 업무 과부하로 인해 불안감을 느끼고 계시는데요, 함께 해결 방법을 찾아보겠습니다.",
+        "word_count": 120,
+        "emotional_tone": "warm_empathetic",
+        "tts_markers_json": "[]"
+      },
+      {
+        "segment_id": "seg-test-002",
+        "episode_id": "ep-test-001",
+        "segment_order": 1,
+        "segment_type": "education",
+        "duration_minutes": 3.5,
+        "script_text": "스트레스 반응은 우리 몸의 자연스러운 방어 메커니즘입니다. 하지만 만성적인 스트레스는 코르티솔 수치를 높여 수면, 집중력, 정서적 안정에 영향을 미칩니다. 점진적 근육 이완법은 이러한 신체적 긴장을 해소하는 데 효과적인 방법입니다.",
+        "word_count": 200,
+        "emotional_tone": "informative",
+        "tts_markers_json": "[]"
+      },
+      {
+        "segment_id": "seg-test-003",
+        "episode_id": "ep-test-001",
+        "segment_order": 2,
+        "segment_type": "closing",
+        "duration_minutes": 2.0,
+        "script_text": "오늘 이야기한 내용을 정리해 볼게요. 업무 경계 설정, 점진적 이완 기법, 그리고 자기 돌봄의 시간을 만드는 것이 중요합니다. 작은 변화부터 시작해 보세요.",
+        "word_count": 100,
+        "emotional_tone": "encouraging",
+        "tts_markers_json": "[]"
+      },
+      {
+        "segment_id": "seg-test-004",
+        "episode_id": "ep-test-002",
+        "segment_order": 0,
+        "segment_type": "opening",
+        "duration_minutes": 2.0,
+        "script_text": "안녕하세요, 오늘은 수면 장애와 불면증에 대해 알아보겠습니다. 밤에 잠들기 어렵거나 자주 깨시나요? 오늘 에피소드에서 도움이 될 수 있는 방법들을 소개해 드리겠습니다.",
+        "word_count": 110,
+        "emotional_tone": "warm_empathetic",
+        "tts_markers_json": "[]"
+      }
+    ],
+    "learning_patterns": [
+      {
+        "pattern_id": "lp-test-001",
+        "session_id": "sess_test000001",
+        "user_id": "test-user-001",
+        "mode": "podcast",
+        "preferred_topics": ["스트레스관리", "불안", "워라밸"],
+        "emotional_patterns": ["주로 저녁에 불안 호소", "업무 관련 스트레스 반복"],
+        "interaction_style": "detailed",
+        "personalization_suggestions": ["이완 기법 추천 강화", "구체적 사례 포함"],
+        "effectiveness_score": 0.78,
+        "raw_learning_data": {"session_engagement": "high", "topic_diversity": 0.4},
+        "trace_id": "trace_test000001"
+      }
+    ],
+    "visualization_meta": [
+      {
+        "visualization_id": "vis-test-001",
+        "session_id": "sess_test000001",
+        "user_id": "test-user-001",
+        "mode": "podcast",
+        "episode_id": "ep-test-001",
+        "s3_key": "vis/podcast/sess_test000001/ep-test-001.png",
+        "cdn_url": "https://cdn.example.com/vis/podcast/sess_test000001/ep-test-001.png",
+        "image_prompt": "A serene landscape with soft blue and purple hues representing the journey from workplace anxiety to inner calm, featuring abstract flowing shapes transitioning from sharp edges to smooth curves",
+        "interpretation_text": "이 이미지는 직장 스트레스에서 내면의 평온으로 향하는 여정을 표현합니다. 날카로운 모서리에서 부드러운 곡선으로의 전환은 이완 기법을 통한 긴장 해소를 상징합니다.",
+        "trace_id": "trace_test000001"
+      }
+    ]
+  },
+  "neo4j": {
+    "nodes": {
+      "User": [
+        {
+          "user_id": "test-user-001",
+          "mysql_id": "test-user-001",
+          "display_name": "테스트유저",
+          "created_at": "2026-03-10T09:00:00Z"
+        },
+        {
+          "user_id": "test-user-002",
+          "mysql_id": "test-user-002",
+          "display_name": "개발자테스트",
+          "created_at": "2026-03-12T10:00:00Z"
+        }
+      ],
+      "Session": [
+        {
+          "session_id": "sess_test000001",
+          "mysql_id": "sess_test000001",
+          "mode": "podcast",
+          "created_at": "2026-03-10T09:30:00Z"
+        },
+        {
+          "session_id": "sess_test000002",
+          "mysql_id": "sess_test000002",
+          "mode": "podcast",
+          "created_at": "2026-03-14T14:00:00Z"
+        }
+      ],
+      "Emotion": [
+        {
+          "emotion_key": "anxiety",
+          "emotion_kr": "불안",
+          "category": "negative",
+          "mysql_id": "emotion_anxiety",
+          "created_at": "2026-03-01T00:00:00Z"
+        },
+        {
+          "emotion_key": "hope",
+          "emotion_kr": "희망",
+          "category": "positive",
+          "mysql_id": "emotion_hope",
+          "created_at": "2026-03-01T00:00:00Z"
+        },
+        {
+          "emotion_key": "stress",
+          "emotion_kr": "스트레스",
+          "category": "negative",
+          "mysql_id": "emotion_stress",
+          "created_at": "2026-03-01T00:00:00Z"
+        },
+        {
+          "emotion_key": "fatigue",
+          "emotion_kr": "피로",
+          "category": "negative",
+          "mysql_id": "emotion_fatigue",
+          "created_at": "2026-03-01T00:00:00Z"
+        }
+      ],
+      "Topic": [
+        {
+          "topic_name": "work_stress",
+          "domain": "work",
+          "mysql_id": "topic_work_stress",
+          "created_at": "2026-03-01T00:00:00Z"
+        },
+        {
+          "topic_name": "sleep_disorder",
+          "domain": "health",
+          "mysql_id": "topic_sleep_disorder",
+          "created_at": "2026-03-01T00:00:00Z"
+        },
+        {
+          "topic_name": "relaxation",
+          "domain": "health",
+          "mysql_id": "topic_relaxation",
+          "created_at": "2026-03-01T00:00:00Z"
+        }
+      ],
+      "GoTNode": [
+        {
+          "got_node_id": "got-test-001",
+          "episode_id": "ep-test-001",
+          "node_type": "root",
+          "label": "직장 스트레스 분석",
+          "weight": 1.0,
+          "mysql_id": "got-test-001",
+          "created_at": "2026-03-10T09:35:00Z"
+        },
+        {
+          "got_node_id": "got-test-002",
+          "episode_id": "ep-test-001",
+          "node_type": "branch",
+          "label": "이완 기법 탐색",
+          "weight": 0.85,
+          "mysql_id": "got-test-002",
+          "created_at": "2026-03-10T09:35:01Z"
+        },
+        {
+          "got_node_id": "got-test-003",
+          "episode_id": "ep-test-001",
+          "node_type": "leaf",
+          "label": "점진적 근육 이완법",
+          "weight": 0.92,
+          "mysql_id": "got-test-003",
+          "created_at": "2026-03-10T09:35:02Z"
+        }
+      ]
+    },
+    "relationships": [
+      {
+        "type": "HAS_SESSION",
+        "from": {"label": "User", "match_key": "user_id", "match_value": "test-user-001"},
+        "to": {"label": "Session", "match_key": "session_id", "match_value": "sess_test000001"},
+        "props": {}
+      },
+      {
+        "type": "HAS_SESSION",
+        "from": {"label": "User", "match_key": "user_id", "match_value": "test-user-001"},
+        "to": {"label": "Session", "match_key": "session_id", "match_value": "sess_test000002"},
+        "props": {}
+      },
+      {
+        "type": "ADDRESSED",
+        "from": {"label": "Session", "match_key": "session_id", "match_value": "sess_test000001"},
+        "to": {"label": "Emotion", "match_key": "emotion_key", "match_value": "anxiety"},
+        "props": {}
+      },
+      {
+        "type": "COVERS",
+        "from": {"label": "Session", "match_key": "session_id", "match_value": "sess_test000001"},
+        "to": {"label": "Topic", "match_key": "topic_name", "match_value": "work_stress"},
+        "props": {}
+      },
+      {
+        "type": "OFTEN_COOCCURS",
+        "from": {"label": "Emotion", "match_key": "emotion_key", "match_value": "anxiety"},
+        "to": {"label": "Emotion", "match_key": "emotion_key", "match_value": "stress"},
+        "props": {"count": 12}
+      },
+      {
+        "type": "OFTEN_COOCCURS",
+        "from": {"label": "Emotion", "match_key": "emotion_key", "match_value": "stress"},
+        "to": {"label": "Emotion", "match_key": "emotion_key", "match_value": "fatigue"},
+        "props": {"count": 8}
+      },
+      {
+        "type": "RELATED_TO",
+        "from": {"label": "Topic", "match_key": "topic_name", "match_value": "work_stress"},
+        "to": {"label": "Topic", "match_key": "topic_name", "match_value": "sleep_disorder"},
+        "props": {"weight": 0.75}
+      },
+      {
+        "type": "RELATED_TO",
+        "from": {"label": "Topic", "match_key": "topic_name", "match_value": "sleep_disorder"},
+        "to": {"label": "Topic", "match_key": "topic_name", "match_value": "relaxation"},
+        "props": {"weight": 0.82}
+      },
+      {
+        "type": "LEADS_TO",
+        "from": {"label": "GoTNode", "match_key": "got_node_id", "match_value": "got-test-001"},
+        "to": {"label": "GoTNode", "match_key": "got_node_id", "match_value": "got-test-002"},
+        "props": {"weight": 0.85, "relation_type": "exploration"}
+      },
+      {
+        "type": "LEADS_TO",
+        "from": {"label": "GoTNode", "match_key": "got_node_id", "match_value": "got-test-002"},
+        "to": {"label": "GoTNode", "match_key": "got_node_id", "match_value": "got-test-003"},
+        "props": {"weight": 0.92, "relation_type": "conclusion"}
+      },
+      {
+        "type": "REASONED_BY",
+        "from": {"label": "Session", "match_key": "session_id", "match_value": "sess_test000001"},
+        "to": {"label": "GoTNode", "match_key": "got_node_id", "match_value": "got-test-001"},
+        "props": {}
+      }
+    ]
+  },
+  "pinecone": {
+    "expert_knowledge": {
+      "namespace": "psychology",
+      "vectors": [
+        {
+          "id": "vec_knowledge_doc001",
+          "values_seed": 42,
+          "dimension": 384,
+          "metadata": {
+            "mysql_id": "doc001",
+            "entity_type": "knowledge_document",
+            "domain": "psychology",
+            "source": "guidelines",
+            "text_preview": "불안장애는 과도한 걱정과 두려움이 지속되는 상태로, 인지행동치료(CBT)가 1차 치료법으로 권장된다.",
+            "document_id": "doc001",
+            "chunk_index": 0,
+            "user_id": "",
+            "session_id": "",
+            "mode": "",
+            "created_at": "2026-01-15T00:00:00Z"
+          }
+        },
+        {
+          "id": "vec_knowledge_doc002",
+          "values_seed": 84,
+          "dimension": 384,
+          "metadata": {
+            "mysql_id": "doc002",
+            "entity_type": "knowledge_document",
+            "domain": "psychology",
+            "source": "papers",
+            "text_preview": "수면 위생(sleep hygiene)은 불면증 관리의 기본으로, 일정한 취침·기상 시간 유지와 카페인 섭취 제한을 포함한다.",
+            "document_id": "doc002",
+            "chunk_index": 0,
+            "user_id": "",
+            "session_id": "",
+            "mode": "",
+            "created_at": "2026-01-20T00:00:00Z"
+          }
+        },
+        {
+          "id": "vec_knowledge_doc003",
+          "values_seed": 126,
+          "dimension": 384,
+          "metadata": {
+            "mysql_id": "doc003",
+            "entity_type": "knowledge_document",
+            "domain": "mental_health",
+            "source": "guidelines",
+            "text_preview": "점진적 근육 이완법(PMR)은 각 근육군을 순서대로 긴장시킨 후 이완하는 기법으로, 스트레스 관련 신체 증상 완화에 효과적이다.",
+            "document_id": "doc003",
+            "chunk_index": 0,
+            "user_id": "",
+            "session_id": "",
+            "mode": "",
+            "created_at": "2026-02-01T00:00:00Z"
+          }
+        }
+      ]
+    },
+    "mem_podcast_episode": {
+      "namespace": "test-user-001",
+      "vectors": [
+        {
+          "id": "vec_podcast_ep001",
+          "values_seed": 200,
+          "dimension": 384,
+          "metadata": {
+            "mysql_id": "ep-test-001",
+            "entity_type": "podcast_episode",
+            "episode_id": "ep-test-001",
+            "title": "직장 스트레스와 불안 다루기",
+            "themes": ["직장스트레스", "불안관리", "워라밸"],
+            "primary_emotion": "anxiety",
+            "user_id": "test-user-001",
+            "session_id": "sess_test000001",
+            "mode": "podcast",
+            "created_at": "2026-03-10T10:00:00Z"
+          }
+        },
+        {
+          "id": "vec_podcast_ep002",
+          "values_seed": 300,
+          "dimension": 384,
+          "metadata": {
+            "mysql_id": "ep-test-002",
+            "entity_type": "podcast_episode",
+            "episode_id": "ep-test-002",
+            "title": "수면 장애와 불면증 극복하기",
+            "themes": ["수면장애", "불면증", "생활습관"],
+            "primary_emotion": "hope",
+            "user_id": "test-user-001",
+            "session_id": "sess_test000002",
+            "mode": "podcast",
+            "created_at": "2026-03-14T15:00:00Z"
+          }
+        }
+      ]
+    }
+  }
+}

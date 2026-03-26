@@ -18,8 +18,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from config.loader import get_settings
 from src.agents.shared.base_agent import BaseAgent
+from src.agents.shared.context_utils import clamp
+from src.api.backend_resources import RESOURCE_CONTENT_ANALYSIS
+from src.api.publisher import AgentDataPublisher
 from src.models.agent_state import AgentState
 
 # 시스템 프롬프트는 prompts/podcast/content_analyzer.yaml에서 로드한다.
@@ -98,6 +100,15 @@ class ContentAnalyzerAgent(BaseAgent):
         # STEP 3: 결과 검증 및 보정 — 스펙 기준에 맞게 후처리
         validated_analysis = self._validate_and_correct(analysis, depth_level)
 
+        # 백엔드에 분석 결과 직접 전달 (실패 시 예외 미전파)
+        publisher = AgentDataPublisher()
+        await publisher.publish(
+            resource=RESOURCE_CONTENT_ANALYSIS,
+            data=validated_analysis,
+            user_id=state.get("user_id", ""),
+            session_id=state.get("session_id", ""),
+        )
+
         return {
             "content_analysis": validated_analysis,
         }
@@ -106,20 +117,15 @@ class ContentAnalyzerAgent(BaseAgent):
 
     def _load_config(self) -> None:
         """settings.yaml에서 에이전트 설정을 로드한다. 실패 시 기본값 사용."""
-        try:
-            cfg = get_settings().get_agent_config("content_analyzer")
-        except Exception:
-            cfg = {}
-        self.min_duration: int = cfg.get("min_duration", _DEFAULTS["min_duration"])
-        self.max_duration: int = cfg.get("max_duration", _DEFAULTS["max_duration"])
-        self.min_sub_themes: int = cfg.get("min_sub_themes", _DEFAULTS["min_sub_themes"])
-        self.max_sub_themes: int = cfg.get("max_sub_themes", _DEFAULTS["max_sub_themes"])
-        self.min_input_length: int = cfg.get("min_input_length", _DEFAULTS["min_input_length"])
-        self.max_theme_length: int = cfg.get("max_theme_length", _DEFAULTS["max_theme_length"])
-        self.deep_threshold: float = cfg.get("deep_threshold", _DEFAULTS["deep_threshold"])
-        self.moderate_threshold: float = cfg.get(
-            "moderate_threshold", _DEFAULTS["moderate_threshold"]
-        )
+        cfg = self._load_agent_config(_DEFAULTS)
+        self.min_duration: int = cfg["min_duration"]
+        self.max_duration: int = cfg["max_duration"]
+        self.min_sub_themes: int = cfg["min_sub_themes"]
+        self.max_sub_themes: int = cfg["max_sub_themes"]
+        self.min_input_length: int = cfg["min_input_length"]
+        self.max_theme_length: int = cfg["max_theme_length"]
+        self.deep_threshold: float = cfg["deep_threshold"]
+        self.moderate_threshold: float = cfg["moderate_threshold"]
 
     # === 전처리 메서드 ===
 
@@ -209,7 +215,7 @@ class ContentAnalyzerAgent(BaseAgent):
                 target_duration = int(target_duration)
             except (ValueError, TypeError):
                 target_duration = 4  # 기본값
-            target_duration = max(self.min_duration, min(self.max_duration, target_duration))
+            target_duration = clamp(target_duration, self.min_duration, self.max_duration)
         else:
             target_duration = 4  # 기본값
         corrected["target_duration"] = target_duration

@@ -203,21 +203,40 @@ system_prompt: |
   {...}
 ```
 
+### 멀티버전 프롬프트 형식
+
+`default_version` + `versions` 딕셔너리로 여러 버전을 관리합니다.
+`settings.yaml`에서 에이전트별 버전을 핀닝합니다.
+
+```yaml
+# prompts/podcast/content_analyzer.yaml
+default_version: "2.1.0"
+versions:
+  "2.1.0":
+    system_prompt: |
+      (시스템 프롬프트)
+```
+
 ### 다중 프롬프트 형식 (GoT/ToT/CoT)
 
 ```yaml
-version: "1.0.0"
-prompts:
-  got:
-    system_prompt: |
-      (GoT 프롬프트)
-  tot:
-    system_prompt: |
-      (ToT 프롬프트)
-  cot:
-    system_prompt: |
-      (CoT 프롬프트)
+default_version: "3.0.0"
+versions:
+  "3.0.0":
+    prompts:
+      got:
+        system_prompt: |
+          (GoT 프롬프트)
+      tot:
+        system_prompt: |
+          (ToT 프롬프트)
+      cot:
+        system_prompt: |
+          (CoT 프롬프트)
 ```
+
+> 이전 버전은 `prompts/{mode}/_archive/` 폴더에 보존되어 있습니다.
+> 버전 관리 상세는 `PROMPT_VERSIONING.md`를 참조하세요.
 
 ### 코드에서 프롬프트 호출
 
@@ -364,31 +383,8 @@ prompts/shared/emotion.yaml    ← 공용 Emotion Agent
 
 ## 6. workflow.py 노드 등록 방법
 
-에이전트 구현이 완료되면 `src/graph/workflow.py`의 stub을 교체합니다.
-
-### 교체 절차
-
-**1단계: 실제 import 추가**
-
-```python
-# workflow.py 상단 — 구현된 에이전트 노드 import
-from src.agents.conversation.context import context_node      # 개발자3
-from src.agents.conversation.reasoning import reasoning_node  # 개발자3
-```
-
-**2단계: stub 노드 함수 제거**
-
-```python
-# 아래 코드를 삭제:
-async def context_node(state: AgentState) -> dict[str, Any]:
-    """[STUB] Context Agent — 개발자3 구현 예정."""
-    return await _stub_node("context", state)
-```
-
-**3단계: workflow.py는 Protected File**
-
-`workflow.py` 수정은 3인 합의가 필요합니다.
-PR 생성 시 개발자 3명 전원의 리뷰를 받으세요.
+> 워크플로우 노드 등록 규칙과 인터페이스는 [CLAUDE.md](../CLAUDE.md#langgraph-워크플로우)를 참조하세요.
+> `workflow.py`는 Protected File이므로 수정 시 3인 합의가 필요합니다.
 
 ---
 
@@ -415,4 +411,62 @@ PR 생성 시 개발자 3명 전원의 리뷰를 받으세요.
 
 ---
 
-*마지막 업데이트: 2026-02-14*
+## 8. 공용 유틸리티 (context_utils)
+
+에이전트 구현 시 반복되는 패턴을 통합한 유틸리티 모듈.
+위치: `src/agents/shared/context_utils.py`
+
+### build_section(label, data, keys)
+
+dict에서 지정된 키를 추출하여 LLM 컨텍스트 섹션으로 포맷한다.
+
+```python
+from src.agents.shared.context_utils import build_section
+
+# 감정 분석 결과를 컨텍스트로 변환
+section = build_section("감정 분석", emotion_vectors, keys=["primary_emotion", "intensity"])
+# 결과: "[감정 분석]\n- primary_emotion: 불안\n- intensity: 0.8"
+```
+
+### build_context(*sections)
+
+비어있지 않은 섹션들을 `\n\n`으로 결합한다.
+
+```python
+from src.agents.shared.context_utils import build_context, build_section
+
+context = build_context(
+    build_section("감정 분석", emotion_vectors),
+    build_section("콘텐츠 분석", content_analysis, keys=["main_theme", "depth_level"]),
+)
+```
+
+### clamp(value, lo, hi, default)
+
+숫자 값을 범위 내로 제한한다. 타입 변환 실패 시 default를 반환.
+
+```python
+from src.agents.shared.context_utils import clamp
+
+intensity = clamp(raw_intensity, 0.0, 1.0, default=0.5)
+duration = clamp(target_duration, min_duration, max_duration)
+```
+
+### BaseAgent._load_agent_config(defaults)
+
+`settings.yaml`에서 에이전트별 설정을 로드하고 기본값과 병합한다.
+각 에이전트의 `_load_config()`에서 호출.
+
+```python
+def _load_config(self) -> None:
+    cfg = self._load_agent_config({
+        "full_threshold": 0.8,
+        "standard_threshold": 0.5,
+    })
+    self.full_threshold = cfg["full_threshold"]
+    self.standard_threshold = cfg["standard_threshold"]
+```
+
+---
+
+*마지막 업데이트: 2026-03-24*

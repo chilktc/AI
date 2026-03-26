@@ -96,12 +96,10 @@ class KnowledgeAgent(BaseAgent):
         """쿼리를 전문가 용어로 확장하고 탐색할 도메인 지정 (LLM)"""
         system_prompt = self.get_prompt("expand_query")
 
-        user_message = (
-            f'User Query: "{query}"\n'
-            f"Domain Hints: {json.dumps(domain_hints)}\n\n"
-            "1. Rewrite query with professional/clinical terminology\n"
-            "2. Select 1-3 most relevant knowledge domains\n"
-            "3. Generate search keywords (arrays of strings)\n\n"
+        user_prompt = self._prompt_loader.load_user_prompt("conversation", "knowledge", "expand_query")
+        user_message = user_prompt.format(
+            query=query,
+            domain_hints=json.dumps(domain_hints)
         )
 
         try:
@@ -172,14 +170,12 @@ class KnowledgeAgent(BaseAgent):
             ]
         )
 
-        user_message = (
-            f"User Context:\n"
-            f"- Age Group: {user_context.get('age_group', 'unknown')}\n"
-            f"- Culture: {user_context.get('cultural_background', 'unknown')}\n"
-            f"- Previous Approaches: {user_context.get('previous_approaches', [])}\n\n"
-            f"Knowledge Retrieved:\n{docs_text}\n\n"
-            "For each document (by list index starting 1), assess applicability (0.0-1.0).\n"
-            'Respond in JSON Array format mapping each document like: [{"doc_id": "1", "applicability_score": 0.9, "notes": "..."}]'
+        user_prompt = self._prompt_loader.load_user_prompt("conversation", "knowledge", "assess_applicability")
+        user_message = user_prompt.format(
+            age_group=user_context.get('age_group', 'unknown'),
+            culture=user_context.get('cultural_background', 'unknown'),
+            previous_approaches=user_context.get('previous_approaches', []),
+            docs_text=docs_text
         )
 
         try:
@@ -224,11 +220,10 @@ class KnowledgeAgent(BaseAgent):
             ]
         )
 
-        user_message = (
-            f'Original Query: "{query}"\n\n'
-            f"Retrieved Evidence:\n{docs_text}\n\n"
-            "Synthesize and respond in JSON with format:\n"
-            '{"synthesis": "...", "recommended_approaches": [{"approach": "...", "rationale": "...", "contraindications": ["..."]}], "evidence_level": "high|moderate|low"}'
+        user_prompt = self._prompt_loader.load_user_prompt("conversation", "knowledge", "synthesize_knowledge")
+        user_message = user_prompt.format(
+            query=query,
+            docs_text=docs_text
         )
 
         try:

@@ -207,16 +207,46 @@ class Settings:
         return int(self._config["pipeline"]["max_retries"])
 
     @property
+    def max_critical_retries(self) -> int:
+        """CRITICAL_FAIL 전용 재시도 상한."""
+        return int(self._config["pipeline"].get("max_critical_retries", 4))
+
+    @property
+    def tier0_timeout(self) -> int:
+        """TIER 0 타임아웃 (초)."""
+        return int(self._config.get("pipeline", {}).get("tier0_timeout_seconds", 10))
+
+    @property
     def tier1_timeout(self) -> int:
-        """TIER 1 병렬 작업 타임아웃 (초)."""
-        return int(self._config["pipeline"]["tier1_timeout_seconds"])
+        """TIER 1 타임아웃 (초)."""
+        return int(self._config.get("pipeline", {}).get("tier1_timeout_seconds", 30))
+
+    @property
+    def tier2_timeout(self) -> int:
+        """TIER 2 타임아웃 (초)."""
+        return int(self._config.get("pipeline", {}).get("tier2_timeout_seconds", 140))
+
+    @property
+    def tier3_timeout(self) -> int:
+        """TIER 3 타임아웃 (초)."""
+        return int(self._config.get("pipeline", {}).get("tier3_timeout_seconds", 50))
+
+    @property
+    def tier4_timeout(self) -> int:
+        """TIER 4 타임아웃 (초)."""
+        return int(self._config.get("pipeline", {}).get("tier4_timeout_seconds", 10))
+
+    @property
+    def async_timeout(self) -> int:
+        """비동기 작업 타임아웃 (초)."""
+        return int(self._config.get("pipeline", {}).get("async_timeout_seconds", 30))
 
     # --- API 설정 ---
 
     @property
     def api_base_url(self) -> str:
         """백엔드 API 기본 URL. 환경변수 BACKEND_API_URL로 설정."""
-        return os.getenv("BACKEND_API_URL", "http://localhost:8000/api/v1")
+        return os.getenv("BACKEND_API_URL", "http://localhost:8080/api/v1")
 
     @property
     def api_timeout(self) -> int:
@@ -227,6 +257,12 @@ class Settings:
     def api_max_retries(self) -> int:
         """API 최대 재시도 횟수."""
         return int(self._config["api"]["max_retries"])
+        
+    @property
+    def allowed_origins(self) -> list[str]:
+        """CORS 허용 오리진 목록. 환경변수로 전달받거나 기본값을 쓴다."""
+        origins_str = os.getenv("ALLOWED_ORIGINS", "*")
+        return [o.strip() for o in origins_str.split(",")]
 
     # --- 프롬프트 버전 관리 (v8) ---
 
@@ -307,23 +343,30 @@ class Settings:
         langsmith = monitoring.get("langsmith", {})
         return bool(langsmith.get("tracing_enabled", False))
 
-    # --- 기능 플래그 ---
-
-    def is_feature_enabled(self, feature_name: str) -> bool:
-        """기능 플래그 확인. 환경변수 ENABLE_{FEATURE}로 오버라이드 가능."""
-        env_key = f"ENABLE_{feature_name.upper()}"
-        env_value = os.getenv(env_key)
-        if env_value is not None:
-            return env_value.lower() in ("true", "1", "yes")
-
-        return bool(self._config.get("features", {}).get(feature_name, False))
-
-    # --- Anthropic API 키 ---
+    # --- 저장소 설정 ---
 
     @property
-    def anthropic_api_key(self) -> str | None:
-        """Anthropic API 키. 환경변수에서만 가져온다 (보안)."""
-        return os.getenv("ANTHROPIC_API_KEY")
+    def storage_mode(self) -> str:
+        """저장소 모드. STORAGE_MODE 환경변수로 오버라이드 가능."""
+        return os.getenv(
+            "STORAGE_MODE",
+            self._config.get("storage", {}).get("mode", "local"),
+        )
+
+    @property
+    def s3_bucket(self) -> str:
+        """S3 버킷명."""
+        return os.getenv(
+            "AWS_S3_BUCKET",
+            self._config.get("storage", {}).get("s3", {}).get("bucket", "mindlog-images"),
+        )
+
+    @property
+    def s3_upload_prefix(self) -> str:
+        """S3 업로드 prefix."""
+        return str(
+            self._config.get("storage", {}).get("s3", {}).get("upload_prefix", "vis")
+        )
 
 
 # 싱글톤 인스턴스 (모듈 레벨에서 한 번만 로드)

@@ -1,8 +1,16 @@
 """
 구조화 로거 — 에이전트 실행 추적을 위한 로깅 유틸리티.
 
+[Shared Infrastructure — 인터페이스 변경 금지]
+get_agent_logger()의 시그니처와 동작을 변경하지 마시오.
+신규 함수 추가만 허용. 수정 시 전체 테스트(pytest tests/ -v) 통과 필수.
+
 모든 에이전트는 이 로거를 사용하여 일관된 형식으로 로그를 남긴다.
 에이전트명, TIER, session_id 등의 컨텍스트 정보를 자동으로 포함한다.
+
+APP_ENV에 따른 로그 포맷:
+  - production: JSON 구조화 로그 (OpenSearch 수집용)
+  - 그 외: 사람이 읽기 쉬운 평문 텍스트
 """
 
 from __future__ import annotations
@@ -18,8 +26,30 @@ def _get_log_level() -> int:
     return getattr(logging, level_str, logging.INFO)
 
 
+def _is_production() -> bool:
+    """프로덕션 환경 여부를 판별한다."""
+    return os.getenv("APP_ENV", "").lower() == "production"
+
+
+def _create_json_formatter() -> logging.Formatter:
+    """프로덕션용 JSON 포맷터를 생성한다.
+
+    OpenSearch 수집에 적합한 구조화 JSON 포맷.
+    extra 필드(session_id, tier 등)가 자동으로 JSON에 포함된다.
+    """
+    from pythonjsonlogger.json import JsonFormatter
+
+    return JsonFormatter(
+        fmt="%(asctime)s %(levelname)s %(name)s %(message)s",
+        rename_fields={"asctime": "timestamp", "levelname": "level", "name": "logger"},
+        datefmt="%Y-%m-%dT%H:%M:%S",
+    )
+
+
 def _create_formatter() -> logging.Formatter:
-    """로그 포맷터를 생성한다. 개발 환경에서는 읽기 쉬운 형식을 사용."""
+    """로그 포맷터를 생성한다. APP_ENV에 따라 JSON/평문을 선택."""
+    if _is_production():
+        return _create_json_formatter()
     fmt = "[%(asctime)s] %(levelname)-8s [%(name)s] %(message)s"
     datefmt = "%Y-%m-%d %H:%M:%S"
     return logging.Formatter(fmt, datefmt=datefmt)

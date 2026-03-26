@@ -43,14 +43,22 @@ class LoadResponse(BaseModel):
 
 
 class ErrorDetail(BaseModel):
-    """에러 상세 정보."""
+    """에러 상세 정보.
+
+    DEPRECATED: main.py 등 API 계층에서는 external_schemas.py의
+    ErrorDetail/ErrorResponse를 사용합니다 (trace_id, field 등 확장 필드 포함).
+    이 클래스는 하위 호환을 위해 유지하나, 신규 코드에서는 external_schemas 버전을 사용하세요.
+    """
 
     code: str  # 에러 코드 (NOT_FOUND, VALIDATION_ERROR, SERVER_ERROR 등)
     message: str  # 상세 에러 메시지
 
 
 class ErrorResponse(BaseModel):
-    """에러 응답 스키마."""
+    """에러 응답 스키마.
+
+    DEPRECATED: external_schemas.py의 ErrorResponse를 사용하세요.
+    """
 
     success: Literal[False] = False  # 항상 False
     error: ErrorDetail  # 에러 상세

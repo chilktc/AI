@@ -15,7 +15,8 @@ services:
       - ./logs:/app/logs
     healthcheck:
       # [B-2] ALB 헬스체크용 엔드포인트 확인 (30초 간격)
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      # python:3.11-slim 이미지에 curl이 미설치이므로 python urllib 사용
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3

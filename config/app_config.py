@@ -113,22 +113,8 @@ ATTITUDE_SETTINGS = {
 # 기본 태도
 DEFAULT_ATTITUDE = "balanced"
 
-# 문장 길이 설정 (대략적인 가이드)
-SENTENCE_LENGTH_GUIDE = {
-    "short": {"max_chars_per_sentence": 30, "description": "간결하게"},
-    "medium": {"max_chars_per_sentence": 50, "description": "보통"},
-    "long": {"max_chars_per_sentence": 80, "description": "자세하게"},
-}
-
-# 설명 깊이 설정
-EXPLANATION_DEPTH = {
-    "simple": {"description": "핵심만 간단히"},
-    "moderate": {"description": "적당한 설명 포함"},
-    "detailed": {"description": "배경과 예시 포함"},
-}
-
 # =============================================================================
-# Redis 설정 (나중에 사용)
+# Redis 설정 (Intent Classifier 캐시)
 # =============================================================================
 
 REDIS_CONFIG = {

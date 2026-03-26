@@ -26,6 +26,19 @@ Mind-Log 프로젝트에 기여하기 위한 가이드입니다.
 - `src/api/contracts.py`
 - `src/graph/workflow.py`
 
+### Shared Infrastructure — 인터페이스 안정성
+
+아래 파일은 모든 에이전트가 의존하는 공용 코드입니다.
+기존 public 메서드의 시그니처(파라미터, 반환 타입)와 동작을 변경하지 마세요.
+신규 메서드/함수 추가만 허용됩니다. 수정 후 반드시 `pytest tests/ -v` 통과를 확인하세요.
+
+- `src/agents/shared/base_agent.py` — BaseAgent ABC
+- `src/agents/shared/llm_client.py` — LLM 멀티 프로바이더 클라이언트
+- `src/agents/shared/prompt_loader.py` — YAML 프롬프트 로더
+- `config/loader.py` — Settings 싱글톤
+
+> 상세 규칙: CLAUDE.md "공용 인프라" 참조
+
 ### PR 리뷰 규칙
 
 - `feature/* → develop`: 다른 도메인 개발자 최소 1명 리뷰

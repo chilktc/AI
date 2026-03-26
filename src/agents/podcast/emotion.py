@@ -3,6 +3,9 @@ from __future__ import annotations
 from typing import Any
 
 from src.agents.shared.base_agent import BaseAgent
+from src.agents.shared.context_utils import clamp
+from src.api.backend_resources import RESOURCE_EMOTION_LOG
+from src.api.publisher import AgentDataPublisher
 from src.models.agent_state import AgentState
 
 
@@ -59,24 +62,27 @@ class EmotionAgent(BaseAgent):
                 "emotional_journey_hint": ["공감", "정리", "실행 가능한 한 가지", "마무리"],
             }
 
-        def _clamp(x: Any, lo: float, hi: float, default: float) -> float:
-            try:
-                return max(lo, min(hi, float(x)))
-            except (TypeError, ValueError):
-                return default
-
         secondary = vec.get("secondary_emotions", [])
         journey = vec.get("emotional_journey_hint", [])
 
         emotion_vectors = {
             "primary_emotion": str(vec.get("primary_emotion", "neutral")),
-            "intensity": _clamp(vec.get("intensity", 0.3), 0.0, 1.0, 0.3),
-            "valence": _clamp(vec.get("valence", 0.0), -1.0, 1.0, 0.0),
-            "arousal": _clamp(vec.get("arousal", 0.3), 0.0, 1.0, 0.3),
+            "intensity": clamp(vec.get("intensity", 0.3), 0.0, 1.0, 0.3),
+            "valence": clamp(vec.get("valence", 0.0), -1.0, 1.0, 0.0),
+            "arousal": clamp(vec.get("arousal", 0.3), 0.0, 1.0, 0.3),
             "secondary_emotions": secondary if isinstance(secondary, list) else [],
             "tone_recommendation": str(vec.get("tone_recommendation", "supportive_neutral")),
             "emotional_journey_hint": journey if isinstance(journey, list) else [],
         }
+
+        # 백엔드에 감정 데이터 직접 전달 (실패 시 예외 미전파)
+        publisher = AgentDataPublisher()
+        await publisher.publish(
+            resource=RESOURCE_EMOTION_LOG,
+            data=emotion_vectors,
+            user_id=state.get("user_id", ""),
+            session_id=state.get("session_id", ""),
+        )
 
         return {"emotion_vectors": emotion_vectors}
 

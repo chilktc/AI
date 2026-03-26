@@ -40,6 +40,15 @@ from src.models.message import (
 )
 from src.utils.logger import get_agent_logger
 
+# langsmith 모듈 레벨 캐싱 — 매 호출마다 import 시도하지 않고 한 번만 검사
+import importlib.util as _importlib_util
+
+_HAS_LANGSMITH = _importlib_util.find_spec("langsmith") is not None
+if _HAS_LANGSMITH:
+    from langsmith import traceable as _traceable  # type: ignore[import-untyped]
+else:
+    _traceable = None  # type: ignore[assignment]
+
 # A/B 테스트 시 async 태스크별 활성 variant를 격리하는 ContextVar
 # LangGraph 병렬 실행에서 태스크별 독립 버전 선택이 필요하다
 _active_ab_variant: contextvars.ContextVar[str | None] = contextvars.ContextVar(
@@ -245,6 +254,24 @@ class BaseAgent(ABC):
         except PromptLoadError:
             return None
 
+    def _load_agent_config(self, defaults: dict[str, Any]) -> dict[str, Any]:
+        """settings.yaml에서 에이전트 설정을 로드하고 기본값과 병합한다.
+
+        각 에이전트의 _load_config()에서 반복되는 try/except + field extraction 패턴을
+        통합한다. 설정 로드 실패 시 defaults를 그대로 반환한다.
+
+        Args:
+            defaults: 기본값 dict (키: 설정명, 값: 기본값)
+
+        Returns:
+            settings.yaml 값이 병합된 설정 dict
+        """
+        try:
+            cfg = get_settings().get_agent_config(self.name)
+        except Exception:
+            cfg = {}
+        return {k: cfg.get(k, v) for k, v in defaults.items()}
+
     def _resolve_mode(self) -> str:
         """
         에이전트가 속한 모드를 추론한다.
@@ -411,14 +438,12 @@ class BaseAgent(ABC):
         메타데이터에 프롬프트 버전, A/B variant, 모델 정보를 포함하여
         LangSmith에서 에이전트별 필터링과 성능 분석이 가능하다.
         """
-        try:
-            from langsmith import traceable  # type: ignore[import-untyped]
-        except ImportError:
+        if not _HAS_LANGSMITH:
             return await self.process(state)
 
         mode = state.get("mode", "unknown")
 
-        @traceable(
+        @_traceable(
             name=self.name,
             run_type="chain",
             tags=[tier_label, f"mode:{mode}"],
@@ -461,16 +486,14 @@ class BaseAgent(ABC):
             pass
 
         # langsmith 미설치 시 직접 호출 (graceful degradation)
-        try:
-            from langsmith import traceable  # type: ignore[import-untyped]
-        except ImportError:
+        if not _HAS_LANGSMITH:
             return await self.llm_client.generate(
                 system_prompt=system_prompt,
                 user_message=user_message,
                 **kwargs,
             )
 
-        @traceable(
+        @_traceable(
             name=self.llm_client.model_id,
             run_type="llm",
             metadata={
@@ -544,7 +567,7 @@ class BaseAgent(ABC):
             user_message=user_message,
             **kwargs,
         )
-        return self.llm_client._parse_json_response(raw_text)
+        return self.llm_client.parse_json_response(raw_text)
 
     async def call_image_gen(
         self,

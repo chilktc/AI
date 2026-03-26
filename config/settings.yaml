@@ -120,14 +120,14 @@ agents:
     max_sub_themes: 5
     min_input_length: 10
     max_theme_length: 100
-    deep_threshold: 0.7
-    moderate_threshold: 0.4
+    deep_threshold: 0.7      # complexity_score ≥ 이 값 → depth_level "deep"
+    moderate_threshold: 0.4  # complexity_score ≥ 이 값 → depth_level "medium" (미만 → "shallow")
   podcast_reasoning:
     model: sonnet
     max_tokens: 4096
     temperature: 0.3
-    full_threshold: 0.0
-    standard_threshold: 0.0
+    full_threshold: 0.0      # complexity ≥ 이 값 → full GoT/ToT/CoT 추론 (0.0=항상 full)
+    standard_threshold: 0.0  # complexity ≥ 이 값 → standard 추론 (미만 → lightweight)
 
   # ──────────────────────────────────────
   # 팟캐스트모드 TIER 1 독립 에이전트
@@ -170,12 +170,28 @@ agents:
     model: haiku
     max_tokens: 1024
 
+# 저장소 설정
+storage:
+  mode: "local"                    # local | proxy | hybrid
+  s3:
+    bucket: "mindlog-images"
+    # region은 별도 정의 안 함 — 기존 llm.bedrock.region / AWS_REGION 재사용
+    upload_prefix: "vis"           # TODO(backend): 4-4 prefix 확정
+  pinecone:
+    index_knowledge: "expert_knowledge"
+    index_memory_conversation: "mem_conversation"
+    index_memory_podcast: "mem_podcast_episode"
+
 # 파이프라인 설정
 pipeline:
-  max_retries: 2              # TIER 3 → TIER 2 재시도 상한
-  tier1_timeout_seconds: 15   # TIER 1 병렬 작업 타임아웃
-  tier2_timeout_seconds: 20   # TIER 2 생성 작업 타임아웃
-  async_timeout_seconds: 30   # 비동기 작업 타임아웃
+  max_retries: 2              # TIER 3 → TIER 2 재시도 상한 (FAIL용)
+  max_critical_retries: 4     # CRITICAL_FAIL 전용 재시도 상한
+  tier0_timeout_seconds: 10    # TIER 0: Intent Classifier 단독
+  tier1_timeout_seconds: 30    # TIER 1: 병렬 4개 중 Podcast Reasoning 기준 (실측 최대 15.4s × 1.5)
+  tier2_timeout_seconds: 140   # TIER 2: Script Generator + Visualization 병렬 (실측 최대 90.3s × 1.5)
+  tier3_timeout_seconds: 50    # TIER 3: Batch Validator 재시도 포함 (실측 최대 30.3s × 1.5)
+  tier4_timeout_seconds: 10    # TIER 4: Script Personalizer (rule-based, LLM 활성 시 대비)
+  async_timeout_seconds: 30    # 비동기: Visualization + Learning
 
 # 백엔드 API 설정
 api:

@@ -97,27 +97,32 @@ async def test_pass_routes_to_script_personalizer(
     assert result["validation_result"]["verdict"] == "PASS"
     assert result["validation_result"]["overall_score"] == 0.85
     assert "iteration_count" not in result
+    # 5가지 기준 키 보존 확인
+    expected_keys = {
+        "structure_completeness", "safety_compliance", "tone_consistency",
+        "timing_appropriateness", "content_safety",
+    }
+    assert set(result["validation_result"]["criteria"].keys()) == expected_keys
 
 
 @pytest.mark.parametrize(
-    "initial_count, expected_count",
-    [(0, 1), (1, 2)],
+    "initial_count",
+    [0, 1],
     ids=["first_retry", "second_retry"],
 )
 @pytest.mark.asyncio
-async def test_fail_routes_to_retry_and_increments(
+async def test_fail_routes_to_retry_without_incrementing(
     agent: BatchValidatorAgent,
     failing_validation: dict[str, Any],
     initial_count: int,
-    expected_count: int,
 ) -> None:
-    """검증 실패 시 retry_script 라우팅 + iteration_count 증가."""
+    """검증 실패 시 retry_script 라우팅, iteration_count는 반환하지 않음 (workflow가 전담)."""
     state = AgentState(
         user_input="테스트",
         user_id="u",
         session_id="s",
         mode="podcast",
-        script_draft={},
+        script_draft={"intro": {"content": "test"}},
         content_analysis={},
         reasoning_result={},
         safety_flags={},
@@ -130,7 +135,7 @@ async def test_fail_routes_to_retry_and_increments(
         result = await agent.process(state)
 
     assert result["next_step"] == "retry_script"
-    assert result["iteration_count"] == expected_count
+    assert "iteration_count" not in result
 
 
 @pytest.mark.parametrize("iteration_count", [2, 5], ids=["exact_max", "above_max"])
@@ -146,7 +151,7 @@ async def test_max_retries_forces_pass(
         user_id="u",
         session_id="s",
         mode="podcast",
-        script_draft={},
+        script_draft={"intro": {"content": "test"}},
         content_analysis={},
         reasoning_result={},
         safety_flags={},
@@ -167,12 +172,13 @@ async def test_max_retries_forces_pass(
 # === 검증 컨텍스트 조합 테스트 ===
 
 
+@pytest.mark.parametrize("iteration_count", [0, 1, 2], ids=["zero", "one", "max"])
 @pytest.mark.asyncio
-async def test_empty_script_includes_failure_note(
+async def test_empty_script_early_return_skips_llm(
     agent: BatchValidatorAgent,
-    passing_validation: dict[str, Any],
+    iteration_count: int,
 ) -> None:
-    """스크립트가 비어있으면 '비어있음' 노트가 컨텍스트에 포함."""
+    """빈 스크립트는 iteration_count에 무관하게 LLM 호출 없이 FAIL verdict로 조기 반환."""
     state = AgentState(
         user_input="테스트",
         user_id="u",
@@ -183,17 +189,17 @@ async def test_empty_script_includes_failure_note(
         reasoning_result={},
         safety_flags={},
         emotion_vectors={},
-        iteration_count=0,
+        iteration_count=iteration_count,
     )
-    mock = AsyncMock(return_value=passing_validation)
+    mock = AsyncMock()
     with patch.object(agent, "call_llm_json", mock):
-        await agent.process(state)
+        result = await agent.process(state)
 
-    call_args = mock.call_args
-    user_message = call_args.kwargs.get(
-        "user_message", call_args.args[1] if len(call_args.args) > 1 else ""
-    )
-    assert "비어있음" in user_message
+    mock.assert_not_called()
+    assert result["next_step"] == "retry_script"
+    assert result["validation_result"]["verdict"] == "FAIL"
+    assert result["validation_result"]["overall_score"] == 0.0
+    assert "iteration_count" not in result
 
 
 @pytest.mark.asyncio
@@ -235,12 +241,13 @@ async def test_missing_optional_fields(
     agent: BatchValidatorAgent,
     passing_validation: dict[str, Any],
 ) -> None:
-    """선택 필드가 모두 없어도 정상 동작해야 한다."""
+    """선택 필드(content_analysis 등)가 없어도 LLM 경로가 정상 동작해야 한다."""
     state = AgentState(
         user_input="최소 입력",
         user_id="u",
         session_id="s",
         mode="podcast",
+        script_draft={"intro": {"content": "test"}},
         iteration_count=0,
     )
     mock = AsyncMock(return_value=passing_validation)
@@ -252,11 +259,22 @@ async def test_missing_optional_fields(
     assert "next_step" in result
 
 
+@pytest.mark.parametrize(
+    "llm_response, expected_next_step, expected_verdict",
+    [
+        ({}, "retry_script", "FAIL"),
+        ({"action": {"decision": "approve"}}, "script_personalizer", "PASS"),
+    ],
+    ids=["empty_dict_retries", "minimal_approve_passes"],
+)
 @pytest.mark.asyncio
-async def test_llm_returns_empty_dict(
+async def test_llm_edge_case_responses(
     agent: BatchValidatorAgent,
+    llm_response: dict[str, Any],
+    expected_next_step: str,
+    expected_verdict: str,
 ) -> None:
-    """LLM이 빈 dict를 반환하면 passed=False로 재시도."""
+    """LLM 응답 엣지 케이스: 빈 dict → 재시도, 최소 approve → 통과."""
     state = AgentState(
         user_input="테스트",
         user_id="u",
@@ -269,45 +287,18 @@ async def test_llm_returns_empty_dict(
         emotion_vectors={},
         iteration_count=0,
     )
-    with patch.object(agent, "call_llm_json", new_callable=AsyncMock, return_value={}):
+    with patch.object(agent, "call_llm_json", new_callable=AsyncMock, return_value=llm_response):
         result = await agent.process(state)
 
-    assert result["next_step"] == "retry_script"
-    assert result["iteration_count"] == 1
+    assert result["next_step"] == expected_next_step
+    assert result["validation_result"]["verdict"] == expected_verdict
 
 
 @pytest.mark.asyncio
-async def test_minimal_pass_response(
+async def test_escalate_sets_critical_fail_verdict(
     agent: BatchValidatorAgent,
 ) -> None:
-    """action.decision='approve'만 있는 최소 응답으로 통과 라우팅."""
-    state = AgentState(
-        user_input="테스트",
-        user_id="u",
-        session_id="s",
-        mode="podcast",
-        script_draft={"intro": {"content": "test"}},
-        content_analysis={},
-        reasoning_result={},
-        safety_flags={},
-        emotion_vectors={},
-        iteration_count=0,
-    )
-    with patch.object(
-        agent, "call_llm_json", new_callable=AsyncMock,
-        return_value={"action": {"decision": "approve"}},
-    ):
-        result = await agent.process(state)
-
-    assert result["next_step"] == "script_personalizer"
-    assert result["validation_result"]["verdict"] == "PASS"
-
-
-@pytest.mark.asyncio
-async def test_escalate_routes_to_crisis_response(
-    agent: BatchValidatorAgent,
-) -> None:
-    """decision='escalate' 시 CRITICAL_FAIL → crisis_response 라우팅."""
+    """decision='escalate' 시 CRITICAL_FAIL verdict 설정 (라우팅은 workflow가 전담)."""
     state = AgentState(
         user_input="테스트",
         user_id="u",
@@ -330,24 +321,7 @@ async def test_escalate_routes_to_crisis_response(
     ):
         result = await agent.process(state)
 
-    assert result["next_step"] == "crisis_response"
+    assert "next_step" not in result  # 라우팅은 route_after_tier3_podcast()가 전담
     assert result["validation_result"]["verdict"] == "CRITICAL_FAIL"
 
 
-@pytest.mark.asyncio
-async def test_validation_preserves_all_criteria(
-    agent: BatchValidatorAgent,
-    base_state: AgentState,
-    passing_validation: dict[str, Any],
-) -> None:
-    """검증 결과에 5가지 기준 키가 모두 보존된다."""
-    expected_keys = {
-        "structure_completeness", "safety_compliance", "tone_consistency",
-        "timing_appropriateness", "content_safety",
-    }
-    with patch.object(
-        agent, "call_llm_json", new_callable=AsyncMock, return_value=passing_validation
-    ):
-        result = await agent.process(base_state)
-
-    assert set(result["validation_result"]["criteria"].keys()) == expected_keys

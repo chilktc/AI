@@ -2,12 +2,12 @@
 외부 입출력 데이터 스키마 정의.
 
 Mind-Log AI 멘탈케어 플랫폼의 모든 외부 인터페이스 스키마를 정의한다.
-프론트엔드 ↔ AI 파이프라인 ↔ 백엔드 DB 간 데이터 흐름의 단일 진실 원천(SSOT).
+Backend 서버 ↔ AI 파이프라인 ↔ 백엔드 DB 간 데이터 흐름의 단일 진실 원천(SSOT).
 
 구조:
     1. 공용 기반 스키마 (추적, 페이징, 에러)
-    2. 외부 입력 스키마 (프론트엔드 → AI 파이프라인)
-    3. 외부 출력 스키마 (AI 파이프라인 → 프론트엔드)
+    2. 외부 입력 스키마 (Backend 서버 → AI 파이프라인)
+    3. 외부 출력 스키마 (AI 파이프라인 → Backend 서버)
     4. 내부 저장 스키마 (DB별 저장 데이터)
     5. 중복 방지 전략 및 DB별 책임 분담
 
@@ -34,7 +34,7 @@ from pydantic import BaseModel, Field, field_validator
 
 
 def _generate_request_id() -> str:
-    """API 요청 고유 ID 생성. 프론트엔드에서 전달하지 않으면 서버가 자동 생성."""
+    """API 요청 고유 ID 생성. 클라이언트(Backend 서버)에서 전달하지 않으면 서버가 자동 생성."""
     return f"req_{uuid.uuid4().hex[:12]}"
 
 
@@ -65,7 +65,7 @@ class RequestTracing(BaseModel):
 
     request_id: str = Field(
         default_factory=_generate_request_id,
-        description="API 요청 고유 ID. 프론트엔드에서 전달하거나 서버가 자동 생성",
+        description="API 요청 고유 ID. 클라이언트(Backend 서버)에서 전달하거나 서버가 자동 생성",
     )
     trace_id: str = Field(
         default_factory=_generate_trace_id,
@@ -123,7 +123,7 @@ class ErrorResponse(BaseModel):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 2. 외부 입력 스키마 — 프론트엔드 → AI 파이프라인
+# 2. 외부 입력 스키마 — Backend 서버 → AI 파이프라인
 # ═══════════════════════════════════════════════════════════════════════════
 
 
@@ -136,7 +136,7 @@ class SessionCreateRequest(BaseModel):
     """
     세션 생성 요청.
 
-    프론트엔드가 대화 시작 시 호출한다.
+    Backend 서버가 대화 시작 시 호출한다.
     세션 ID는 서버에서 생성하여 반환한다.
 
     Endpoint: POST /api/v1/sessions
@@ -171,7 +171,7 @@ class SessionCloseRequest(BaseModel):
     """
     세션 종료 요청.
 
-    프론트엔드가 대화 종료 시 호출한다.
+    Backend 서버가 대화 종료 시 호출한다.
     서버는 Learning Agent를 비동기로 트리거한다.
 
     Endpoint: POST /api/v1/sessions/{session_id}/close
@@ -208,7 +208,7 @@ class ConversationRequest(BaseModel):
     """
     대화 요청 — 실시간 상담 모드의 사용자 입력.
 
-    프론트엔드에서 사용자 메시지를 전송할 때 사용한다.
+    Backend 서버가 사용자 메시지를 전달할 때 사용한다.
     서버는 이 요청을 LangGraph 파이프라인에 전달한다.
 
     Endpoint: POST /api/v1/conversations
@@ -223,6 +223,8 @@ class ConversationRequest(BaseModel):
 
     user_id: str = Field(description="사용자 고유 ID")
     session_id: str = Field(description="세션 고유 ID")
+    # TODO(입력 제한): 텍스트 필드의 max_length를 확정 후 적용 예정
+    # 제안: user_input 10000자, topic 500자 등 — 수치는 추후 결정
     message: str = Field(
         min_length=1,
         max_length=4000,
@@ -230,7 +232,7 @@ class ConversationRequest(BaseModel):
     )
     context_hint: ConversationContextHint | None = Field(
         default=None,
-        description="프론트엔드에서 제공하는 맥락 힌트 (선택)",
+        description="Backend 서버가 제공하는 맥락 힌트 (선택)",
     )
     preferences: ConversationPreferences | None = Field(
         default=None,
@@ -252,9 +254,9 @@ class ConversationRequest(BaseModel):
 
 class ConversationContextHint(BaseModel):
     """
-    프론트엔드에서 제공하는 대화 맥락 힌트.
+    Backend 서버에서 제공하는 대화 맥락 힌트.
 
-    대화 흐름의 연속성을 위해 프론트엔드가 전달하는 부가 정보.
+    대화 흐름의 연속성을 위해 Backend 서버가 전달하는 부가 정보.
     AI 파이프라인의 Context Agent가 참고한다.
     """
 
@@ -294,30 +296,46 @@ class PodcastRequest(BaseModel):
     """
     팟캐스트 에피소드 생성 요청.
 
-    사용자가 특정 주제에 대한 팟캐스트 에피소드 생성을 요청할 때 사용한다.
+    프론트엔드가 사용자의 상황·생각·행동·동료반응을 구조화하여 전달한다.
     서버는 이 요청을 팟캐스트 모드 LangGraph 파이프라인에 전달한다.
 
     Endpoint: POST /api/v1/podcasts/episodes
     파이프라인: TIER 0 → TIER 1(병렬) → TIER 2(병렬) → TIER 3 → TIER 4
 
     AgentState 매핑:
-        user_input  ← topic + (description or "")
+        user_input  ← situation + thought + action + (colleagueReaction or "")
+                      (줄바꿈 구분 문자열로 조합)
         user_id     ← user_id
         session_id  ← session_id
         mode        ← "podcast" (고정)
     """
 
+    model_config = {"populate_by_name": True}
+
     user_id: str = Field(description="사용자 고유 ID")
     session_id: str = Field(description="세션 고유 ID")
-    topic: str = Field(
+    # TODO(입력 제한): 텍스트 필드의 max_length를 확정 후 적용 예정
+    # 제안: user_input 10000자, topic 500자 등 — 수치는 추후 결정
+    situation: str = Field(
         min_length=2,
-        max_length=200,
-        description="에피소드 주제 (2~200자)",
+        max_length=500,
+        description="사용자가 처한 상황 (2~500자)",
     )
-    description: str | None = Field(
+    thought: str = Field(
+        min_length=2,
+        max_length=500,
+        description="상황에 대한 자신의 생각 (2~500자)",
+    )
+    action: str = Field(
+        min_length=2,
+        max_length=500,
+        description="자신의 행동 및 반응 (2~500자)",
+    )
+    colleague_reaction: str | None = Field(
         default=None,
-        max_length=2000,
-        description="주제에 대한 상세 설명 (선택, 최대 2000자)",
+        max_length=500,
+        alias="colleagueReaction",
+        description="동료의 반응 (선택, 최대 500자)",
     )
     preferences: PodcastPreferences | None = Field(
         default=None,
@@ -434,7 +452,7 @@ class UserProfileData(BaseModel):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 3. 외부 출력 스키마 — AI 파이프라인 → 프론트엔드
+# 3. 외부 출력 스키마 — AI 파이프라인 → Backend 서버
 # ═══════════════════════════════════════════════════════════════════════════
 
 
@@ -488,6 +506,12 @@ class EmotionSummary(BaseModel):
     프론트엔드가 필요로 하는 필드만 추출한 요약 버전.
 
     원본 출처: AgentState.emotion_vectors (Emotion Agent)
+
+    Note:
+        - arousal(각성도)는 Emotion Agent가 출력하지만 프론트엔드에서 미사용이므로
+          이 요약 스키마에 포함하지 않는다. DB 저장 시에는 emotion_vectors 원본에서
+          직접 추출하여 저장한다 (podcasts.py _save_episode_bundle 참조).
+        - emotional_journey_hint도 Emotion Agent 전용 필드로 API에 미노출.
     """
 
     primary_emotion: str = Field(
@@ -547,35 +571,42 @@ class HelplineInfo(BaseModel):
 
 class VisualizationData(BaseModel):
     """
-    시각화 데이터 — 감정 카드 렌더링용.
+    시각화 데이터 — Visualization Agent 출력과 1:1 매핑.
 
-    Visualization Agent 출력의 프론트엔드 인터페이스.
+    Visualization Agent가 생성한 추상화 이미지의 메타데이터.
     이미지 URL은 S3 CDN 경로이며, 비동기 생성이므로 초기 응답에는 null일 수 있다.
 
     원본 출처: AgentState.visual_data (Visualization Agent)
+
+    Note:
+        - Agent 출력의 `local_path`는 내부 전용이므로 API에 미노출.
+        - `style_info` nested 구조 대신 Agent 출력 그대로 flat 구조를 사용한다.
     """
 
     image_url: str | None = Field(
         default=None,
-        description="감정 카드 이미지 URL (S3 CDN). 비동기 생성 중이면 null",
+        description="이미지 URL (S3 CDN). 비동기 생성 중이면 null",
     )
-    interpretation_text: str = Field(
+    interpretation: str = Field(
+        default="",
         description="카드 터치 시 표시할 해설 텍스트 (한국어, 1-2문장)",
     )
-    style_info: VisualizationStyleInfo = Field(
-        description="시각적 스타일 정보 (프론트엔드 CSS/Canvas 렌더링용)",
+    style_type: str = Field(
+        default="",
+        description="시각화 스타일 유형 (예: 'soft_blurred', 'hard_sharp')",
     )
-
-
-class VisualizationStyleInfo(BaseModel):
-    """시각화 스타일 상세 — 프론트엔드 렌더링 힌트."""
-
-    type: str = Field(description="시각화 유형. 'Aurora'(대화) / 'Conceptual'(팟캐스트)")
-    palette: str = Field(description="팔레트 이름 (blue, purple, red, yellow_pink 등)")
-    gradient: list[str] = Field(description="그라디언트 색상 배열 (hex)")
-    pattern: str = Field(description="패턴 스타일 (soft_rain, shimmer_noise, sunburst 등)")
-    primary_emotion: str = Field(description="기반 감정 (영문 키)")
-    intensity_label: str = Field(description="강도 라벨 (Soft Pastel / Balanced / Vibrant)")
+    original_prompt: str = Field(
+        default="",
+        description="이미지 생성에 사용된 프롬프트 (영문)",
+    )
+    resolution: str = Field(
+        default="1024x1024",
+        description="이미지 해상도",
+    )
+    status: str = Field(
+        default="completed",
+        description="생성 상태 ('completed', 'skipped')",
+    )
 
 
 class ConversationResponseMeta(BaseModel):
@@ -628,6 +659,27 @@ class PodcastEpisodeResponse(BaseModel):
     tracing: RequestTracing = Field(description="추적 컨텍스트")
 
 
+class SlimPodcastResponse(BaseModel):
+    """
+    팟캐스트 에피소드 생성 완료 응답 (슬림).
+
+    파이프라인 실행 + DB 저장 완료 후 반환하는 최소 응답.
+    모든 데이터는 DB에 저장되므로 Backend가 GET API로 조회 가능.
+    safety_alert만 직접 포함 (CRISIS 시 에피소드 미생성 → DB 미저장).
+
+    Endpoint 응답: POST /api/v1/podcasts/episodes
+    """
+
+    success: Literal[True] = True
+    episode_id: str = Field(description="생성된 에피소드 고유 ID")
+    session_id: str = Field(description="세션 ID")
+    safety_alert: SafetyAlertData | None = Field(
+        default=None,
+        description="안전 경고 (CRISIS 시 에피소드 미생성, 응답에 직접 포함)",
+    )
+    tracing: RequestTracing = Field(description="추적 컨텍스트")
+
+
 class PodcastEpisodeData(BaseModel):
     """
     팟캐스트 에피소드 데이터.
@@ -638,8 +690,8 @@ class PodcastEpisodeData(BaseModel):
 
     episode_id: str = Field(description="에피소드 고유 ID")
     session_id: str = Field(description="생성 세션 ID")
-    title: str = Field(description="에피소드 제목 (한국어)")
-    total_duration_minutes: int = Field(description="총 에피소드 길이 (분)")
+    episode_title: str = Field(description="에피소드 제목 (한국어)")
+    total_duration: int = Field(description="총 에피소드 길이 (분)")
     segments: list[PodcastSegment] = Field(description="세그먼트 목록")
     key_insights: list[str] = Field(
         default_factory=list, description="핵심 인사이트 (3-5개)"
@@ -658,11 +710,17 @@ class PodcastSegment(BaseModel):
     TTS 엔진이 script_text를 읽고, tts_markers로 톤 변화를 제어한다.
 
     원본 출처: ScriptSegment (src/models/schemas.py)
+
+    Note:
+        ScriptSegment(schemas.py)와 필드 구조가 동일하다.
+        ScriptSegment는 에이전트 내부 파이프라인 전용이고,
+        PodcastSegment는 외부 API 응답 전용이므로 분리 유지한다.
+        두 클래스의 필드를 수정할 때 양쪽을 함께 업데이트할 것.
     """
 
     segment_id: str = Field(description="세그먼트 고유 ID")
     segment_type: str = Field(
-        description="세그먼트 타입 (opening, education, practical, closing 등)"
+        description="세그먼트 타입 (도입, 탐색, 전환, 마무리 등)",
     )
     duration_minutes: int = Field(description="세그먼트 예상 길이 (분)")
     script_text: str = Field(description="스크립트 텍스트 (TTS 입력)")
@@ -757,8 +815,8 @@ class PodcastEpisodeSummary(BaseModel):
     """에피소드 요약 — 목록 표시용 경량 데이터."""
 
     episode_id: str = Field(description="에피소드 ID")
-    title: str = Field(description="에피소드 제목")
-    total_duration_minutes: int = Field(description="길이 (분)")
+    episode_title: str = Field(description="에피소드 제목")
+    total_duration: int = Field(description="길이 (분)")
     themes: list[str] = Field(default_factory=list, description="주제 태그")
     primary_emotion: str | None = Field(default=None, description="주요 감정")
     cover_image_url: str | None = Field(default=None, description="커버 이미지 URL")
@@ -941,8 +999,8 @@ class MySQLPodcastEpisode(BaseModel):
     episode_id: str = Field(description="에피소드 고유 ID (PK)")
     session_id: str = Field(description="세션 ID (FK)")
     user_id: str = Field(description="사용자 ID (FK)")
-    title: str = Field(description="에피소드 제목")
-    total_duration_minutes: int = Field(description="총 길이 (분)")
+    episode_title: str = Field(description="에피소드 제목")
+    total_duration: int = Field(description="총 길이 (분)")
     total_words: int = Field(default=0, description="전체 단어 수")
     segment_count: int = Field(description="세그먼트 개수")
     key_insights: list[str] = Field(
@@ -955,6 +1013,13 @@ class MySQLPodcastEpisode(BaseModel):
     cover_image_url: str | None = Field(
         default=None, description="커버 이미지 S3 URL"
     )
+    # 파이프라인 메타
+    intent_type: str = Field(default="unknown", description="의도 분류 타입")
+    complexity_score: float = Field(default=0.0, description="입력 복잡도 (0.0-1.0)")
+    safety_status: str = Field(default="safe", description="안전 상태 (safe/warning/crisis)")
+    validation_score: float = Field(default=0.0, description="검증 점수")
+    retry_count: int = Field(default=0, description="TIER 2→3 재시도 횟수")
+    pipeline_duration_ms: int = Field(default=0, description="파이프라인 소요 시간 (ms)")
     # 추적
     trace_id: str = Field(description="분산 추적 ID")
     correlation_id: str = Field(description="상관관계 ID")
@@ -1061,9 +1126,6 @@ class MySQLVisualizationMeta(BaseModel):
     # 시각화 메타
     image_prompt: str = Field(description="이미지 생성 프롬프트 (영문)")
     interpretation_text: str = Field(description="해설 텍스트 (한국어)")
-    primary_emotion: str = Field(description="기반 감정")
-    palette: str = Field(description="팔레트 이름")
-    style_tags: list[str] = Field(default_factory=list, description="스타일 태그")
     # 추적
     trace_id: str = Field(description="분산 추적 ID")
     created_at: datetime = Field(default_factory=_now_utc, description="생성 시각")

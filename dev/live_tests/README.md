@@ -209,7 +209,7 @@ python3 -m dev.live_tests.run_live --agent content_analyzer --model mistral:7b
 python3 -m dev.live_tests.run_live --agent content_analyzer --model qwen2.5:7b
 
 # Anthropic — 특정 모델 버전 지정
-python3 -m dev.live_tests.run_live --agent content_analyzer --provider anthropic --model claude-sonnet-4-20250514
+python3 -m dev.live_tests.run_live --agent content_analyzer --provider anthropic --model claude-sonnet-4-5-20250929
 
 # Bedrock — Bedrock 모델 ID 지정
 python3 -m dev.live_tests.run_live --agent content_analyzer --provider bedrock --model anthropic.claude-sonnet-4-5-20250929-v2:0

@@ -1,4 +1,0 @@
-version: "1.0.0"
-
-system_prompt: |
-  You are a helpful podcast script editor.

@@ -13,7 +13,7 @@
 ```
 TIER 0 (Intent)         → 0.3~0.5 KB
 TIER 1 (병렬 4개)       → ~8~12 KB (Content 0.25~0.8 + Emotion 0.3 + Reasoning 7~11 + Safety 0.5)
-TIER 2 (Script Gen)     → 8~21 KB
+TIER 2 (Script Gen + Visualization 병렬) → 8~21 KB + 1~2 KB
 TIER 3 (Batch Val)      → 0.2~0.6 KB
 TIER 4 (Personalizer)   → 9~22 KB
 Peak State Size: 19~37 KB
@@ -36,10 +36,10 @@ Peak State Size: ~12~18 KB (추정, 미구현)
 
 | 상태 | 에이전트 |
 |------|----------|
-| **구현 완료 (10개)** | Intent Classifier, Safety, Emotion, Knowledge, Content Analyzer, Podcast Reasoning, Script Generator, Batch Validator, Script Personalizer, Visualization |
+| **구현 완료 (11개)** | Intent Classifier, Safety, Emotion, Knowledge, Content Analyzer, Podcast Reasoning, Script Generator, Batch Validator, Script Personalizer, Visualization, Episode Memory |
 | **공용 구현 완료 (1개)** | Learning |
 | **미구현 (8개)** | Context, Reasoning(대화), Memory, Synthesis, Validator(대화), Personalization, Telemetry |
-| **스텁 (1개)** | Episode Memory (BaseMemoryAgent 확장) |
+| **스텁 (0개)** | — |
 
 ---
 
@@ -324,7 +324,7 @@ Peak State Size: ~12~18 KB (추정, 미구현)
 
 - **목적**: 과거 팟캐스트 에피소드 기억을 검색하여 일관성과 연속성을 확보한다.
 - **모델**: Sonnet 4 (BaseMemoryAgent 상속)
-- **구현 상태**: 스텁 (BaseMemoryAgent 확장)
+- **구현 상태**: 완료 (KT Cloud RAG Suite 연동)
 
 **입력**: DI 호출 -- `search(query, user_id)`
 
@@ -534,11 +534,14 @@ Peak State Size: ~12~18 KB (추정, 미구현)
 
 ---
 
-### Visualization Agent -- 비동기 / 공용
+### Visualization Agent -- TIER 2 (병렬) / 공용
 
 - **목적**: 감정 벡터 기반으로 시각화 이미지 메타데이터와 해석 텍스트를 생성한다.
 - **모델**: Sonnet 4
 - **구현 상태**: 완료
+- **TIER 위치**: TIER 2 — Script Generator와 병렬 실행 (`tier2_podcast_fan_out`)
+- **재시도 동작**: `visual_data`가 이미 state에 존재하면 건너뜀 (TIER 3 실패 → TIER 2 재시도 시 중복 방지)
+- **실패 허용**: Visualization 실패 시 파이프라인에 영향 없음 (Script Generator 결과만 필수)
 
 **입력 (AgentState 읽기)**
 
@@ -554,11 +557,11 @@ Peak State Size: ~12~18 KB (추정, 미구현)
 
 | 필드 | 타입 | 크기 |
 |------|------|------|
-| `visualization_result` | dict | 1~2 KB |
+| `visual_data` | dict | 1~2 KB |
 
 - **데이터 효율**: 100%
 - **알려진 이슈**:
-  - [S-2] `visualization_result` 반환 vs AgentState `visual_data` 정의 -- 키 이름 불일치
+  - ~~[S-2] `visualization_result` 반환 vs AgentState `visual_data` 정의 -- 키 이름 불일치~~ (RESOLVED: visualization.py:64에서 수정됨)
 
 ---
 
@@ -675,7 +678,7 @@ Peak State Size: ~12~18 KB (추정, 미구현)
 | # | 심각도 | 이슈 | 에이전트 |
 |---|--------|------|----------|
 | S-1 | HIGH | 개발자 경계 위반: Intent가 개발자2 필드 쓰기 (risk_level, risk_score, safety_flags) | Intent Classifier |
-| S-2 | HIGH | 출력 키 불일치: `visualization_result` 반환 vs AgentState `visual_data` 정의 | Visualization |
+| S-2 | ~~HIGH~~ RESOLVED | 출력 키 불일치: visual_data로 수정 완료 (visualization.py:64) | Visualization |
 | S-3 | MEDIUM | 미정의 필드 읽기: domain_hints, user_context | Knowledge |
 | S-4 | MEDIUM | Script Generator 다수 필드 직접 읽기 문서화 필요 | Script Generator |
 | S-5 | MEDIUM | 조건부 쓰기 미문서화: memory_results, knowledge_results | Podcast Reasoning |
@@ -701,4 +704,4 @@ Peak State Size: ~12~18 KB (추정, 미구현)
 
 ---
 
-*마지막 업데이트: 2026-03-03*
+*마지막 업데이트: 2026-03-13*
