@@ -46,6 +46,8 @@ echo "OPENAI_API_KEY=sk-..." >> .env
 
 > **보안 주의:** API 키는 반드시 `.env` 파일에만 저장한다. 코드나 커밋에 포함하지 마시오.
 
+> **기본 프로바이더 (Round 4 이후):** OpenAI `gpt-4o-mini`가 운영 기본 모델이다. Ollama(`gpt-oss:20b`, `qwen2.5:14b`)는 로컬 테스트용으로 유지.
+
 ---
 
 ## 빠른 시작
@@ -149,7 +151,7 @@ END → 최종 상태 반환
 | 대상 | Mock 여부 | 사유 |
 |------|----------|------|
 | 모든 에이전트 | **REAL** | 팟캐스트 경로 전부 구현 완료 |
-| `BackendClient.save()` | **Mock** | 백엔드 서버 미실행 (Learning Agent에서 사용) |
+| `BackendClient.save()` | **Mock** | 백엔드 서버 미실행 (Learning Agent + AgentDataPublisher 경유: Emotion·Content Analyzer) |
 | LLM 호출 | **REAL** | Ollama/OpenAI 실제 API 사용 |
 | Telemetry | **STUB** | 유일한 스텁 노드 (대화모드 전용) |
 
@@ -322,4 +324,58 @@ WARNING: 싱글톤 리프레시 실패 — src.agents.podcast.xxx: ...
 
 ---
 
-*마지막 업데이트: 2026-02-27*
+## pytest 마커별 실행
+
+`pyproject.toml`에 정의된 마커를 사용하여 테스트를 선택적으로 실행할 수 있다.
+
+```bash
+# 단위 테스트만
+pytest -m unit
+
+# 통합 테스트만
+pytest -m integration
+
+# 실제 LLM 호출 테스트 제외
+pytest -m "not live"
+
+# 느린 테스트 제외
+pytest -m "not slow"
+
+# 단위 + 통합만 (live 제외)
+pytest -m "unit or integration"
+```
+
+### 마커 정의
+
+| 마커 | 설명 |
+|------|------|
+| `unit` | 외부 의존성 없는 단위 테스트 |
+| `integration` | 에이전트 간 연동 통합 테스트 |
+| `live` | 실제 LLM API 호출 (느림, 비용 발생) |
+| `slow` | 5초 이상 소요되는 테스트 |
+
+---
+
+## 누락 테스트 목록
+
+아래 핵심 파일들은 아직 테스트가 작성되지 않았다. 우선순위별로 정리:
+
+### 높음 — 데이터 모델/계약
+
+| 파일 | 역할 | 필요 테스트 |
+|------|------|------------|
+| `src/models/agent_state.py` | 공유 상태 스키마 | 필드 타입 검증, 필드 병합 로직 |
+| `src/models/message.py` | 에이전트 간 메시지 포맷 | 메시지 생성·직렬화 |
+| `src/api/contracts.py` | 백엔드 API 요청/응답 스키마 | 스키마 검증, 직렬화/역직렬화 |
+
+### 중간 — 유틸리티/인프라
+
+| 파일 | 역할 | 필요 테스트 |
+|------|------|------------|
+| `src/utils/retry.py` | 재시도 로직 | 재시도 횟수, backoff, 예외 전파 |
+| `src/api/client.py` | 백엔드 API 클라이언트 | 성공/실패 응답 처리, 타임아웃 |
+| `src/models/schemas.py` | 데이터 모델 | Pydantic 검증, 기본값 |
+
+---
+
+*마지막 업데이트: 2026-03-13*

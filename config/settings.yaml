@@ -120,14 +120,14 @@ agents:
     max_sub_themes: 5
     min_input_length: 10
     max_theme_length: 100
-    deep_threshold: 0.7
-    moderate_threshold: 0.4
+    deep_threshold: 0.7      # complexity_score ≥ 이 값 → depth_level "deep"
+    moderate_threshold: 0.4  # complexity_score ≥ 이 값 → depth_level "medium" (미만 → "shallow")
   podcast_reasoning:
     model: sonnet
     max_tokens: 4096
     temperature: 0.3
-    full_threshold: 0.0
-    standard_threshold: 0.0
+    full_threshold: 0.0      # complexity ≥ 이 값 → full GoT/ToT/CoT 추론 (0.0=항상 full)
+    standard_threshold: 0.0  # complexity ≥ 이 값 → standard 추론 (미만 → lightweight)
 
   # ──────────────────────────────────────
   # 팟캐스트모드 TIER 1 독립 에이전트
@@ -170,6 +170,18 @@ agents:
     model: haiku
     max_tokens: 1024
 
+# 저장소 설정
+storage:
+  mode: "local"                    # local | proxy | hybrid
+  s3:
+    bucket: "mindlog-images"
+    # region은 별도 정의 안 함 — 기존 llm.bedrock.region / AWS_REGION 재사용
+    upload_prefix: "vis"           # TODO(backend): 4-4 prefix 확정
+  pinecone:
+    index_knowledge: "expert_knowledge"
+    index_memory_conversation: "mem_conversation"
+    index_memory_podcast: "mem_podcast_episode"
+
 # 파이프라인 설정
 pipeline:
   max_retries: 2              # TIER 3 → TIER 2 재시도 상한
@@ -189,7 +201,24 @@ prompts:
 
   # 에이전트별 프롬프트 버전 핀닝
   versions:
-    default: "1.0.0"
+
+    default: "1.0.0"              # 글로벌 기본 버전
+    content_analyzer: "2.1.0"     # Round 4 최적 조합 A (2026-03-06, OpenAI)
+    podcast_reasoning: "3.0.0"    # Round 4 최적 — ToT Branch Scoring (2026-03-06)
+    batch_validator: "2.3.0"      # Round 4 최적 — 감점 규칙 (2026-03-06, avg 0.863±0.006)
+    # learning: "1.0.0"
+
+  # A/B 테스트 설정 (선택적)
+  # enabled: true로 활성화, false 또는 미설정이면 비활성
+  # assignment: "session" = 세션 단위 결정적 할당, "request" = 요청 단위 랜덤
+  # ab_tests:
+  #   content_analyzer:
+  #     enabled: false
+  #     variant_a: "1.0.0"
+  #     variant_b: "1.1.0"
+  #     traffic_split: 0.5
+  #     assignment: "session"
+
 
 # 기능 플래그
 features:

@@ -50,6 +50,7 @@ docker compose up -d
 | 1 | CLAUDE.md | 아키텍처 요약, 협업 규칙, API 규약 |
 | 2 | docs/architecture/PROJECT_STRUCTURE.md | 폴더 구조 및 파일 역할 |
 | 3 | docs/guides/GIT_WORKFLOW.md | 브랜치 전략, 커밋 컨벤션 |
+| 4 | docs/guides/AI_Team_Work_Zone_Assignment.md | Zone A/B/C/D 작업 영역 분할 |
 
 ### 에이전트 설계 문서
 
@@ -244,4 +245,4 @@ pytest tests/ --cov=src --cov-report=html
 
 *자세한 협업 규칙과 API 규약은 CLAUDE.md를 참조하세요.*
 
-*마지막 업데이트: 2026-02-14*
+*마지막 업데이트: 2026-03-13*

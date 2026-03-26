@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from src.agents.shared.base_agent import BaseAgent
+from src.api.backend_resources import RESOURCE_LEARNING, TYPE_LEARNING
 from src.api.client import BackendClient
 from src.api.contracts import SaveRequest
 from src.models.agent_state import AgentState
@@ -117,14 +118,14 @@ class LearningAgent(BaseAgent):
             request = SaveRequest(
                 user_id=user_id,
                 session_id=session_id,
-                type="learning",
+                type=TYPE_LEARNING,
                 data={
                     "mode": mode,
                     "learning_data": learning_data,
                 },
                 timestamp=datetime.now(timezone.utc),
             )
-            await self._api_client.save("learning", request)
+            await self._api_client.save(RESOURCE_LEARNING, request)
             self.logger.info("학습 결과 저장 완료 (user=%s, session=%s)", user_id, session_id)
 
         except Exception as e:

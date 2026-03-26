@@ -49,7 +49,7 @@ class _StubAgent(BaseAgent):
                 "output_tokens": 200,
                 "total_tokens": 700,
             }
-            mock_client._parse_json_response = MagicMock(
+            mock_client.parse_json_response = MagicMock(
                 return_value={"key": "value"}
             )
             mock_llm_cls.return_value = mock_client
@@ -71,19 +71,20 @@ class TestTracedLlmCall:
         """langsmith 미설치 시에도 generate()가 정상 호출된다."""
         agent = _StubAgent()
 
-        with patch(
-            "src.agents.shared.base_agent.get_settings"
-        ) as mock_settings:
+        with (
+            patch(
+                "src.agents.shared.base_agent.get_settings"
+            ) as mock_settings,
+            patch("src.agents.shared.base_agent._HAS_LANGSMITH", False),
+        ):
             settings = MagicMock()
             settings.langsmith_tracing_enabled = True
             mock_settings.return_value = settings
 
-            # langsmith import를 실패시킨다
-            with patch.dict("sys.modules", {"langsmith": None}):
-                result = await agent._traced_llm_call(
-                    system_prompt="system",
-                    user_message="hello",
-                )
+            result = await agent._traced_llm_call(
+                system_prompt="system",
+                user_message="hello",
+            )
 
         assert result == "LLM 응답 텍스트"
         agent.llm_client.generate.assert_called_once()
@@ -110,34 +111,31 @@ class TestTracedLlmCall:
 
     @pytest.mark.asyncio
     async def test_creates_llm_span_when_enabled(self) -> None:
-        """langsmith 활성 시 @traceable(run_type='llm')이 호출된다."""
+        """langsmith 활성 시 @_traceable(run_type='llm')이 호출된다."""
         agent = _StubAgent()
 
         mock_traceable = MagicMock()
-        # @traceable(...)가 데코레이터로 동작하도록 설정
-        # traceable(**kwargs) -> decorator -> decorator(fn) -> fn (pass-through)
+        # @_traceable(...)가 데코레이터로 동작하도록 설정
+        # _traceable(**kwargs) -> decorator -> decorator(fn) -> fn (pass-through)
         mock_traceable.side_effect = lambda **kwargs: lambda fn: fn
-
-        mock_langsmith = MagicMock()
-        mock_langsmith.traceable = mock_traceable
 
         with (
             patch(
                 "src.agents.shared.base_agent.get_settings"
             ) as mock_settings,
-            patch.dict("sys.modules", {"langsmith": mock_langsmith}),
+            patch("src.agents.shared.base_agent._HAS_LANGSMITH", True),
+            patch("src.agents.shared.base_agent._traceable", mock_traceable),
         ):
             settings = MagicMock()
             settings.langsmith_tracing_enabled = True
             mock_settings.return_value = settings
 
-            # importlib cache를 우회하기 위해 직접 import mock
             await agent._traced_llm_call(
                 system_prompt="system",
                 user_message="hello",
             )
 
-        # traceable이 run_type="llm"으로 호출되었는지 확인
+        # _traceable이 run_type="llm"으로 호출되었는지 확인
         mock_traceable.assert_called_once()
         call_kwargs = mock_traceable.call_args[1]
         assert call_kwargs["run_type"] == "llm"
@@ -192,7 +190,7 @@ class TestCallLlmTracing:
         agent._traced_llm_call = AsyncMock(
             return_value='{"key": "value"}'
         )
-        agent.llm_client._parse_json_response.return_value = {"key": "value"}
+        agent.llm_client.parse_json_response.return_value = {"key": "value"}
 
         result = await agent.call_llm_json(
             system_prompt="system",
@@ -201,7 +199,7 @@ class TestCallLlmTracing:
 
         assert result == {"key": "value"}
         agent._traced_llm_call.assert_called_once()
-        agent.llm_client._parse_json_response.assert_called_once_with(
+        agent.llm_client.parse_json_response.assert_called_once_with(
             '{"key": "value"}'
         )
         assert agent._llm_call_count == 1

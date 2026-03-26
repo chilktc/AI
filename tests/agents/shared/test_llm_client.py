@@ -357,7 +357,7 @@ def test_json_parsing_valid(input_text: str, expected: dict) -> None:
     """다양한 형태의 JSON 문자열을 파싱한다."""
     from src.agents.shared.llm_client import LLMClient
 
-    assert LLMClient._parse_json_response(input_text) == expected
+    assert LLMClient.parse_json_response(input_text) == expected
 
 
 def test_json_parsing_invalid() -> None:
@@ -365,7 +365,7 @@ def test_json_parsing_invalid() -> None:
     from src.agents.shared.llm_client import LLMClient
 
     with pytest.raises(json.JSONDecodeError):
-        LLMClient._parse_json_response("not json at all")
+        LLMClient.parse_json_response("not json at all")
 
 
 # ===================================================================
