@@ -4,6 +4,7 @@
 
 | 버전 | 파일 | 요약 |
 |------|------|------|
+| v26 | [CHANGELOG_v26.md](CHANGELOG_v26.md) | Docker 배포 차단 해제 + Visualization settings 기반 전환 + Bedrock Converse API + CRISIS 버그 수정 |
 | v25 | [CHANGELOG_v25.md](CHANGELOG_v25.md) | API 응답 슬림화 + Visualization TIER 2 이동 + 재시도 중복 방지 |
 | v24 | [CHANGELOG_v24.md](CHANGELOG_v24.md) | API_SPEC.md 구조 분할 리팩토링 (v1.2 → v2.0) |
 | v23 | [CHANGELOG_v23.md](CHANGELOG_v23.md) | Zone C/D 통합 + API 문서 통합 + 스키마 정렬 + 인프라 수정 |
@@ -20,4 +21,4 @@
 
 ---
 
-*마지막 업데이트: 2026-03-16*
+*마지막 업데이트: 2026-03-26*

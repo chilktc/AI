@@ -257,7 +257,6 @@ async def run_with_cancel(
             # 취소 신호 수신 → 태스크 취소
             task.cancel()
             logger.info("[CANCEL] %s 취소됨 (CRISIS 선점)", name)
-            cancel_waiter = None  # type: ignore[assignment]
             return (name, {})
 
         result = task.result()
@@ -289,15 +288,18 @@ async def _safety_deep_crisis(safety_result: dict[str, Any]) -> dict[str, Any]:
         위기 응답 포함 상태 dict
     """
     logger.critical("[CRISIS] Safety 심화 모드 진입 — 즉시 위기 응답 생성")
-    # TODO: 개발자2가 Safety Agent 심화 로직 구현
+    safety_flags = safety_result.get("safety_flags", {})
+    required_scripts = safety_flags.get("required_in_script", [])
+
+    crisis_msg = "\n".join(required_scripts) if required_scripts else (
+        "지금 힘든 상황이시군요. 전문 상담사와 연결해 드리겠습니다."
+    )
+
     return {
-        "safety_flags": safety_result.get("safety_flags", {}),
+        "safety_flags": safety_flags,
         "risk_level": safety_result.get("risk_level", 4),
         "risk_score": safety_result.get("risk_score", 1.0),
-        "final_output": safety_result.get(
-            "crisis_response",
-            "지금 힘든 상황이시군요. 전문 상담사와 연결해 드리겠습니다.",
-        ),
+        "final_output": crisis_msg,
     }
 
 

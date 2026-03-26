@@ -340,41 +340,39 @@ class LLMClient:
         temperature: float,
     ) -> str:
         """
-        AWS Bedrock을 통한 텍스트 생성.
+        AWS Bedrock Converse API를 통한 텍스트 생성.
 
-        Bedrock의 Anthropic Claude Messages API 형식을 사용한다.
-        boto3는 동기 클라이언트이므로 asyncio.to_thread로 감싸서 비동기 처리한다.
+        모든 Bedrock 모델(Claude, Llama, Titan, Mistral, Nova 등)에 통일된
+        요청/응답 포맷을 제공한다. boto3는 동기 클라이언트이므로
+        asyncio.to_thread로 감싸서 비동기 처리한다.
         """
         import asyncio
 
-        request_body = json.dumps(
-            {
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": max_tokens,
-                "temperature": temperature,
-                "system": system_prompt,
-                "messages": [{"role": "user", "content": user_message}],
-            }
-        )
-
-        # boto3는 동기 SDK — 이벤트루프 블로킹 방지를 위해 스레드풀에서 실행
+        # Converse API — 모든 Bedrock 모델 지원
         response = await asyncio.to_thread(
-            self._bedrock_client.invoke_model,
+            self._bedrock_client.converse,
             modelId=self._model_id,
-            body=request_body,
-            contentType="application/json",
-            accept="application/json",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [{"text": user_message}],
+                }
+            ],
+            system=[{"text": system_prompt}],
+            inferenceConfig={
+                "maxTokens": max_tokens,
+                "temperature": temperature,
+            },
         )
 
-        # 응답 파싱 (strict=False: 제어 문자 허용)
-        response_body = json.loads(response["body"].read(), strict=False)
-        # 토큰 사용량 기록 (Bedrock Anthropic 응답 형식)
-        usage = response_body.get("usage", {})
+        # 통합 응답 구조 (모든 모델 동일)
+        text = response["output"]["message"]["content"][0]["text"]
+        usage = response.get("usage", {})
         self._record_usage(
-            input_tokens=usage.get("input_tokens", 0),
-            output_tokens=usage.get("output_tokens", 0),
+            input_tokens=usage.get("inputTokens", 0),
+            output_tokens=usage.get("outputTokens", 0),
         )
-        return str(response_body["content"][0]["text"])
+        return str(text)
 
     async def generate_json(
         self,
