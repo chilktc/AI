@@ -110,3 +110,26 @@ def test_non_visualization_uses_model_id_key() -> None:
         agent_cfg = cfg["agents"][agent]
         assert "model_id" in agent_cfg, f"{agent}: model_id 없음"
         assert "image_model" not in agent_cfg, f"{agent}: image_model이 잘못 설정됨"
+
+
+# === Phase 1 모델 선택 로직 ===
+
+
+def _select_models_and_skip_viz(agent_name: str) -> tuple[list[dict], str]:
+    """Phase 1에서 에이전트별 모델 목록과 skip_viz를 반환하는 순수 함수."""
+    if agent_name == "visualization":
+        return IMAGE_MODELS, "false"
+    return BEDROCK_MODELS, "true"
+
+
+def test_phase1_visualization_uses_image_models() -> None:
+    models, skip_viz = _select_models_and_skip_viz("visualization")
+    assert models is IMAGE_MODELS
+    assert skip_viz == "false"
+
+
+def test_phase1_other_agents_use_bedrock_models() -> None:
+    for agent in ("safety", "emotion", "content_analyzer", "script_generator"):
+        models, skip_viz = _select_models_and_skip_viz(agent)
+        assert models is BEDROCK_MODELS, f"{agent}: BEDROCK_MODELS 아님"
+        assert skip_viz == "true", f"{agent}: skip_viz가 true 아님"

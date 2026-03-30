@@ -255,7 +255,7 @@ async def run_phase1(
     retry_failed: bool = False,
 ) -> None:
     """에이전트별 모델 벤치마크를 실행한다."""
-    from dev.live_tests.evaluator_criteria import BEDROCK_MODELS, AGENT_OUTPUT_FIELDS
+    from dev.live_tests.evaluator_criteria import BEDROCK_MODELS, IMAGE_MODELS, AGENT_OUTPUT_FIELDS
 
     print("\n" + "=" * 60)
     print(f"Phase 1: 벤치마크 (max_concurrent={max_concurrent})")
@@ -275,8 +275,12 @@ async def run_phase1(
     semaphore = asyncio.Semaphore(max_concurrent)
 
     for agent_name in agents:
-        skip_viz = "true" if agent_name != "visualization" else "false"
-        models = BEDROCK_MODELS
+        if agent_name == "visualization":
+            skip_viz = "false"
+            models = IMAGE_MODELS
+        else:
+            skip_viz = "true"
+            models = BEDROCK_MODELS
 
         print(f"\n> {agent_name} ({len(models)} 모델 x {RUNS_PER_MODEL} 회)")
 
@@ -373,10 +377,17 @@ async def run_phase1(
 
 # --- Phase 3: 최적 조합 검증 ---
 
-async def run_phase3(optimal_config_path: str | None = None) -> None:
+async def run_phase3(
+    optimal_config_path: str | None = None,
+    max_concurrent: int = DEFAULT_MAX_CONCURRENT,
+) -> None:
     """최적 조합 + Baseline을 각 5회씩 실행한다."""
+    from dev.live_tests.evaluator_criteria import BEDROCK_MODELS
+
+    RUNS_PHASE3 = 5
+
     print("\n" + "=" * 60)
-    print("Phase 3: 최적 파이프라인 검증")
+    print(f"Phase 3: 최적 파이프라인 검증 (max_concurrent={max_concurrent})")
     print("=" * 60)
 
     phase3_dir = RESULTS_DIR / "phase3"
@@ -390,8 +401,95 @@ async def run_phase3(optimal_config_path: str | None = None) -> None:
         print("  Phase 2를 로컬에서 먼저 실행하세요.")
         return
 
-    print(f"  최적 조합: {json.dumps(optimal, indent=2, ensure_ascii=False)[:200]}")
-    print("  Phase 3 구현은 Phase 2 결과에 의존합니다.")
+    # model_short → model_id 매핑
+    model_id_map = {m["short"]: m["model_id"] for m in BEDROCK_MODELS}
+
+    best_models: dict[str, dict[str, Any]] = optimal.get("best_models", optimal)
+    print(f"  대상 에이전트: {len(best_models)}개, 각 {RUNS_PHASE3}회 실행")
+
+    progress = _load_progress()
+    progress["phase"] = "phase3"
+    _save_progress(progress)
+
+    semaphore = asyncio.Semaphore(max_concurrent)
+
+    tasks = []
+    for agent_name, info in best_models.items():
+        model_short = info["model_short"]
+        model_id = model_id_map.get(model_short)
+        if not model_id:
+            print(f"  [!] {agent_name}: model_short '{model_short}' 매핑 없음, 건너뜀")
+            continue
+
+        skip_viz = "true" if agent_name != "visualization" else "false"
+
+        for run in range(1, RUNS_PHASE3 + 1):
+            output_file = phase3_dir / f"{agent_name}_{model_short}_run{run}.json"
+            if output_file.exists():
+                existing = json.loads(output_file.read_text(encoding="utf-8"))
+                if "error" not in existing:
+                    continue
+
+            tasks.append({
+                "agent": agent_name,
+                "model_id": model_id,
+                "model_short": model_short,
+                "run": run,
+                "output": str(output_file),
+                "skip_viz": skip_viz,
+            })
+
+    print(f"  실행할 테스트: {len(tasks)}회")
+
+    async def _run_one(task: dict[str, str]) -> dict[str, Any]:
+        async with semaphore:
+            mem = _get_memory_mb()
+            if mem["available_mb"] < 500 and mem["available_mb"] > 0:
+                print(f"  [!] 메모리 부족 ({mem['available_mb']}MB), 30초 대기...")
+                await asyncio.sleep(30)
+
+            cmd = [
+                sys.executable, "-m", "dev.live_tests.run_single_bedrock_test",
+                "--agent", task["agent"],
+                "--model-id", task["model_id"],
+                "--model-short", task["model_short"],
+                "--run", str(task["run"]),
+                "--output", task["output"],
+                "--skip-viz", task["skip_viz"],
+            ]
+            try:
+                proc = await asyncio.create_subprocess_exec(
+                    *cmd,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                stdout, stderr = await asyncio.wait_for(
+                    proc.communicate(), timeout=PROCESS_TIMEOUT,
+                )
+                if proc.returncode == 0:
+                    progress["completed"] = progress.get("completed", 0) + 1
+                    print(f"  [v] {task['agent']} / {task['model_short']} run{task['run']}")
+                else:
+                    progress["failed"] = progress.get("failed", 0) + 1
+                    print(f"  [x] {task['agent']} / {task['model_short']} run{task['run']}: {stderr.decode()[:100]}")
+                _save_progress(progress)
+                await asyncio.sleep(INTER_PROCESS_DELAY)
+                return {"task": task, "returncode": proc.returncode}
+
+            except asyncio.TimeoutError:
+                progress["failed"] = progress.get("failed", 0) + 1
+                _save_progress(progress)
+                print(f"  [!] {task['agent']} / {task['model_short']} run{task['run']}: timeout")
+                return {"task": task, "returncode": -1, "error": "timeout"}
+
+    results = await asyncio.gather(*[_run_one(t) for t in tasks])
+    successes = sum(1 for r in results if r.get("returncode") == 0)
+    failures = len(results) - successes
+
+    progress["phase"] = "phase3_complete"
+    _save_progress(progress)
+    print(f"\n  Phase 3 완료 -> {phase3_dir}")
+    print(f"  결과: {successes}/{len(results)} 성공 (실패: {failures})")
 
 
 # --- CLI ---
@@ -441,7 +539,7 @@ async def main_async() -> None:
         )
 
     if args.phase == "3":
-        await run_phase3(optimal_config_path=args.optimal_config)
+        await run_phase3(optimal_config_path=args.optimal_config, max_concurrent=max_concurrent)
 
 
 def main() -> None:
