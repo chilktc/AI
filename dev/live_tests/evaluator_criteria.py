@@ -113,11 +113,12 @@ AGENT_OUTPUT_FIELDS: dict[str, list[str]] = {
 
 # 테스트 대상 Bedrock 모델 목록
 BEDROCK_MODELS: list[dict[str, str]] = [
-    {"short": "c3-sonnet", "model_id": "apac.anthropic.claude-3-sonnet-20240229-v1:0"},
-    {"short": "c3-haiku", "model_id": "anthropic.claude-3-haiku-20240307-v1:0"},
-    {"short": "c35-sonnet-v1", "model_id": "apac.anthropic.claude-3-5-sonnet-20240620-v1:0"},
-    {"short": "c35-sonnet-v2", "model_id": "apac.anthropic.claude-3-5-sonnet-20241022-v2:0"},
-    {"short": "c37-sonnet", "model_id": "apac.anthropic.claude-3-7-sonnet-20250219-v1:0"},
+    {"short": "c3-haiku",        "model_id": "anthropic.claude-3-haiku-20240307-v1:0"},
+    {"short": "c35-sonnet-v2",   "model_id": "apac.anthropic.claude-3-5-sonnet-20241022-v2:0"},
+    {"short": "c37-sonnet",      "model_id": "apac.anthropic.claude-3-7-sonnet-20250219-v1:0"},
+    {"short": "claude-sonnet-4", "model_id": "apac.anthropic.claude-sonnet-4-20250514-v1:0"},
+    {"short": "nova-pro",        "model_id": "apac.amazon.nova-pro-v1:0"},
+    {"short": "nova-lite",       "model_id": "apac.amazon.nova-lite-v1:0"},
 ]
 
 # 이미지 생성 모델 (Visualization 전용)
