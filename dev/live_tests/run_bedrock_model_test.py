@@ -159,6 +159,10 @@ async def run_phase0() -> None:
         out_path = phase0_dir / f"connectivity_{model['short']}_{timestamp}.json"
         out_path.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
 
+    # IMAGE_MODELS 루프 종료 후 — 다음 Phase에 settings 오염 방지
+    import config.loader as _loader
+    _loader._settings_instance = None
+
     print(f"\n  Phase 0 완료 -> {phase0_dir}")
 
 
