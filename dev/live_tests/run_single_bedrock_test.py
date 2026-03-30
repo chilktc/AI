@@ -68,7 +68,10 @@ async def run_test(args: argparse.Namespace) -> dict[str, Any]:
     settings = config.loader.get_settings()
 
     agent_cfg = settings._config.setdefault("agents", {}).setdefault(args.agent, {})
-    agent_cfg["model_id"] = args.model_id
+    if args.agent == "visualization":
+        agent_cfg["image_model"] = args.model_id
+    else:
+        agent_cfg["model_id"] = args.model_id
 
     # Evaluator 모델 오버라이드 (지정 시)
     if args.evaluator_model:

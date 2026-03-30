@@ -76,3 +76,39 @@ def test_bedrock_models_count() -> None:
 def test_image_models_unchanged() -> None:
     shorts = [m["short"] for m in IMAGE_MODELS]
     assert set(shorts) == {"titan-v2", "titan-v1", "nova-canvas"}
+
+
+# ===  run_single_bedrock_test 모델 오버라이드 로직 ===
+
+def _make_mock_settings(agent_name: str) -> dict:
+    """settings._config 구조를 모사한 dict를 반환한다."""
+    return {"agents": {agent_name: {}}}
+
+
+def _apply_model_override(agent_name: str, model_id: str, config: dict) -> None:
+    """run_single_bedrock_test.py의 오버라이드 로직을 분리한 순수 함수."""
+    agent_cfg = config.setdefault("agents", {}).setdefault(agent_name, {})
+    if agent_name == "visualization":
+        agent_cfg["image_model"] = model_id
+    else:
+        agent_cfg["model_id"] = model_id
+
+
+def test_visualization_uses_image_model_key() -> None:
+    """visualization 에이전트는 image_model 키로 오버라이드해야 한다."""
+    cfg = _make_mock_settings("visualization")
+    _apply_model_override("visualization", "amazon.titan-image-generator-v2:0", cfg)
+    agent_cfg = cfg["agents"]["visualization"]
+    assert "image_model" in agent_cfg
+    assert "model_id" not in agent_cfg
+    assert agent_cfg["image_model"] == "amazon.titan-image-generator-v2:0"
+
+
+def test_non_visualization_uses_model_id_key() -> None:
+    """visualization 외 에이전트는 model_id 키로 오버라이드해야 한다."""
+    for agent in ("safety", "emotion", "script_generator", "intent_classifier"):
+        cfg = _make_mock_settings(agent)
+        _apply_model_override(agent, "apac.amazon.nova-pro-v1:0", cfg)
+        agent_cfg = cfg["agents"][agent]
+        assert "model_id" in agent_cfg, f"{agent}: model_id 없음"
+        assert "image_model" not in agent_cfg, f"{agent}: image_model이 잘못 설정됨"
