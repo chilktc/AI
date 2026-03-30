@@ -1,3 +1,5 @@
+> **아카이브** — Zone A/B/C/D 체계 기준으로 작성됨. 현재 개발자1/2/3 구조와 다를 수 있으므로 참고용으로만 사용.
+
 # MindLog AI Team — Work Zone Assignment
 
 > **Date**: 2026-03-09

@@ -94,3 +94,8 @@ dev/live_tests/run_prompt_iteration.py
 
 # Claude Code (로컬 개발 환경)
 .claude/
+.mcp.json
+docs/**/CLAUDE.md
+
+# 발표 자료 (저장소 외부)
+발표_자료/

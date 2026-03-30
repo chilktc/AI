@@ -29,7 +29,10 @@ pip install -r requirements.txt
 
 # 환경변수 설정
 cp .env.example .env
-# .env 파일을 열어 API 키와 DB 접속 정보를 입력
+# .env 파일을 열어 아래 정보를 입력:
+#   - 기본 프로바이더(Bedrock): AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION
+#   - 대안 프로바이더: LLM_PROVIDER=anthropic (ANTHROPIC_API_KEY) 또는 LLM_PROVIDER=openai (OPENAI_API_KEY)
+#   - DB 접속 정보 (필요 시)
 ```
 
 ### Docker로 서비스 실행 (선택)
@@ -96,6 +99,13 @@ class EmotionAgent(BaseAgent):
 
         # 3. 변경된 필드만 dict로 반환 (LangGraph 자동 병합)
         return {"emotion_vectors": result}
+
+
+# 노드 함수 — 요청마다 새 인스턴스를 생성하여 동시 요청 간 상태를 격리한다.
+# 모듈 레벨 싱글톤으로 에이전트를 생성하지 마시오.
+async def emotion_node(state: AgentState) -> dict[str, Any]:
+    agent = EmotionAgent()
+    return await agent(state)
 ```
 
 ### 개발 절차

@@ -42,11 +42,28 @@ Mind-Log 프로젝트 문서 마스터 네비게이션입니다.
 | [OLLAMA_MODEL_TEST_REPORT.md](reports/OLLAMA_MODEL_TEST_REPORT.md) | Ollama 모델 테스트 결과 |
 | [REFACTORING_LOG.md](reports/REFACTORING_LOG.md) | 리팩토링 이력 |
 | [ZONE_CD_INTEGRATION_REPORT.md](reports/ZONE_CD_INTEGRATION_REPORT.md) | Zone C/D 통합 실행 보고서 |
+| [BEDROCK_E2E_IMPROVEMENT_PLAN_20260326.md](reports/BEDROCK_E2E_IMPROVEMENT_PLAN_20260326.md) | Bedrock E2E 테스트 결과 및 개선 계획 (2026-03-26) |
+
+## 구현 계획 (Implementation Plans)
+
+| 문서 | 설명 |
+|------|------|
+| [2026-03-16-db-integration-tests.md](plans/2026-03-16-db-integration-tests.md) | DB 통합 테스트 구현 계획 |
+| [podcast-concurrency-isolation.md](superpowers/plans/2026-03-30-podcast-concurrency-isolation.md) | 팟캐스트 동시성 격리 구현 계획 *(완료)* |
+
+## 설계 문서 (Design Specs)
+
+| 문서 | 설명 |
+|------|------|
+| [podcast-concurrency-isolation-design.md](superpowers/specs/2026-03-30-podcast-concurrency-isolation-design.md) | 팟캐스트 동시성 격리 설계 |
+| [bedrock-model-optimization-design.md](superpowers/specs/2026-03-30-bedrock-model-optimization-design.md) | Bedrock 모델 최적화 테스트 설계 |
 
 ## 변경 이력 (Changelog)
 
 | 문서 | 설명 |
 |------|------|
+| [CHANGELOG_v27.md](changelog/CHANGELOG_v27.md) | v27 변경이력 — 동시성 격리 리팩토링 |
+| [CHANGELOG_v26.md](changelog/CHANGELOG_v26.md) | v26 변경이력 |
 | [CHANGELOG_v25.md](changelog/CHANGELOG_v25.md) | v25 변경이력 |
 | [CHANGELOG_v24.md](changelog/CHANGELOG_v24.md) | v24 변경이력 |
 | [CHANGELOG_v23.md](changelog/CHANGELOG_v23.md) | v23 변경이력 |
@@ -83,4 +100,4 @@ Mind-Log 프로젝트 문서 마스터 네비게이션입니다.
 
 ---
 
-*마지막 업데이트: 2026-03-17*
+*마지막 업데이트: 2026-03-30*

@@ -437,15 +437,15 @@ graph.add_node("personalization", personalization_node)      # 개발자1
 
 ### 노드 인터페이스 규칙
 
-모든 에이전트 노드는 동일한 시그니처를 따른다:
+모든 에이전트 노드는 동일한 시그니처를 따른다. **노드 함수 내부에서 에이전트를 새로 생성**하여
+동시 요청 간 상태를 격리한다. 모듈 레벨 싱글톤으로 에이전트를 생성하지 마시오.
 
 ```python
 async def agent_node(state: AgentState) -> dict[str, Any]:
-    # 1. 자기 담당 입력 필드 읽기
-    # 2. 처리 로직
-    # 3. 변경된 필드만 dict로 반환 (LangGraph가 기존 상태에 병합)
-    # 4. next_step 설정 (필요시)
-    return {"필드명": 값, ...}
+    """요청마다 새 인스턴스를 생성하여 동시 요청 간 상태를 격리한다."""
+    agent = SomeAgent()          # 요청별 인스턴스 생성
+    return await agent(state)    # __call__ 또는 .process() 사용
+    # LangGraph가 반환된 dict를 기존 상태에 자동 병합
 ```
 
 ### Memory/Knowledge 독립 에이전트 패턴
@@ -516,7 +516,7 @@ class ReasoningAgent:
 
 ---
 
-## 구현 현황 (2026-03-13 기준)
+## 구현 현황 (2026-03-30 기준)
 
 | 모드 | 구현 에이전트 | 진행률 |
 |------|------------|--------|
@@ -538,8 +538,6 @@ class ReasoningAgent:
 
 ### 프로젝트 문서 (저장소 내)
 
-- `docs/guides/GIT_WORKFLOW.md` — 브랜치/커밋/PR 상세 가이드
-- `docs/architecture/PROJECT_STRUCTURE.md` — 디렉토리 구조 설명
 - `docs/getting-started/QUICK_START.md` — 환경 설정 및 빠른 시작
 - `docs/architecture/AGENT_ROLES.md` — 에이전트별 역할·입출력·이슈 정의서
 - `docs/guides/PROMPT_VERSIONING.md` — 프롬프트 멀티버전 관리 가이드
@@ -556,4 +554,4 @@ class ReasoningAgent:
 
 ---
 
-*마지막 업데이트: 2026-03-13*
+*마지막 업데이트: 2026-03-30*

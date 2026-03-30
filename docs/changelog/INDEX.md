@@ -4,6 +4,7 @@
 
 | 버전 | 파일 | 요약 |
 |------|------|------|
+| v27 | [CHANGELOG_v27.md](CHANGELOG_v27.md) | 동시성 격리 리팩토링 — 10개 에이전트 싱글톤→요청별 인스턴스 + 문서 정비 |
 | v26 | [CHANGELOG_v26.md](CHANGELOG_v26.md) | Docker 배포 차단 해제 + Visualization settings 기반 전환 + Bedrock Converse API + CRISIS 버그 수정 |
 | v25 | [CHANGELOG_v25.md](CHANGELOG_v25.md) | API 응답 슬림화 + Visualization TIER 2 이동 + 재시도 중복 방지 |
 | v24 | [CHANGELOG_v24.md](CHANGELOG_v24.md) | API_SPEC.md 구조 분할 리팩토링 (v1.2 → v2.0) |
@@ -21,4 +22,4 @@
 
 ---
 
-*마지막 업데이트: 2026-03-26*
+*마지막 업데이트: 2026-03-30*
