@@ -111,6 +111,7 @@ async def evaluate(
     client = LLMClient(agent_name="evaluator", model_override=EVALUATOR_MODEL_ID)
     prompt = _build_evaluation_prompt(agent_name, agent_output, user_input, all_criteria)
 
+    response_text = ""
     try:
         response_text = await client.generate(
             system_prompt=prompt,
@@ -150,7 +151,7 @@ async def evaluate(
             "total_score": 0.0,
             "summary": f"Evaluator 응답 파싱 실패: {e}",
             "error": "parse_error",
-            "raw_response": response_text[:2000] if "response_text" in dir() else "",
+            "raw_response": response_text[:2000],
         }
     except Exception as e:
         logger.error("Evaluator 호출 실패: %s", e)

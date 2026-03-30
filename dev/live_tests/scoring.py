@@ -13,6 +13,8 @@ Phase 1 결과 JSON을 읽어 에이전트별 (모델 x 지표) 매트릭스를 
 
 from __future__ import annotations
 
+import time as _time
+
 import argparse
 import json
 import statistics
@@ -219,7 +221,7 @@ def main() -> None:
 
     # 5. 결과 저장
     aggregated = {
-        "generated_at": __import__("time").strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "generated_at": _time.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "weights": DEFAULT_WEIGHTS,
         "best_models": best,
         "composite_scores": composite,

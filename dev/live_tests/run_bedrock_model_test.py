@@ -198,13 +198,16 @@ async def run_calibration(max_test: int = 3) -> dict[str, Any]:
 
         results = []
         start = time.perf_counter()
-        for p in tasks:
+
+        async def _wait_proc(proc: asyncio.subprocess.Process) -> dict[str, Any]:
             try:
-                _, stderr = await asyncio.wait_for(p.communicate(), timeout=PROCESS_TIMEOUT)
-                results.append({"returncode": p.returncode, "stderr": stderr.decode()[:200]})
+                _, err = await asyncio.wait_for(proc.communicate(), timeout=PROCESS_TIMEOUT)
+                return {"returncode": proc.returncode, "stderr": err.decode()[:200]}
             except asyncio.TimeoutError:
-                p.kill()
-                results.append({"returncode": -1, "stderr": "timeout"})
+                proc.kill()
+                return {"returncode": -1, "stderr": "timeout"}
+
+        results = await asyncio.gather(*[_wait_proc(p) for p in tasks])
 
         elapsed = time.perf_counter() - start
         mem_after = _get_memory_mb()
