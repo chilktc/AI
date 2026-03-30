@@ -133,3 +133,36 @@ def test_phase1_other_agents_use_bedrock_models() -> None:
         models, skip_viz = _select_models_and_skip_viz(agent)
         assert models is BEDROCK_MODELS, f"{agent}: BEDROCK_MODELS 아님"
         assert skip_viz == "true", f"{agent}: skip_viz가 true 아님"
+
+
+# === Phase 3 model_id 조회 로직 ===
+
+
+def _resolve_model_id(agent_name: str, model_short: str) -> str | None:
+    """Phase 3에서 에이전트 + model_short 조합으로 model_id를 반환하는 순수 함수."""
+    bedrock_map = {m["short"]: m["model_id"] for m in BEDROCK_MODELS}
+    image_map = {m["short"]: m["model_id"] for m in IMAGE_MODELS}
+    if agent_name == "visualization":
+        return image_map.get(model_short)
+    return bedrock_map.get(model_short)
+
+
+def test_phase3_visualization_resolves_from_image_map() -> None:
+    model_id = _resolve_model_id("visualization", "nova-canvas")
+    assert model_id == "amazon.nova-canvas-v1:0"
+
+
+def test_phase3_visualization_titan_v2_resolves() -> None:
+    model_id = _resolve_model_id("visualization", "titan-v2")
+    assert model_id == "amazon.titan-image-generator-v2:0"
+
+
+def test_phase3_non_visualization_resolves_from_bedrock_map() -> None:
+    model_id = _resolve_model_id("safety", "c37-sonnet")
+    assert model_id == "apac.anthropic.claude-3-7-sonnet-20250219-v1:0"
+
+
+def test_phase3_visualization_bedrock_short_returns_none() -> None:
+    """visualization에 텍스트 모델 short를 넣으면 None이어야 한다."""
+    model_id = _resolve_model_id("visualization", "c37-sonnet")
+    assert model_id is None

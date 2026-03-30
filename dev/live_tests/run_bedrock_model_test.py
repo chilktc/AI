@@ -382,7 +382,7 @@ async def run_phase3(
     max_concurrent: int = DEFAULT_MAX_CONCURRENT,
 ) -> None:
     """최적 조합 + Baseline을 각 5회씩 실행한다."""
-    from dev.live_tests.evaluator_criteria import BEDROCK_MODELS
+    from dev.live_tests.evaluator_criteria import BEDROCK_MODELS, IMAGE_MODELS
 
     RUNS_PHASE3 = 5
 
@@ -403,6 +403,7 @@ async def run_phase3(
 
     # model_short → model_id 매핑
     model_id_map = {m["short"]: m["model_id"] for m in BEDROCK_MODELS}
+    image_model_id_map = {m["short"]: m["model_id"] for m in IMAGE_MODELS}
 
     best_models: dict[str, dict[str, Any]] = optimal.get("best_models", optimal)
     print(f"  대상 에이전트: {len(best_models)}개, 각 {RUNS_PHASE3}회 실행")
@@ -416,12 +417,17 @@ async def run_phase3(
     tasks = []
     for agent_name, info in best_models.items():
         model_short = info["model_short"]
-        model_id = model_id_map.get(model_short)
+
+        if agent_name == "visualization":
+            model_id = image_model_id_map.get(model_short)
+            skip_viz = "false"
+        else:
+            model_id = model_id_map.get(model_short)
+            skip_viz = "true"
+
         if not model_id:
             print(f"  [!] {agent_name}: model_short '{model_short}' 매핑 없음, 건너뜀")
             continue
-
-        skip_viz = "true" if agent_name != "visualization" else "false"
 
         for run in range(1, RUNS_PHASE3 + 1):
             output_file = phase3_dir / f"{agent_name}_{model_short}_run{run}.json"
