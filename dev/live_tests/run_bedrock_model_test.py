@@ -116,11 +116,44 @@ async def run_phase0() -> None:
         out_path = phase0_dir / f"connectivity_{model['short']}_{timestamp}.json"
         out_path.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    # 이미지 모델
+    # 이미지 모델 — VisualizationAgent로 실제 생성 1회 시도
     for model in IMAGE_MODELS:
         print(f"\n  [{model['short']}] {model['model_id']}...", end=" ")
-        result = {"model": model, "status": "skipped", "note": "이미지 모델은 별도 테스트 필요"}
-        print("SKIP (이미지 모델)")
+        try:
+            from src.agents.podcast.visualization import VisualizationAgent
+            import config.loader as _loader
+            _loader._settings_instance = None
+            _settings = _loader.get_settings()
+            viz_cfg = _settings._config.setdefault("agents", {}).setdefault("visualization", {})
+            viz_cfg["image_model"] = model["model_id"]
+
+            agent = VisualizationAgent()
+            start = time.perf_counter()
+            test_state = {
+                "emotion_vectors": {"joy": 0.5},
+                "content_analysis": {},
+                "mode": "podcast",
+                "user_id": "phase0-test",
+            }
+            result_data = await agent.process(test_state)
+            elapsed = time.perf_counter() - start
+
+            img_status = result_data.get("visual_data", {}).get("status", "unknown")
+            result = {
+                "model": model,
+                "status": "ok" if img_status != "error" else "error",
+                "response_time": round(elapsed, 2),
+                "image_status": img_status,
+            }
+            print(f"OK ({elapsed:.1f}s, status={img_status})")
+        except Exception as e:
+            result = {
+                "model": model,
+                "status": "error",
+                "error": str(e),
+                "error_type": type(e).__name__,
+            }
+            print(f"FAIL: {e}")
 
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         out_path = phase0_dir / f"connectivity_{model['short']}_{timestamp}.json"
