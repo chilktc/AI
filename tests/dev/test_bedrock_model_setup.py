@@ -1,8 +1,6 @@
 """evaluator_criteria.py 모델 목록 검증 테스트."""
 from __future__ import annotations
 
-import pytest
-
 from dev.live_tests.evaluator_criteria import BEDROCK_MODELS, IMAGE_MODELS
 
 
