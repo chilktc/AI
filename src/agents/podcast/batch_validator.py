@@ -238,10 +238,9 @@ class BatchValidatorAgent(BaseAgent):
         return parts
 
 
-# LangGraph 노드 함수로 사용할 에이전트 인스턴스
-batch_validator_agent = BatchValidatorAgent()
-
-
 async def batch_validator_node(state: AgentState) -> dict[str, Any]:
-    """LangGraph 노드 — Batch Validator."""
-    return await batch_validator_agent(state)
+    """LangGraph 노드 — Batch Validator.
+    요청마다 새 인스턴스를 생성하여 동시 요청 간 상태를 격리한다.
+    """
+    agent = BatchValidatorAgent()
+    return await agent(state)

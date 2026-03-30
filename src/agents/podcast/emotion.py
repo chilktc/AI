@@ -87,8 +87,9 @@ class EmotionAgent(BaseAgent):
         return {"emotion_vectors": emotion_vectors}
 
 
-emotion_agent = EmotionAgent()
-
-
 async def emotion_node(state: AgentState) -> dict[str, Any]:
-    return await emotion_agent(state)
+    """LangGraph 노드 — Emotion Agent.
+    요청마다 새 인스턴스를 생성하여 동시 요청 간 상태를 격리한다.
+    """
+    agent = EmotionAgent()
+    return await agent(state)

@@ -67,10 +67,9 @@ class SafetyAgent(BaseAgent):
             
         return update_data
 
-# --- 싱글톤 + 노드 래퍼 ---
-# 인스턴스 생성 시점에 settings.yaml을 참조하여 llm_client가 초기화됩니다.
-safety_agent = SafetyAgent()
-
 async def safety_node(state: AgentState) -> dict[str, Any]:
-    """LangGraph 노드 — Safety Agent. 3인 합의된 workflow.py에서 호출됨."""
-    return await safety_agent(state)
+    """LangGraph 노드 — Safety Agent.
+    요청마다 새 인스턴스를 생성하여 동시 요청 간 상태를 격리한다.
+    """
+    agent = SafetyAgent()
+    return await agent(state)

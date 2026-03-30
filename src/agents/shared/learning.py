@@ -127,10 +127,9 @@ class LearningAgent(BaseAgent):
             self.logger.warning("학습 결과 저장 실패 — %s: %s", type(e).__name__, str(e))
 
 
-# LangGraph 노드 함수로 사용할 에이전트 인스턴스
-learning_agent = LearningAgent()
-
-
 async def learning_node(state: AgentState) -> dict[str, Any]:
-    """LangGraph 노드 — Learning Agent."""
-    return await learning_agent(state)
+    """LangGraph 노드 — Learning Agent.
+    요청마다 새 인스턴스를 생성하여 동시 요청 간 상태를 격리한다.
+    """
+    agent = LearningAgent()
+    return await agent(state)

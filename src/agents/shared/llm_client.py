@@ -55,9 +55,13 @@ class LLMClient:
 
         # Bedrock 명시 사용
         client = LLMClient(agent_name="content_analyzer", provider_override="bedrock")
+
+    [동시성 안전] 이 클래스의 인스턴스는 BaseAgent와 함께 요청마다 새로 생성된다.
+    _last_usage, _total_usage 등의 mutable 상태가 요청별로 격리되려면
+    인스턴스가 공유되지 않아야 한다.
     """
 
-    # 외부 프로바이더 레지스트리 — register_provider()로 등록 (로컬 개발 전용)
+    # [동시성] 클래스 변수 — 앱 부트스트랩 시에만 등록, 런타임 요청 중 변경 금지
     _custom_providers: dict[str, type] = {}
 
     @classmethod
@@ -132,9 +136,9 @@ class LLMClient:
         self._max_tokens: int = agent_config.get("max_tokens", 4096)
         self._temperature: float = agent_config.get("temperature", 0.7)
 
-        # 토큰 사용량 추적 — 직전 LLM 호출의 토큰 수를 저장한다
+        # [동시성] 요청별 인스턴스 전제 — 싱글톤 시 다른 요청 토큰 수로 덮어쓰기됨
         self._last_usage: dict[str, int] | None = None
-        # 누적 토큰 사용량 — 이 클라이언트 인스턴스의 전체 토큰 합산
+        # [동시성] 요청별 인스턴스 전제 — 싱글톤 시 += 연산이 비원자적이라 값 유실
         self._total_usage: dict[str, int] = {
             "input_tokens": 0,
             "output_tokens": 0,
@@ -205,10 +209,12 @@ class LLMClient:
     def last_usage(self) -> dict[str, int] | None:
         """직전 LLM 호출의 토큰 사용량을 반환한다.
 
+        내부 상태 보호를 위해 복사본을 반환한다.
+
         Returns:
             {"input_tokens": N, "output_tokens": N, "total_tokens": N} 또는 None
         """
-        return self._last_usage
+        return self._last_usage.copy() if self._last_usage is not None else None
 
     @property
     def total_usage(self) -> dict[str, int]:

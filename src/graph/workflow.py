@@ -87,21 +87,21 @@ from src.agents.podcast.visualization import visualization_node  # noqa: E402
 from src.agents.shared.learning import learning_node  # noqa: E402
 
 # --- TIER 0 (개발자1) ---
-_intent_classifier = IntentClassifierAgent()
 
 
 async def intent_classifier_node(state: AgentState) -> dict[str, Any]:
-    """Intent Classifier 노드"""
-    return await _intent_classifier.process(state)
+    """Intent Classifier 노드 — 요청마다 새 인스턴스를 생성하여 동시 요청 간 상태를 격리한다."""
+    agent = IntentClassifierAgent()
+    return await agent.process(state)
 
 
 # --- TIER 2 팟캐스트모드 (개발자1) ---
-_script_generator = ScriptGeneratorAgent()
 
 
 async def script_generator_node(state: AgentState) -> dict[str, Any]:
-    """Script Generator 노드"""
-    return await _script_generator.process(state)
+    """Script Generator 노드 — 요청마다 새 인스턴스를 생성하여 동시 요청 간 상태를 격리한다."""
+    agent = ScriptGeneratorAgent()
+    return await agent.process(state)
 
 
 async def tier2_podcast_fan_out(state: AgentState) -> dict[str, Any]:
@@ -153,29 +153,12 @@ async def tier2_podcast_fan_out(state: AgentState) -> dict[str, Any]:
 
 
 # --- TIER 4 팟캐스트모드 (개발자1) ---
-_script_personalizer = ScriptPersonalizerAgent()
-
-
-def reset_agents() -> None:
-    """모든 에이전트 싱글톤을 재생성한다.
-
-    멀티 프로바이더 테스트에서 LLM_PROVIDER 환경변수 변경 후
-    호출하면 새 프로바이더 설정이 적용된 에이전트가 생성된다.
-
-    대상:
-        - _intent_classifier (TIER 0)
-        - _script_generator (TIER 2 팟캐스트)
-        - _script_personalizer (TIER 4 팟캐스트)
-    """
-    global _intent_classifier, _script_generator, _script_personalizer
-    _intent_classifier = IntentClassifierAgent()
-    _script_generator = ScriptGeneratorAgent()
-    _script_personalizer = ScriptPersonalizerAgent()
 
 
 async def script_personalizer_node(state: AgentState) -> dict[str, Any]:
-    """Script Personalizer 노드"""
-    return await _script_personalizer.process(state)
+    """Script Personalizer 노드 — 요청마다 새 인스턴스를 생성하여 동시 요청 간 상태를 격리한다."""
+    agent = ScriptPersonalizerAgent()
+    return await agent.process(state)
 
 
 # ---------------------------------------------------------------------------
