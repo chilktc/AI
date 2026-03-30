@@ -450,10 +450,9 @@ class PodcastReasoningAgent(BaseAgent):
         return None
 
 
-# LangGraph 노드 함수로 사용할 에이전트 인스턴스
-podcast_reasoning_agent = PodcastReasoningAgent()
-
-
 async def podcast_reasoning_node(state: AgentState) -> dict[str, Any]:
-    """LangGraph 노드 — Podcast Reasoning."""
-    return await podcast_reasoning_agent(state)
+    """LangGraph 노드 — Podcast Reasoning.
+    요청마다 새 인스턴스를 생성하여 동시 요청 간 상태를 격리한다.
+    """
+    agent = PodcastReasoningAgent()
+    return await agent(state)

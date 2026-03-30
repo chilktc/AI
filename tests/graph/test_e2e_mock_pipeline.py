@@ -143,7 +143,7 @@ def mock_podcast_nodes(monkeypatch):
     import src.graph.workflow as wf
 
     monkeypatch.setattr(
-        wf._intent_classifier, "process",
+        wf, "intent_classifier_node",
         AsyncMock(return_value=MOCK_INTENT_PODCAST),
     )
     monkeypatch.setattr(wf, "safety_node", AsyncMock(return_value=MOCK_SAFETY_SAFE))
@@ -157,12 +157,12 @@ def mock_podcast_nodes(monkeypatch):
         AsyncMock(return_value=MOCK_REASONING_PODCAST),
     )
     monkeypatch.setattr(
-        wf._script_generator, "process",
+        wf, "script_generator_node",
         AsyncMock(return_value=MOCK_SCRIPT_DRAFT),
     )
     monkeypatch.setattr(wf, "batch_validator_node", AsyncMock(return_value=MOCK_BV_PASS))
     monkeypatch.setattr(
-        wf._script_personalizer, "process",
+        wf, "script_personalizer_node",
         AsyncMock(return_value=MOCK_FINAL_OUTPUT_PODCAST),
     )
     monkeypatch.setattr(wf, "visualization_node", AsyncMock(return_value=MOCK_VISUALIZATION))
@@ -175,7 +175,7 @@ def mock_conversation_nodes(monkeypatch):
     import src.graph.workflow as wf
 
     monkeypatch.setattr(
-        wf._intent_classifier, "process",
+        wf, "intent_classifier_node",
         AsyncMock(return_value=MOCK_INTENT_CONVERSATION),
     )
     monkeypatch.setattr(wf, "safety_node", AsyncMock(return_value=MOCK_SAFETY_SAFE))
@@ -201,7 +201,7 @@ def mock_crisis_nodes(monkeypatch):
     import src.graph.workflow as wf
 
     monkeypatch.setattr(
-        wf._intent_classifier, "process",
+        wf, "intent_classifier_node",
         AsyncMock(return_value=MOCK_INTENT_CRISIS),
     )
     monkeypatch.setattr(wf, "safety_node", AsyncMock(return_value=MOCK_SAFETY_CRISIS))
@@ -215,7 +215,7 @@ def mock_crisis_nodes(monkeypatch):
         AsyncMock(return_value=MOCK_REASONING_PODCAST),
     )
     monkeypatch.setattr(
-        wf._script_generator, "process",
+        wf, "script_generator_node",
         AsyncMock(side_effect=AssertionError("CRISIS 시 TIER 2는 실행되면 안 됨")),
     )
     monkeypatch.setattr(
@@ -223,7 +223,7 @@ def mock_crisis_nodes(monkeypatch):
         AsyncMock(side_effect=AssertionError("CRISIS 시 TIER 3는 실행되면 안 됨")),
     )
     monkeypatch.setattr(
-        wf._script_personalizer, "process",
+        wf, "script_personalizer_node",
         AsyncMock(side_effect=AssertionError("CRISIS 시 TIER 4는 실행되면 안 됨")),
     )
     monkeypatch.setattr(wf, "visualization_node", AsyncMock(return_value=MOCK_VISUALIZATION))
@@ -360,7 +360,7 @@ async def test_retry_then_pass(monkeypatch, podcast_initial_state):
     import src.graph.workflow as wf
 
     monkeypatch.setattr(
-        wf._intent_classifier, "process",
+        wf, "intent_classifier_node",
         AsyncMock(return_value=MOCK_INTENT_PODCAST),
     )
     monkeypatch.setattr(wf, "safety_node", AsyncMock(return_value=MOCK_SAFETY_SAFE))
@@ -374,14 +374,14 @@ async def test_retry_then_pass(monkeypatch, podcast_initial_state):
         AsyncMock(return_value=MOCK_REASONING_PODCAST),
     )
     monkeypatch.setattr(
-        wf._script_generator, "process",
+        wf, "script_generator_node",
         AsyncMock(return_value=MOCK_SCRIPT_DRAFT),
     )
 
     bv_mock = AsyncMock(side_effect=[MOCK_BV_FAIL, MOCK_BV_PASS])
     monkeypatch.setattr(wf, "batch_validator_node", bv_mock)
     monkeypatch.setattr(
-        wf._script_personalizer, "process",
+        wf, "script_personalizer_node",
         AsyncMock(return_value=MOCK_FINAL_OUTPUT_PODCAST),
     )
     monkeypatch.setattr(wf, "visualization_node", AsyncMock(return_value=MOCK_VISUALIZATION))

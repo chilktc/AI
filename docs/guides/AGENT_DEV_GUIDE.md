@@ -11,7 +11,7 @@ Mind-Log 에이전트를 구현할 때 참고하는 실무 가이드입니다.
 
 - [ ] **BaseAgent 상속** + `__init__(name, tier)` 설정
 - [ ] **`process(state: AgentState) -> dict[str, Any]`** 구현 — 자기 담당 필드만 반환
-- [ ] **모듈 하단** 싱글톤 인스턴스 + `_node()` 래퍼 함수 작성
+- [ ] **모듈 하단** 노드 함수 작성 (요청별 인스턴스 생성 패턴)
 - [ ] **프롬프트 YAML** 작성: `prompts/{mode}/{name}.yaml`
 - [ ] **테스트** 작성: `tests/agents/{mode}/test_{name}.py`
 - [ ] **workflow.py stub 교체** (→ 섹션 6 참조)
@@ -44,11 +44,17 @@ class ContextAgent(BaseAgent):
 
     def __init__(self) -> None:
         super().__init__(name="context", tier=1)
+        # BaseAgent.__init__이 자동으로 수행:
+        #   - LLMClient 초기화 (settings.yaml 기반 모델/프로바이더 자동 결정)
+        #   - PromptLoader로 prompts/{mode}/{name}.yaml 프롬프트 자동 로딩
+        #   - A/B 테스트 설정 로딩 (settings.yaml prompts.ab_tests 참조)
 
     async def process(self, state: AgentState) -> dict[str, Any]:
         user_input = state["user_input"]
 
-        # BaseAgent.call_llm_json: 모델은 settings.yaml에서 자동 결정
+        # call_llm_json: JSON 응답 + LLM 호출 횟수 자동 추적
+        # call_llm: 텍스트 응답 + LLM 호출 횟수 자동 추적
+        # get_prompt("키"): 자동 로딩된 프롬프트에서 키로 조회
         result = await self.call_llm_json(
             system_message=self.get_prompt("system_prompt"),
             user_message=user_input,
@@ -57,13 +63,13 @@ class ContextAgent(BaseAgent):
         return {"context": result}
 
 
-# --- 싱글톤 + 노드 래퍼 ---
-context_agent = ContextAgent()
-
-
+# --- 노드 함수 (요청별 인스턴스 생성) ---
 async def context_node(state: AgentState) -> dict[str, Any]:
-    """LangGraph 노드 — Context Agent."""
-    return await context_agent(state)
+    """LangGraph 노드 — Context Agent.
+    요청마다 새 인스턴스를 생성하여 동시 요청 간 상태를 격리한다.
+    """
+    agent = ContextAgent()
+    return await agent(state)
 ```
 
 ### 다중 프롬프트(GoT/ToT/CoT) 에이전트
@@ -138,13 +144,13 @@ class ReasoningAgent(BaseAgent):
         return {"reasoning_result": result}
 
 
-# --- 싱글톤 + 노드 래퍼 ---
-reasoning_agent = ReasoningAgent()
-
-
+# --- 노드 함수 (요청별 인스턴스 생성) ---
 async def reasoning_node(state: AgentState) -> dict[str, Any]:
-    """LangGraph 노드 — Reasoning Agent."""
-    return await reasoning_agent(state)
+    """LangGraph 노드 — Reasoning Agent.
+    요청마다 새 인스턴스를 생성하여 동시 요청 간 상태를 격리한다.
+    """
+    agent = ReasoningAgent()
+    return await agent(state)
 ```
 
 ### 독립 에이전트 (DI — 의존성 주입)

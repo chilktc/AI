@@ -232,10 +232,9 @@ class ContentAnalyzerAgent(BaseAgent):
         return corrected
 
 
-# LangGraph 노드 함수로 사용할 에이전트 인스턴스
-content_analyzer_agent = ContentAnalyzerAgent()
-
-
 async def content_analyzer_node(state: AgentState) -> dict[str, Any]:
-    """LangGraph 노드 — Content Analyzer."""
-    return await content_analyzer_agent(state)
+    """LangGraph 노드 — Content Analyzer.
+    요청마다 새 인스턴스를 생성하여 동시 요청 간 상태를 격리한다.
+    """
+    agent = ContentAnalyzerAgent()
+    return await agent(state)

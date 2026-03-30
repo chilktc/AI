@@ -73,6 +73,11 @@ class BaseAgent(ABC):
             async def process(self, state: AgentState) -> dict[str, Any]:
                 # 에이전트 로직 구현
                 return {"content_analysis": {...}}
+
+    [동시성 안전] 이 클래스의 인스턴스는 요청마다 새로 생성되어야 한다.
+    _llm_call_count, _last_input_snapshot, _last_output_snapshot 등의
+    mutable 상태가 요청별로 격리되려면 인스턴스가 공유되지 않아야 한다.
+    모듈 레벨 싱글톤으로 사용하지 마시오.
     """
 
     def __init__(
@@ -88,7 +93,7 @@ class BaseAgent(ABC):
             agent_name=name,
             model_override=model_override,
         )
-        # LLM 호출 횟수 추적 (audit용)
+        # [동시성] 요청별 인스턴스 전제 — 싱글톤 시 요청 간 카운터 섞임
         self._llm_call_count = 0
         # 프롬프트 로더 초기화 — YAML 파일에서 프롬프트를 로드한다
         self._prompt_loader = PromptLoader(base_dir=get_prompt_base_dir())
@@ -108,11 +113,12 @@ class BaseAgent(ABC):
         if self._ab_config is not None:
             self._preload_ab_variants()
 
-        # 현재 실행에서 선택된 A/B variant (Telemetry 추적용)
-        self._current_ab_variant: str | None = None
+        # A/B variant는 ContextVar(_active_ab_variant)로만 관리한다.
+        # 인스턴스 변수로 중복 저장하지 않는다 — 동시 요청 시 경합 방지.
 
-        # I/O 스냅샷 — 직전 실행의 입출력 기록 (모니터링용)
+        # [동시성] 요청별 인스턴스 전제 — 싱글톤 시 다른 요청 스냅샷으로 덮어쓰기됨
         self._last_input_snapshot: dict[str, Any] | None = None
+        # [동시성] 요청별 인스턴스 전제 — 싱글톤 시 다른 요청 결과로 덮어쓰기됨
         self._last_output_snapshot: dict[str, Any] | None = None
 
     # --- v8: 버전 해석 ---
@@ -298,13 +304,12 @@ class BaseAgent(ABC):
 
     @property
     def ab_variant(self) -> str | None:
-        """
-        현재 실행에서 선택된 A/B variant를 반환한다.
+        """현재 실행에서 선택된 A/B variant를 반환한다.
 
+        ContextVar에서 읽으므로 동시 요청 간 안전하다.
         A/B 테스트가 비활성이면 None.
-        Telemetry에서 어떤 variant로 실행되었는지 추적할 때 사용한다.
         """
-        return self._current_ab_variant
+        return _active_ab_variant.get()
 
     def get_prompt(self, key: str = "system_prompt") -> str:
         """
@@ -376,7 +381,6 @@ class BaseAgent(ABC):
         if self._ab_config is not None and self._ab_prompts:
             session_id = state.get("session_id", "unknown")
             variant = self._resolve_ab_variant(str(session_id))
-            self._current_ab_variant = variant
             token = _active_ab_variant.set(variant)
             ab_label = f" [A/B: {variant}]"
 
@@ -423,7 +427,6 @@ class BaseAgent(ABC):
             # contextvars 정리 — 이전 값으로 복원
             if token is not None:
                 _active_ab_variant.reset(token)
-                self._current_ab_variant = None
 
     async def _traced_process(
         self, state: AgentState, tier_label: str,
@@ -451,7 +454,7 @@ class BaseAgent(ABC):
                 "agent_name": self.name,
                 "tier": self.tier,
                 "prompt_version": self._prompt_version,
-                "ab_variant": self._current_ab_variant,
+                "ab_variant": _active_ab_variant.get(),
                 "model_id": self.llm_client.model_id,
             },
         )
@@ -767,7 +770,7 @@ class BaseAgent(ABC):
             "agent_name": self.name,
             "tier": self.tier,
             "prompt_version": self._prompt_version,
-            "ab_variant": self._current_ab_variant,
+            "ab_variant": _active_ab_variant.get(),
             "llm_call_count": self._llm_call_count,
             "token_usage": self.llm_client.last_usage,
             "total_token_usage": self.llm_client.total_usage,

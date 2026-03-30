@@ -117,7 +117,9 @@ class VisualizationAgent(BaseAgent):
             }
 
 
-# --- 노드 래퍼 ---
-visualization_agent = VisualizationAgent()
 async def visualization_node(state: AgentState) -> dict[str, Any]:
-    return await visualization_agent(state)
+    """LangGraph 노드 — Visualization Agent.
+    요청마다 새 인스턴스를 생성하여 동시 요청 간 상태를 격리한다.
+    """
+    agent = VisualizationAgent()
+    return await agent(state)
