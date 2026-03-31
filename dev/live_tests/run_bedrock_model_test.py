@@ -116,6 +116,41 @@ async def run_phase0() -> None:
         out_path = phase0_dir / f"connectivity_{model['short']}_{timestamp}.json"
         out_path.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
 
+    # 프롬프트 캐싱 지원 검증
+    # ap-northeast-2(서울)은 공식 문서에 캐싱 지원 미명시 → APAC CRIS 경유 실측으로 확인
+    print(f"\n  [캐싱 검증] APAC CRIS cachePoint 지원 여부...")
+    try:
+        import boto3
+        bedrock_client = boto3.client("bedrock-runtime", region_name="ap-northeast-2")
+        # 캐싱 최소 요건: 1,024 토큰 이상 — 여기서는 짧은 프롬프트로 시도
+        cache_response = bedrock_client.converse(
+            modelId="apac.anthropic.claude-3-5-sonnet-20241022-v2:0",
+            system=[
+                {"text": "You are a connectivity test assistant."},
+                {"cachePoint": {"type": "default"}},
+            ],
+            messages=[{"role": "user", "content": [{"text": "test"}]}],
+            inferenceConfig={"maxTokens": 10},
+        )
+        usage = cache_response.get("usage", {})
+        cache_write = usage.get("cacheWriteInputTokens", 0)
+        cache_read = usage.get("cacheReadInputTokens", 0)
+        cache_supported = cache_write > 0 or cache_read > 0
+        cache_result = {
+            "supported": cache_supported,
+            "cacheWriteInputTokens": cache_write,
+            "cacheReadInputTokens": cache_read,
+            "note": "cacheWriteInputTokens > 0 이면 서울 리전 캐싱 활성화 확인됨",
+        }
+        status_str = f"지원됨 (write={cache_write}, read={cache_read})" if cache_supported else f"미지원 또는 토큰 부족 (write={cache_write})"
+        print(f"  {status_str}")
+    except Exception as e:
+        cache_result = {"supported": False, "error": str(e), "error_type": type(e).__name__}
+        print(f"  FAIL: {e}")
+
+    cache_path = phase0_dir / f"caching_support_{time.strftime('%Y%m%d_%H%M%S')}.json"
+    cache_path.write_text(json.dumps(cache_result, indent=2, ensure_ascii=False), encoding="utf-8")
+
     # 이미지 모델 — VisualizationAgent로 실제 생성 1회 시도
     if not IMAGE_MODELS:
         print("\n  이미지 모델 없음, 건너뜀")

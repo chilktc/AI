@@ -44,6 +44,7 @@ class AgentState(TypedDict, total=False):
     memory_results: dict[str, Any]  # Memory/Episode Memory → 기억 검색 결과
     knowledge_results: dict[str, Any]  # Knowledge Agent → 전문 지식 검색 결과
     reasoning_result: dict[str, Any]  # Reasoning/Podcast Reasoning → 추론 결과
+    # TODO: Synthesis Agent 구현 후 활성화 (대화모드 TIER 2 — 현재 미사용)
     response_draft: str  # Synthesis Agent → 응답 초안 (대화모드)
     script_draft: dict[str, Any]  # Script Generator → 팟캐스트 스크립트
 

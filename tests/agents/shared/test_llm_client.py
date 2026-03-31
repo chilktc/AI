@@ -121,6 +121,7 @@ def _mock_settings_factory(
     settings.get_openai_model_id.return_value = "gpt-4o-mini"
     settings.bedrock_region = "ap-northeast-2"
     settings.bedrock_config = {"region": "ap-northeast-2"}
+    settings.prompt_caching_config = {"enabled": False, "min_tokens": 1024}
     return settings
 
 

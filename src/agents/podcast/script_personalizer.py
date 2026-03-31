@@ -636,6 +636,10 @@ async def create_script_personalizer_node(
 ):
     """
     LangGraph에서 사용할 노드 함수 생성
+
+    TODO: enable_deep_personalization을 하드코딩(False) 대신
+          settings.agents.script_personalizer.deep_personalization 값으로 읽도록 변경
+          (config/settings.yaml에 deep_personalization: false 추가됨)
     """
     agent = ScriptPersonalizerAgent(
         db_client=db_client, enable_deep_personalization=enable_deep_personalization

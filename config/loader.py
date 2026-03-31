@@ -99,6 +99,18 @@ class Settings:
             self._config["llm"].get("bedrock", {}),
         )
 
+    @property
+    def prompt_caching_config(self) -> dict[str, Any]:
+        """프롬프트 캐싱 설정을 반환한다.
+
+        Returns:
+            {"enabled": bool, "min_tokens": int}
+        """
+        return cast(
+            dict[str, Any],
+            self._config.get("llm", {}).get("prompt_caching", {}),
+        )
+
     def get_model_id(self, model_key: str) -> str:
         """
         모델 키에 해당하는 Anthropic 직접 API 모델 ID를 반환한다.

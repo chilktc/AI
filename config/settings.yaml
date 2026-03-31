@@ -17,11 +17,17 @@ llm:
     opus: "claude-opus-4-6"
   
   # Bedrock 전용 모델 ID (provider: bedrock일 때 사용)
-  # [수정] 2026년 환경에서 검증된 최신 Bedrock ID로 업데이트
+  # [수정] ap-northeast-2(서울)은 Claude 3.5 Sonnet v2 이상 In-Region 직접 호출 불가
+  # APAC Cross-Region Inference Profile(CRIS) ID 사용 필수
+  # Bedrock 최적화 Phase 3 완료 후 에이전트별 최적 모델로 재교체 예정
   bedrock_models:
-    haiku: "anthropic.claude-3-haiku-20240307-v1:0"
-    sonnet: "anthropic.claude-3-5-sonnet-20241022-v2:0"
-    opus:   "anthropic.claude-3-opus-20240229-v1:0"
+    haiku:  "anthropic.claude-3-haiku-20240307-v1:0"          # In-Region 지원 (유지)
+    sonnet: "apac.anthropic.claude-3-5-sonnet-20241022-v2:0"  # APAC CRIS 필수
+    opus:   "apac.anthropic.claude-sonnet-4-20250514-v1:0"    # Opus 서울 미지원 → Sonnet 4 대체
+    # 추가 모델 (Bedrock 최적화 Phase 3 결과 후 활성화)
+    # claude_sonnet_4: "apac.anthropic.claude-sonnet-4-20250514-v1:0"
+    # nova_pro:  "apac.amazon.nova-pro-v1:0"
+    # nova_lite: "apac.amazon.nova-lite-v1:0"
   
   # OpenAI 전용 모델 ID (provider: openai일 때 사용)
   openai_models:
@@ -32,6 +38,18 @@ llm:
   # Bedrock 설정
   bedrock:
     region: "ap-northeast-2"  # 서울 리전 고정
+    retry:
+      max_attempts: 3           # ThrottlingException/ServiceUnavailableException 재시도 상한
+      initial_backoff_seconds: 1
+      max_backoff_seconds: 8
+    concurrency_limit: 10       # 동시 Bedrock 호출 상한 (Semaphore)
+
+  # 프롬프트 캐싱 설정 (Bedrock cachePoint / Anthropic cache_control)
+  # 캐시 읽기 = 표준 입력 토큰의 10% → 반복 요청 시 최대 ~88% 절감
+  # 서울 리전 지원 여부: Phase 0 캐싱 검증(cacheWriteInputTokens > 0)으로 확인
+  prompt_caching:
+    enabled: true
+    min_tokens: 1024  # 이 미만 프롬프트는 자동 스킵 (에러 없음)
   
   default_max_tokens: 4096
   temperature:
@@ -126,7 +144,7 @@ agents:
     moderate_threshold: 0.4  # complexity_score ≥ 이 값 → depth_level "medium" (미만 → "shallow")
   podcast_reasoning:
     model: sonnet
-    max_tokens: 4096
+    max_tokens: 8192  # [수정] 실제 출력 7~11KB → 4096 초과 시 JSON 잘림 방지
     temperature: 0.3
     full_threshold: 0.0      # complexity ≥ 이 값 → full GoT/ToT/CoT 추론 (0.0=항상 full)
     standard_threshold: 0.0  # complexity ≥ 이 값 → standard 추론 (미만 → lightweight)
@@ -143,7 +161,7 @@ agents:
   # ──────────────────────────────────────
   script_generator:
     model: sonnet
-    max_tokens: 4096
+    max_tokens: 8192  # [수정] 실제 출력 8~21KB → 4096 초과 시 JSON 잘림 방지
   visualization_podcast:
     model: sonnet
     max_tokens: 2048
@@ -161,6 +179,7 @@ agents:
   script_personalizer:
     model: sonnet
     max_tokens: 4096
+    deep_personalization: false  # [설정화] script_personalizer.py 하드코딩 대체
 
   # ──────────────────────────────────────
   # 공용 비동기
@@ -174,7 +193,7 @@ agents:
 
 # 저장소 설정
 storage:
-  mode: "local"                    # local | proxy | hybrid
+  mode: "proxy"                    # local | proxy | hybrid  [수정] 프로덕션 환경: proxy (백엔드 API 저장)
   s3:
     bucket: "mindlog-images"
     # region은 별도 정의 안 함 — 기존 llm.bedrock.region / AWS_REGION 재사용
@@ -240,3 +259,14 @@ monitoring:
   alerting:
     crisis_alert_enabled: true
     latency_threshold_ms: 10000
+
+# 데이터베이스 설정
+databases:
+  neo4j:
+    uri: "bolt://localhost:7687"  # 환경변수 NEO4J_URI로 오버라이드
+    # NEO4J_USER / NEO4J_PASSWORD 환경변수 필수
+  pinecone:
+    index_knowledge: "expert_knowledge"
+    index_memory_conversation: "mem_conversation"
+    index_memory_podcast: "mem_podcast_episode"
+    # PINECONE_API_KEY 환경변수 필수

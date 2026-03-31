@@ -25,18 +25,59 @@ class EmotionAgent(BaseAgent):
     def __init__(self) -> None:
         super().__init__(name="emotion", tier=1)
 
+    def _build_intent_context(self, intent: dict) -> str:
+        """Intent dict에서 감정 분석에 필요한 필드만 추출한다.
+
+        전체 dict(17개 필드, ~500~800 토큰) 대신 4개 핵심 필드만 전달하여
+        요청당 400~700 토큰을 절감한다. Safety Agent 패턴 참고.
+
+        Args:
+            intent: TIER 0 Intent Classifier 결과 dict
+        Returns:
+            감정 분석 참고용 요약 문자열 (3~4줄) 또는 빈 문자열
+        """
+        if not intent:
+            return ""
+        flags = intent.get("flags", {}) if isinstance(intent.get("flags"), dict) else {}
+        entities = intent.get("detected_entities", {}) if isinstance(intent.get("detected_entities"), dict) else {}
+        prior_emotions = entities.get("emotions", [])
+        intent_type = intent.get("intent_type", "")
+        urgency_level = flags.get("urgency_level", "")
+        risk_flag = flags.get("risk_flag", False)
+
+        lines = []
+        if intent_type:
+            lines.append(f"intent_type: {intent_type}")
+        if prior_emotions:
+            lines.append(f"detected_emotions: {prior_emotions}")
+        if urgency_level:
+            lines.append(f"urgency_level: {urgency_level}")
+        if risk_flag:
+            lines.append(f"risk_flag: {risk_flag}")
+        return "\n".join(lines)
+
     async def process(self, state: AgentState) -> dict[str, Any]:
+        """감정 벡터를 추출한다.
+
+        Args:
+            state: AgentState — user_input, intent 필드 읽음
+        Returns:
+            {"emotion_vectors": {...}} — AgentState에 병합됨
+        """
         user_input = str(state.get("user_input", ""))
         intent = state.get("intent", {})
         if not isinstance(intent, dict):
             intent = {}
+
+        intent_context = self._build_intent_context(intent)
+        intent_section = f"[Intent 참고]\n{intent_context}\n\n" if intent_context else ""
 
         try:
             vec = await self.call_llm_json(
                 system_prompt=self.get_prompt("system_prompt"),
                 user_message=(
                     f"[사용자 입력]\n{user_input}\n\n"
-                    f"[Intent 참고(TIER0)]\n{intent}\n\n"
+                    f"{intent_section}"
                     "반드시 JSON으로 반환:\n"
                     "{\n"
                     '  "primary_emotion": str,\n'

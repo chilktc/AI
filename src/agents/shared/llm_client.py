@@ -21,6 +21,7 @@ API 모델이 변경되어도 이 파일과 설정 파일만 수정하면 된다
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 from typing import Any
@@ -63,6 +64,10 @@ class LLMClient:
 
     # [동시성] 클래스 변수 — 앱 부트스트랩 시에만 등록, 런타임 요청 중 변경 금지
     _custom_providers: dict[str, type] = {}
+
+    # [동시성] Bedrock 동시 호출 상한 — 인스턴스 간 공유 Semaphore
+    # 첫 Bedrock 클라이언트 초기화 시 settings.llm.bedrock.concurrency_limit으로 설정
+    _bedrock_semaphore: asyncio.Semaphore | None = None
 
     @classmethod
     def register_provider(cls, name: str, provider_class: type) -> None:
@@ -136,6 +141,11 @@ class LLMClient:
         self._max_tokens: int = agent_config.get("max_tokens", 4096)
         self._temperature: float = agent_config.get("temperature", 0.7)
 
+        # 프롬프트 캐싱 설정 (Bedrock cachePoint / Anthropic cache_control)
+        caching_cfg = settings.prompt_caching_config
+        self._prompt_caching_enabled: bool = bool(caching_cfg.get("enabled", True))
+        self._prompt_caching_min_tokens: int = int(caching_cfg.get("min_tokens", 1024))
+
         # [동시성] 요청별 인스턴스 전제 — 싱글톤 시 다른 요청 토큰 수로 덮어쓰기됨
         self._last_usage: dict[str, int] | None = None
         # [동시성] 요청별 인스턴스 전제 — 싱글톤 시 += 연산이 비원자적이라 값 유실
@@ -195,6 +205,11 @@ class LLMClient:
 
         self._bedrock_client = boto3.client(**kwargs)
 
+        # Semaphore 초기화 — 클래스당 1회, 동시 Bedrock 호출 상한 설정
+        if LLMClient._bedrock_semaphore is None:
+            limit = bedrock_config.get("concurrency_limit", 10)
+            LLMClient._bedrock_semaphore = asyncio.Semaphore(int(limit))
+
     @property
     def model_id(self) -> str:
         """현재 사용 중인 모델 ID."""
@@ -229,17 +244,35 @@ class LLMClient:
             "total_tokens": 0,
         }
 
-    def _record_usage(self, input_tokens: int, output_tokens: int) -> None:
-        """토큰 사용량을 기록한다 (직전 + 누적)."""
+    def _record_usage(
+        self,
+        input_tokens: int,
+        output_tokens: int,
+        cache_read_tokens: int = 0,
+        cache_write_tokens: int = 0,
+    ) -> None:
+        """토큰 사용량을 기록한다 (직전 + 누적).
+
+        cache_read_tokens: 캐시 히트 토큰 (Bedrock cacheReadInputTokens)
+        cache_write_tokens: 캐시 저장 토큰 (Bedrock cacheWriteInputTokens)
+        """
         total = input_tokens + output_tokens
         self._last_usage = {
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
             "total_tokens": total,
+            "cache_read_tokens": cache_read_tokens,
+            "cache_write_tokens": cache_write_tokens,
         }
         self._total_usage["input_tokens"] += input_tokens
         self._total_usage["output_tokens"] += output_tokens
         self._total_usage["total_tokens"] += total
+        self._total_usage["cache_read_tokens"] = (
+            self._total_usage.get("cache_read_tokens", 0) + cache_read_tokens
+        )
+        self._total_usage["cache_write_tokens"] = (
+            self._total_usage.get("cache_write_tokens", 0) + cache_write_tokens
+        )
 
     async def generate(
         self,
@@ -323,17 +356,32 @@ class LLMClient:
         temperature: float,
     ) -> str:
         """Anthropic 직접 API를 통한 텍스트 생성."""
+        # 프롬프트 캐싱 — system_prompt 길이가 min_tokens 이상일 때 cache_control 추가
+        # 토큰 수는 정확히 계산할 수 없으므로 바이트 길이로 근사 (1 토큰 ≈ 4바이트)
+        use_cache = (
+            self._prompt_caching_enabled
+            and len(system_prompt.encode()) >= self._prompt_caching_min_tokens * 4
+        )
+        if use_cache:
+            system_param: Any = [
+                {"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}
+            ]
+        else:
+            system_param = system_prompt
+
         response = await self._anthropic_client.messages.create(
             model=self._model_id,
             max_tokens=max_tokens,
             temperature=temperature,
-            system=system_prompt,
+            system=system_param,
             messages=[{"role": "user", "content": user_message}],
         )
-        # 토큰 사용량 기록
+        # 토큰 사용량 기록 (캐시 히트/저장 포함)
         self._record_usage(
             input_tokens=response.usage.input_tokens,
             output_tokens=response.usage.output_tokens,
+            cache_read_tokens=getattr(response.usage, "cache_read_input_tokens", 0) or 0,
+            cache_write_tokens=getattr(response.usage, "cache_creation_input_tokens", 0) or 0,
         )
         # 첫 번째 content block에서 텍스트 추출 (TextBlock 가정)
         return response.content[0].text  # type: ignore[union-attr]
@@ -351,25 +399,75 @@ class LLMClient:
         모든 Bedrock 모델(Claude, Llama, Titan, Mistral, Nova 등)에 통일된
         요청/응답 포맷을 제공한다. boto3는 동기 클라이언트이므로
         asyncio.to_thread로 감싸서 비동기 처리한다.
-        """
-        import asyncio
 
-        # Converse API — 모든 Bedrock 모델 지원
-        response = await asyncio.to_thread(
-            self._bedrock_client.converse,
-            modelId=self._model_id,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [{"text": user_message}],
-                }
-            ],
-            system=[{"text": system_prompt}],
-            inferenceConfig={
-                "maxTokens": max_tokens,
-                "temperature": temperature,
-            },
+        ThrottlingException / ServiceUnavailableException 발생 시
+        exponential backoff(1s→2s→4s)로 최대 3회 재시도한다.
+        """
+        import botocore.exceptions  # type: ignore[import-untyped]
+
+        settings = get_settings()
+        retry_cfg = settings.bedrock_config.get("retry", {})
+        max_attempts: int = int(retry_cfg.get("max_attempts", 3))
+        initial_backoff: float = float(retry_cfg.get("initial_backoff_seconds", 1))
+        max_backoff: float = float(retry_cfg.get("max_backoff_seconds", 8))
+
+        # 프롬프트 캐싱 — system_prompt가 min_tokens 이상일 때 cachePoint 추가
+        use_cache = (
+            self._prompt_caching_enabled
+            and len(system_prompt.encode()) >= self._prompt_caching_min_tokens * 4
         )
+        system_block = [{"text": system_prompt}]
+        if use_cache:
+            system_block.append({"cachePoint": {"type": "default"}})
+
+        semaphore = LLMClient._bedrock_semaphore
+
+        async def _call() -> dict:
+            return await asyncio.to_thread(
+                self._bedrock_client.converse,
+                modelId=self._model_id,
+                messages=[{"role": "user", "content": [{"text": user_message}]}],
+                system=system_block,
+                inferenceConfig={"maxTokens": max_tokens, "temperature": temperature},
+            )
+
+        # Semaphore로 동시 호출 제한 (None이면 제한 없이 실행)
+        async def _call_with_semaphore() -> dict:
+            if semaphore is not None:
+                async with semaphore:
+                    return await _call()
+            return await _call()
+
+        # ThrottlingException / ServiceUnavailableException → exponential backoff 재시도
+        last_error: Exception | None = None
+        backoff = initial_backoff
+        for attempt in range(max_attempts):
+            try:
+                response = await _call_with_semaphore()
+                break
+            except botocore.exceptions.ClientError as e:
+                error_code = e.response.get("Error", {}).get("Code", "")
+                if error_code in ("ThrottlingException", "ServiceUnavailableException"):
+                    last_error = e
+                    if attempt < max_attempts - 1:
+                        await asyncio.sleep(min(backoff, max_backoff))
+                        backoff *= 2
+                    continue
+                elif error_code == "ModelNotReadyException":
+                    last_error = e
+                    if attempt < max_attempts - 1:
+                        await asyncio.sleep(5)
+                    continue
+                elif error_code == "AccessDeniedException":
+                    raise RuntimeError(
+                        f"Bedrock AccessDenied — 모델 ID 또는 IAM 권한 확인 필요: {self._model_id}"
+                    ) from e
+                raise
+        else:
+            # 모든 재시도 소진
+            raise RuntimeError(
+                f"Bedrock 호출 {max_attempts}회 재시도 후 실패: {last_error}"
+            ) from last_error
 
         # 통합 응답 구조 (모든 모델 동일)
         text = response["output"]["message"]["content"][0]["text"]
@@ -377,6 +475,8 @@ class LLMClient:
         self._record_usage(
             input_tokens=usage.get("inputTokens", 0),
             output_tokens=usage.get("outputTokens", 0),
+            cache_read_tokens=usage.get("cacheReadInputTokens", 0),
+            cache_write_tokens=usage.get("cacheWriteInputTokens", 0),
         )
         return str(text)
 
