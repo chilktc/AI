@@ -1,6 +1,7 @@
 services:
   ai-server:
     build: .
+    image: ${AI_SERVER_IMAGE:-mindlog-ai-service:latest}
     container_name: mindlog-ai-service
     ports:
       - "8000:8000"
