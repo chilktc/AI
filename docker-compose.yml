@@ -12,13 +12,13 @@ services:
       - ./prompts:/app/prompts
       # 로그 기록 보존을 위해 서버 폴더와 연결
       - ./logs:/app/logs
-    # EC2 t3.medium(4GB) OOM 방지 — Neo4j 함께 운영 시 1.5g, 단독 시 2g
-    mem_limit: 1500m
-    memswap_limit: 1500m
+    # EC2 t3.medium(4GB) OOM 방지 — Neo4j 비활성화 중, 단독 운영 2g
+    mem_limit: 2000m
+    memswap_limit: 2000m
     cpus: '1.5'
-    depends_on:
-      neo4j:
-        condition: service_healthy
+    # depends_on:          # TODO: Neo4j 구현 완료 후 활성화
+    #   neo4j:
+    #     condition: service_healthy
     healthcheck:
       # [B-2] ALB 헬스체크용 엔드포인트 확인 (30초 간격)
       # python:3.11-slim 이미지에 curl이 미설치이므로 python urllib 사용
@@ -33,33 +33,32 @@ services:
         max-size: "10mb"
         max-file: "3"
 
-  # Neo4j 그래프 DB — AI 팀 서버에서 직접 운영 (Docker Compose 통합 A안)
-  # EC2 t3.medium(4GB) 최소 메모리 설정: heap 512m + pagecache 256m = ~768m
-  neo4j:
-    image: neo4j:5-community
-    container_name: mindlog-neo4j
-    ports:
-      - "7474:7474"   # HTTP Browser UI
-      - "7687:7687"   # Bolt (앱 연결)
-    environment:
-      NEO4J_AUTH: "neo4j/${NEO4J_PASSWORD}"
-      NEO4J_server_memory_heap_initial__size: "256m"
-      NEO4J_server_memory_heap_max__size: "512m"
-      NEO4J_server_memory_pagecache__size: "256m"
-    volumes:
-      - ./data/neo4j:/data
-      - ./logs/neo4j:/logs
-    mem_limit: 1g
-    memswap_limit: 1g
-    healthcheck:
-      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "${NEO4J_PASSWORD}", "RETURN 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10mb"
-        max-file: "3"
+  # Neo4j 그래프 DB — 구현 예정, 현재 비활성화 (TODO: 구현 완료 후 주석 해제)
+  # neo4j:
+  #   image: neo4j:5-community
+  #   container_name: mindlog-neo4j
+  #   ports:
+  #     - "7474:7474"   # HTTP Browser UI
+  #     - "7687:7687"   # Bolt (앱 연결)
+  #   environment:
+  #     NEO4J_AUTH: "neo4j/${NEO4J_PASSWORD}"
+  #     NEO4J_server_memory_heap_initial__size: "256m"
+  #     NEO4J_server_memory_heap_max__size: "512m"
+  #     NEO4J_server_memory_pagecache__size: "256m"
+  #   volumes:
+  #     - ./data/neo4j:/data
+  #     - ./logs/neo4j:/logs
+  #   mem_limit: 1g
+  #   memswap_limit: 1g
+  #   healthcheck:
+  #     test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "${NEO4J_PASSWORD}", "RETURN 1"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 5
+  #     start_period: 30s
+  #   restart: unless-stopped
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10mb"
+  #       max-file: "3"
