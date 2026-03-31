@@ -117,13 +117,14 @@ async def run_phase0() -> None:
         out_path.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
 
     # 이미지 모델 — VisualizationAgent로 실제 생성 1회 시도
+    if not IMAGE_MODELS:
+        print("\n  이미지 모델 없음, 건너뜀")
     for model in IMAGE_MODELS:
         print(f"\n  [{model['short']}] {model['model_id']}...", end=" ")
         try:
             from src.agents.podcast.visualization import VisualizationAgent
-            import config.loader as _loader
-            _loader._settings_instance = None
-            _settings = _loader.get_settings()
+            config.loader._settings_instance = None
+            _settings = config.loader.get_settings()
             viz_cfg = _settings._config.setdefault("agents", {}).setdefault("visualization", {})
             viz_cfg["image_model"] = model["model_id"]
 
@@ -160,8 +161,7 @@ async def run_phase0() -> None:
         out_path.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
 
     # IMAGE_MODELS 루프 종료 후 — 다음 Phase에 settings 오염 방지
-    import config.loader as _loader
-    _loader._settings_instance = None
+    config.loader._settings_instance = None
 
     print(f"\n  Phase 0 완료 -> {phase0_dir}")
 
@@ -319,6 +319,10 @@ async def run_phase1(
             skip_viz = "true"
             models = BEDROCK_MODELS
 
+        if not models:
+            print(f"\n> {agent_name}: 모델 목록 비어 있음, 건너뜀")
+            continue
+
         print(f"\n> {agent_name} ({len(models)} 모델 x {RUNS_PER_MODEL} 회)")
 
         tasks = []
@@ -353,7 +357,7 @@ async def run_phase1(
 
         print(f"  실행할 테스트: {len(tasks)}회")
 
-        async def _run_one(task: dict[str, str]) -> dict[str, Any]:
+        async def _run_one(task: dict[str, Any]) -> dict[str, Any]:
             async with semaphore:
                 # 메모리 확인
                 mem = _get_memory_mb()
@@ -484,7 +488,7 @@ async def run_phase3(
 
     print(f"  실행할 테스트: {len(tasks)}회")
 
-    async def _run_one(task: dict[str, str]) -> dict[str, Any]:
+    async def _run_one(task: dict[str, Any]) -> dict[str, Any]:
         async with semaphore:
             mem = _get_memory_mb()
             if mem["available_mb"] < 500 and mem["available_mb"] > 0:
@@ -514,6 +518,12 @@ async def run_phase3(
                     print(f"  [v] {task['agent']} / {task['model_short']} run{task['run']}")
                 else:
                     progress["failed"] = progress.get("failed", 0) + 1
+                    progress.setdefault("failed_tests", []).append({
+                        "agent": task["agent"],
+                        "model": task["model_short"],
+                        "run": task["run"],
+                        "error": stderr.decode()[:200],
+                    })
                     print(f"  [x] {task['agent']} / {task['model_short']} run{task['run']}: {stderr.decode()[:100]}")
                 _save_progress(progress)
                 await asyncio.sleep(INTER_PROCESS_DELAY)
@@ -521,6 +531,12 @@ async def run_phase3(
 
             except asyncio.TimeoutError:
                 progress["failed"] = progress.get("failed", 0) + 1
+                progress.setdefault("failed_tests", []).append({
+                    "agent": task["agent"],
+                    "model": task["model_short"],
+                    "run": task["run"],
+                    "error": "timeout",
+                })
                 _save_progress(progress)
                 print(f"  [!] {task['agent']} / {task['model_short']} run{task['run']}: timeout")
                 return {"task": task, "returncode": -1, "error": "timeout"}
