@@ -12,7 +12,7 @@ import json
 import re
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from config.app_config import (
     CRISIS_KEYWORDS,
@@ -45,7 +45,7 @@ class IntentClassifierAgent(BaseAgent):
         self,
         use_llm: bool = True,
         use_redis: bool = False,
-        redis_client: Optional[Any] = None,
+        redis_client: Any | None = None,
     ):
         """
         Args:
@@ -162,7 +162,7 @@ class IntentClassifierAgent(BaseAgent):
             }
 
         except Exception as e:
-            self.logger.error(f"[IntentClassifier] Error: {str(e)}")
+            self.logger.error("[IntentClassifier] Error: %s", e)
 
             # 에러 시 기본값 반환
             fallback = self._create_fallback_result(
@@ -193,7 +193,7 @@ class IntentClassifierAgent(BaseAgent):
         normalized = normalized.lower()
         return normalized
 
-    def _preliminary_classify(self, normalized_input: str) -> Dict[str, Any]:
+    def _preliminary_classify(self, normalized_input: str) -> dict[str, Any]:
         """
         규칙 기반 1차 분류
         - 위기 키워드 감지
@@ -287,7 +287,7 @@ class IntentClassifierAgent(BaseAgent):
     # =========================================================================
 
     def _build_llm_prompt(
-        self, user_input: str, previous_intent: Optional[Dict[str, Any]], preliminary_intent: str
+        self, user_input: str, previous_intent: dict[str, Any] | None, preliminary_intent: str
     ) -> str:
         """LLM 프롬프트 생성"""
 
@@ -309,9 +309,9 @@ class IntentClassifierAgent(BaseAgent):
         self,
         user_input: str,
         normalized_input: str,
-        previous_intent: Optional[Dict[str, Any]],
+        previous_intent: dict[str, Any] | None,
         preliminary_intent: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """LLM을 사용한 정밀 분류"""
 
         prompt = self._build_llm_prompt(
@@ -352,7 +352,7 @@ class IntentClassifierAgent(BaseAgent):
             return parsed
 
         except Exception as e:
-            self.logger.error(f"[IntentClassifier] LLM classification failed: {str(e)}")
+            self.logger.error("[IntentClassifier] LLM classification failed: %s", e)
             # LLM 실패 시 규칙 기반 결과 사용
             return {
                 "intent_type": preliminary_intent,
@@ -368,8 +368,8 @@ class IntentClassifierAgent(BaseAgent):
             }
 
     def _rule_based_classify(
-        self, normalized_input: str, preliminary_result: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, normalized_input: str, preliminary_result: dict[str, Any]
+    ) -> dict[str, Any]:
         """LLM 없이 규칙 기반으로만 분류"""
 
         # 복잡도 계산 (간단한 휴리스틱)
@@ -421,7 +421,7 @@ class IntentClassifierAgent(BaseAgent):
 
         return min(1.0, complexity)
 
-    def _extract_entities_rule_based(self, normalized_input: str) -> Dict[str, List[str]]:
+    def _extract_entities_rule_based(self, normalized_input: str) -> dict[str, list[str]]:
         """규칙 기반 엔티티 추출"""
 
         entities = {"emotions": [], "topics": [], "persons": []}
@@ -462,7 +462,7 @@ class IntentClassifierAgent(BaseAgent):
 
     def _determine_flags(
         self, normalized_input: str, intent: str, complexity: float
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """플래그 결정"""
 
         flags = {
@@ -507,7 +507,7 @@ class IntentClassifierAgent(BaseAgent):
     # =========================================================================
 
     def _validate_and_finalize(
-        self, llm_result: Dict[str, Any], preliminary_result: Dict[str, Any], trace_id: str
+        self, llm_result: dict[str, Any], preliminary_result: dict[str, Any], trace_id: str
     ) -> IntentClassifierOutput:
         """결과 검증 및 최종화"""
 
@@ -550,7 +550,7 @@ class IntentClassifierAgent(BaseAgent):
         return result
 
     def _create_crisis_result(
-        self, trace_id: str, detected_keywords: List[str]
+        self, trace_id: str, detected_keywords: list[str]
     ) -> IntentClassifierOutput:
         """위기 상황 결과 생성"""
 
@@ -587,7 +587,7 @@ class IntentClassifierAgent(BaseAgent):
     # Redis 캐싱 (선택적)
     # =========================================================================
 
-    def _get_previous_intent(self, session_id: str) -> Optional[Dict[str, Any]]:
+    def _get_previous_intent(self, session_id: str) -> dict[str, Any] | None:
         """이전 턴의 intent 조회 (Redis에서)"""
 
         if not self.use_redis or not self.redis_client:
@@ -599,7 +599,7 @@ class IntentClassifierAgent(BaseAgent):
             if cached:
                 return json.loads(cached)
         except Exception as e:
-            self.logger.warning(f"[IntentClassifier] Redis get failed: {str(e)}")
+            self.logger.warning("[IntentClassifier] Redis get failed: %s", e)
 
         return None
 
@@ -629,7 +629,7 @@ class IntentClassifierAgent(BaseAgent):
             )
 
         except Exception as e:
-            self.logger.warning(f"[IntentClassifier] Redis set failed: {str(e)}")
+            self.logger.warning("[IntentClassifier] Redis set failed: %s", e)
 
 
 # =============================================================================
@@ -638,7 +638,7 @@ class IntentClassifierAgent(BaseAgent):
 
 
 async def create_intent_classifier_node(
-    use_llm: bool = True, use_redis: bool = False, redis_client: Optional[Any] = None
+    use_llm: bool = True, use_redis: bool = False, redis_client: Any | None = None
 ):
     """
     LangGraph에서 사용할 노드 함수 생성

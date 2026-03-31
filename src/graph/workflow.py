@@ -72,6 +72,27 @@ _TIER3_TIMEOUT: int = _settings.tier3_timeout
 _TIER4_TIMEOUT: int = _settings.tier4_timeout
 _ASYNC_TIMEOUT: int = _settings.async_timeout
 
+
+async def _with_timeout(
+    coro_func: Any, state: AgentState, timeout: int, name: str
+) -> dict[str, Any]:
+    """노드 함수를 타임아웃으로 감싸서 실행한다.
+
+    Args:
+        coro_func: 노드 함수 (state를 인자로 받는 async callable)
+        state: AgentState
+        timeout: 타임아웃(초)
+        name: 노드 이름 (로깅용)
+
+    Returns:
+        노드 함수의 반환 dict. 타임아웃 시 빈 dict.
+    """
+    try:
+        return await asyncio.wait_for(coro_func(state), timeout=timeout)
+    except asyncio.TimeoutError:
+        logger.error("[%s] 타임아웃 (%ds)", name, timeout)
+        return {}
+
 # ---------------------------------------------------------------------------
 # 구현된 에이전트 노드 — 실제 import
 # ---------------------------------------------------------------------------
@@ -644,9 +665,18 @@ def build_conversation_graph() -> StateGraph:
 
     # --- 노드 등록 ---
     graph.add_node("tier1_conversation", tier1_conversation_fan_out)
-    graph.add_node("synthesis", synthesis_node)  # TODO: _TIER2_TIMEOUT 적용 — 대화모드 TIER 2 노드 래퍼 필요
-    graph.add_node("validator", validator_node)  # TODO: _TIER3_TIMEOUT 적용 — 노드 래퍼 필요
-    graph.add_node("personalization", personalization_node)  # TODO: _TIER4_TIMEOUT 적용 — 노드 래퍼 필요
+    graph.add_node(
+        "synthesis",
+        lambda s: _with_timeout(synthesis_node, s, _TIER2_TIMEOUT, "synthesis"),
+    )
+    graph.add_node(
+        "validator",
+        lambda s: _with_timeout(validator_node, s, _TIER3_TIMEOUT, "validator"),
+    )
+    graph.add_node(
+        "personalization",
+        lambda s: _with_timeout(personalization_node, s, _TIER4_TIMEOUT, "personalization"),
+    )
     graph.add_node("crisis_response", crisis_response_node)
     graph.add_node("async_post", async_post_processing_node)
     graph.add_node("increment_iteration", increment_iteration_node)
@@ -706,8 +736,14 @@ def build_podcast_graph() -> StateGraph:
     # --- 노드 등록 ---
     graph.add_node("tier1_podcast", tier1_podcast_fan_out)
     graph.add_node("tier2_podcast", tier2_podcast_fan_out)
-    graph.add_node("batch_validator", batch_validator_node)  # TODO: _TIER3_TIMEOUT 적용 — 노드 래퍼 필요
-    graph.add_node("script_personalizer", script_personalizer_node)  # TODO: _TIER4_TIMEOUT 적용 — 노드 래퍼 필요
+    graph.add_node(
+        "batch_validator",
+        lambda s: _with_timeout(batch_validator_node, s, _TIER3_TIMEOUT, "batch_validator"),
+    )
+    graph.add_node(
+        "script_personalizer",
+        lambda s: _with_timeout(script_personalizer_node, s, _TIER4_TIMEOUT, "script_personalizer"),
+    )
     graph.add_node("crisis_response", crisis_response_node)
     graph.add_node("async_post", async_post_processing_node)
     graph.add_node("increment_iteration", increment_iteration_node)

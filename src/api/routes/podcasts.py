@@ -47,7 +47,18 @@ def _build_episode_data(state: dict[str, Any]) -> PodcastEpisodeData:
         script_data = json.loads(output_str) if output_str else {}
     except json.JSONDecodeError:
         script_data = {}
-        
+
+    # [보안] PII 정제 — DB 저장 전 script_text 등에서 개인정보 마스킹
+    from config.loader import get_settings
+
+    if getattr(get_settings(), "pii_sanitization_enabled", True):
+        from src.agents.shared.output_sanitizer import sanitize_dict_values
+
+        script_data = sanitize_dict_values(
+            script_data,
+            target_keys=["script_text", "episode_title", "key_insights"],
+        )
+
     segments_data = script_data.get("segments", [])
     segments = []
     
@@ -267,12 +278,19 @@ async def create_podcast_episode(
         parts.append(f"- 동료의 반응: {request.colleague_reaction}")
     user_input = "\n".join(parts)
 
-    initial_state = {
+    initial_state: dict[str, Any] = {
         "user_input": user_input,
         "user_id": request.user_id,
         "session_id": request.session_id,
         "mode": "podcast",
     }
+
+    # 프롬프트 인젝션 패턴 감지 — Safety Agent가 최종 판단
+    from src.agents.shared.input_sanitizer import detect_injection
+
+    if detect_injection(user_input):
+        logger.warning("[Injection] 패턴 감지: %s", user_input[:50])
+        initial_state["safety_flags"] = {"injection_detected": True}
 
     # 2. 파이프라인(컴파일된 그래프) 실행
     from src.api.main import compiled_graph
@@ -296,8 +314,7 @@ async def create_podcast_episode(
             },
         )
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        logger.error("[Podcast] 파이프라인 오류", exc_info=True)
         raise e
 
     elapsed_ms = int((time.monotonic() - start_time) * 1000)
@@ -340,4 +357,159 @@ async def create_podcast_episode(
         session_id=request.session_id,
         safety_alert=safety_alert,
         tracing=request.tracing,
+    )
+
+
+# ---------------------------------------------------------------------------
+# SSE 스트리밍 엔드포인트
+# ---------------------------------------------------------------------------
+
+def _sse_format(data: dict) -> str:
+    """SSE 프로토콜 형식(data: {JSON}\\n\\n)으로 변환한다."""
+    return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+def _now_iso() -> str:
+    """현재 시각을 ISO 8601 UTC 형식으로 반환한다."""
+    return datetime.now(timezone.utc).isoformat()
+
+
+@router.post("/episodes/stream")
+async def stream_podcast_episode(request: PodcastRequest):
+    """팟캐스트 에피소드 생성 — SSE 스트리밍.
+
+    TIER별 진행 상황을 실시간으로 전송한다.
+    기존 POST /episodes와 동일한 파이프라인을 실행하되,
+    ainvoke() 대신 astream()을 사용하여 중간 이벤트를 SSE로 전달한다.
+
+    SSE 이벤트 흐름:
+        connected → tier_start → agent_complete → tier_end → result → done
+    """
+    from fastapi.responses import StreamingResponse
+
+    import time
+    start_time = time.monotonic()
+
+    # 1. AgentState 구성 (기존과 동일)
+    parts = [
+        f"- 상황: {request.situation}",
+        f"- 자신의 생각: {request.thought}",
+        f"- 자신의 행동 및 반응: {request.action}",
+    ]
+    if request.colleague_reaction:
+        parts.append(f"- 동료의 반응: {request.colleague_reaction}")
+    user_input = "\n".join(parts)
+
+    initial_state: dict[str, Any] = {
+        "user_input": user_input,
+        "user_id": request.user_id,
+        "session_id": request.session_id,
+        "mode": "podcast",
+    }
+
+    # 프롬프트 인젝션 감지
+    from src.agents.shared.input_sanitizer import detect_injection
+
+    if detect_injection(user_input):
+        logger.warning("[SSE][Injection] 패턴 감지: %s", user_input[:50])
+        initial_state["safety_flags"] = {"injection_detected": True}
+
+    from src.api.main import compiled_graph
+    from src.monitoring.callbacks import MindLogTelemetryCallback
+
+    telemetry_cb = MindLogTelemetryCallback(
+        session_id=request.session_id,
+        mode="podcast",
+    )
+
+    config = {
+        "configurable": {"thread_id": request.session_id},
+        "callbacks": [telemetry_cb],
+    }
+
+    async def event_generator():
+        """SSE 이벤트 생성기 — astream(stream_mode=["updates","custom"])."""
+        yield _sse_format({
+            "event": "connected",
+            "session_id": request.session_id,
+            "timestamp": _now_iso(),
+        })
+
+        final_state: dict[str, Any] = {}
+
+        try:
+            if compiled_graph is None:
+                raise RuntimeError("LangGraph has not been initialized.")
+
+            async for mode, chunk in compiled_graph.astream(
+                initial_state,
+                config=config,
+                stream_mode=["updates", "custom"],
+            ):
+                if mode == "custom":
+                    chunk["timestamp"] = _now_iso()
+                    yield _sse_format(chunk)
+                elif mode == "updates":
+                    if isinstance(chunk, dict):
+                        for node_output in chunk.values():
+                            if isinstance(node_output, dict):
+                                final_state.update(node_output)
+
+            # 파이프라인 완료 — 결과 구성
+            episode_data = _build_episode_data(final_state)
+            safety_alert = _extract_safety_alert(final_state)
+
+            elapsed_ms = int((time.monotonic() - start_time) * 1000)
+            meta = PodcastResponseMeta(
+                mode="podcast",
+                pipeline_duration_ms=elapsed_ms,
+                intent_type=final_state.get("intent", {}).get("intent_type", "unknown"),
+                complexity_score=float(final_state.get("intent", {}).get("complexity_score", 0.0)),
+                reasoning_depth=str(final_state.get("reasoning_result", {}).get("depth_level", "standard")),
+                retry_count=int(final_state.get("iteration_count", 0)),
+                total_words=sum(s.word_count for s in episode_data.segments),
+            )
+
+            # DB 저장
+            await _save_core_data(
+                user_id=request.user_id,
+                session_id=request.session_id,
+                episode_data=episode_data,
+                final_state=final_state,
+                meta=meta,
+                trace_id=request.tracing.trace_id,
+                correlation_id=request.tracing.correlation_id,
+                elapsed_ms=elapsed_ms,
+            )
+
+            result_payload = SlimPodcastResponse(
+                episode_id=episode_data.episode_id,
+                session_id=request.session_id,
+                safety_alert=safety_alert,
+                tracing=request.tracing,
+            )
+            yield _sse_format({
+                "event": "result",
+                "data": result_payload.model_dump(mode="json"),
+                "timestamp": _now_iso(),
+            })
+
+        except Exception as e:
+            logger.error("[SSE] 파이프라인 오류: %s", e, exc_info=True)
+            yield _sse_format({
+                "event": "error",
+                "message": "파이프라인 실행 중 오류가 발생했습니다.",
+                "timestamp": _now_iso(),
+            })
+
+        yield _sse_format({"event": "done", "timestamp": _now_iso()})
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )

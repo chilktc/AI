@@ -90,7 +90,8 @@ class EmotionAgent(BaseAgent):
                     "}\n"
                 ),
             )
-        except KeyError:
+        except Exception:
+            self.logger.warning("[EmotionAgent] LLM 응답 파싱 실패 — 폴백 적용", exc_info=True)
             text = user_input
             primary = "anxiety" if "불안" in text else ("sadness" if "우울" in text else "neutral")
             vec = {

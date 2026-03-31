@@ -7,7 +7,7 @@ TIER 2 에이전트: Podcast Reasoning에서 넘어온 기획안을 바탕으로
 
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any
 
 from src.agents.shared.base_agent import BaseAgent
 from src.models.agent_state import AgentState
@@ -19,7 +19,8 @@ class ScriptGeneratorAgent(BaseAgent):
     세그먼트별로 순차적으로 스크립트를 생성합니다.
     """
 
-    WORDS_PER_MINUTE = 150  # 한국어 기준 분당 단어 수 (대략적)
+    # 한국어 기준 평균 발화 속도 (KBS 아나운서 기준 ~150 WPM). 팟캐스트 시간 추정에 사용.
+    WORDS_PER_MINUTE = 150
 
     def __init__(self):
         super().__init__(name="script_generator", tier=2)
@@ -100,7 +101,7 @@ class ScriptGeneratorAgent(BaseAgent):
         try:
             # 1. 에피소드 제목 생성
             episode_title = await self._generate_title(main_theme, sub_themes, emotional_journey)
-            self.logger.info(f"[ScriptGenerator] 제목 생성 완료: {episode_title}")
+            self.logger.info("[ScriptGenerator] 제목 생성 완료: %s", episode_title)
 
             # 2. 세그먼트별 스크립트 생성
             generated_segments = []
@@ -149,13 +150,22 @@ class ScriptGeneratorAgent(BaseAgent):
             return {"script_draft": script_draft}
 
         except Exception as e:
-            self.logger.error(f"[ScriptGenerator] 스크립트 작성 중 에러 발생: {str(e)}")
+            self.logger.error("[ScriptGenerator] 스크립트 작성 중 에러 발생: %s", e)
             return {"script_draft": {}, "error": str(e)}
 
     async def _generate_title(
-        self, main_theme: str, sub_themes: List[str], emotional_journey: Dict
+        self, main_theme: str, sub_themes: list[str], emotional_journey: dict
     ) -> str:
-        """에피소드 제목 생성"""
+        """에피소드 제목을 LLM으로 생성한다.
+
+        Args:
+            main_theme: 에피소드 메인 테마
+            sub_themes: 서브 테마 목록
+            emotional_journey: 감정 여정 dict (opening, resolution 등)
+
+        Returns:
+            생성된 에피소드 제목 문자열
+        """
         start_emotion = emotional_journey.get(
             "opening", emotional_journey.get("start_emotion", "None")
         )
@@ -190,14 +200,26 @@ class ScriptGeneratorAgent(BaseAgent):
 
     async def _generate_segment_script(
         self,
-        segment: Dict,
+        segment: dict,
         episode_title: str,
         main_theme: str,
-        emotional_journey: Dict,
+        emotional_journey: dict,
         previous_context: str,
-        knowledge_context: Dict,
-    ) -> Dict:
-        """개별 세그먼트 스크립트 텍스트 생성"""
+        knowledge_context: dict,
+    ) -> dict:
+        """개별 세그먼트의 스크립트 텍스트를 LLM으로 생성한다.
+
+        Args:
+            segment: 세그먼트 메타 (segment_type, duration_minutes, key_points 등)
+            episode_title: 에피소드 제목
+            main_theme: 메인 테마
+            emotional_journey: 감정 여정 dict
+            previous_context: 이전 세그먼트 맥락 요약
+            knowledge_context: Knowledge Agent 검색 결과
+
+        Returns:
+            스크립트 텍스트가 포함된 세그먼트 dict
+        """
         duration_minutes = segment.get("duration_minutes", 2)
         word_count_target = duration_minutes * self.WORDS_PER_MINUTE
 
@@ -241,7 +263,7 @@ class ScriptGeneratorAgent(BaseAgent):
                 "tts_markers": [],
             }
         except Exception as e:
-            self.logger.error(f"세그먼트 스크립트 작성 실패: {e}")
+            self.logger.error("세그먼트 스크립트 작성 실패: %s", e)
             return {
                 "segment_id": segment.get("segment_id", f"error_seg_{uuid.uuid4().hex[:4]}"),
                 "segment_type": segment.get("segment_type", "body"),
@@ -252,7 +274,7 @@ class ScriptGeneratorAgent(BaseAgent):
                 "tts_markers": [],
             }
 
-    def _get_previous_context(self, generated_segments: List[Dict], current_index: int) -> str:
+    def _get_previous_context(self, generated_segments: list[dict], current_index: int) -> str:
         """이전 세그먼트를 기준으로 짧은 요약 컨텍스트를 제공"""
         if current_index == 0 or not generated_segments:
             return ""
@@ -261,7 +283,7 @@ class ScriptGeneratorAgent(BaseAgent):
         text_preview = prev_seg.get("script_text", "")[-150:]
         return f"이전 세그먼트는 이렇게 끝났습니다: '...{text_preview}'"
 
-    async def _extract_insights(self, generated_segments: List[Dict]) -> List[str]:
+    async def _extract_insights(self, generated_segments: list[dict]) -> list[str]:
         """생성된 스크립트들에서 핵심 인사이트 추출 (JSON 배열 형식 반환)"""
         if not generated_segments:
             return []

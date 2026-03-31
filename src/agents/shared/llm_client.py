@@ -23,12 +23,84 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
+import time
 from typing import Any
 
 import anthropic
 
 from config.loader import get_settings
+
+_cb_logger = logging.getLogger(__name__)
+
+
+class CircuitOpenError(Exception):
+    """Circuit Breaker가 OPEN 상태일 때 발생."""
+
+
+class _CircuitBreaker:
+    """LLM 프로바이더별 Circuit Breaker 상태 머신.
+
+    상태 전이:
+        CLOSED → (fail_max 연속 실패) → OPEN
+        OPEN → (reset_timeout 경과) → HALF_OPEN
+        HALF_OPEN → (1회 성공) → CLOSED
+        HALF_OPEN → (1회 실패) → OPEN
+
+    동시성 안전: asyncio.Lock으로 상태 전이를 보호한다.
+    실패 카운팅: retry 전체 실패 = 1회 카운트 (retry 개별 실패가 아님).
+    """
+
+    CLOSED = "closed"
+    OPEN = "open"
+    HALF_OPEN = "half_open"
+
+    def __init__(self, fail_max: int = 5, reset_timeout: float = 30.0) -> None:
+        self._state = self.CLOSED
+        self._failure_count = 0
+        self._fail_max = fail_max
+        self._reset_timeout = reset_timeout
+        self._last_failure_time = 0.0
+        self._lock = asyncio.Lock()
+
+    @property
+    def state(self) -> str:
+        """현재 상태를 반환한다."""
+        return self._state
+
+    async def check(self) -> None:
+        """OPEN 상태면 CircuitOpenError를 발생시킨다."""
+        async with self._lock:
+            if self._state == self.OPEN:
+                if time.time() - self._last_failure_time >= self._reset_timeout:
+                    self._state = self.HALF_OPEN
+                    _cb_logger.info("[CircuitBreaker] OPEN → HALF_OPEN 전환")
+                else:
+                    raise CircuitOpenError(
+                        f"Circuit OPEN — {self._reset_timeout}s 대기 중"
+                    )
+
+    async def record_success(self) -> None:
+        """성공 기록 — HALF_OPEN이면 CLOSED로 복구."""
+        async with self._lock:
+            if self._state == self.HALF_OPEN:
+                _cb_logger.info("[CircuitBreaker] HALF_OPEN → CLOSED 복구")
+            self._failure_count = 0
+            self._state = self.CLOSED
+
+    async def record_failure(self) -> None:
+        """실패 기록 — fail_max 초과 시 OPEN 전환."""
+        async with self._lock:
+            self._failure_count += 1
+            self._last_failure_time = time.time()
+            if self._failure_count >= self._fail_max:
+                old = self._state
+                self._state = self.OPEN
+                _cb_logger.warning(
+                    "[CircuitBreaker] %s → OPEN (연속 실패 %d회)",
+                    old, self._failure_count,
+                )
 
 
 class LLMClient:
@@ -65,9 +137,23 @@ class LLMClient:
     # [동시성] 클래스 변수 — 앱 부트스트랩 시에만 등록, 런타임 요청 중 변경 금지
     _custom_providers: dict[str, type] = {}
 
+    # [동시성] 프로바이더별 Circuit Breaker — 인스턴스 간 공유
+    _breakers: dict[str, _CircuitBreaker] = {}
+
     # [동시성] Bedrock 동시 호출 상한 — 인스턴스 간 공유 Semaphore
     # 첫 Bedrock 클라이언트 초기화 시 settings.llm.bedrock.concurrency_limit으로 설정
     _bedrock_semaphore: asyncio.Semaphore | None = None
+
+    @classmethod
+    def _get_breaker(cls, provider: str) -> _CircuitBreaker:
+        """프로바이더별 Circuit Breaker 인스턴스를 반환한다."""
+        if provider not in cls._breakers:
+            cfg = get_settings().circuit_breaker_config
+            cls._breakers[provider] = _CircuitBreaker(
+                fail_max=int(cfg.get("fail_max", 5)),
+                reset_timeout=float(cfg.get("reset_timeout", 30)),
+            )
+        return cls._breakers[provider]
 
     @classmethod
     def register_provider(cls, name: str, provider_class: type) -> None:
@@ -298,24 +384,35 @@ class LLMClient:
         actual_max_tokens = max_tokens or self._max_tokens
         actual_temperature = temperature or self._temperature
 
-        if self._provider in self._custom_providers:
-            # 커스텀 프로바이더 디스패치 (로컬 개발용)
-            result: str = await self._custom_provider_instance.generate(
-                system_prompt, user_message, actual_max_tokens, actual_temperature
-            )
-            return result
-        elif self._provider == "bedrock":
-            return await self._generate_bedrock(
-                system_prompt, user_message, actual_max_tokens, actual_temperature
-            )
-        elif self._provider == "openai":
-            return await self._generate_openai(
-                system_prompt, user_message, actual_max_tokens, actual_temperature
-            )
-        else:
-            return await self._generate_anthropic(
-                system_prompt, user_message, actual_max_tokens, actual_temperature
-            )
+        # Circuit Breaker — OPEN 상태면 즉시 예외 발생
+        breaker = self._get_breaker(self._provider)
+        await breaker.check()
+
+        try:
+            if self._provider in self._custom_providers:
+                result: str = await self._custom_provider_instance.generate(
+                    system_prompt, user_message, actual_max_tokens, actual_temperature
+                )
+            elif self._provider == "bedrock":
+                result = await self._generate_bedrock(
+                    system_prompt, user_message, actual_max_tokens, actual_temperature
+                )
+            elif self._provider == "openai":
+                result = await self._generate_openai(
+                    system_prompt, user_message, actual_max_tokens, actual_temperature
+                )
+            else:
+                result = await self._generate_anthropic(
+                    system_prompt, user_message, actual_max_tokens, actual_temperature
+                )
+        except CircuitOpenError:
+            raise
+        except Exception:
+            await breaker.record_failure()
+            raise
+
+        await breaker.record_success()
+        return result
 
     # temperature를 지원하지 않는 OpenAI 모델 접두사 (reasoning 계열)
     _OPENAI_NO_TEMPERATURE_PREFIXES = ("o1", "o3", "o4", "gpt-5")
@@ -384,6 +481,8 @@ class LLMClient:
             cache_write_tokens=getattr(response.usage, "cache_creation_input_tokens", 0) or 0,
         )
         # 첫 번째 content block에서 텍스트 추출 (TextBlock 가정)
+        if not response.content:
+            raise ValueError("Anthropic API returned empty content")
         return response.content[0].text  # type: ignore[union-attr]
 
     async def _generate_bedrock(

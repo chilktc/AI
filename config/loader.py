@@ -380,6 +380,25 @@ class Settings:
             self._config.get("storage", {}).get("s3", {}).get("upload_prefix", "vis")
         )
 
+    @property
+    def databases_config(self) -> dict[str, Any]:
+        """데이터베이스 설정을 반환한다."""
+        return cast(dict[str, Any], self._config.get("databases", {}))
+
+    @property
+    def circuit_breaker_config(self) -> dict[str, Any]:
+        """Circuit Breaker 설정을 반환한다."""
+        return cast(dict[str, Any], self._config.get("llm", {}).get("circuit_breaker", {}))
+
+    @property
+    def pii_sanitization_enabled(self) -> bool:
+        """PII 정제 활성화 여부를 반환한다."""
+        return bool(
+            self._config.get("security", {})
+            .get("pii_sanitization", {})
+            .get("enabled", True)
+        )
+
 
 # 싱글톤 인스턴스 (모듈 레벨에서 한 번만 로드)
 _settings_instance: Settings | None = None
