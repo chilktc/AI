@@ -1530,3 +1530,38 @@ class StoredRecordTrace(BaseModel):
     entity_type: str = Field(description="엔티티 유형 (conversation_turn 등)")
     record_id: str = Field(description="레코드 ID")
     stored_at: datetime = Field(description="저장 시각")
+
+
+# ---------------------------------------------------------------------------
+# SSE 스트리밍 이벤트 스키마
+# ---------------------------------------------------------------------------
+
+
+class SSEEventData(BaseModel):
+    """SSE 스트리밍 이벤트 데이터 스키마.
+
+    팟캐스트 에피소드 생성 과정에서 클라이언트에 실시간 전달되는 이벤트.
+
+    이벤트 타입별 필드:
+        connected:        session_id
+        tier_start:       tier, mode, agents[]
+        agent_complete:   tier, agent, elapsed_ms, progress
+        crisis_detected:  tier, status
+        tier_end:         tier, mode, elapsed_ms, status
+        result:           data (SlimPodcastResponse)
+        error:            message
+        done:             (없음)
+    """
+
+    event: str = Field(description="이벤트 타입")
+    tier: int | None = Field(default=None, description="TIER 번호 (0-4)")
+    mode: str | None = Field(default=None, description="파이프라인 모드")
+    agent: str | None = Field(default=None, description="에이전트 이름")
+    agents: list[str] | None = Field(default=None, description="TIER 내 에이전트 목록")
+    elapsed_ms: int | None = Field(default=None, description="소요 시간 (ms)")
+    progress: str | None = Field(default=None, description="진행률 (예: 2/4)")
+    status: str | None = Field(default=None, description="상태 (ok, crisis)")
+    session_id: str | None = Field(default=None, description="세션 ID")
+    message: str | None = Field(default=None, description="오류 메시지")
+    data: dict[str, Any] | None = Field(default=None, description="결과 데이터")
+    timestamp: str = Field(description="ISO 8601 타임스탬프")
