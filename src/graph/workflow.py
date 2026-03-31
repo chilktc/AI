@@ -182,50 +182,6 @@ async def script_personalizer_node(state: AgentState) -> dict[str, Any]:
     return await agent.process(state)
 
 
-# ---------------------------------------------------------------------------
-# 미구현 에이전트 스텁 노드
-# ---------------------------------------------------------------------------
-async def _stub_node(name: str, state: AgentState) -> dict[str, Any]:
-    """미구현 에이전트 임시 스텁 — 빈 dict 반환 + 경고 로그."""
-    logger.warning("[STUB] %s 미구현 — 빈 결과 반환", name)
-    return {}
-
-
-# --- TIER 1 대화모드 (개발자3) ---
-async def context_node(state: AgentState) -> dict[str, Any]:
-    """[STUB] Context Agent — 개발자3 구현 예정."""
-    return await _stub_node("context", state)
-
-
-async def reasoning_node(state: AgentState) -> dict[str, Any]:
-    """[STUB] Reasoning Agent — 개발자3 구현 예정."""
-    return await _stub_node("reasoning", state)
-
-
-# --- TIER 2 대화모드 (개발자1) ---
-async def synthesis_node(state: AgentState) -> dict[str, Any]:
-    """[STUB] Synthesis Agent — 개발자1 구현 예정."""
-    return await _stub_node("synthesis", state)
-
-
-# --- TIER 3 대화모드 (개발자3) ---
-async def validator_node(state: AgentState) -> dict[str, Any]:
-    """[STUB] Validator Agent — 개발자3 구현 예정."""
-    return await _stub_node("validator", state)
-
-
-# --- TIER 4 대화모드 (개발자1) ---
-async def personalization_node(state: AgentState) -> dict[str, Any]:
-    """[STUB] Personalization Agent — 개발자1 구현 예정."""
-    return await _stub_node("personalization", state)
-
-
-# --- 비동기 (미정) ---
-async def telemetry_node(state: AgentState) -> dict[str, Any]:
-    """[STUB] Telemetry Agent — 담당 미정."""
-    return await _stub_node("telemetry", state)
-
-
 # ===================================================================
 # 헬퍼: 취소 가능 코루틴 래퍼
 # ===================================================================
@@ -310,94 +266,6 @@ async def _safety_deep_crisis(safety_result: dict[str, Any]) -> dict[str, Any]:
 # ===================================================================
 # TIER 1 Fan-out 함수
 # ===================================================================
-async def tier1_conversation_fan_out(state: AgentState) -> dict[str, Any]:
-    """
-    대화모드 TIER 1: Safety + Emotion + Context + Reasoning 병렬 실행.
-
-    Safety CRISIS 선점 메커니즘:
-        Safety가 crisis 반환 시 cancel_event.set() → 나머지 취소 → 즉시 위기 응답
-
-    스트리밍 이벤트:
-        tier_start → agent_complete (×4) → tier_end (또는 crisis)
-    """
-    writer = _get_writer()
-    cancel_event = asyncio.Event()
-    tier_start = time.monotonic()
-    agent_names = ["safety", "emotion", "context", "reasoning"]
-
-    writer({
-        "event": "tier_start",
-        "tier": 1,
-        "mode": "conversation",
-        "agents": agent_names,
-    })
-
-    tasks = [
-        run_with_cancel(safety_node(state), cancel_event, "safety"),
-        run_with_cancel(emotion_node(state), cancel_event, "emotion"),
-        run_with_cancel(context_node(state), cancel_event, "context"),
-        run_with_cancel(reasoning_node(state), cancel_event, "reasoning"),
-    ]
-
-    async def _run_tier1_conv() -> dict[str, Any]:
-        nonlocal tasks
-        merged: dict[str, Any] = {}
-        completed_count = 0
-        for coro in asyncio.as_completed(tasks):
-            name, result = await coro
-            completed_count += 1
-            elapsed_ms = int((time.monotonic() - tier_start) * 1000)
-
-            if name == "safety" and result.get("safety_flags", {}).get("status") == "crisis":
-                # ■ CRISIS: 나머지 모두 취소 → Safety 심화 → 즉시 응답
-                cancel_event.set()
-                writer({
-                    "event": "crisis_detected",
-                    "tier": 1,
-                    "agent": "safety",
-                    "risk_level": result.get("risk_level", 4),
-                    "elapsed_ms": elapsed_ms,
-                })
-                deep_result = await _safety_deep_crisis(result)
-                writer({
-                    "event": "tier_end",
-                    "tier": 1,
-                    "mode": "conversation",
-                    "status": "crisis",
-                    "elapsed_ms": int((time.monotonic() - tier_start) * 1000),
-                })
-                return {**deep_result, "next_step": "crisis_response"}
-
-            writer({
-                "event": "agent_complete",
-                "tier": 1,
-                "agent": name,
-                "elapsed_ms": elapsed_ms,
-                "progress": f"{completed_count}/{len(agent_names)}",
-            })
-            merged.update(result)
-
-        return merged
-
-    try:
-        merged = await asyncio.wait_for(_run_tier1_conv(), timeout=_TIER1_TIMEOUT)
-    except asyncio.TimeoutError:
-        logger.warning(
-            "[TIER 1] 대화모드 타임아웃 (%ds) — 부분 결과로 계속 진행", _TIER1_TIMEOUT,
-        )
-        cancel_event.set()
-        merged = {}
-
-    writer({
-        "event": "tier_end",
-        "tier": 1,
-        "mode": "conversation",
-        "status": "ok" if "next_step" not in merged else merged.get("next_step", "ok"),
-        "elapsed_ms": int((time.monotonic() - tier_start) * 1000),
-    })
-
-    return merged
-
 
 async def tier1_podcast_fan_out(state: AgentState) -> dict[str, Any]:
     """
@@ -491,16 +359,15 @@ async def tier1_podcast_fan_out(state: AgentState) -> dict[str, Any]:
 # ===================================================================
 async def async_post_processing_node(state: AgentState) -> dict[str, Any]:
     """
-    비동기 후처리: Telemetry + Learning.
+    비동기 후처리: Learning Agent.
 
     최종 응답 출력 후 백그라운드에서 실행.
     실패해도 파이프라인에 영향 없음.
-    _ASYNC_TIMEOUT 적용: 전체 후처리가 타임아웃 내에 완료되지 않으면 부분 결과 반환.
+    _ASYNC_TIMEOUT 적용.
 
-    Note: Visualization은 TIER 2에서 Script Generator와 병렬 실행으로 이동됨.
+    Note: 모니터링은 callback + Prometheus + LangSmith가 담당.
     """
     tasks = [
-        asyncio.create_task(telemetry_node(state)),
         asyncio.create_task(learning_node(state)),
     ]
 
@@ -527,16 +394,8 @@ async def async_post_processing_node(state: AgentState) -> dict[str, Any]:
 # 라우터 함수
 # ===================================================================
 def route_after_tier0(state: AgentState) -> str:
-    """
-    TIER 0 이후 라우터: mode 필드 기반 대화/팟캐스트 분기.
-
-    Returns:
-        "tier1_conversation" | "tier1_podcast"
-    """
-    mode = state.get("mode", "conversation")
-    if mode == "podcast":
-        return "tier1_podcast"
-    return "tier1_conversation"
+    """TIER 0 이후 라우터 — 팟캐스트 파이프라인으로 진행."""
+    return "tier1_podcast"
 
 
 def route_after_tier1(state: AgentState) -> str:
@@ -549,37 +408,6 @@ def route_after_tier1(state: AgentState) -> str:
     if state.get("next_step") == "crisis_response":
         return "crisis_response"
     return "tier2"
-
-
-def route_after_tier3_conversation(state: AgentState) -> str:
-    """
-    대화모드 TIER 3 이후 라우터: 검증 결과 기반 분기.
-
-    Returns:
-        "tier4" — 검증 통과
-        "tier2_conversation" — 재시도 필요 (iteration_count < max_retries)
-        "crisis_response" — 위기 응답 (safety 에스컬레이션)
-    """
-    next_step = state.get("next_step", "")
-
-    if next_step == "crisis_response":
-        return "crisis_response"
-
-    validation = state.get("validation_result", {})
-    action = validation.get("action", {})
-    decision = action.get("decision", "approve")
-
-    if decision == "approve":
-        return "tier4"
-
-    # revise 또는 escalate
-    iteration_count = state.get("iteration_count", 0)
-    if decision == "revise" and iteration_count < _MAX_RETRIES:
-        return "tier2_conversation"
-
-    # 최대 재시도 초과 또는 escalate → 강제 통과
-    logger.warning("[RETRY] 최대 재시도(%d) 도달 — 강제 통과", _MAX_RETRIES)
-    return "tier4"
 
 
 def route_after_tier3_podcast(state: AgentState) -> str:
@@ -654,76 +482,6 @@ async def increment_iteration_node(state: AgentState) -> dict[str, Any]:
 # ===================================================================
 # 그래프 빌더
 # ===================================================================
-def build_conversation_graph() -> StateGraph:
-    """
-    대화모드 StateGraph 구축.
-
-    TIER 1(병렬) → TIER 2(생성) → TIER 3(검증) → TIER 4(후처리)
-    + CRISIS 선점 + 재시도 루프
-    """
-    graph = StateGraph(AgentState)
-
-    # --- 노드 등록 ---
-    graph.add_node("tier1_conversation", tier1_conversation_fan_out)
-    graph.add_node(
-        "synthesis",
-        lambda s: _with_timeout(synthesis_node, s, _TIER2_TIMEOUT, "synthesis"),
-    )
-    graph.add_node(
-        "validator",
-        lambda s: _with_timeout(validator_node, s, _TIER3_TIMEOUT, "validator"),
-    )
-    graph.add_node(
-        "personalization",
-        lambda s: _with_timeout(personalization_node, s, _TIER4_TIMEOUT, "personalization"),
-    )
-    graph.add_node("crisis_response", crisis_response_node)
-    graph.add_node("async_post", async_post_processing_node)
-    graph.add_node("increment_iteration", increment_iteration_node)
-
-    # --- 엣지 정의 ---
-    # TIER 1 → CRISIS 확인
-    graph.add_conditional_edges(
-        "tier1_conversation",
-        route_after_tier1,
-        {
-            "tier2": "synthesis",
-            "crisis_response": "crisis_response",
-        },
-    )
-
-    # TIER 2 → TIER 3
-    graph.add_edge("synthesis", "validator")
-
-    # TIER 3 → 분기 (통과/재시도/위기)
-    graph.add_conditional_edges(
-        "validator",
-        route_after_tier3_conversation,
-        {
-            "tier4": "personalization",
-            "tier2_conversation": "increment_iteration",
-            "crisis_response": "crisis_response",
-        },
-    )
-
-    # 재시도 카운터 증가 → TIER 2 재실행
-    graph.add_edge("increment_iteration", "synthesis")
-
-    # TIER 4 → 비동기 후처리
-    graph.add_edge("personalization", "async_post")
-
-    # 비동기 후처리 → 종료
-    graph.add_edge("async_post", END)
-
-    # CRISIS → 종료
-    graph.add_edge("crisis_response", END)
-
-    # 진입점
-    graph.set_entry_point("tier1_conversation")
-
-    return graph
-
-
 def build_podcast_graph() -> StateGraph:
     """
     팟캐스트모드 StateGraph 구축.
@@ -782,7 +540,7 @@ def build_podcast_graph() -> StateGraph:
 
 def build_unified_graph() -> StateGraph:
     """
-    통합 진입점: TIER 0 → 모드 분기 → 대화/팟캐스트 파이프라인.
+    통합 진입점: TIER 0 → 팟캐스트 파이프라인.
 
     사용법:
         graph = build_unified_graph()
@@ -794,13 +552,7 @@ def build_unified_graph() -> StateGraph:
     # --- TIER 0: Intent Classifier ---
     graph.add_node("intent_classifier", intent_classifier_node)
 
-    # --- 대화모드 노드 ---
-    graph.add_node("tier1_conversation", tier1_conversation_fan_out)
-    graph.add_node("synthesis", synthesis_node)
-    graph.add_node("validator", validator_node)
-    graph.add_node("personalization", personalization_node)
-
-    # --- 팟캐스트모드 노드 ---
+    # --- 팟캐스트 노드 ---
     graph.add_node("tier1_podcast", tier1_podcast_fan_out)
     graph.add_node("tier2_podcast", tier2_podcast_fan_out)
     graph.add_node("batch_validator", batch_validator_node)
@@ -809,42 +561,18 @@ def build_unified_graph() -> StateGraph:
     # --- 공용 노드 ---
     graph.add_node("crisis_response", crisis_response_node)
     graph.add_node("async_post", async_post_processing_node)
-    graph.add_node("increment_iteration_conv", increment_iteration_node)
     graph.add_node("increment_iteration_pod", increment_iteration_node)
 
-    # --- TIER 0 → 모드 분기 ---
+    # --- TIER 0 → 팟캐스트 ---
     graph.add_conditional_edges(
         "intent_classifier",
         route_after_tier0,
         {
-            "tier1_conversation": "tier1_conversation",
             "tier1_podcast": "tier1_podcast",
         },
     )
 
-    # === 대화모드 엣지 ===
-    graph.add_conditional_edges(
-        "tier1_conversation",
-        route_after_tier1,
-        {
-            "tier2": "synthesis",
-            "crisis_response": "crisis_response",
-        },
-    )
-    graph.add_edge("synthesis", "validator")
-    graph.add_conditional_edges(
-        "validator",
-        route_after_tier3_conversation,
-        {
-            "tier4": "personalization",
-            "tier2_conversation": "increment_iteration_conv",
-            "crisis_response": "crisis_response",
-        },
-    )
-    graph.add_edge("increment_iteration_conv", "synthesis")
-    graph.add_edge("personalization", "async_post")
-
-    # === 팟캐스트모드 엣지 ===
+    # === 팟캐스트 엣지 ===
     graph.add_conditional_edges(
         "tier1_podcast",
         route_after_tier1,
@@ -929,7 +657,6 @@ def compile_graph(
     """
     builders = {
         "unified": build_unified_graph,
-        "conversation": build_conversation_graph,
         "podcast": build_podcast_graph,
     }
     builder_fn = builders.get(graph_builder)
