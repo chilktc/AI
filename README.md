@@ -6,27 +6,26 @@
 
 ---
 
-## 듀얼모드 아키텍처
+## 아키텍처
 
-Mind-Log는 두 가지 모드를 지원하는 멀티에이전트 시스템입니다.
-
-| 항목 | 대화모드 | 팟캐스트모드 |
-|-----|---------|------------|
-| 에이전트 | 13개 전용 | 7개 전용 |
-| 처리 방식 | 실시간 스트리밍 | 배치 처리 |
-| 출력 형식 | 자유로운 텍스트 | 구조화된 스크립트 |
-| 응답 시간 | ~5-10초 | ~18-20초 |
+Mind-Log는 TIER 기반 멀티에이전트 시스템으로 팟캐스트 에피소드를 생성합니다.
 
 ### TIER 기반 파이프라인
 
 ```
-TIER 0: Intent Classifier → 의도 분류 + 모드 감지
-TIER 1 (병렬 Fan-out): Safety + Emotion + Context/ContentAnalyzer + Reasoning/PodcastReasoning
-TIER 2 (생성): Synthesis / Script Generator (+Visualization 병렬)
-TIER 3 (검증): Validator / Batch Validator (실패 시 TIER 2 재시도, 최대 2회)
-TIER 4 (후처리): Personalization / Script Personalizer
-비동기: Visualization + Telemetry + Learning
+TIER 0: Intent Classifier → 의도 분류 + 1차 위기 감지
+TIER 1 (병렬 Fan-out): Safety + Emotion + Content Analyzer + Podcast Reasoning
+TIER 2 (생성): Script Generator + Visualization (병렬)
+TIER 3 (검증): Batch Validator (실패 시 TIER 2 재시도, 최대 2회)
+TIER 4 (후처리): Script Personalizer
+비동기: Learning Agent
 ```
+
+| 항목 | 내용 |
+|-----|------|
+| 에이전트 | 11개 + Learning |
+| 처리 방식 | TIER 병렬 + 배치 처리 |
+| 출력 형식 | 구조화된 팟캐스트 스크립트 |
 
 ---
 
@@ -76,9 +75,8 @@ pytest tests/
 mind-log/
 ├── src/
 │   ├── agents/           # 에이전트 구현
-│   │   ├── conversation/ # 대화모드 에이전트 (13개)
-│   │   ├── podcast/      # 팟캐스트모드 에이전트 (7개)
-│   │   └── shared/       # 공용 에이전트 유틸리티
+│   │   ├── podcast/      # 팟캐스트 에이전트 (11개 + Learning)
+│   │   └── shared/       # 공용 인프라 (BaseAgent, LLMClient 등)
 │   ├── models/           # AgentState, AgentMessage 스키마
 │   ├── api/              # 백엔드 API 클라이언트
 │   ├── graph/            # LangGraph 워크플로우 정의
@@ -103,12 +101,11 @@ mind-log/
 
 ## 팀 구성
 
-| 개발자 | 대화모드 에이전트 | 팟캐스트모드 에이전트 |
-|--------|-----------------|---------------------|
-| 개발자1 | Intent Classifier, Knowledge, Synthesis, Personalization | Script Generator, Script Personalizer |
-| 개발자2 | Safety, Memory, Visualization, Emotion | Episode Memory, Visualization(Podcast) |
-| 개발자3 | Reasoning, Context, Validator, Learning | Podcast Reasoning, Content Analyzer, Batch Validator |
-| 미정 | Telemetry Agent | — (전체 에이전트 완료 후 예정) |
+| 개발자 | 담당 에이전트 |
+|--------|-------------|
+| 개발자1 | Intent Classifier, Knowledge, Script Generator, Script Personalizer |
+| 개발자2 | Safety, Emotion, Visualization, Episode Memory |
+| 개발자3 | Podcast Reasoning, Content Analyzer, Batch Validator, Learning |
 
 ---
 

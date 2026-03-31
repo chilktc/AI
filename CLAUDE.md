@@ -10,17 +10,17 @@
 
 ## 아키텍처 요약
 
-### 듀얼모드 TIER 기반 파이프라인 (v4.0)
+### TIER 기반 파이프라인 (v5.0)
 
-대화모드(실시간 상담)와 팟캐스트모드(에피소드 생성)를 지원하며, **TIER 기반 파이프라인**으로 에이전트를 오케스트레이션한다. **Orchestrator 없이** 에이전트 간 메시지 프로토콜(v2.0)을 통해 직접 통신하는 구조.
+**TIER 기반 파이프라인**으로 팟캐스트 에이전트를 오케스트레이션한다. **Orchestrator 없이** 에이전트 간 메시지 프로토콜(v2.0)을 통해 직접 통신하는 구조.
 
 ```
-TIER 0: Intent Classifier → 의도 분류 + 모드 감지
-TIER 1 (병렬 Fan-out): Safety + Emotion + Context/ContentAnalyzer + Reasoning/PodcastReasoning
-TIER 2 (생성): Synthesis / Script Generator (+Visualization 병렬)
-TIER 3 (검증): Validator / Batch Validator (실패 시 TIER 2 재시도, 최대 2회)
-TIER 4 (후처리): Personalization / Script Personalizer
-비동기: Visualization + Telemetry + Learning
+TIER 0: Intent Classifier → 의도 분류 + 1차 위기 감지
+TIER 1 (병렬 Fan-out): Safety + Emotion + Content Analyzer + Podcast Reasoning
+TIER 2 (생성): Script Generator + Visualization (병렬)
+TIER 3 (검증): Batch Validator (실패 시 TIER 2 재시도, 최대 2회)
+TIER 4 (후처리): Script Personalizer
+비동기: Learning Agent
 ```
 
 ### 핵심 설계 원칙
@@ -28,79 +28,31 @@ TIER 4 (후처리): Personalization / Script Personalizer
 - **Orchestrator 제거**: 에이전트들이 메시지 프로토콜(v2.0)을 통해 직접 통신
 - **TIER 기반 파이프라인**: 병렬 처리(Fan-out)와 순차 처리를 효율적으로 조합
 - **CRISIS 선점**: Safety Agent의 위기 신호가 TIER 1 병렬 작업 전체를 취소하고 즉시 응답
-- **듀얼모드 지원**: 대화모드(13개) + 팟캐스트모드(7개) = 총 20개 에이전트
-- **Memory/Knowledge 독립**: Reasoning Agent가 조건부로 호출하는 독립 에이전트
+- **Episode Memory/Knowledge 독립**: Podcast Reasoning Agent가 조건부로 호출하는 독립 에이전트
 
-### 에이전트 구성 — 대화모드 (13개)
+### 에이전트 구성 (11개 + Learning)
 
 | # | 에이전트 | TIER | 모델 | 담당 개발자 |
 |---|---------|------|------|------------|
 | 01 | Intent Classifier | TIER 0 | Haiku | 개발자1 |
 | 02 | Safety Agent | TIER 1 (병렬) | Sonnet 4 | 개발자2 |
 | 03 | Emotion Agent | TIER 1 (병렬) | Sonnet 4 | 개발자2 |
-| 04 | Context Agent | TIER 1 (병렬) | Haiku | 개발자3 |
-| 05 | Memory Agent | 독립 (Reasoning 조건부 호출) | Sonnet 4 | 개발자2 |
-| 06 | Knowledge Agent | 독립 (Reasoning 조건부 호출) | Sonnet 4 | 개발자1 |
-| 07 | Reasoning Agent | TIER 1 (병렬) | Opus 4.6 | 개발자3 |
-| 08 | Synthesis Agent | TIER 2 | Sonnet 4 | 개발자1 |
-| 09 | Validator Agent | TIER 3 | Sonnet 4 | 개발자3 |
-| 10 | Personalization Agent | TIER 4 | Sonnet 4 | 개발자1 |
-| 11 | Visualization Agent | 비동기 | Sonnet 4 | 개발자2 |
-| 12 | Telemetry Agent | 비동기 | Haiku | 미정 |
-| 13 | Learning Agent | 비동기 | Haiku | 개발자3 |
+| 04 | Content Analyzer | TIER 1 (병렬) | Sonnet 4 | 개발자3 |
+| 05 | Podcast Reasoning | TIER 1 (병렬) | Sonnet 4 | 개발자3 |
+| 06 | Episode Memory | 독립 (Reasoning 조건부) | Sonnet 4 | 개발자2 |
+| 07 | Knowledge Agent | 독립 (Reasoning 조건부) | Sonnet 4 | 개발자1 |
+| 08 | Script Generator | TIER 2 (병렬) | Sonnet 4 | 개발자1 |
+| 09 | Visualization | TIER 2 (병렬) / 비동기 | Sonnet 4 | 개발자2 |
+| 10 | Batch Validator | TIER 3 | Sonnet 4 | 개발자3 |
+| 11 | Script Personalizer | TIER 4 | Sonnet 4 | 개발자1 |
+| 부가 | Learning Agent | 비동기 후처리 | Haiku | 개발자3 |
 
-### 에이전트 구성 — 팟캐스트모드 (7개)
+### 파일 위치
 
-| # | 에이전트 | TIER | 모델 | 담당 개발자 |
-|---|---------|------|------|------------|
-| 01 | Content Analyzer | TIER 1 (병렬) | Sonnet 4 | 개발자3 |
-| 02 | Episode Memory | 독립 (Podcast Reasoning 조건부 호출) | Sonnet 4 | 개발자2 |
-| 03 | Podcast Reasoning | TIER 1 (병렬) | Sonnet 4 | 개발자3 |
-| 04 | Script Generator | TIER 2 | Sonnet 4 | 개발자1 |
-| 05 | Batch Validator | TIER 3 | Sonnet 4 | 개발자3 |
-| 06 | Script Personalizer | TIER 4 | Sonnet 4 | 개발자1 |
-| 07 | Visualization (Podcast) | TIER 2 (병렬) / 비동기 | Sonnet 4 | 개발자2 |
+모든 에이전트는 `src/agents/podcast/`에 위치한다.
+공용 인프라(BaseAgent, LLMClient, PromptLoader 등)는 `src/agents/shared/`에 위치한다.
 
-### 공용 에이전트 (양쪽 모드에서 사용)
-
-- Intent Classifier, Safety Agent, Emotion Agent
-- Knowledge Agent, Visualization Agent
-- Telemetry Agent, Learning Agent
-
-> **파일 위치**: Safety/Emotion Agent는 `src/agents/podcast/`에 구현되어 양 모드에서 공용으로 사용된다.
-> Learning Agent는 `src/agents/shared/learning.py`에 위치한다.
-
-### 대화모드 실행 흐름
-
-```
-사용자 입력
-    ↓
-TIER 0: Intent Classifier
-    │ 의도 분류 + complexity_score + 1차 위기 감지(risk_flag)
-    ↓
-TIER 1 (병렬 Fan-out):
-├─ Safety Agent ─── CRISIS 시 → 모든 병렬 취소 → Safety 심화 → 즉시 응답
-├─ Emotion Agent
-├─ Context Agent
-└─ Reasoning Agent
-      ├─ Memory Agent ← 조건부 호출 (독립 에이전트)
-      └─ Knowledge Agent ← 조건부 호출 (독립 에이전트)
-    ↓ (Fan-in)
-TIER 2: Synthesis Agent
-    │ 4개 TIER 1 결과 종합 → 응답 내용 생성 (톤 조정은 하지 않음)
-    ↓
-TIER 3: Validator Agent
-    │ 품질 검증 (실패 시 TIER 2 재시도, 최대 2회)
-    ↓
-TIER 4: Personalization Agent
-    │ 톤/스타일 조정 + Safety warning 톤 강화 (톤 조정의 단독 책임자)
-    ↓
-최종 응답 출력
-    ↓
-비동기: Visualization (11) + Telemetry (12) + Learning (13)
-```
-
-### 팟캐스트모드 실행 흐름
+### 실행 흐름
 
 ```
 사용자 입력
@@ -159,12 +111,11 @@ Safety 상태별 흐름:
 
 ### 개발자별 담당 영역
 
-| 개발자 | 브랜치 접두사 | 대화모드 에이전트 | 팟캐스트모드 에이전트 |
-|--------|-------------|-----------------|---------------------|
-| **개발자1** | `feature/analysis-*` | Intent Classifier, Knowledge, Synthesis, Personalization | Script Generator, Script Personalizer |
-| **개발자2** | `feature/reasoning-*` | Safety, Memory, Visualization, Emotion | Episode Memory, Visualization(Podcast) |
-| **개발자3** | `feature/validation-*` | Reasoning, Context, Validator, Learning | Podcast Reasoning, Content Analyzer, Batch Validator |
-| **미정** | — | Telemetry Agent | — (전체 에이전트 완료 후 예정) |
+| 개발자 | 브랜치 접두사 | 담당 에이전트 |
+|--------|-------------|-------------|
+| **개발자1** | `feature/analysis-*` | Intent Classifier, Knowledge, Script Generator, Script Personalizer |
+| **개발자2** | `feature/reasoning-*` | Safety, Emotion, Visualization, Episode Memory |
+| **개발자3** | `feature/validation-*` | Podcast Reasoning, Content Analyzer, Batch Validator, Learning |
 
 ### 브랜치 전략
 
@@ -219,7 +170,7 @@ class AgentState(TypedDict, total=False):
     user_input: str
     user_id: str
     session_id: str
-    mode: Literal["conversation", "podcast"]
+    mode: Literal["podcast"]
 
     # === 개발자1 담당 ===
     intent: dict              # Intent Classifier → 의도 분류 결과
@@ -285,7 +236,7 @@ class AgentState(TypedDict, total=False):
     "session_id": "sess_{uuid}",
     "correlation_id": "corr_{uuid}",
     "trace_id": "trace_{uuid}",
-    "mode": "conversation | podcast",
+    "mode": "podcast",
     "interaction_unit": "turn | episode",
     "tier": 0,
     "priority": 1,
@@ -342,7 +293,7 @@ Content-Type: application/json
 {
   "user_id": "uuid",
   "session_id": "uuid",
-  "type": "conversation | emotion_log | memory | visualization",
+  "type": "podcast_episode | emotion_log | visualization | learning",
   "data": { ... },
   "timestamp": "2026-02-10T12:00:00Z"
 }
@@ -392,7 +343,7 @@ Content-Type: application/json
 - Backend URL 기본값: `http://localhost:8080/api/v1` (`BACKEND_API_URL` 환경변수로 오버라이드)
 - 실패 시 최대 3회 재시도 (exponential backoff)
 - 활성 리소스: learning, podcast_episodes, content_analyses, emotion_logs, visualizations
-- 대화모드 리소스: conversations, memories, sessions (`TODO(backend)` — 백엔드 팀 협의 필요)
+- 세션 리소스: sessions (`TODO(backend)` — 백엔드 팀 협의 필요)
 - 저장 모드(`config/settings.yaml`의 `storage.mode`): `local` | `proxy`(기본) | `hybrid`
 
 ---
@@ -405,9 +356,8 @@ Content-Type: application/json
 
 ```python
 # 각 개발자는 자기 에이전트를 함수로 구현
-# src/agents/conversation/intent_classifier.py → intent_classifier_node(state) -> dict[str, Any]
-# src/agents/conversation/reasoning.py → reasoning_node(state) -> dict[str, Any]
-# src/agents/conversation/safety.py → safety_node(state) -> dict[str, Any]
+# src/agents/podcast/intent_classifier.py → intent_classifier_node(state) -> dict[str, Any]
+# src/agents/podcast/safety.py → safety_node(state) -> dict[str, Any]
 
 # workflow.py에서 통합 (3인 합의 영역)
 # v4.0: TIER 기반 + 모드별 확장 (UnifiedStateGraph)
@@ -419,18 +369,19 @@ graph.add_node("intent_classifier", intent_classifier_node)  # 개발자1
 # TIER 1 (병렬 Fan-out)
 graph.add_node("safety", safety_node)                        # 개발자2
 graph.add_node("emotion", emotion_node)                      # 개발자2
-graph.add_node("context", context_node)                      # 개발자3 (대화모드)
-graph.add_node("reasoning", reasoning_node)                  # 개발자3 (대화모드)
-# Memory/Knowledge는 독립 에이전트 — Reasoning 내부에서 조건부 호출
+graph.add_node("content_analyzer", content_analyzer_node)    # 개발자3
+graph.add_node("podcast_reasoning", podcast_reasoning_node)  # 개발자3
+# Episode Memory/Knowledge는 독립 에이전트 — Podcast Reasoning 내부에서 조건부 호출
 
 # TIER 2
-graph.add_node("synthesis", synthesis_node)                  # 개발자1 (대화모드)
+graph.add_node("script_generator", script_generator_node)    # 개발자1
+graph.add_node("visualization", visualization_node)          # 개발자2
 
 # TIER 3
-graph.add_node("validator", validator_node)                  # 개발자3
+graph.add_node("batch_validator", batch_validator_node)      # 개발자3
 
 # TIER 4
-graph.add_node("personalization", personalization_node)      # 개발자1
+graph.add_node("script_personalizer", script_personalizer_node)  # 개발자1
 
 # ... 팟캐스트모드 노드, 조건부 엣지, 병렬 그룹 설정
 ```
@@ -518,19 +469,15 @@ class ReasoningAgent:
 
 ## 구현 현황 (2026-03-30 기준)
 
-| 모드 | 구현 에이전트 | 진행률 |
+| 구분 | 구현 에이전트 | 진행률 |
 |------|------------|--------|
-| **팟캐스트모드** | Content Analyzer, Podcast Reasoning, Script Generator, Batch Validator, Script Personalizer, Visualization, Episode Memory | 7/7 (100%) |
-| **대화모드** | Intent Classifier, Knowledge, Learning | 3/13 (23%) |
-| **공용 에이전트** | Safety, Emotion | 팟캐스트모드에서 구현, 양 모드에서 재사용 |
-| **대화모드 스텁** | Context, Reasoning, Synthesis, Validator, Personalization, Telemetry | workflow.py에 빈 스텁 등록 |
-
-> 스텁 노드: workflow.py에 등록되어 그래프 구조는 완성되었으나, 실제 로직은 빈 dict를 반환한다.
-> Telemetry Agent는 전체 에이전트 완료 후 구현 예정.
+| **TIER 0-4** | Intent Classifier, Safety, Emotion, Content Analyzer, Podcast Reasoning, Script Generator, Visualization, Batch Validator, Script Personalizer | 9/11 |
+| **독립** | Episode Memory, Knowledge | 2/11 |
+| **비동기** | Learning Agent | 1/1 |
 
 > **메시지 프로토콜 v2.0 현황**: `BaseAgent.create_message()`로 `MessageEnvelope` 생성이 가능하나,
 > 현재 독립 에이전트 호출은 DI 패턴(직접 메서드 호출)으로 구현되어 엔벨로프가 미사용 상태이다.
-> 대화모드 통합 및 백엔드 통신 확장 시 활성화를 검토한다.
+> 백엔드 통신 확장 시 활성화를 검토한다.
 
 ---
 
