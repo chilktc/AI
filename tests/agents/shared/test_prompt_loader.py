@@ -72,7 +72,7 @@ def test_load_all(
     [
         ("podcast", "content_analyzer"),
         ("podcast", "podcast_reasoning"),
-        ("shared", "learning"),
+        ("podcast", "learning"),
     ],
 )
 def test_get_version(mode: str, agent: str) -> None:
@@ -215,7 +215,7 @@ def test_get_prompt_base_dir_default_and_env() -> None:
         ("src.agents.podcast.content_analyzer", "ContentAnalyzerAgent"),
         ("src.agents.podcast.podcast_reasoning", "PodcastReasoningAgent"),
         ("src.agents.podcast.batch_validator", "BatchValidatorAgent"),
-        ("src.agents.shared.learning", "LearningAgent"),
+        ("src.agents.podcast.learning", "LearningAgent"),
     ],
 )
 def test_agent_loads_prompts_and_version(

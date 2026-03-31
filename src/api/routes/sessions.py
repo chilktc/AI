@@ -18,7 +18,7 @@ from src.api.external_schemas import (
     SessionCloseRequest,
     ErrorResponse
 )
-# from src.agents.shared.learning import trigger_learning_agent (비동기 트리거용)
+# from src.agents.podcast.learning import trigger_learning_agent (비동기 트리거용)
 
 router = APIRouter()
 
@@ -66,9 +66,7 @@ async def close_session(session_id: str, request: SessionCloseRequest) -> dict:
     비동기로 백그라운드 태스크나 Learning Agent를 트리거하여 세션 로그를 정리/학습할 수 있다.
     """
     
-    # TODO: Learning Agent 비동기 트리거 — 대화모드 에이전트 구현 완료 후 활성화 예정
-    # 현재 비활성 이유: 대화모드 세션에서 수집할 AgentState가 아직 없음
-    # 활성화 시점: 대화모드 에이전트 (Context, Reasoning, Synthesis 등) 구현 후
-    # asyncio.create_task(trigger_learning_agent(session_id, request.user_id, request.feedback))
+    # Learning Agent는 팟캐스트 파이프라인 내부(async_post_processing_node)에서 실행됨.
+    # 세션 종료 시 별도 트리거는 불필요.
     
     return {"success": True, "message": f"Session {session_id} closed successfully"}

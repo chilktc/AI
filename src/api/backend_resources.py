@@ -21,9 +21,7 @@ RESOURCE_CONTENT_ANALYSIS = "content_analyses"  # ContentAnalyzer 분석 결과
 RESOURCE_EMOTION_LOG = "emotion_logs"       # 감정 벡터 데이터 저장
 RESOURCE_VISUALIZATION = "visualizations"   # 시각화(커버 이미지) 메타 저장
 
-# --- 협의 필요 리소스 (대화모드 구현 시 활성화 예정) ---
-RESOURCE_CONVERSATION = "conversations"     # TODO(backend): 대화모드 경로명 확정
-RESOURCE_MEMORY = "memories"                # TODO(backend): 대화모드 경로명 확정
+# --- 협의 필요 리소스 ---
 RESOURCE_SESSION = "sessions"               # TODO(backend): 경로명 확정
 
 # --- 프록시 전용 (STORAGE_MODE=proxy/hybrid 시) ---

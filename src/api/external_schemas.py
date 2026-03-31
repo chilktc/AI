@@ -143,9 +143,9 @@ class SessionCreateRequest(BaseModel):
     """
 
     user_id: str = Field(description="사용자 고유 ID")
-    mode: Literal["conversation", "podcast"] = Field(
-        default="conversation",
-        description="실행 모드. 'conversation'=실시간 상담, 'podcast'=에피소드 생성",
+    mode: Literal["podcast"] = Field(
+        default="podcast",
+        description="실행 모드 (팟캐스트 에피소드 생성)",
     )
     device_info: dict[str, str] | None = Field(
         default=None,
@@ -162,7 +162,7 @@ class SessionCreateResponse(BaseModel):
 
     success: Literal[True] = True
     session_id: str = Field(description="생성된 세션 고유 ID")
-    mode: Literal["conversation", "podcast"] = Field(description="세션 모드")
+    mode: Literal["podcast"] = Field(description="세션 모드")
     created_at: datetime = Field(description="세션 생성 시각")
     tracing: RequestTracing = Field(description="추적 컨텍스트")
 
@@ -782,7 +782,7 @@ class EmotionLogEntry(BaseModel):
 
     log_id: str = Field(description="감정 로그 고유 ID")
     session_id: str = Field(description="소속 세션 ID")
-    mode: Literal["conversation", "podcast"] = Field(description="모드")
+    mode: Literal["podcast"] = Field(description="모드")
     primary_emotion: str = Field(description="주요 감정 (영문 키)")
     intensity: float = Field(description="감정 강도 (0.0-1.0)")
     valence: float = Field(description="감정 가치 (-1.0~1.0)")
@@ -961,7 +961,7 @@ class MySQLEmotionLog(BaseModel):
     log_id: str = Field(description="감정 로그 고유 ID (PK)")
     session_id: str = Field(description="세션 ID (FK)")
     user_id: str = Field(description="사용자 ID (FK)")
-    mode: Literal["conversation", "podcast"] = Field(description="모드")
+    mode: Literal["podcast"] = Field(description="모드")
     # 원본 컨텍스트 참조 (mode에 따라 하나만 값이 있음)
     turn_id: str | None = Field(default=None, description="대화 턴 ID (대화모드)")
     episode_id: str | None = Field(default=None, description="에피소드 ID (팟캐스트)")
@@ -1070,7 +1070,7 @@ class MySQLLearningPattern(BaseModel):
     pattern_id: str = Field(description="패턴 고유 ID (PK)")
     session_id: str = Field(description="세션 ID (FK)")
     user_id: str = Field(description="사용자 ID (FK)")
-    mode: Literal["conversation", "podcast"] = Field(description="모드")
+    mode: Literal["podcast"] = Field(description="모드")
     # Learning Agent LLM 분석 결과
     preferred_topics: list[str] = Field(
         default_factory=list, description="선호 주제 패턴"
@@ -1117,7 +1117,7 @@ class MySQLVisualizationMeta(BaseModel):
     visualization_id: str = Field(description="시각화 고유 ID (PK)")
     session_id: str = Field(description="세션 ID (FK)")
     user_id: str = Field(description="사용자 ID (FK)")
-    mode: Literal["conversation", "podcast"] = Field(description="모드")
+    mode: Literal["podcast"] = Field(description="모드")
     turn_id: str | None = Field(default=None, description="대화 턴 ID (대화모드)")
     episode_id: str | None = Field(default=None, description="에피소드 ID (팟캐스트)")
     # S3 참조
@@ -1146,7 +1146,7 @@ class MySQLSession(BaseModel):
 
     session_id: str = Field(description="세션 고유 ID (PK)")
     user_id: str = Field(description="사용자 ID (FK)")
-    mode: Literal["conversation", "podcast"] = Field(description="세션 모드")
+    mode: Literal["podcast"] = Field(description="세션 모드")
     status: Literal["active", "closed", "expired"] = Field(
         default="active", description="세션 상태"
     )
@@ -1189,7 +1189,7 @@ class PineconeVectorMetadata(BaseModel):
     )
     user_id: str = Field(description="사용자 ID (네임스페이스 또는 필터용)")
     session_id: str = Field(description="세션 ID")
-    mode: Literal["conversation", "podcast"] = Field(description="모드")
+    mode: Literal["podcast"] = Field(description="모드")
     created_at: str = Field(
         description="생성 시각 (ISO 8601 문자열 — Pinecone은 datetime 미지원)"
     )

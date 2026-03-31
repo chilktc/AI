@@ -283,14 +283,12 @@ class BaseAgent(ABC):
         """
         에이전트가 속한 모드를 추론한다.
 
-        모듈 경로를 검사하여 podcast/conversation/shared를 판별한다.
+        모듈 경로를 검사하여 podcast/shared를 판별한다.
         판별 불가 시 "shared"를 기본값으로 반환한다.
         """
         module = type(self).__module__ or ""
         if ".podcast." in module or "podcast" in module:
             return "podcast"
-        elif ".conversation." in module or "conversation" in module:
-            return "conversation"
         return "shared"
 
     @property
@@ -728,7 +726,7 @@ class BaseAgent(ABC):
             message_type: 메시지 유형 (request, response 등)
             payload: 요청/응답 데이터
             session_id: 세션 ID
-            mode: 실행 모드 (conversation / podcast)
+            mode: 실행 모드 (podcast)
             priority: 메시지 우선순위
 
         Returns:
@@ -742,7 +740,7 @@ class BaseAgent(ABC):
             metadata=MessageMetadata(
                 session_id=session_id,
                 mode=mode,  # type: ignore[arg-type]
-                interaction_unit="episode" if mode == "podcast" else "turn",
+                interaction_unit="episode",
                 tier=self.tier,
                 priority=priority,
             ),

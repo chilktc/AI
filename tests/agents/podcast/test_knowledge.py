@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from src.agents.conversation.knowledge import KnowledgeAgent
+from src.agents.podcast.knowledge import KnowledgeAgent
 from src.agents.shared.stubs import KnowledgeAgentStub
 
 

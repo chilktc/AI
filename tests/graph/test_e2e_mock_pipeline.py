@@ -16,27 +16,19 @@ from unittest.mock import AsyncMock
 import pytest
 
 from tests.shared_fixtures.mock_data import (
-    DEVELOPER_FIELDS_CONVERSATION,
     DEVELOPER_FIELDS_PODCAST,
-    EXPECTED_CONVERSATION_FIELDS,
     EXPECTED_PODCAST_FIELDS,
     MOCK_BV_FAIL,
     MOCK_BV_PASS,
     MOCK_CONTENT_ANALYSIS,
-    MOCK_CONTEXT,
     MOCK_EMOTION,
-    MOCK_FINAL_OUTPUT_CONVERSATION,
     MOCK_FINAL_OUTPUT_PODCAST,
-    MOCK_INTENT_CONVERSATION,
     MOCK_INTENT_CRISIS,
     MOCK_INTENT_PODCAST,
-    MOCK_REASONING_CONVERSATION,
     MOCK_REASONING_PODCAST,
     MOCK_SAFETY_CRISIS,
     MOCK_SAFETY_SAFE,
     MOCK_SCRIPT_DRAFT,
-    MOCK_SYNTHESIS,
-    MOCK_VALIDATOR_PASS,
     MOCK_VISUALIZATION,
 )
 
@@ -111,17 +103,6 @@ def podcast_initial_state() -> dict[str, Any]:
 
 
 @pytest.fixture
-def conversation_initial_state() -> dict[str, Any]:
-    """대화모드 초기 상태."""
-    return {
-        "user_input": "요즘 직장에서 스트레스를 많이 받아요. 어떻게 해야 할까요?",
-        "user_id": "user_mock_e2e_002",
-        "session_id": "sess_mock_e2e_002",
-        "mode": "conversation",
-    }
-
-
-@pytest.fixture
 def crisis_initial_state() -> dict[str, Any]:
     """위기 상황 초기 상태."""
     return {
@@ -164,32 +145,6 @@ def mock_podcast_nodes(monkeypatch):
     monkeypatch.setattr(
         wf, "script_personalizer_node",
         AsyncMock(return_value=MOCK_FINAL_OUTPUT_PODCAST),
-    )
-    monkeypatch.setattr(wf, "visualization_node", AsyncMock(return_value=MOCK_VISUALIZATION))
-    monkeypatch.setattr(wf, "learning_node", AsyncMock(return_value={}))
-
-
-@pytest.fixture
-def mock_conversation_nodes(monkeypatch):
-    """대화 모드 전체 파이프라인 노드를 mock 데이터로 패치."""
-    import src.graph.workflow as wf
-
-    monkeypatch.setattr(
-        wf, "intent_classifier_node",
-        AsyncMock(return_value=MOCK_INTENT_CONVERSATION),
-    )
-    monkeypatch.setattr(wf, "safety_node", AsyncMock(return_value=MOCK_SAFETY_SAFE))
-    monkeypatch.setattr(wf, "emotion_node", AsyncMock(return_value=MOCK_EMOTION))
-    monkeypatch.setattr(wf, "context_node", AsyncMock(return_value=MOCK_CONTEXT))
-    monkeypatch.setattr(
-        wf, "reasoning_node",
-        AsyncMock(return_value=MOCK_REASONING_CONVERSATION),
-    )
-    monkeypatch.setattr(wf, "synthesis_node", AsyncMock(return_value=MOCK_SYNTHESIS))
-    monkeypatch.setattr(wf, "validator_node", AsyncMock(return_value=MOCK_VALIDATOR_PASS))
-    monkeypatch.setattr(
-        wf, "personalization_node",
-        AsyncMock(return_value=MOCK_FINAL_OUTPUT_CONVERSATION),
     )
     monkeypatch.setattr(wf, "visualization_node", AsyncMock(return_value=MOCK_VISUALIZATION))
     monkeypatch.setattr(wf, "learning_node", AsyncMock(return_value={}))
@@ -292,39 +247,6 @@ async def test_podcast_e2e_full(mock_podcast_nodes, podcast_initial_state):
 # ====================================================================
 
 
-@pytest.mark.asyncio
-async def test_conversation_full_pipeline(mock_conversation_nodes, conversation_initial_state):
-    """대화모드 전체 파이프라인이 정상 실행되고 3명 개발자 모두 기여한다."""
-    from src.graph.workflow import build_unified_graph
-
-    final_state = await build_unified_graph().compile().ainvoke(conversation_initial_state)
-
-    validation = _validate_result(final_state, EXPECTED_CONVERSATION_FIELDS)
-    assert validation["fields_present"] == validation["fields_total"], (
-        f"Missing: {[k for k, v in validation['field_details'].items() if v == 'MISSING']}"
-    )
-
-    for developer, fields in DEVELOPER_FIELDS_CONVERSATION.items():
-        for field in fields:
-            assert final_state.get(field), f"{developer}의 {field} 필드 없음"
-
-
-@pytest.mark.asyncio
-async def test_conversation_mode_routing(mock_conversation_nodes, conversation_initial_state):
-    """TIER 0에서 mode=conversation으로 라우팅되어 대화모드 전용 필드만 존재한다."""
-    from src.graph.workflow import build_unified_graph
-
-    final_state = await build_unified_graph().compile().ainvoke(conversation_initial_state)
-
-    assert final_state.get("context"), "대화모드 context 필드 없음"
-    assert final_state.get("response_draft"), "대화모드 response_draft 필드 없음"
-    assert not final_state.get("content_analysis"), "대화모드인데 content_analysis 존재"
-    assert not final_state.get("script_draft"), "대화모드인데 script_draft 존재"
-
-    final_output = final_state.get("final_output", "")
-    assert isinstance(final_output, str) and len(final_output) > 30
-
-
 # ====================================================================
 # CRISIS 선점 메커니즘 테스트
 # ====================================================================
@@ -402,29 +324,16 @@ async def test_retry_then_pass(monkeypatch, podcast_initial_state):
 # ====================================================================
 
 
-@pytest.mark.parametrize(
-    "builder_name, expected_nodes",
-    [
-        (
-            "podcast",
-            {"tier1_podcast", "tier2_podcast", "batch_validator",
-             "script_personalizer", "crisis_response", "async_post", "increment_iteration"},
-        ),
-        (
-            "conversation",
-            {"tier1_conversation", "synthesis", "validator",
-             "personalization", "crisis_response", "async_post", "increment_iteration"},
-        ),
-    ],
-    ids=["podcast", "conversation"],
-)
-def test_mode_graph_required_nodes(builder_name: str, expected_nodes: set[str]):
-    """모드별 그래프에 필수 노드가 모두 등록되어 있다."""
-    from src.graph.workflow import build_conversation_graph, build_podcast_graph
+def test_podcast_graph_required_nodes():
+    """팟캐스트 그래프에 필수 노드가 모두 등록되어 있다."""
+    from src.graph.workflow import build_podcast_graph
 
-    builder = build_podcast_graph if builder_name == "podcast" else build_conversation_graph
-    compiled = builder().compile()
+    expected_nodes = {
+        "tier1_podcast", "tier2_podcast", "batch_validator",
+        "script_personalizer", "crisis_response", "async_post", "increment_iteration",
+    }
+    compiled = build_podcast_graph().compile()
     node_names = [n for n in compiled.nodes.keys() if not n.startswith("__")]
 
     for node in expected_nodes:
-        assert node in node_names, f"{builder_name} 그래프에 {node} 노드 없음"
+        assert node in node_names, f"podcast 그래프에 {node} 노드 없음"

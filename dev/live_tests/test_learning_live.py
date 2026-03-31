@@ -62,7 +62,7 @@ async def run_test(
     # 3. 에이전트 생성 + 실행
     print_section("에이전트 실행")
     try:
-        from src.agents.shared.learning import LearningAgent
+        from src.agents.podcast.learning import LearningAgent
         from src.api.client import BackendClient
 
         state = make_learning_state()
