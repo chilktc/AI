@@ -17,9 +17,9 @@ class TestCreateSession:
         "mode_input, expected_mode",
         [
             ("podcast", "podcast"),
-            (None, "conversation"),
+            (None, "podcast"),
         ],
-        ids=["explicit_podcast", "default_conversation"],
+        ids=["explicit_podcast", "default_podcast"],
     )
     def test_create_session_mode(
         self, test_client, mode_input, expected_mode,

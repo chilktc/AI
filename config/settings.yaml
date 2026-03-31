@@ -71,7 +71,7 @@ agents:
     temperature: 0.3
 
   # ──────────────────────────────────────
-  # 공용 TIER 1 (대화모드 + 팟캐스트모드)
+  # TIER 1 (병렬)
   # ──────────────────────────────────────
   safety:
     model: sonnet
@@ -83,49 +83,14 @@ agents:
     max_tokens: 2048
 
   # ──────────────────────────────────────
-  # 대화모드 TIER 1 (병렬)
+  # 독립 에이전트 (Podcast Reasoning 조건부 호출)
   # ──────────────────────────────────────
-  context:
-    model: haiku
-    max_tokens: 2048
-  reasoning:
-    model: opus
-    max_tokens: 4096
-    temperature: 0.3
-
-  # ──────────────────────────────────────
-  # 대화모드 TIER 1 독립 에이전트
-  # ──────────────────────────────────────
-  memory:
-    model: sonnet
-    max_tokens: 2048
   knowledge:
     model: sonnet
     max_tokens: 2048
 
   # ──────────────────────────────────────
-  # 대화모드 TIER 2
-  # ──────────────────────────────────────
-  synthesis:
-    model: sonnet
-    max_tokens: 4096
-
-  # ──────────────────────────────────────
-  # 대화모드 TIER 3
-  # ──────────────────────────────────────
-  validator:
-    model: sonnet
-    max_tokens: 2048
-
-  # ──────────────────────────────────────
-  # 대화모드 TIER 4
-  # ──────────────────────────────────────
-  personalization:
-    model: sonnet
-    max_tokens: 2048
-
-  # ──────────────────────────────────────
-  # 대화모드 비동기
+  # 비동기
   # ──────────────────────────────────────
   visualization:
     model: sonnet
@@ -205,7 +170,7 @@ storage:
     upload_prefix: "vis"           # TODO(backend): 4-4 prefix 확정
   pinecone:
     index_knowledge: "expert_knowledge"
-    index_memory_conversation: "mem_conversation"
+
     index_memory_podcast: "mem_podcast_episode"
 
 # 파이프라인 설정
@@ -280,6 +245,6 @@ databases:
     # NEO4J_USER / NEO4J_PASSWORD 환경변수 필수
   pinecone:
     index_knowledge: "expert_knowledge"
-    index_memory_conversation: "mem_conversation"
+
     index_memory_podcast: "mem_podcast_episode"
     # PINECONE_API_KEY 환경변수 필수
