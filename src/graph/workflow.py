@@ -96,16 +96,16 @@ async def _with_timeout(
 # ---------------------------------------------------------------------------
 # 구현된 에이전트 노드 — 실제 import
 # ---------------------------------------------------------------------------
-from src.agents.conversation.intent_classifier import IntentClassifierAgent  # noqa: E402
+from src.agents.podcast.intent_classifier import IntentClassifierAgent  # noqa: E402
 from src.agents.podcast.batch_validator import batch_validator_node  # noqa: E402
 from src.agents.podcast.content_analyzer import content_analyzer_node  # noqa: E402
 from src.agents.podcast.emotion import emotion_node  # noqa: E402
+from src.agents.podcast.learning import learning_node  # noqa: E402
 from src.agents.podcast.podcast_reasoning import podcast_reasoning_node  # noqa: E402
 from src.agents.podcast.safety import safety_node  # noqa: E402
 from src.agents.podcast.script_generator import ScriptGeneratorAgent  # noqa: E402
 from src.agents.podcast.script_personalizer import ScriptPersonalizerAgent  # noqa: E402
 from src.agents.podcast.visualization import visualization_node  # noqa: E402
-from src.agents.shared.learning import learning_node  # noqa: E402
 
 # --- TIER 0 (개발자1) ---
 

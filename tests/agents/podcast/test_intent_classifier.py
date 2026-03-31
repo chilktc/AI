@@ -10,7 +10,7 @@ import time
 
 import pytest
 
-from src.agents.conversation.intent_classifier import IntentClassifierAgent
+from src.agents.podcast.intent_classifier import IntentClassifierAgent
 
 # =============================================================================
 # 테스트 데이터

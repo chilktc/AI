@@ -240,7 +240,7 @@ async def test_learning(
     """Learning Agent 개별 테스트 (BackendClient mock)."""
     print_banner("4. Learning Agent 테스트", color="cyan")
     try:
-        from src.agents.shared.learning import LearningAgent
+        from src.agents.podcast.learning import LearningAgent
         from src.api.client import BackendClient
 
         # final_output 추가 (Script Personalizer 미구현)

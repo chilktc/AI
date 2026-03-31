@@ -3,7 +3,7 @@ Knowledge Agent
 전문 심리상담 지식 검색 (Expert RAG) 에이전트.
 CBT, DBT 등 심리치료 기법, 정신건강 전문 지식을 검색하여 근거 기반 응답을 제공합니다.
 
-TIER 1 (공유): Reasoning Agent 및 Podcast Reasoning Agent가 필요 시 조건부 호출.
+독립 에이전트: Podcast Reasoning Agent가 필요 시 조건부 호출.
 """
 
 import json
@@ -96,7 +96,7 @@ class KnowledgeAgent(BaseAgent):
         """쿼리를 전문가 용어로 확장하고 탐색할 도메인 지정 (LLM)"""
         system_prompt = self.get_prompt("expand_query")
 
-        user_prompt = self._prompt_loader.load_user_prompt("conversation", "knowledge", "expand_query")
+        user_prompt = self._prompt_loader.load_user_prompt(self._prompt_mode, "knowledge", "expand_query")
         user_message = user_prompt.format(
             query=query,
             domain_hints=json.dumps(domain_hints)
@@ -170,7 +170,7 @@ class KnowledgeAgent(BaseAgent):
             ]
         )
 
-        user_prompt = self._prompt_loader.load_user_prompt("conversation", "knowledge", "assess_applicability")
+        user_prompt = self._prompt_loader.load_user_prompt(self._prompt_mode, "knowledge", "assess_applicability")
         user_message = user_prompt.format(
             age_group=user_context.get('age_group', 'unknown'),
             culture=user_context.get('cultural_background', 'unknown'),
@@ -220,7 +220,7 @@ class KnowledgeAgent(BaseAgent):
             ]
         )
 
-        user_prompt = self._prompt_loader.load_user_prompt("conversation", "knowledge", "synthesize_knowledge")
+        user_prompt = self._prompt_loader.load_user_prompt(self._prompt_mode, "knowledge", "synthesize_knowledge")
         user_message = user_prompt.format(
             query=query,
             docs_text=docs_text

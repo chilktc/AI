@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from src.agents.shared.learning import LearningAgent
+from src.agents.podcast.learning import LearningAgent
 from src.models.agent_state import AgentState
 
 # === 픽스처 ===

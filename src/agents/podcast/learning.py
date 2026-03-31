@@ -5,7 +5,7 @@ Learning Agent — 사용자 패턴 학습 에이전트 (비동기).
 사용자의 상호작용 패턴(선호 주제, 감정 패턴, 대화 스타일)을 학습하고
 결과를 백엔드 API로 저장한다.
 
-양쪽 모드(대화/팟캐스트)에서 공용으로 사용되므로 shared에 배치.
+팟캐스트 파이프라인의 비동기 후처리 단계에서 실행된다.
 
 담당: 개발자3
 출력: 백엔드 API 저장 (AgentState에 직접 반영 없음)
@@ -24,7 +24,7 @@ from src.api.client import BackendClient
 from src.api.contracts import SaveRequest
 from src.models.agent_state import AgentState
 
-# 시스템 프롬프트는 prompts/shared/learning.yaml에서 로드한다.
+# 시스템 프롬프트는 prompts/podcast/learning.yaml에서 로드한다.
 # BaseAgent의 get_prompt()로 접근.
 
 
@@ -89,6 +89,34 @@ class LearningAgent(BaseAgent):
             ["topic", "episode_type"],
         )
 
+        # 의도 분류 — 사용자 관심사 및 복잡도 추적
+        intent_sec = build_section(
+            "의도 분류",
+            state.get("intent", {}),
+            ["intent_type", "complexity_score"],
+        )
+
+        # 안전성 분석 — 위험 패턴 추적
+        safety_sec = build_section(
+            "안전성 분석",
+            state.get("safety_flags", {}),
+            ["status", "risk_score"],
+        )
+
+        # 추론 결과 — 세션 깊이 추적
+        reasoning_sec = build_section(
+            "추론 결과",
+            state.get("reasoning_result", {}),
+            ["depth_level", "method"],
+        )
+
+        # 검증 결과 — 품질 추이 분석
+        validation_sec = build_section(
+            "검증 결과",
+            state.get("validation_result", {}),
+            ["overall_score", "safety_compliance"],
+        )
+
         # 최종 출력 — 너무 길면 앞부분만 포함
         final_output = state.get("final_output", "")
         if final_output:
@@ -97,7 +125,11 @@ class LearningAgent(BaseAgent):
         else:
             output_sec = ""
 
-        result = build_context(user_input_sec, emotion_sec, content_sec, output_sec)
+        result = build_context(
+            user_input_sec, emotion_sec, content_sec,
+            intent_sec, safety_sec, reasoning_sec, validation_sec,
+            output_sec,
+        )
         return result if result else "세션 데이터가 부족합니다."
 
     async def _save_learning_result(

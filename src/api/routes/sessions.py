@@ -18,7 +18,7 @@ from src.api.external_schemas import (
     SessionCloseRequest,
     ErrorResponse
 )
-# from src.agents.shared.learning import trigger_learning_agent (비동기 트리거용)
+# from src.agents.podcast.learning import trigger_learning_agent (비동기 트리거용)
 
 router = APIRouter()
 
