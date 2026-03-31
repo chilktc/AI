@@ -83,7 +83,7 @@ async def {name}_node(state: AgentState) -> dict[str, Any]:
 
 타입: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
 
-상세 스코프 목록은 `docs/guides/GIT_WORKFLOW.md`를 참조하세요.
+상세 스코프 목록은 이 문서의 하단 및 `CLAUDE.md`를 참조하세요.
 
 ---
 
@@ -117,4 +117,4 @@ git push origin feature/your-feature
 
 ---
 
-*상세 브랜치 전략은 docs/guides/GIT_WORKFLOW.md, 아키텍처 규칙은 CLAUDE.md를 참조하세요.*
+*상세 브랜치 전략은 이 문서, 아키텍처 규칙은 CLAUDE.md를 참조하세요.*

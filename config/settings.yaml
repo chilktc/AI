@@ -233,7 +233,8 @@ prompts:
     batch_validator: "2.3.0"      # Round 4 최적 — 감점 규칙 (avg 0.863±0.006)
 
 
-# 기능 플래그
+# [미사용] Feature flags — 향후 에이전트별 활성화/비활성화 제어 시 사용 예정
+# 현재 코드에서 읽지 않음. 활성화 시 config/loader.py에 property 추가 필요.
 features:
   podcast_mode: true
   visualization: true

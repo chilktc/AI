@@ -296,8 +296,7 @@ async def create_podcast_episode(
             },
         )
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        logger.error("[Podcast] 파이프라인 오류", exc_info=True)
         raise e
 
     elapsed_ms = int((time.monotonic() - start_time) * 1000)

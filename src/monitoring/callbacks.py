@@ -48,7 +48,8 @@ _NODE_TIER_MAP: dict[str, int] = {
     "script_personalizer": 4,
 }
 
-# 모델별 비용 (USD per 1M tokens) — 2026-02 기준
+# 모델별 비용 (USD per 1M tokens) — 2026-02 기준 Anthropic 공식 가격.
+# 가격 변경 시 이 dict를 갱신해야 정확한 비용 추정이 가능하다.
 _MODEL_COSTS: dict[str, dict[str, float]] = {
     "claude-opus-4-6": {"input": 15.0, "output": 75.0},
     "claude-sonnet-4-5-20250929": {"input": 3.0, "output": 15.0},

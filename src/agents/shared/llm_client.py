@@ -384,6 +384,8 @@ class LLMClient:
             cache_write_tokens=getattr(response.usage, "cache_creation_input_tokens", 0) or 0,
         )
         # 첫 번째 content block에서 텍스트 추출 (TextBlock 가정)
+        if not response.content:
+            raise ValueError("Anthropic API returned empty content")
         return response.content[0].text  # type: ignore[union-attr]
 
     async def _generate_bedrock(

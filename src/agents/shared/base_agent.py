@@ -193,7 +193,8 @@ class BaseAgent(ABC):
         """
         세션 ID 기반으로 A/B variant를 결정적으로 선택한다.
 
-        동일 session_id + agent_name → 항상 동일한 variant 반환.
+        MD5 해시로 session_id를 0-9999 범위 정수로 매핑하여 A/B 그룹을 결정한다.
+        동일 세션은 항상 동일 그룹에 배정되므로 사용자 경험의 일관성이 보장된다.
         hash 기반이므로 균등 분포에 가깝다.
 
         Args:
