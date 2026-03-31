@@ -82,7 +82,7 @@ jobs:
               "sudo chown -R ubuntu:ubuntu /home/ubuntu/app",
               "cd /home/ubuntu/app",
               "if [ ! -d .git ]; then git clone -b develop ${{ github.server_url }}/${{ github.repository }}.git . ; fi",
-              "git config --global --add safe.directory /home/ubuntu/app",
+              "git config --system --add safe.directory /home/ubuntu/app",
               "git fetch origin develop",
               "git reset --hard origin/develop",
               "echo \"LANGCHAIN_TRACING_V2=${{ secrets.LANGCHAIN_TRACING_V2 }}\" > .env",
