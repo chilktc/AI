@@ -47,7 +47,18 @@ def _build_episode_data(state: dict[str, Any]) -> PodcastEpisodeData:
         script_data = json.loads(output_str) if output_str else {}
     except json.JSONDecodeError:
         script_data = {}
-        
+
+    # [보안] PII 정제 — DB 저장 전 script_text 등에서 개인정보 마스킹
+    from config.loader import get_settings
+
+    if getattr(get_settings(), "pii_sanitization_enabled", True):
+        from src.agents.shared.output_sanitizer import sanitize_dict_values
+
+        script_data = sanitize_dict_values(
+            script_data,
+            target_keys=["script_text", "episode_title", "key_insights"],
+        )
+
     segments_data = script_data.get("segments", [])
     segments = []
     
