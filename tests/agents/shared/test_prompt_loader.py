@@ -72,7 +72,7 @@ def test_load_all(
     [
         ("podcast", "content_analyzer"),
         ("podcast", "podcast_reasoning"),
-        ("shared", "learning"),
+        ("podcast", "learning"),
     ],
 )
 def test_get_version(mode: str, agent: str) -> None:
