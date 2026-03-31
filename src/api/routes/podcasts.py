@@ -267,12 +267,19 @@ async def create_podcast_episode(
         parts.append(f"- 동료의 반응: {request.colleague_reaction}")
     user_input = "\n".join(parts)
 
-    initial_state = {
+    initial_state: dict[str, Any] = {
         "user_input": user_input,
         "user_id": request.user_id,
         "session_id": request.session_id,
         "mode": "podcast",
     }
+
+    # 프롬프트 인젝션 패턴 감지 — Safety Agent가 최종 판단
+    from src.agents.shared.input_sanitizer import detect_injection
+
+    if detect_injection(user_input):
+        logger.warning("[Injection] 패턴 감지: %s", user_input[:50])
+        initial_state["safety_flags"] = {"injection_detected": True}
 
     # 2. 파이프라인(컴파일된 그래프) 실행
     from src.api.main import compiled_graph
