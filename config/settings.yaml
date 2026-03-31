@@ -44,6 +44,11 @@ llm:
       max_backoff_seconds: 8
     concurrency_limit: 10       # 동시 Bedrock 호출 상한 (Semaphore)
 
+  # Circuit Breaker — LLM 프로바이더 장애 시 cascading failure 방지
+  circuit_breaker:
+    fail_max: 5          # 연속 실패 횟수 → OPEN 전환
+    reset_timeout: 30    # OPEN → HALF_OPEN 전환 대기(초)
+
   # 프롬프트 캐싱 설정 (Bedrock cachePoint / Anthropic cache_control)
   # 캐시 읽기 = 표준 입력 토큰의 10% → 반복 요청 시 최대 ~88% 절감
   # 서울 리전 지원 여부: Phase 0 캐싱 검증(cacheWriteInputTokens > 0)으로 확인

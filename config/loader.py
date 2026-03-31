@@ -385,6 +385,11 @@ class Settings:
         """데이터베이스 설정을 반환한다."""
         return cast(dict[str, Any], self._config.get("databases", {}))
 
+    @property
+    def circuit_breaker_config(self) -> dict[str, Any]:
+        """Circuit Breaker 설정을 반환한다."""
+        return cast(dict[str, Any], self._config.get("llm", {}).get("circuit_breaker", {}))
+
 
 # 싱글톤 인스턴스 (모듈 레벨에서 한 번만 로드)
 _settings_instance: Settings | None = None
