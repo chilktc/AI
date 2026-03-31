@@ -617,8 +617,7 @@ def compile_graph(
     Args:
         graph_builder: 빌드할 그래프 유형
             "unified" — 통합 그래프 (TIER 0 포함)
-            "conversation" — 대화모드 전용
-            "podcast" — 팟캐스트모드 전용
+            "podcast" — 팟캐스트 전용
         checkpointer: LangGraph 체크포인터 (선택).
             개발용: ``InMemorySaver()``
             프로덕션: ``PostgresSaver.from_conn_string(DB_URI)``
