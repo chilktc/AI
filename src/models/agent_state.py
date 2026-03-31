@@ -32,28 +32,25 @@ class AgentState(TypedDict, total=False):
     user_input: str  # 사용자 원본 입력
     user_id: str  # 사용자 고유 ID
     session_id: str  # 세션 고유 ID
-    mode: Literal["conversation", "podcast"]  # 실행 모드
+    mode: Literal["podcast"]  # 실행 모드
 
     # === 분석 필드 ===
     intent: dict[str, Any]  # Intent Classifier → 의도 분류 결과
     emotion_vectors: dict[str, Any]  # Emotion Agent → 감정 벡터
-    context: dict[str, Any]  # Context Agent → 대화 맥락 (대화모드)
-    content_analysis: dict[str, Any]  # Content Analyzer → 팟캐스트 주제 분석
+    content_analysis: dict[str, Any]  # Content Analyzer → 주제 분석
 
     # === 추론/생성 필드 ===
-    memory_results: dict[str, Any]  # Memory/Episode Memory → 기억 검색 결과
+    memory_results: dict[str, Any]  # Episode Memory → 기억 검색 결과
     knowledge_results: dict[str, Any]  # Knowledge Agent → 전문 지식 검색 결과
-    reasoning_result: dict[str, Any]  # Reasoning/Podcast Reasoning → 추론 결과
-    # TODO: Synthesis Agent 구현 후 활성화 (대화모드 TIER 2 — 현재 미사용)
-    response_draft: str  # Synthesis Agent → 응답 초안 (대화모드)
-    script_draft: dict[str, Any]  # Script Generator → 팟캐스트 스크립트
+    reasoning_result: dict[str, Any]  # Podcast Reasoning → 추론 결과
+    script_draft: dict[str, Any]  # Script Generator → 스크립트
 
     # === 검증/부가 필드 ===
     risk_level: int  # Safety Agent → 위험 레벨 (0-4)
     risk_score: float  # Safety Agent → 위험 점수 (0.0-1.0)
     safety_flags: dict[str, Any]  # Safety Agent → 안전 플래그 및 상태
-    validation_result: dict[str, Any]  # Validator/Batch Validator → 검증 결과
-    final_output: str  # Personalization/Script Personalizer → 최종 응답
+    validation_result: dict[str, Any]  # Batch Validator → 검증 결과
+    final_output: str  # Script Personalizer → 최종 응답
     visual_data: dict[str, Any]  # Visualization Agent → 시각화 메타데이터
 
     # === 제어 필드 ===

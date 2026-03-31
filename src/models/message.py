@@ -67,8 +67,8 @@ class MessageMetadata(BaseModel):
     session_id: str  # 세션 고유 ID
     correlation_id: str = Field(default_factory=_generate_corr_id)  # 메시지 체인 그룹 ID
     trace_id: str = Field(default_factory=_generate_trace_id)  # 분산 추적 ID
-    mode: Literal["conversation", "podcast"]  # 실행 모드
-    interaction_unit: Literal["turn", "episode"] = "episode"  # 상호작용 단위
+    mode: Literal["podcast"] = "podcast"  # 실행 모드
+    interaction_unit: Literal["episode"] = "episode"  # 상호작용 단위
     tier: int | None = None  # TIER 레벨 (0-4, 독립 에이전트는 None)
     priority: Priority = Priority.HIGH  # 메시지 우선순위
     retry_count: int = 0  # 재시도 횟수
