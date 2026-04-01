@@ -1,5 +1,5 @@
 import asyncio
-from src.agents.podcast.visualization import visualization_agent
+from src.agents.podcast.visualization import VisualizationAgent
 from src.models.agent_state import AgentState
 
 async def run_test():
@@ -7,15 +7,16 @@ async def run_test():
     state = AgentState(
         user_id="dev2_tester",
         session_id="test_session_02",
-        # [변경] mode를 'empathy'가 아닌 'conversation'으로 설정하여 이성적 접근을 유도합니다.
-        mode="conversation", 
+        # [변경] mode를 podcast로 설정 (conversation 모드는 삭제됨)
+        mode="podcast",
         emotion_vectors={"primary_emotion": "neutral", "intensity": 0.4},
         # [변경] 위로가 아닌 '구조화'와 '정리'가 필요한 이성적 테마를 전달합니다.
         content_analysis={"main_theme": "복잡한 프로젝트 우선순위에 대한 객관적인 구조화와 논리적 상황 정리"}
     )
 
     print("🎨 Visualization Agent 작동 시작...")
-    result = await visualization_agent.process(state)
+    agent = VisualizationAgent()
+    result = await agent.process(state)
     
     vis = result["visual_data"]
     print(f"\n✅ 결과 확인")

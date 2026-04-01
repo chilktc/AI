@@ -134,8 +134,10 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
             self.logger.error("파일 쓰기 실패: %s", e)
             return False
 
-# 싱글톤 및 노드 래퍼
-episode_memory_agent = EpisodeMemoryAgent()
+async def episode_memory_node(state: AgentState) -> dict[str, Any]:
+    """LangGraph 노드 — Episode Memory.
 
-async def episode_memory_node(state: AgentState):
-    return await episode_memory_agent(state)
+    요청마다 새 인스턴스를 생성하여 동시 요청 간 상태를 격리한다.
+    """
+    agent = EpisodeMemoryAgent()
+    return await agent(state)

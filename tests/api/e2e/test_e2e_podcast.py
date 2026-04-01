@@ -58,24 +58,28 @@ LLMClient.parse_json_response = patched_parse
 # 3. 에이전트 및 워크플로우 로드
 import src.graph.workflow as wf
 from src.graph.workflow import compile_graph
-from src.agents.podcast.safety import safety_agent
-from src.agents.podcast.emotion import emotion_agent
-from src.agents.podcast.content_analyzer import content_analyzer_agent
-from src.agents.podcast.podcast_reasoning import podcast_reasoning_agent
+from src.agents.podcast.safety import SafetyAgent
+from src.agents.podcast.emotion import EmotionAgent
+from src.agents.podcast.content_analyzer import ContentAnalyzerAgent
+from src.agents.podcast.podcast_reasoning import PodcastReasoningAgent
 
 def _force_cheap_model():
-    """모든 에이전트 인스턴스에 하이쿠 주입"""
-    targets = {
-        "safety": safety_agent, "emotion": emotion_agent,
-        "content_analyzer": content_analyzer_agent, "podcast_reasoning": podcast_reasoning_agent,
-        "intent_classifier": getattr(wf, "_intent_classifier", None),
-        "script_generator": getattr(wf, "_script_generator", None),
-        "batch_validator": getattr(wf, "batch_validator_agent", None)
+    """에이전트 클래스 import 검증 + 모델 ID 표시.
+
+    NOTE: 워크플로우는 노드 함수 내부에서 요청마다 새 인스턴스를 생성하므로,
+    여기서 인스턴스를 mutate해도 실제 실행에는 영향이 없다.
+    실제 모델 강제는 상단의 patched_generate 몽키패치가 담당한다.
+    이 함수는 import 정상 여부 확인 + 로그 출력 용도로만 유지한다.
+    """
+    agent_classes = {
+        "safety": SafetyAgent,
+        "emotion": EmotionAgent,
+        "content_analyzer": ContentAnalyzerAgent,
+        "podcast_reasoning": PodcastReasoningAgent,
     }
-    for name, agent in targets.items():
-        if agent and hasattr(agent, "llm_client"):
-            agent.llm_client._model_id = CHEAP_MODEL
-            print(f"  ✅ {name} 연결 완료")
+    for name, cls in agent_classes.items():
+        print(f"  ✅ {name} ({cls.__name__}) import 확인 완료")
+    print(f"  ℹ️  실제 모델 강제: patched_generate → {CHEAP_MODEL}")
 
 async def run_complete_flow():
     _force_cheap_model()
