@@ -130,10 +130,6 @@ agents:
   script_generator:
     model: haiku  # Phase 3 최적: c3-haiku (composite 0.659)
     max_tokens: 4096  # c3-haiku 모델 최대 출력 한계 (8192는 sonnet 이상에서만 유효)
-  visualization_podcast:
-    model: sonnet
-    max_tokens: 2048
-
   # ──────────────────────────────────────
   # 팟캐스트모드 TIER 3
   # ──────────────────────────────────────
@@ -152,9 +148,6 @@ agents:
   # ──────────────────────────────────────
   # 공용 비동기
   # ──────────────────────────────────────
-  telemetry:
-    model: haiku
-    max_tokens: 1024
   learning:
     model: sonnet  # Phase 3 최적: c35-sonnet-v2 (composite 0.619)
     max_tokens: 1024
@@ -213,7 +206,6 @@ security:
 features:
   podcast_mode: true
   visualization: true
-  telemetry: true
   learning: true
 
 # 모니터링 & Observability
