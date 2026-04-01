@@ -74,9 +74,10 @@ jobs:
 
       - name: Deploy via AWS SSM
         run: |
-          aws ssm send-command \
+          CMD_ID=$(aws ssm send-command \
             --instance-ids "${{ secrets.AWS_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
+            --timeout-seconds 600 \
             --parameters 'commands=[
               "mkdir -p /home/ubuntu/app",
               "sudo chown -R ubuntu:ubuntu /home/ubuntu/app",
@@ -85,23 +86,31 @@ jobs:
               "git config --system --add safe.directory /home/ubuntu/app",
               "git fetch origin develop",
               "git reset --hard origin/develop",
-              "echo \"LANGCHAIN_TRACING_V2=${{ secrets.LANGCHAIN_TRACING_V2 }}\" > .env",
-              "echo \"LANGCHAIN_API_KEY=${{ secrets.LANGCHAIN_API_KEY }}\" >> .env",
-              "echo \"LANGCHAIN_PROJECT=${{ secrets.LANGCHAIN_PROJECT }}\" >> .env",
-              "echo \"AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET }}\" >> .env",
-              "echo \"AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}\" >> .env",
-              "echo \"AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}\" >> .env",
-              "echo \"APP_ENV=${{ secrets.APP_ENV }}\" >> .env",
-              "echo \"LLM_PROVIDER=${{ secrets.LLM_PROVIDER }}\" >> .env",
-              "echo \"AWS_REGION=${{ secrets.AWS_REGION }}\" >> .env",
-              "echo \"ALLOWED_ORIGINS=${{ secrets.ALLOWED_ORIGINS }}\" >> .env",
-              "echo \"LOG_FORMAT=${{ secrets.LOG_FORMAT }}\" >> .env",
-              "echo \"LOG_LEVEL=${{ secrets.LOG_LEVEL }}\" >> .env",
-              "echo \"PROMPT_DIR=${{ secrets.PROMPT_DIR }}\" >> .env",
-              "echo \"AI_SERVER_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-ai-server:latest\" >> .env",
+              "echo '"'"'LANGCHAIN_TRACING_V2=${{ secrets.LANGCHAIN_TRACING_V2 }}'"'"' > .env",
+              "echo '"'"'LANGCHAIN_API_KEY=${{ secrets.LANGCHAIN_API_KEY }}'"'"' >> .env",
+              "echo '"'"'LANGCHAIN_PROJECT=${{ secrets.LANGCHAIN_PROJECT }}'"'"' >> .env",
+              "echo '"'"'AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET }}'"'"' >> .env",
+              "echo '"'"'AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}'"'"' >> .env",
+              "echo '"'"'AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}'"'"' >> .env",
+              "echo '"'"'APP_ENV=${{ secrets.APP_ENV }}'"'"' >> .env",
+              "echo '"'"'LLM_PROVIDER=${{ secrets.LLM_PROVIDER }}'"'"' >> .env",
+              "echo '"'"'AWS_REGION=${{ secrets.AWS_REGION }}'"'"' >> .env",
+              "echo '"'"'ALLOWED_ORIGINS=${{ secrets.ALLOWED_ORIGINS }}'"'"' >> .env",
+              "echo '"'"'LOG_FORMAT=${{ secrets.LOG_FORMAT }}'"'"' >> .env",
+              "echo '"'"'LOG_LEVEL=${{ secrets.LOG_LEVEL }}'"'"' >> .env",
+              "echo '"'"'PROMPT_DIR=${{ secrets.PROMPT_DIR }}'"'"' >> .env",
+              "echo '"'"'AI_SERVER_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-ai-server:latest'"'"' >> .env",
               "echo ${{ secrets.GHCR_TOKEN }} | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin",
               "sudo docker-compose pull",
               "sudo docker-compose up -d",
               "sudo docker image prune -a -f --filter \"until=24h\""
             ]' \
-            --region ${{ secrets.AWS_REGION }}
+            --region ${{ secrets.AWS_REGION }} \
+            --query "Command.CommandId" \
+            --output text)
+
+          echo "SSM Command ID: $CMD_ID"
+
+          aws ssm wait command-executed \
+            --command-id "$CMD_ID" \
+            --instance-id "${{ secrets.AWS_INSTANCE_ID }}"

@@ -37,10 +37,17 @@ def setup_provider(provider: str, model_override: str | None = None) -> None:
     # 프로바이더 환경변수 설정
     os.environ["LLM_PROVIDER"] = provider
 
-    # 모델 오버라이드 설정 (설정 시 모든 에이전트에 적용)
+    # 모델 오버라이드 설정 (프로바이더별 환경변수에 맞춰 설정)
     if model_override:
-        os.environ["LLM_MODEL_SONNET"] = model_override
-        os.environ["LLM_MODEL_HAIKU"] = model_override
+        if provider == "bedrock":
+            os.environ["LLM_BEDROCK_MODEL_SONNET"] = model_override
+            os.environ["LLM_BEDROCK_MODEL_HAIKU"] = model_override
+        elif provider == "openai":
+            os.environ["LLM_OPENAI_MODEL_SONNET"] = model_override
+            os.environ["LLM_OPENAI_MODEL_HAIKU"] = model_override
+        else:
+            os.environ["LLM_MODEL_SONNET"] = model_override
+            os.environ["LLM_MODEL_HAIKU"] = model_override
 
     # Settings 싱글톤 리셋 — 환경변수 변경 반영
     import config.loader
