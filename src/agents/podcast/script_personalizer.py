@@ -47,15 +47,21 @@ class ScriptPersonalizerAgent(BaseAgent):
     def __init__(
         self,
         db_client: Any | None = None,
-        enable_deep_personalization: bool = False,
+        enable_deep_personalization: bool | None = None,
     ):
         """
         Args:
             db_client: 데이터베이스 클라이언트 (사용자 프로필 조회용) - 외부에서 주입
-            enable_deep_personalization: 심화 개인화 활성화 여부
+            enable_deep_personalization: 심화 개인화 활성화 여부.
+                None이면 settings.yaml의 agents.script_personalizer.deep_personalization 값을 사용한다.
         """
         super().__init__(name="script_personalizer", tier=4)
 
+        if enable_deep_personalization is None:
+            from config.loader import get_settings
+
+            agent_cfg = get_settings().get_agent_config("script_personalizer")
+            enable_deep_personalization = agent_cfg.get("deep_personalization", False)
         self.enable_deep_personalization = enable_deep_personalization
         if not self.enable_deep_personalization:
             self.llm_client = None
@@ -639,14 +645,14 @@ Emotional Journey:
 
 
 async def create_script_personalizer_node(
-    db_client: Any | None = None, enable_deep_personalization: bool = False
+    db_client: Any | None = None, enable_deep_personalization: bool | None = None
 ):
     """
     LangGraph에서 사용할 노드 함수 생성
 
-    TODO: enable_deep_personalization을 하드코딩(False) 대신
-          settings.agents.script_personalizer.deep_personalization 값으로 읽도록 변경
-          (config/settings.yaml에 deep_personalization: false 추가됨)
+    NOTE(dead-code): 이 팩토리 함수는 현재 운영에서 미사용.
+    workflow.py는 script_personalizer_node()에서 ScriptPersonalizerAgent()를 직접 생성한다.
+    deep_personalization 설정은 ScriptPersonalizerAgent.__init__()에서 settings.yaml을 직접 읽음.
     """
     agent = ScriptPersonalizerAgent(
         db_client=db_client, enable_deep_personalization=enable_deep_personalization
