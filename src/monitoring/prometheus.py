@@ -93,9 +93,7 @@ class MetricsCollector:
         status = "crisis" if metrics.crisis_detected else "ok"
         cls._requests_total.labels(mode=metrics.mode, status=status).inc()
 
-        cls._pipeline_duration.labels(mode=metrics.mode).observe(
-            metrics.total_duration_ms / 1000
-        )
+        cls._pipeline_duration.labels(mode=metrics.mode).observe(metrics.total_duration_ms / 1000)
 
         if metrics.crisis_detected:
             cls._crisis_events_total.inc()

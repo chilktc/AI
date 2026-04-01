@@ -99,8 +99,11 @@ async def test_pass_routes_to_script_personalizer(
     assert "iteration_count" not in result
     # 5가지 기준 키 보존 확인
     expected_keys = {
-        "structure_completeness", "safety_compliance", "tone_consistency",
-        "timing_appropriateness", "content_safety",
+        "structure_completeness",
+        "safety_compliance",
+        "tone_consistency",
+        "timing_appropriateness",
+        "content_safety",
     }
     assert set(result["validation_result"]["criteria"].keys()) == expected_keys
 
@@ -323,5 +326,3 @@ async def test_escalate_sets_critical_fail_verdict(
 
     assert "next_step" not in result  # 라우팅은 route_after_tier3_podcast()가 전담
     assert result["validation_result"]["verdict"] == "CRITICAL_FAIL"
-
-

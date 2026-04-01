@@ -73,9 +73,7 @@ class S3Client(BaseStorageClient):
         }
         if content_type:
             kwargs["ContentType"] = content_type
-        result: dict[str, Any] = await asyncio.to_thread(
-            self._client.put_object, **kwargs
-        )
+        result: dict[str, Any] = await asyncio.to_thread(self._client.put_object, **kwargs)
         return result
 
     async def list_objects(

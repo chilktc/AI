@@ -22,7 +22,10 @@ class TestCreateSession:
         ids=["explicit_podcast", "default_podcast"],
     )
     def test_create_session_mode(
-        self, test_client, mode_input, expected_mode,
+        self,
+        test_client,
+        mode_input,
+        expected_mode,
     ) -> None:
         """mode 지정/미지정 시 올바른 모드로 세션 생성 + 응답 필드 검증."""
         body = {"user_id": "test_user_001"}
@@ -44,13 +47,16 @@ class TestCreateSession:
     @pytest.mark.parametrize(
         "body, expected_status",
         [
-            ({"mode": "podcast"}, 422),             # user_id 누락
+            ({"mode": "podcast"}, 422),  # user_id 누락
             ({"user_id": "u", "mode": "invalid"}, 422),  # 잘못된 mode
         ],
         ids=["missing_user_id", "invalid_mode"],
     )
     def test_create_session_validation_error(
-        self, test_client, body, expected_status,
+        self,
+        test_client,
+        body,
+        expected_status,
     ) -> None:
         """필수 필드 누락/잘못된 값 시 422 에러."""
         response = test_client.post("/api/v1/sessions", json=body)
@@ -75,7 +81,8 @@ class TestCloseSession:
             body["feedback"] = feedback
 
         response = test_client.post(
-            "/api/v1/sessions/sess_abc123/close", json=body,
+            "/api/v1/sessions/sess_abc123/close",
+            json=body,
         )
 
         assert response.status_code == 200

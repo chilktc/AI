@@ -4,10 +4,8 @@
 새 PII 패턴 추가 시 이 파일에도 테스트 케이스를 추가해 주세요.
 오탐(false positive) 케이스도 포함하여 일반 텍스트가 잘못 마스킹되지 않는지 확인합니다.
 """
-import pytest
 
 from src.agents.shared.output_sanitizer import sanitize_dict_values, sanitize_output
-
 
 # === 정탐(True Positive) 테스트 ===
 

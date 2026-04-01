@@ -25,8 +25,14 @@ class TestAgentMetric:
                 None,
             ),
             (
-                {"agent_name": "reasoning", "tier": 1, "duration_ms": 500, "llm_calls": 2,
-                 "status": "error", "error_message": "LLM timeout"},
+                {
+                    "agent_name": "reasoning",
+                    "tier": 1,
+                    "duration_ms": 500,
+                    "llm_calls": 2,
+                    "status": "error",
+                    "error_message": "LLM timeout",
+                },
                 "error",
                 "LLM timeout",
             ),
@@ -80,9 +86,7 @@ class TestPipelineMetrics:
         metrics.add_agent_metric(
             AgentMetric("synthesis", 2, 500, 2, input_tokens=800, output_tokens=400)
         )
-        metrics.add_agent_metric(
-            AgentMetric("telemetry", None, 50, 0)
-        )
+        metrics.add_agent_metric(AgentMetric("telemetry", None, 50, 0))
 
         summaries = metrics.get_tier_summary()
 

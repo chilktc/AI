@@ -23,10 +23,10 @@ import pytest
 
 from src.api.client import BackendClient
 
-
 # ---------------------------------------------------------------------------
 # CLI 옵션 등록
 # ---------------------------------------------------------------------------
+
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     """--backend-url 커스텀 CLI 옵션 등록."""
@@ -41,6 +41,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="session")
 def backend_url(request: pytest.FixtureRequest) -> str:

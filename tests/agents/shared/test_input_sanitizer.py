@@ -1,4 +1,5 @@
 """input_sanitizer 모듈 테스트."""
+
 import pytest
 
 from src.agents.shared.input_sanitizer import detect_injection

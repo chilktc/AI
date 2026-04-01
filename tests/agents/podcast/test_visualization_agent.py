@@ -50,7 +50,9 @@ async def test_process_returns_visual_data(agent: VisualizationAgent) -> None:
 
     with (
         patch.object(agent, "call_llm_json", new_callable=AsyncMock, return_value=llm_response),
-        patch.object(agent, "call_image_gen", new_callable=AsyncMock, return_value=image_gen_response),
+        patch.object(
+            agent, "call_image_gen", new_callable=AsyncMock, return_value=image_gen_response
+        ),
     ):
         result = await agent.process(state)
 
@@ -86,7 +88,9 @@ async def test_llm_context_includes_emotion_and_content(agent: VisualizationAgen
 
     with (
         patch.object(agent, "call_llm_json", llm_mock),
-        patch.object(agent, "call_image_gen", new_callable=AsyncMock, return_value=image_gen_response),
+        patch.object(
+            agent, "call_image_gen", new_callable=AsyncMock, return_value=image_gen_response
+        ),
     ):
         await agent.process(state)
 

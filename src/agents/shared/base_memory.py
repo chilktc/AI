@@ -1,12 +1,15 @@
 from __future__ import annotations
+
 from typing import Any
+
 from src.agents.shared.base_agent import BaseAgent
 from src.models.agent_state import AgentState
+
 
 class BaseMemoryAgent(BaseAgent):
     """
     ✅ Shared Engine (공통 엔진) - v1.1.0
-    자식 클래스에서 _retrieve_from_store와 _save_to_store만 구현하면 
+    자식 클래스에서 _retrieve_from_store와 _save_to_store만 구현하면
     KT Cloud RAG든 로컬 JSON이든 바로 연동됩니다.
     """
 
@@ -24,7 +27,7 @@ class BaseMemoryAgent(BaseAgent):
 
     async def process(self, state: AgentState) -> dict[str, Any]:
         """메모리 검색 및 결과 정리 공통 흐름"""
-        user_id = str(state.get("user_id", ""))
+        _user_id = str(state.get("user_id", ""))  # noqa: F841
         mode = str(state.get("mode", "podcast"))
         scope = str(state.get("memory_scope", "all"))
 
@@ -36,7 +39,7 @@ class BaseMemoryAgent(BaseAgent):
         # 1. STORAGE LOOKUP (자식 클래스에서 오버라이딩한 로직 호출)
         # ============================================================
         # 우리가 만든 EpisodeMemoryAgent가 구현한 _retrieve_from_store를 호출합니다.
-        items = await self._retrieve_from_store(query)
+        items = await self._retrieve_from_store(str(query))
 
         # 만약 자식에서 데이터를 못 가져왔다면, 기존처럼 LLM에게 '추론'을 시켜 백업합니다.
         if not items:
@@ -60,7 +63,7 @@ class BaseMemoryAgent(BaseAgent):
         payload = {
             "items": items,
             "summary": f"'{query}'에 대한 {self._namespace} 도메인의 검색 결과입니다.",
-            "suggested_personalization": {}, # 필요 시 자식에서 채움
+            "suggested_personalization": {},  # 필요 시 자식에서 채움
             "_meta": {"namespace": self._namespace, "scope": scope, "mode": mode},
         }
 
@@ -69,7 +72,7 @@ class BaseMemoryAgent(BaseAgent):
     # ----------------------------------------------------------------
     # 💡 개발자 2님이 앞으로 채우셔야 할 핵심 구멍(Interface)
     # ----------------------------------------------------------------
-    
+
     async def _retrieve_from_store(self, query: str) -> list[dict]:
         """
         [인출] 실제 저장소(KT Cloud, Mock DB 등)에서 데이터를 가져오는 로직.

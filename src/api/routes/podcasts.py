@@ -24,13 +24,13 @@ from src.api.backend_resources import (
 )
 from src.api.contracts import SaveRequest
 from src.api.external_schemas import (
-    PodcastRequest,
+    ErrorResponse,
     PodcastEpisodeData,
-    PodcastSegment,
+    PodcastRequest,
     PodcastResponseMeta,
+    PodcastSegment,
     SafetyAlertData,
     SlimPodcastResponse,
-    ErrorResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -61,7 +61,7 @@ def _build_episode_data(state: dict[str, Any]) -> PodcastEpisodeData:
 
     segments_data = script_data.get("segments", [])
     segments = []
-    
+
     for seg in segments_data:
         segments.append(
             PodcastSegment(
@@ -74,7 +74,7 @@ def _build_episode_data(state: dict[str, Any]) -> PodcastEpisodeData:
                 tts_markers=seg.get("tts_markers", []),
             )
         )
-        
+
     return PodcastEpisodeData(
         episode_id=script_data.get("episode_id", "ep_fallback"),
         session_id=state.get("session_id", ""),
@@ -84,7 +84,6 @@ def _build_episode_data(state: dict[str, Any]) -> PodcastEpisodeData:
         key_insights=script_data.get("key_insights", []),
         themes=script_data.get("themes", []),
     )
-
 
 
 def _extract_safety_alert(state: dict[str, Any]) -> SafetyAlertData | None:
@@ -157,26 +156,27 @@ async def _save_core_data(
     try:
         segments_data = []
         for idx, seg in enumerate(episode_data.segments):
-            segments_data.append({
-                "segment_id": seg.segment_id,
-                "segment_order": idx,
-                "segment_type": seg.segment_type,
-                "duration_minutes": seg.duration_minutes,
-                "script_text": seg.script_text,
-                "word_count": seg.word_count,
-                "emotional_tone": seg.emotional_tone,
-                "tts_markers_json": json.dumps(
-                    [m.model_dump() for m in seg.tts_markers]
-                ) if seg.tts_markers else "[]",
-            })
+            segments_data.append(
+                {
+                    "segment_id": seg.segment_id,
+                    "segment_order": idx,
+                    "segment_type": seg.segment_type,
+                    "duration_minutes": seg.duration_minutes,
+                    "script_text": seg.script_text,
+                    "word_count": seg.word_count,
+                    "emotional_tone": seg.emotional_tone,
+                    "tts_markers_json": (
+                        json.dumps([m.model_dump() for m in seg.tts_markers])
+                        if seg.tts_markers
+                        else "[]"
+                    ),
+                }
+            )
 
         visual_data_raw = final_state.get("visual_data")
         cover_image_url = None
         if visual_data_raw:
-            cover_image_url = (
-                visual_data_raw.get("image_url")
-                or visual_data_raw.get("cdn_url")
-            )
+            cover_image_url = visual_data_raw.get("image_url") or visual_data_raw.get("cdn_url")
 
         intent_data = final_state.get("intent", {})
         safety_flags = final_state.get("safety_flags", {})
@@ -234,9 +234,7 @@ async def _save_core_data(
                     "s3_key": visual_data_raw.get("s3_key", ""),
                     "cdn_url": visual_data_raw.get("image_url", ""),
                     "image_prompt": visual_data_raw.get("original_prompt", ""),
-                    "interpretation_text": visual_data_raw.get(
-                        "interpretation", ""
-                    ),
+                    "interpretation_text": visual_data_raw.get("interpretation", ""),
                     "trace_id": trace_id,
                 },
                 timestamp=datetime.now(timezone.utc),
@@ -252,8 +250,8 @@ async def _save_core_data(
     response_model=SlimPodcastResponse,
     responses={
         422: {"model": ErrorResponse, "description": "요청 검증 에러"},
-        500: {"model": ErrorResponse, "description": "서버 에러"}
-    }
+        500: {"model": ErrorResponse, "description": "서버 에러"},
+    },
 )
 async def create_podcast_episode(
     request: PodcastRequest,
@@ -266,6 +264,7 @@ async def create_podcast_episode(
     모든 데이터는 DB에 저장되므로 Backend가 GET API로 조회 가능.
     """
     import time
+
     start_time = time.monotonic()
 
     # 1. AgentState 구성 — 프론트엔드 4필드를 파이프라인 user_input 형식으로 조합
@@ -297,6 +296,7 @@ async def create_podcast_episode(
 
     # C-2: TelemetryCallback으로 TIER별 메트릭 수집
     from src.monitoring.callbacks import MindLogTelemetryCallback
+
     telemetry_cb = MindLogTelemetryCallback(
         session_id=request.session_id,
         mode="podcast",
@@ -322,6 +322,7 @@ async def create_podcast_episode(
     # C-2: 방어적 메트릭 기록 (실패해도 API 응답에 영향 없음)
     try:
         from src.monitoring.prometheus import MetricsCollector
+
         MetricsCollector.record_pipeline(telemetry_cb.get_metrics())
     except Exception:
         logger.warning("Prometheus 메트릭 기록 실패", exc_info=True)
@@ -364,6 +365,7 @@ async def create_podcast_episode(
 # SSE 스트리밍 엔드포인트
 # ---------------------------------------------------------------------------
 
+
 def _sse_format(data: dict) -> str:
     """SSE 프로토콜 형식(data: {JSON}\\n\\n)으로 변환한다."""
     return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
@@ -385,9 +387,10 @@ async def stream_podcast_episode(request: PodcastRequest):
     SSE 이벤트 흐름:
         connected → tier_start → agent_complete → tier_end → result → done
     """
+    import time
+
     from fastapi.responses import StreamingResponse
 
-    import time
     start_time = time.monotonic()
 
     # 1. AgentState 구성 (기존과 동일)
@@ -429,11 +432,13 @@ async def stream_podcast_episode(request: PodcastRequest):
 
     async def event_generator():
         """SSE 이벤트 생성기 — astream(stream_mode=["updates","custom"])."""
-        yield _sse_format({
-            "event": "connected",
-            "session_id": request.session_id,
-            "timestamp": _now_iso(),
-        })
+        yield _sse_format(
+            {
+                "event": "connected",
+                "session_id": request.session_id,
+                "timestamp": _now_iso(),
+            }
+        )
 
         final_state: dict[str, Any] = {}
 
@@ -465,7 +470,9 @@ async def stream_podcast_episode(request: PodcastRequest):
                 pipeline_duration_ms=elapsed_ms,
                 intent_type=final_state.get("intent", {}).get("intent_type", "unknown"),
                 complexity_score=float(final_state.get("intent", {}).get("complexity_score", 0.0)),
-                reasoning_depth=str(final_state.get("reasoning_result", {}).get("depth_level", "standard")),
+                reasoning_depth=str(
+                    final_state.get("reasoning_result", {}).get("depth_level", "standard")
+                ),
                 retry_count=int(final_state.get("iteration_count", 0)),
                 total_words=sum(s.word_count for s in episode_data.segments),
             )
@@ -488,19 +495,23 @@ async def stream_podcast_episode(request: PodcastRequest):
                 safety_alert=safety_alert,
                 tracing=request.tracing,
             )
-            yield _sse_format({
-                "event": "result",
-                "data": result_payload.model_dump(mode="json"),
-                "timestamp": _now_iso(),
-            })
+            yield _sse_format(
+                {
+                    "event": "result",
+                    "data": result_payload.model_dump(mode="json"),
+                    "timestamp": _now_iso(),
+                }
+            )
 
         except Exception as e:
             logger.error("[SSE] 파이프라인 오류: %s", e, exc_info=True)
-            yield _sse_format({
-                "event": "error",
-                "message": "파이프라인 실행 중 오류가 발생했습니다.",
-                "timestamp": _now_iso(),
-            })
+            yield _sse_format(
+                {
+                    "event": "error",
+                    "message": "파이프라인 실행 중 오류가 발생했습니다.",
+                    "timestamp": _now_iso(),
+                }
+            )
 
         yield _sse_format({"event": "done", "timestamp": _now_iso()})
 

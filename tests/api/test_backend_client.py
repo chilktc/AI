@@ -16,10 +16,10 @@ import pytest
 
 from src.api.contracts import LoadResponse, SaveRequest, SaveResponse
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def mock_httpx_client():
@@ -34,6 +34,7 @@ def backend_client(mock_httpx_client):
     """BackendClient 인스턴스 (httpx 클라이언트를 mock으로 교체)."""
     with patch("src.api.client.httpx.AsyncClient", return_value=mock_httpx_client):
         from src.api.client import BackendClient
+
         client = BackendClient(base_url="http://test-backend:8080/api/v1")
         # 내부 _client를 mock으로 직접 교체
         client._client = mock_httpx_client
@@ -71,20 +72,27 @@ def _make_response(status_code: int, json_data: dict[str, Any]) -> MagicMock:
 # Tests: save()
 # ---------------------------------------------------------------------------
 
+
 class TestBackendClientSave:
     """BackendClient.save() 메서드 테스트."""
 
     @pytest.mark.asyncio
     async def test_save_success_and_serialization(
-        self, backend_client, mock_httpx_client, valid_save_request,
+        self,
+        backend_client,
+        mock_httpx_client,
+        valid_save_request,
     ) -> None:
         """정상적인 save 요청 시 SaveResponse 반환 + 올바른 직렬화 확인."""
         mock_httpx_client.post = AsyncMock(
-            return_value=_make_response(200, {
-                "success": True,
-                "id": "saved_001",
-                "message": "saved",
-            }),
+            return_value=_make_response(
+                200,
+                {
+                    "success": True,
+                    "id": "saved_001",
+                    "message": "saved",
+                },
+            ),
         )
 
         result = await backend_client.save("conversations", valid_save_request)
@@ -108,14 +116,20 @@ class TestBackendClientSave:
 
     @pytest.mark.asyncio
     async def test_save_http_error_raises(
-        self, backend_client, mock_httpx_client, valid_save_request,
+        self,
+        backend_client,
+        mock_httpx_client,
+        valid_save_request,
     ) -> None:
         """500 응답 시 httpx.HTTPStatusError 발생."""
         mock_httpx_client.post = AsyncMock(
-            return_value=_make_response(500, {
-                "success": False,
-                "error": {"code": "SERVER_ERROR", "message": "내부 오류"},
-            }),
+            return_value=_make_response(
+                500,
+                {
+                    "success": False,
+                    "error": {"code": "SERVER_ERROR", "message": "내부 오류"},
+                },
+            ),
         )
 
         with pytest.raises(httpx.HTTPStatusError):
@@ -126,6 +140,7 @@ class TestBackendClientSave:
 # Tests: load()
 # ---------------------------------------------------------------------------
 
+
 class TestBackendClientLoad:
     """BackendClient.load() 메서드 테스트."""
 
@@ -135,7 +150,12 @@ class TestBackendClientLoad:
             (
                 "learning",
                 {"user_id": "user_123"},
-                {"success": True, "data": [{"id": "1", "content": "데이터"}], "total": 1, "page": 1},
+                {
+                    "success": True,
+                    "data": [{"id": "1", "content": "데이터"}],
+                    "total": 1,
+                    "page": 1,
+                },
                 lambda r, _: (
                     isinstance(r, LoadResponse)
                     and r.success is True
@@ -159,8 +179,13 @@ class TestBackendClientLoad:
     )
     @pytest.mark.asyncio
     async def test_load(
-        self, backend_client, mock_httpx_client,
-        resource, kwargs, response_data, check,
+        self,
+        backend_client,
+        mock_httpx_client,
+        resource,
+        kwargs,
+        response_data,
+        check,
     ) -> None:
         """load 성공 + 쿼리 파라미터 전달 + 빈 결과 검증."""
         mock_httpx_client.get = AsyncMock(
@@ -176,12 +201,15 @@ class TestBackendClientLoad:
 # Tests: 리소스 관리
 # ---------------------------------------------------------------------------
 
+
 class TestBackendClientLifecycle:
     """BackendClient 리소스 관리 테스트."""
 
     @pytest.mark.asyncio
     async def test_lifecycle(
-        self, backend_client, mock_httpx_client,
+        self,
+        backend_client,
+        mock_httpx_client,
     ) -> None:
         """base_url 설정 확인 + close() 호출 시 리소스 정리 검증."""
         assert backend_client._base_url == "http://test-backend:8080/api/v1"

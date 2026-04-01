@@ -2,12 +2,13 @@
 Visualization Agent — AWS Bedrock & S3 실전 연동 버전.
 특징: settings.yaml 기반 설정 + S3 자동 업로드 + 내부 재시도.
 """
+
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import uuid
-import logging
 from typing import Any
 
 import boto3  # type: ignore
@@ -26,8 +27,8 @@ class VisualizationAgent(BaseAgent):
         self.max_retries = settings.max_retries
         self.bucket_name = settings.s3_bucket
         self.s3_client = boto3.client(
-            's3',
-            region_name=os.getenv('AWS_REGION', settings.bedrock_region),
+            "s3",
+            region_name=os.getenv("AWS_REGION", settings.bedrock_region),
         )
 
     async def process(self, state: AgentState) -> dict[str, Any]:
@@ -43,7 +44,9 @@ class VisualizationAgent(BaseAgent):
 
         # 1. [기획] 이미지 프롬프트 생성 (settings.yaml의 visualization.model 사용)
         system_prompt = self.get_prompt("system_prompt")
-        user_context = f"Emotion: {emotion}\nContent: {content}\nMode: {state.get('mode', 'podcast')}"
+        user_context = (
+            f"Emotion: {emotion}\nContent: {content}\nMode: {state.get('mode', 'podcast')}"
+        )
 
         planning = await self.call_llm_json(
             system_prompt=system_prompt,
@@ -62,11 +65,13 @@ class VisualizationAgent(BaseAgent):
                 "error": result.get("error"),
                 "style_type": planning.get("style_type"),
                 "interpretation": planning.get("interpretation"),
-                "original_prompt": image_prompt
+                "original_prompt": image_prompt,
             }
         }
 
-    async def _internal_generate_flow(self, prompt: str, user_id: str, current_retry: int = 0) -> dict[str, Any]:
+    async def _internal_generate_flow(
+        self, prompt: str, user_id: str, current_retry: int = 0
+    ) -> dict[str, Any]:
         """내부 생성-업로드 루프 (settings.yaml의 image_model 사용)"""
         try:
             settings = get_settings()
@@ -89,13 +94,13 @@ class VisualizationAgent(BaseAgent):
                 Bucket=self.bucket_name,
                 Key=s3_key,
                 Body=raw_res["image_binary"],
-                ContentType='image/png'
+                ContentType="image/png",
             )
 
             return {
                 "url": f"https://{self.bucket_name}.s3.amazonaws.com/{s3_key}",
                 "status": "completed",
-                "retry_count": current_retry
+                "retry_count": current_retry,
             }
 
         except Exception as e:
@@ -103,18 +108,15 @@ class VisualizationAgent(BaseAgent):
                 wait_time = (current_retry + 1) * 2
                 self.logger.warning(
                     "이미지 생성 재시도 (%d/%d): %s",
-                    current_retry + 1, self.max_retries, e,
+                    current_retry + 1,
+                    self.max_retries,
+                    e,
                 )
                 await asyncio.sleep(wait_time)
                 return await self._internal_generate_flow(prompt, user_id, current_retry + 1)
 
             self.logger.error("이미지 생성 최종 실패 (%d회 재시도 후): %s", current_retry, e)
-            return {
-                "url": None,
-                "status": "failed",
-                "error": str(e),
-                "retry_count": current_retry
-            }
+            return {"url": None, "status": "failed", "error": str(e), "retry_count": current_retry}
 
 
 async def visualization_node(state: AgentState) -> dict[str, Any]:

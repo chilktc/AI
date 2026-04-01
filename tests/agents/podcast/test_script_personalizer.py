@@ -139,7 +139,7 @@ def print_script_result(
         text_preview = first_segment.get("script_text", "")
         # Preview first 100 chars
         print(f"   {text_preview[:100]}...\n")
-        
+
         # Determine if it was modified
         orig_texts_joined = " ".join([s.script_text for s in original.segments])
         if text_preview != orig_texts_joined:
@@ -245,9 +245,7 @@ if __name__ == "__main__":
 
     # LLM 없이 테스트
     print("\n📌 규칙 기반 테스트")
-    agent = ScriptPersonalizerAgent(
-        db_client=None, enable_deep_personalization=False
-    )
+    agent = ScriptPersonalizerAgent(db_client=None, enable_deep_personalization=False)
 
     for name, profile in SAMPLE_PROFILES.items():
         state = {

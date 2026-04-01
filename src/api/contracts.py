@@ -20,7 +20,9 @@ class SaveRequest(BaseModel):
 
     user_id: str  # 사용자 고유 ID
     session_id: str  # 세션 고유 ID
-    type: str  # 데이터 유형 (podcast_episode, emotion_log, visualization, learning, content_analysis 등)
+    # 데이터 유형 (podcast_episode, emotion_log,
+    # visualization, learning, content_analysis 등)
+    type: str
     data: dict[str, Any]  # 저장할 데이터
     timestamp: datetime  # 데이터 생성 시각
 

@@ -93,13 +93,15 @@ async def _with_timeout(
         logger.error("[%s] 타임아웃 (%ds)", name, timeout)
         return {}
 
+
+from src.agents.podcast.batch_validator import batch_validator_node  # noqa: E402
+from src.agents.podcast.content_analyzer import content_analyzer_node  # noqa: E402
+from src.agents.podcast.emotion import emotion_node  # noqa: E402
+
 # ---------------------------------------------------------------------------
 # 구현된 에이전트 노드 — 실제 import
 # ---------------------------------------------------------------------------
 from src.agents.podcast.intent_classifier import IntentClassifierAgent  # noqa: E402
-from src.agents.podcast.batch_validator import batch_validator_node  # noqa: E402
-from src.agents.podcast.content_analyzer import content_analyzer_node  # noqa: E402
-from src.agents.podcast.emotion import emotion_node  # noqa: E402
 from src.agents.podcast.learning import learning_node  # noqa: E402
 from src.agents.podcast.podcast_reasoning import podcast_reasoning_node  # noqa: E402
 from src.agents.podcast.safety import safety_node  # noqa: E402
@@ -163,7 +165,8 @@ async def tier2_podcast_fan_out(state: AgentState) -> dict[str, Any]:
         merged = await asyncio.wait_for(_run_tier2_podcast(), timeout=_TIER2_TIMEOUT)
     except asyncio.TimeoutError:
         logger.error(
-            "[TIER 2] 팟캐스트모드 타임아웃 (%ds) — Script Generator 미완료", _TIER2_TIMEOUT,
+            "[TIER 2] 팟캐스트모드 타임아웃 (%ds) — Script Generator 미완료",
+            _TIER2_TIMEOUT,
         )
         raise
 
@@ -251,8 +254,10 @@ async def _safety_deep_crisis(safety_result: dict[str, Any]) -> dict[str, Any]:
     safety_flags = safety_result.get("safety_flags", {})
     required_scripts = safety_flags.get("required_in_script", [])
 
-    crisis_msg = "\n".join(required_scripts) if required_scripts else (
-        "지금 힘든 상황이시군요. 전문 상담사와 연결해 드리겠습니다."
+    crisis_msg = (
+        "\n".join(required_scripts)
+        if required_scripts
+        else ("지금 힘든 상황이시군요. 전문 상담사와 연결해 드리겠습니다.")
     )
 
     return {
@@ -266,6 +271,7 @@ async def _safety_deep_crisis(safety_result: dict[str, Any]) -> dict[str, Any]:
 # ===================================================================
 # TIER 1 Fan-out 함수
 # ===================================================================
+
 
 async def tier1_podcast_fan_out(state: AgentState) -> dict[str, Any]:
     """
@@ -281,12 +287,14 @@ async def tier1_podcast_fan_out(state: AgentState) -> dict[str, Any]:
     tier_start = time.monotonic()
     agent_names = ["safety", "emotion", "content_analyzer", "podcast_reasoning"]
 
-    writer({
-        "event": "tier_start",
-        "tier": 1,
-        "mode": "podcast",
-        "agents": agent_names,
-    })
+    writer(
+        {
+            "event": "tier_start",
+            "tier": 1,
+            "mode": "podcast",
+            "agents": agent_names,
+        }
+    )
 
     tasks = [
         run_with_cancel(safety_node(state), cancel_event, "safety"),
@@ -306,30 +314,36 @@ async def tier1_podcast_fan_out(state: AgentState) -> dict[str, Any]:
 
             if name == "safety" and result.get("safety_flags", {}).get("status") == "crisis":
                 cancel_event.set()
-                writer({
-                    "event": "crisis_detected",
-                    "tier": 1,
-                    "agent": "safety",
-                    "risk_level": result.get("risk_level", 4),
-                    "elapsed_ms": elapsed_ms,
-                })
+                writer(
+                    {
+                        "event": "crisis_detected",
+                        "tier": 1,
+                        "agent": "safety",
+                        "risk_level": result.get("risk_level", 4),
+                        "elapsed_ms": elapsed_ms,
+                    }
+                )
                 deep_result = await _safety_deep_crisis(result)
-                writer({
-                    "event": "tier_end",
-                    "tier": 1,
-                    "mode": "podcast",
-                    "status": "crisis",
-                    "elapsed_ms": int((time.monotonic() - tier_start) * 1000),
-                })
+                writer(
+                    {
+                        "event": "tier_end",
+                        "tier": 1,
+                        "mode": "podcast",
+                        "status": "crisis",
+                        "elapsed_ms": int((time.monotonic() - tier_start) * 1000),
+                    }
+                )
                 return {**deep_result, "next_step": "crisis_response"}
 
-            writer({
-                "event": "agent_complete",
-                "tier": 1,
-                "agent": name,
-                "elapsed_ms": elapsed_ms,
-                "progress": f"{completed_count}/{len(agent_names)}",
-            })
+            writer(
+                {
+                    "event": "agent_complete",
+                    "tier": 1,
+                    "agent": name,
+                    "elapsed_ms": elapsed_ms,
+                    "progress": f"{completed_count}/{len(agent_names)}",
+                }
+            )
             merged.update(result)
 
         return merged
@@ -338,18 +352,21 @@ async def tier1_podcast_fan_out(state: AgentState) -> dict[str, Any]:
         merged = await asyncio.wait_for(_run_tier1_pod(), timeout=_TIER1_TIMEOUT)
     except asyncio.TimeoutError:
         logger.warning(
-            "[TIER 1] 팟캐스트모드 타임아웃 (%ds) — 부분 결과로 계속 진행", _TIER1_TIMEOUT,
+            "[TIER 1] 팟캐스트모드 타임아웃 (%ds) — 부분 결과로 계속 진행",
+            _TIER1_TIMEOUT,
         )
         cancel_event.set()
         merged = {}
 
-    writer({
-        "event": "tier_end",
-        "tier": 1,
-        "mode": "podcast",
-        "status": "ok" if "next_step" not in merged else merged.get("next_step", "ok"),
-        "elapsed_ms": int((time.monotonic() - tier_start) * 1000),
-    })
+    writer(
+        {
+            "event": "tier_end",
+            "tier": 1,
+            "mode": "podcast",
+            "status": "ok" if "next_step" not in merged else merged.get("next_step", "ok"),
+            "elapsed_ms": int((time.monotonic() - tier_start) * 1000),
+        }
+    )
 
     return merged
 
@@ -385,7 +402,8 @@ async def async_post_processing_node(state: AgentState) -> dict[str, Any]:
         return await asyncio.wait_for(_run_async_tasks(), timeout=_ASYNC_TIMEOUT)
     except asyncio.TimeoutError:
         logger.warning(
-            "[ASYNC] 비동기 후처리 타임아웃 (%ds) — 부분 결과 반환", _ASYNC_TIMEOUT,
+            "[ASYNC] 비동기 후처리 타임아웃 (%ds) — 부분 결과 반환",
+            _ASYNC_TIMEOUT,
         )
         return {}
 
@@ -430,7 +448,8 @@ def route_after_tier3_podcast(state: AgentState) -> str:
         if iteration_count < _MAX_CRITICAL_RETRIES:
             logger.warning(
                 "[CRITICAL_FAIL] 스크립트 평가 미달 — 재시도 %d/%d",
-                iteration_count, _MAX_CRITICAL_RETRIES,
+                iteration_count,
+                _MAX_CRITICAL_RETRIES,
             )
             return "tier2_podcast"
         logger.warning(
@@ -486,7 +505,8 @@ def build_podcast_graph() -> StateGraph:
     """
     팟캐스트모드 StateGraph 구축.
 
-    TIER 1(병렬) → TIER 2(Script Generator + Visualization 병렬) → TIER 3(배치 검증) → TIER 4(개인화)
+    TIER 1(병렬) → TIER 2(Script Generator + Visualization 병렬)
+    → TIER 3(배치 검증) → TIER 4(개인화)
     + CRISIS 선점 + 재시도 루프
     """
     graph = StateGraph(AgentState)
@@ -494,11 +514,14 @@ def build_podcast_graph() -> StateGraph:
     # --- 노드 등록 ---
     graph.add_node("tier1_podcast", tier1_podcast_fan_out)
     graph.add_node("tier2_podcast", tier2_podcast_fan_out)
+
     async def _bv_timeout(s: AgentState) -> dict[str, Any]:
         return await _with_timeout(batch_validator_node, s, _TIER3_TIMEOUT, "batch_validator")
 
     async def _sp_timeout(s: AgentState) -> dict[str, Any]:
-        return await _with_timeout(script_personalizer_node, s, _TIER4_TIMEOUT, "script_personalizer")
+        return await _with_timeout(
+            script_personalizer_node, s, _TIER4_TIMEOUT, "script_personalizer"
+        )
 
     graph.add_node("batch_validator", _bv_timeout)
     graph.add_node("script_personalizer", _sp_timeout)
@@ -555,12 +578,15 @@ def build_unified_graph() -> StateGraph:
     # --- 팟캐스트 노드 ---
     graph.add_node("tier1_podcast", tier1_podcast_fan_out)
     graph.add_node("tier2_podcast", tier2_podcast_fan_out)
+
     # TIER 3-4: timeout 래퍼 적용 (LLM 무응답 시 무한 대기 방지)
     async def _batch_validator_with_timeout(s: AgentState) -> dict[str, Any]:
         return await _with_timeout(batch_validator_node, s, _TIER3_TIMEOUT, "batch_validator")
 
     async def _script_personalizer_with_timeout(s: AgentState) -> dict[str, Any]:
-        return await _with_timeout(script_personalizer_node, s, _TIER4_TIMEOUT, "script_personalizer")
+        return await _with_timeout(
+            script_personalizer_node, s, _TIER4_TIMEOUT, "script_personalizer"
+        )
 
     graph.add_node("batch_validator", _batch_validator_with_timeout)
     graph.add_node("script_personalizer", _script_personalizer_with_timeout)
@@ -668,8 +694,7 @@ def compile_graph(
     builder_fn = builders.get(graph_builder)
     if builder_fn is None:
         raise ValueError(
-            f"Unknown graph builder: {graph_builder!r}. "
-            f"Choose from: {list(builders.keys())}"
+            f"Unknown graph builder: {graph_builder!r}. " f"Choose from: {list(builders.keys())}"
         )
 
     graph = builder_fn()

@@ -74,5 +74,3 @@ class KnowledgeAgentStub:
             "articles": [],
             "guidelines": [],
         }
-
-

@@ -6,18 +6,17 @@
 """
 
 import uuid
-from typing import Literal
 from datetime import datetime, timezone
 
 from fastapi import APIRouter
-from pydantic import BaseModel
 
 from src.api.external_schemas import (
+    ErrorResponse,
+    SessionCloseRequest,
     SessionCreateRequest,
     SessionCreateResponse,
-    SessionCloseRequest,
-    ErrorResponse
 )
+
 # from src.agents.podcast.learning import trigger_learning_agent (비동기 트리거용)
 
 router = APIRouter()
@@ -28,20 +27,20 @@ router = APIRouter()
     response_model=SessionCreateResponse,
     responses={
         422: {"model": ErrorResponse, "description": "요청 검증 에러"},
-        500: {"model": ErrorResponse, "description": "서버 에러"}
-    }
+        500: {"model": ErrorResponse, "description": "서버 에러"},
+    },
 )
 async def create_session(request: SessionCreateRequest) -> SessionCreateResponse:
     """
     세션 생성.
-    
+
     Backend 서버가 대화나 팟캐스트 모드 진입 시 호출한다.
     신규 세션 ID를 생성하여 반환.
     """
-    
+
     # 서버에서 고유 세션 ID 생성
     new_session_id = f"sess_{uuid.uuid4().hex[:12]}"
-    
+
     return SessionCreateResponse(
         session_id=new_session_id,
         mode=request.mode,
@@ -55,18 +54,18 @@ async def create_session(request: SessionCreateRequest) -> SessionCreateResponse
     response_model=dict,
     responses={
         422: {"model": ErrorResponse, "description": "요청 검증 에러"},
-        500: {"model": ErrorResponse, "description": "서버 에러"}
-    }
+        500: {"model": ErrorResponse, "description": "서버 에러"},
+    },
 )
 async def close_session(session_id: str, request: SessionCloseRequest) -> dict:
     """
     세션 종료.
-    
+
     대화가 끝났을 때 Backend 서버가 호출.
     비동기로 백그라운드 태스크나 Learning Agent를 트리거하여 세션 로그를 정리/학습할 수 있다.
     """
-    
+
     # Learning Agent는 팟캐스트 파이프라인 내부(async_post_processing_node)에서 실행됨.
     # 세션 종료 시 별도 트리거는 불필요.
-    
+
     return {"success": True, "message": f"Session {session_id} closed successfully"}

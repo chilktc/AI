@@ -245,7 +245,7 @@ class PromptLoader:
             sub = prompts_section[prompt_key]
             if isinstance(sub, dict) and "user_prompt" in sub:
                 return str(sub["user_prompt"])
-            
+
         # 단일 프롬프트 구조: 최상위에 user_prompt가 있을 때 (prompt_key 무시)
         if "user_prompt" in data:
             return str(data["user_prompt"])

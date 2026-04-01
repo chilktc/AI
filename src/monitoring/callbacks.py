@@ -173,7 +173,9 @@ class MindLogTelemetryCallback(BaseCallbackHandler):
 
         logger.debug(
             "[Telemetry] 노드 완료: %s (%dms, tier=%s)",
-            node_name, elapsed_ms, tier,
+            node_name,
+            elapsed_ms,
+            tier,
         )
 
     def on_chain_error(

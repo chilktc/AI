@@ -106,9 +106,7 @@ def test_load_multi_version_single_and_multi_prompt(tmp_path: Path) -> None:
     ],
     ids=["default_version", "fallback_first"],
 )
-def test_load_default_and_fallback(
-    tmp_path: Path, yaml_content: str, expected: str
-) -> None:
+def test_load_default_and_fallback(tmp_path: Path, yaml_content: str, expected: str) -> None:
     """default_version 사용 / 없으면 첫 번째 버전 fallback."""
     loader = _make_loader(tmp_path, "podcast", "test_agent", yaml_content)
     prompt = loader.load("podcast", "test_agent")
@@ -150,7 +148,7 @@ def test_legacy_backward_compat(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     "yaml_content, match_pattern",
     [
-        ('agent: a\nversions: {}\n', "비어있음"),
+        ("agent: a\nversions: {}\n", "비어있음"),
         (
             'agent: a\ndefault_version: "1.0.0"\n\nversions:\n  "1.0.0":\n'
             '    description: "프롬프트 없음"\n',
@@ -160,9 +158,7 @@ def test_legacy_backward_compat(tmp_path: Path) -> None:
     ],
     ids=["empty_versions", "missing_prompt_in_version", "invalid_version"],
 )
-def test_version_errors(
-    tmp_path: Path, yaml_content: str, match_pattern: str
-) -> None:
+def test_version_errors(tmp_path: Path, yaml_content: str, match_pattern: str) -> None:
     """비정상 멀티버전 YAML + 존재하지 않는 버전 요청에 대한 에러를 검증한다."""
     loader = _make_loader(tmp_path, "podcast", "test_agent", yaml_content)
 

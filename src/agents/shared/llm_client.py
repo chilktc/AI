@@ -77,9 +77,7 @@ class _CircuitBreaker:
                     self._state = self.HALF_OPEN
                     _cb_logger.info("[CircuitBreaker] OPEN → HALF_OPEN 전환")
                 else:
-                    raise CircuitOpenError(
-                        f"Circuit OPEN — {self._reset_timeout}s 대기 중"
-                    )
+                    raise CircuitOpenError(f"Circuit OPEN — {self._reset_timeout}s 대기 중")
 
     async def record_success(self) -> None:
         """성공 기록 — HALF_OPEN이면 CLOSED로 복구."""
@@ -99,7 +97,8 @@ class _CircuitBreaker:
                 self._state = self.OPEN
                 _cb_logger.warning(
                     "[CircuitBreaker] %s → OPEN (연속 실패 %d회)",
-                    old, self._failure_count,
+                    old,
+                    self._failure_count,
                 )
 
 
@@ -209,9 +208,7 @@ class LLMClient:
         elif self._provider == "openai":
             import openai
 
-            self._openai_client = openai.AsyncOpenAI(
-                api_key=os.getenv("OPENAI_API_KEY")
-            )
+            self._openai_client = openai.AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
             # OpenAI 전용 모델 ID — agent_config.model_id는 Anthropic 직접 API ID이므로
             # OpenAI에서는 반드시 get_openai_model_id()를 사용해야 한다.
             model_key = agent_config.get("model", "sonnet")

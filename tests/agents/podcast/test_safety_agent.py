@@ -59,7 +59,9 @@ async def test_crisis_status_injects_safety_constants(agent: SafetyAgent) -> Non
     }
     state = AgentState(
         user_input="더 이상 살고 싶지 않아요",
-        user_id="u", session_id="s", mode="podcast",
+        user_id="u",
+        session_id="s",
+        mode="podcast",
     )
 
     with patch.object(agent, "call_llm_json", new_callable=AsyncMock, return_value=llm_response):
@@ -83,7 +85,9 @@ async def test_warning_status_gets_default_safety_text(agent: SafetyAgent) -> No
     }
     state = AgentState(
         user_input="요즘 우울한 기분이에요",
-        user_id="u", session_id="s", mode="podcast",
+        user_id="u",
+        session_id="s",
+        mode="podcast",
     )
 
     with patch.object(agent, "call_llm_json", new_callable=AsyncMock, return_value=llm_response):
@@ -93,5 +97,3 @@ async def test_warning_status_gets_default_safety_text(agent: SafetyAgent) -> No
     assert sf["status"] == "warning"
     assert isinstance(sf["required_in_script"], list)
     assert len(sf["required_in_script"]) >= 2  # 기본 2개 문구
-
-

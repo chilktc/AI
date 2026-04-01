@@ -128,9 +128,7 @@ def test_on_chain_end_no_start_is_ignored() -> None:
     ],
     ids=["crisis", "safe"],
 )
-def test_crisis_detection(
-    safety_status: str, risk_level: int, expect_crisis: bool
-) -> None:
+def test_crisis_detection(safety_status: str, risk_level: int, expect_crisis: bool) -> None:
     """Safety 판정에 따라 CRISIS 이벤트가 기록된다."""
     cb = MindLogTelemetryCallback(session_id="sess_test")
     run_id = uuid.uuid4()
@@ -210,7 +208,10 @@ def test_get_summary_with_error_agents() -> None:
     cb = MindLogTelemetryCallback()
     cb.add_agent_metric(
         AgentMetric(
-            "reasoning", 1, 500, 2,
+            "reasoning",
+            1,
+            500,
+            2,
             model_id="claude-opus-4-6",
             status="error",
             error_message="timeout",

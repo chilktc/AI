@@ -5,6 +5,7 @@ Knowledge Agent 단위 테스트.
 현재 Knowledge Agent는 process() 기반이며 search() 미구현 → stub 인터페이스 검증.
 대화모드 process() 테스트는 프롬프트 YAML 완성 후 추가 예정.
 """
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock

@@ -31,7 +31,9 @@ class TestCreatePodcastEpisode:
         return base
 
     def test_create_episode_success_and_response_structure(
-        self, test_client, mock_compiled_graph,
+        self,
+        test_client,
+        mock_compiled_graph,
     ) -> None:
         """유효한 요청으로 에피소드 생성 시 200 + 응답 구조 + 상태 매핑 + config 검증."""
         response = test_client.post(
@@ -97,8 +99,12 @@ class TestCreatePodcastEpisode:
         ids=["crisis_alert", "safe_no_alert"],
     )
     def test_create_episode_safety_alert(
-        self, test_client, mock_compiled_graph,
-        safety_flags, expected_status, expected_button,
+        self,
+        test_client,
+        mock_compiled_graph,
+        safety_flags,
+        expected_status,
+        expected_button,
     ) -> None:
         """safety_flags.status별 safety_alert 응답 검증."""
         mock_compiled_graph.ainvoke = AsyncMock(
@@ -141,8 +147,13 @@ class TestCreatePodcastEpisode:
         ids=["validation_error_missing_situation", "pipeline_error"],
     )
     def test_create_episode_error(
-        self, test_client, mock_compiled_graph,
-        request_body, mock_side_effect, expected_status, expected_code,
+        self,
+        test_client,
+        mock_compiled_graph,
+        request_body,
+        mock_side_effect,
+        expected_status,
+        expected_code,
     ) -> None:
         """검증 에러(422) + 파이프라인 에러(500) 통합 검증."""
         if mock_side_effect is not None:

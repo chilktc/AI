@@ -21,11 +21,11 @@ import pytest
 
 from src.api.contracts import LoadResponse, SaveRequest, SaveResponse
 
-
 # ---------------------------------------------------------------------------
 # 확정된 리소스: Learning
 # (src/api/backend_resources.py에서 유일하게 TODO 마커 없음)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.live
 class TestBackendLearningApi:
@@ -37,7 +37,8 @@ class TestBackendLearningApi:
 
     @pytest.mark.asyncio
     async def test_save_learning_data(
-        self, skip_if_no_backend: None,
+        self,
+        skip_if_no_backend: None,
         real_backend_client,
     ) -> None:
         """POST /api/v1/learning → SaveResponse 반환."""
@@ -67,7 +68,8 @@ class TestBackendLearningApi:
 
     @pytest.mark.asyncio
     async def test_load_learning_data(
-        self, skip_if_no_backend: None,
+        self,
+        skip_if_no_backend: None,
         real_backend_client,
     ) -> None:
         """GET /api/v1/learning?user_id=... → LoadResponse 반환."""
@@ -92,6 +94,7 @@ class TestBackendLearningApi:
 # (src/api/backend_resources.py에 TODO(backend) 마커 존재)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.live
 class TestBackendConversationApi:
     """Conversation 리소스 save/load 통합 테스트.
@@ -102,14 +105,14 @@ class TestBackendConversationApi:
 
     @pytest.mark.asyncio
     async def test_save_conversation_data(
-        self, skip_if_no_backend: None,
+        self,
+        skip_if_no_backend: None,
         real_backend_client,
     ) -> None:
         """POST /api/v1/conversations → SaveResponse."""
         # TODO(backend): 4-2 리소스 경로명 확정 후 skip 해제
         pytest.skip(
-            "리소스 경로 미확정 — "
-            "src/api/backend_resources.py RESOURCE_CONVERSATION 확정 필요"
+            "리소스 경로 미확정 — " "src/api/backend_resources.py RESOURCE_CONVERSATION 확정 필요"
         )
 
         request = SaveRequest(
@@ -140,14 +143,14 @@ class TestBackendEmotionLogApi:
 
     @pytest.mark.asyncio
     async def test_save_emotion_log(
-        self, skip_if_no_backend: None,
+        self,
+        skip_if_no_backend: None,
         real_backend_client,
     ) -> None:
         """POST /api/v1/emotion_logs → SaveResponse."""
         # TODO(backend): 4-2 리소스 경로명 확정 후 skip 해제
         pytest.skip(
-            "리소스 경로 미확정 — "
-            "src/api/backend_resources.py RESOURCE_EMOTION_LOG 확정 필요"
+            "리소스 경로 미확정 — " "src/api/backend_resources.py RESOURCE_EMOTION_LOG 확정 필요"
         )
 
         request = SaveRequest(
@@ -172,21 +175,20 @@ class TestBackendEmotionLogApi:
 # 왕복 테스트: Save → Load → 데이터 일치 확인
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.live
 class TestBackendRoundTrip:
     """데이터 저장 후 조회하여 일치 여부를 확인하는 왕복 테스트."""
 
     @pytest.mark.asyncio
     async def test_save_and_load_roundtrip(
-        self, skip_if_no_backend: None,
+        self,
+        skip_if_no_backend: None,
         real_backend_client,
     ) -> None:
         """Save → Load → 저장한 데이터와 조회한 데이터가 일치."""
         # TODO(backend): API 명세 확정 후 skip 해제
-        pytest.skip(
-            "API 명세 미확정 — "
-            "Save/Load 왕복 테스트는 엔드포인트 스키마 확정 후 활성화"
-        )
+        pytest.skip("API 명세 미확정 — " "Save/Load 왕복 테스트는 엔드포인트 스키마 확정 후 활성화")
 
         # 1. 저장
         test_data = {
@@ -213,10 +215,7 @@ class TestBackendRoundTrip:
         assert load_result.total >= 1
 
         # 3. 일치 확인
-        found = any(
-            item.get("test_marker") == "roundtrip_test_001"
-            for item in load_result.data
-        )
+        found = any(item.get("test_marker") == "roundtrip_test_001" for item in load_result.data)
         assert found, "저장한 데이터를 조회 결과에서 찾을 수 없습니다."
 
 
@@ -224,21 +223,20 @@ class TestBackendRoundTrip:
 # 에러 핸들링 테스트
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.live
 class TestBackendErrorHandling:
     """Backend 서버 에러 응답 처리 검증."""
 
     @pytest.mark.asyncio
     async def test_save_invalid_data_returns_error(
-        self, skip_if_no_backend: None,
+        self,
+        skip_if_no_backend: None,
         real_backend_client,
     ) -> None:
         """잘못된 데이터 전송 시 적절한 에러 응답."""
         # TODO(backend): API 명세 확정 후 skip 해제
-        pytest.skip(
-            "API 명세 미확정 — "
-            "에러 응답 형식(ErrorResponse) 확정 후 활성화"
-        )
+        pytest.skip("API 명세 미확정 — " "에러 응답 형식(ErrorResponse) 확정 후 활성화")
 
         # 의도적으로 필수 필드를 비정상값으로 설정
         request = SaveRequest(
@@ -250,6 +248,7 @@ class TestBackendErrorHandling:
         )
 
         import httpx
+
         with pytest.raises(httpx.HTTPStatusError) as exc_info:
             await real_backend_client.save("learning", request)
 
@@ -258,15 +257,13 @@ class TestBackendErrorHandling:
 
     @pytest.mark.asyncio
     async def test_load_nonexistent_user(
-        self, skip_if_no_backend: None,
+        self,
+        skip_if_no_backend: None,
         real_backend_client,
     ) -> None:
         """존재하지 않는 user_id 조회 시 빈 결과 반환."""
         # TODO(backend): API 명세 확정 후 skip 해제
-        pytest.skip(
-            "API 명세 미확정 — "
-            "존재하지 않는 사용자 조회 응답 형식 확정 후 활성화"
-        )
+        pytest.skip("API 명세 미확정 — " "존재하지 않는 사용자 조회 응답 형식 확정 후 활성화")
 
         result = await real_backend_client.load(
             "learning",

@@ -52,9 +52,7 @@ class MySQLClient(BaseRDBClient):
     """
 
     def __init__(self, url: str | None = None) -> None:
-        self._url = url or os.getenv(
-            "MYSQL_URL", "mysql+pymysql://root:@localhost:3306/mindlog"
-        )
+        self._url = url or os.getenv("MYSQL_URL", "mysql+pymysql://root:@localhost:3306/mindlog")
         self._conn_params = _parse_mysql_url(self._url)
         self._connection: pymysql.Connection | None = None
 

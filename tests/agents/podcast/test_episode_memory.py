@@ -10,13 +10,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 
 from src.agents.podcast.episode_memory import EpisodeMemoryAgent, episode_memory_node
 from src.models.agent_state import AgentState
-
 
 # === 픽스처 ===
 
@@ -89,7 +88,6 @@ class TestEpisodeMemoryAgent:
         mock_db_data: list[dict[str, Any]],
     ) -> None:
         """mock_db.json에 데이터가 있을 때 정상 반환."""
-        mock_open = pytest.importorskip("builtins").open
         with (
             patch.object(Path, "exists", return_value=True),
             patch("builtins.open", create=True) as m_open,
@@ -107,9 +105,7 @@ class TestEpisodeMemoryAgent:
         assert "2건" in payload["summary"]
 
     @pytest.mark.asyncio
-    async def test_process_uses_memory_query_if_present(
-        self, agent: EpisodeMemoryAgent
-    ) -> None:
+    async def test_process_uses_memory_query_if_present(self, agent: EpisodeMemoryAgent) -> None:
         """state에 memory_query가 있으면 user_input 대신 사용."""
         state: AgentState = {
             "user_input": "기본 입력",

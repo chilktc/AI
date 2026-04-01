@@ -15,11 +15,13 @@ router = APIRouter()
 
 class HealthResponse(BaseModel):
     """기본 Health 응답"""
+
     status: str = "ok"
 
 
 class ReadyResponse(BaseModel):
     """Ready(준비됨) 응답"""
+
     status: str = "ready"
     components: dict[str, str]
     storage_mode: str = "local"
@@ -55,6 +57,7 @@ async def ready_check():
 
     # STORAGE_MODE 정보 포함 (Zone D: 현재 저장소 모드 확인용)
     from config.loader import get_settings
+
     settings = get_settings()
     storage_mode = getattr(settings, "storage_mode", "local")
 

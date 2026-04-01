@@ -80,7 +80,9 @@ class KnowledgeAgent(BaseAgent):
 
             processing_time = (datetime.now() - start_time).total_seconds() * 1000
             self.logger.info(
-                f"[KnowledgeAgent] Completed in {processing_time:.2f}ms. Generated {len(result.get('recommended_approaches', []))} recommendations."
+                "[KnowledgeAgent] Completed in %.2fms. " "Generated %d recommendations.",
+                processing_time,
+                len(result.get("recommended_approaches", [])),
             )
 
             return result
@@ -96,11 +98,10 @@ class KnowledgeAgent(BaseAgent):
         """쿼리를 전문가 용어로 확장하고 탐색할 도메인 지정 (LLM)"""
         system_prompt = self.get_prompt("expand_query")
 
-        user_prompt = self._prompt_loader.load_user_prompt(self._prompt_mode, "knowledge", "expand_query")
-        user_message = user_prompt.format(
-            query=query,
-            domain_hints=json.dumps(domain_hints)
+        user_prompt = self._prompt_loader.load_user_prompt(
+            self._prompt_mode, "knowledge", "expand_query"
         )
+        user_message = user_prompt.format(query=query, domain_hints=json.dumps(domain_hints))
 
         try:
             # LLMClient의 generate_json 사용
@@ -146,7 +147,11 @@ class KnowledgeAgent(BaseAgent):
 
         try:
             # 실제 DB가 연결된 경우 async sql 쿼리를 실행하는 부분
-            query = "SELECT id, title, content, domain, source, evidence_level, contraindications FROM knowledge_base WHERE id = ANY($1)"
+            query = (
+                "SELECT id, title, content, domain, source,"
+                " evidence_level, contraindications"
+                " FROM knowledge_base WHERE id = ANY($1)"
+            )
             docs = await self.db_client.fetch(query, doc_ids)
             return [dict(d) for d in docs]
         except Exception as e:
@@ -165,17 +170,22 @@ class KnowledgeAgent(BaseAgent):
 
         docs_text = "\n\n".join(
             [
-                f"{i+1}. Title: {d.get('title')}\n   Content: {str(d.get('content'))[:300]}...\n   Contraindications: {d.get('contraindications', 'None')}"
+                f"{i+1}. Title: {d.get('title')}\n"
+                f"   Content: {str(d.get('content'))[:300]}...\n"
+                f"   Contraindications: "
+                f"{d.get('contraindications', 'None')}"
                 for i, d in enumerate(documents)
             ]
         )
 
-        user_prompt = self._prompt_loader.load_user_prompt(self._prompt_mode, "knowledge", "assess_applicability")
+        user_prompt = self._prompt_loader.load_user_prompt(
+            self._prompt_mode, "knowledge", "assess_applicability"
+        )
         user_message = user_prompt.format(
-            age_group=user_context.get('age_group', 'unknown'),
-            culture=user_context.get('cultural_background', 'unknown'),
-            previous_approaches=user_context.get('previous_approaches', []),
-            docs_text=docs_text
+            age_group=user_context.get("age_group", "unknown"),
+            culture=user_context.get("cultural_background", "unknown"),
+            previous_approaches=user_context.get("previous_approaches", []),
+            docs_text=docs_text,
         )
 
         try:
@@ -214,17 +224,20 @@ class KnowledgeAgent(BaseAgent):
 
         docs_text = "\n\n".join(
             [
-                f"{i+1}. {d.get('title')} (Applicability: {applicability.get(str(i+1), {}).get('score', 0.5)})\n"
-                f"   {str(d.get('content'))[:500]}...\n   Source: {d.get('source')}"
+                f"{i+1}. {d.get('title')} "
+                f"(Applicability: "
+                f"{applicability.get(str(i+1), {}).get('score', 0.5)}"
+                f")\n"
+                f"   {str(d.get('content'))[:500]}...\n"
+                f"   Source: {d.get('source')}"
                 for i, d in enumerate(documents)
             ]
         )
 
-        user_prompt = self._prompt_loader.load_user_prompt(self._prompt_mode, "knowledge", "synthesize_knowledge")
-        user_message = user_prompt.format(
-            query=query,
-            docs_text=docs_text
+        user_prompt = self._prompt_loader.load_user_prompt(
+            self._prompt_mode, "knowledge", "synthesize_knowledge"
         )
+        user_message = user_prompt.format(query=query, docs_text=docs_text)
 
         try:
             result = await self.call_llm_json(

@@ -39,7 +39,11 @@ class EmotionAgent(BaseAgent):
         if not intent:
             return ""
         flags = intent.get("flags", {}) if isinstance(intent.get("flags"), dict) else {}
-        entities = intent.get("detected_entities", {}) if isinstance(intent.get("detected_entities"), dict) else {}
+        entities = (
+            intent.get("detected_entities", {})
+            if isinstance(intent.get("detected_entities"), dict)
+            else {}
+        )
         prior_emotions = entities.get("emotions", [])
         intent_type = intent.get("intent_type", "")
         urgency_level = flags.get("urgency_level", "")

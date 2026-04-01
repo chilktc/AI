@@ -149,5 +149,6 @@ def test_compile_conversation_raises_error() -> None:
 def test_compile_with_checkpointer() -> None:
     """InMemorySaver 체크포인터로 컴파일된다."""
     from langgraph.checkpoint.memory import InMemorySaver
+
     compiled = compile_graph("unified", checkpointer=InMemorySaver())
     assert compiled is not None

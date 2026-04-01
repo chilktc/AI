@@ -104,7 +104,8 @@ class IntentClassifierAgent(BaseAgent):
             # 위기 상황이면 LLM 호출 없이 바로 반환 (안전 우선)
             if preliminary_result["is_crisis"]:
                 self.logger.warning(
-                    f"[IntentClassifier] Crisis detected! Keywords: {preliminary_result['detected_keywords']}"
+                    "[IntentClassifier] Crisis detected! " "Keywords: %s",
+                    preliminary_result["detected_keywords"],
                 )
                 result = self._create_crisis_result(
                     trace_id=trace_id, detected_keywords=preliminary_result["detected_keywords"]
@@ -148,7 +149,9 @@ class IntentClassifierAgent(BaseAgent):
             # 처리 시간 로깅
             processing_time = (datetime.now() - start_time).total_seconds() * 1000
             self.logger.info(
-                f"[IntentClassifier] Completed in {processing_time:.2f}ms, intent={final_result.intent_type}"
+                "[IntentClassifier] Completed in %.2fms, " "intent=%s",
+                processing_time,
+                final_result.intent_type,
             )
 
             risk_level = 4 if final_result.flags.risk_flag else 0
@@ -298,11 +301,15 @@ class IntentClassifierAgent(BaseAgent):
 
         previous_context = ""
         if previous_intent:
-            previous_context = f"Previous Turn Intent: {previous_intent.get('intent_type', 'unknown')}\n(Consider conversation continuity)"
+            previous_context = (
+                f"Previous Turn Intent: "
+                f"{previous_intent.get('intent_type', 'unknown')}"
+                f"\n(Consider conversation continuity)"
+            )
 
         # PromptLoader를 통해 yaml에서 로드된 system_prompt 포맷팅
         base_prompt = self.get_prompt("system_prompt")
-        
+
         prompt = base_prompt.format(
             previous_context=previous_context,
             preliminary_intent=preliminary_intent,
@@ -350,7 +357,8 @@ class IntentClassifierAgent(BaseAgent):
             # intent_type 유효성 검증
             if parsed["intent_type"] not in self.intent_types:
                 self.logger.warning(
-                    f"[IntentClassifier] Invalid intent_type: {parsed['intent_type']}, using default"
+                    "[IntentClassifier] Invalid intent_type: " "%s, using default",
+                    parsed["intent_type"],
                 )
                 parsed["intent_type"] = DEFAULT_INTENT
 
@@ -395,7 +403,9 @@ class IntentClassifierAgent(BaseAgent):
             "complexity_score": complexity,
             "detected_entities": entities,
             "flags": flags,
-            "reasoning": f"Rule-based classification with confidence {preliminary_result['confidence']}",
+            "reasoning": (
+                "Rule-based classification with " f"confidence {preliminary_result['confidence']}"
+            ),
         }
 
     def _calculate_complexity(self, normalized_input: str) -> float:

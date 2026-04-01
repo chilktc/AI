@@ -77,7 +77,10 @@ class TestAgentIOTracker:
         assert snap_id.startswith("snap_")
 
     def test_capture_output_completes_snapshot(self) -> None:
-        """capture_output이 스냅샷을 완료하고 메타데이터(token_usage, prompt_version 등)를 저장한다."""
+        """capture_output이 스냅샷을 완료하고 메타데이터를 저장한다.
+
+        메타데이터: token_usage, prompt_version 등.
+        """
         tracker = AgentIOTracker(session_id="sess_001")
         snap_id = tracker.capture_input(
             "safety",
@@ -182,8 +185,12 @@ class TestAgentIOTracker:
         ids=["user_input_hashed", "long_string_truncated", "dict_summarized"],
     )
     def test_sanitize_input_fields(
-        self, agent: str, input_fields: dict, max_chars: int,
-        field_key: str, check,
+        self,
+        agent: str,
+        input_fields: dict,
+        max_chars: int,
+        field_key: str,
+        check,
     ) -> None:
         """입력 필드 유형별 정제(해시/truncation/요약)를 검증."""
         tracker = AgentIOTracker(session_id="sess_001", max_chars=max_chars)

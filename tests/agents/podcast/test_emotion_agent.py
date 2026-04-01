@@ -36,7 +36,9 @@ async def test_process_returns_emotion_vectors(agent: EmotionAgent) -> None:
     }
     state = AgentState(
         user_input="직장 스트레스가 심해요",
-        user_id="u", session_id="s", mode="podcast",
+        user_id="u",
+        session_id="s",
+        mode="podcast",
     )
 
     mock = AsyncMock(return_value=llm_response)
@@ -57,7 +59,9 @@ async def test_fallback_on_key_error(agent: EmotionAgent) -> None:
     """LLM 호출 시 KeyError가 발생하면 키워드 기반 fallback을 사용한다."""
     state = AgentState(
         user_input="불안하고 걱정이 많아요",
-        user_id="u", session_id="s", mode="podcast",
+        user_id="u",
+        session_id="s",
+        mode="podcast",
     )
 
     mock = AsyncMock(side_effect=KeyError("prompt"))
@@ -76,12 +80,12 @@ async def test_clamp_out_of_range_values(agent: EmotionAgent) -> None:
     """LLM이 범위 밖 수치를 반환해도 clamp 처리된다."""
     llm_response = {
         "primary_emotion": "joy",
-        "intensity": 1.5,      # > 1.0
-        "valence": -2.0,       # < -1.0
+        "intensity": 1.5,  # > 1.0
+        "valence": -2.0,  # < -1.0
         "arousal": "invalid",  # not a number
         "secondary_emotions": "not_a_list",  # type error
         "tone_recommendation": "positive",
-        "emotional_journey_hint": None,      # not a list
+        "emotional_journey_hint": None,  # not a list
     }
     state = AgentState(user_input="기분 좋아요", user_id="u", session_id="s", mode="podcast")
 
@@ -89,8 +93,8 @@ async def test_clamp_out_of_range_values(agent: EmotionAgent) -> None:
         result = await agent.process(state)
 
     ev = result["emotion_vectors"]
-    assert ev["intensity"] == 1.0      # clamped
-    assert ev["valence"] == -1.0       # clamped
-    assert ev["arousal"] == 0.3        # default
-    assert ev["secondary_emotions"] == []           # type-safe
-    assert ev["emotional_journey_hint"] == []       # type-safe
+    assert ev["intensity"] == 1.0  # clamped
+    assert ev["valence"] == -1.0  # clamped
+    assert ev["arousal"] == 0.3  # default
+    assert ev["secondary_emotions"] == []  # type-safe
+    assert ev["emotional_journey_hint"] == []  # type-safe
