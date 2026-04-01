@@ -201,12 +201,12 @@ security:
   pii_sanitization:
     enabled: true
 
-# [미사용] Feature flags — 향후 에이전트별 활성화/비활성화 제어 시 사용 예정
-# 현재 코드에서 읽지 않음. 활성화 시 config/loader.py에 property 추가 필요.
-features:
-  podcast_mode: true
-  visualization: true
-  learning: true
+# [미사용] Feature flags — 코드에서 읽지 않음.
+# 향후 에이전트별 활성화/비활성화 제어 시 config/loader.py에 property 추가 필요.
+# features:
+#   podcast_mode: true
+#   visualization: true
+#   learning: true
 
 # 모니터링 & Observability
 monitoring:
