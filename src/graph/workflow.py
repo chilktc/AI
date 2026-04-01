@@ -494,14 +494,14 @@ def build_podcast_graph() -> StateGraph:
     # --- 노드 등록 ---
     graph.add_node("tier1_podcast", tier1_podcast_fan_out)
     graph.add_node("tier2_podcast", tier2_podcast_fan_out)
-    graph.add_node(
-        "batch_validator",
-        lambda s: _with_timeout(batch_validator_node, s, _TIER3_TIMEOUT, "batch_validator"),
-    )
-    graph.add_node(
-        "script_personalizer",
-        lambda s: _with_timeout(script_personalizer_node, s, _TIER4_TIMEOUT, "script_personalizer"),
-    )
+    async def _bv_timeout(s: AgentState) -> dict[str, Any]:
+        return await _with_timeout(batch_validator_node, s, _TIER3_TIMEOUT, "batch_validator")
+
+    async def _sp_timeout(s: AgentState) -> dict[str, Any]:
+        return await _with_timeout(script_personalizer_node, s, _TIER4_TIMEOUT, "script_personalizer")
+
+    graph.add_node("batch_validator", _bv_timeout)
+    graph.add_node("script_personalizer", _sp_timeout)
     graph.add_node("crisis_response", crisis_response_node)
     graph.add_node("async_post", async_post_processing_node)
     graph.add_node("increment_iteration", increment_iteration_node)
@@ -555,8 +555,15 @@ def build_unified_graph() -> StateGraph:
     # --- 팟캐스트 노드 ---
     graph.add_node("tier1_podcast", tier1_podcast_fan_out)
     graph.add_node("tier2_podcast", tier2_podcast_fan_out)
-    graph.add_node("batch_validator", batch_validator_node)
-    graph.add_node("script_personalizer", script_personalizer_node)
+    # TIER 3-4: timeout 래퍼 적용 (LLM 무응답 시 무한 대기 방지)
+    async def _batch_validator_with_timeout(s: AgentState) -> dict[str, Any]:
+        return await _with_timeout(batch_validator_node, s, _TIER3_TIMEOUT, "batch_validator")
+
+    async def _script_personalizer_with_timeout(s: AgentState) -> dict[str, Any]:
+        return await _with_timeout(script_personalizer_node, s, _TIER4_TIMEOUT, "script_personalizer")
+
+    graph.add_node("batch_validator", _batch_validator_with_timeout)
+    graph.add_node("script_personalizer", _script_personalizer_with_timeout)
 
     # --- 공용 노드 ---
     graph.add_node("crisis_response", crisis_response_node)
