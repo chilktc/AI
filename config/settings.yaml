@@ -64,7 +64,7 @@ llm:
 agents:
   # TIER 0
   intent_classifier:
-    model: sonnet_37  # Phase 3 최적: c37-sonnet (composite 0.848)
+    model: sonnet_37  # Phase 3 검증: c37-sonnet Q=0.910 (5 runs) — c35-sonnet-v2보다 우위
     max_tokens: 1024
     temperature: 0.3
 
