@@ -160,8 +160,8 @@ StateGraph 노드가 아닌 **독립 에이전트**로 DI 패턴을 따릅니다
 
 ```python
 # Reasoning Agent 생성 시 독립 에이전트 주입
-from src.agents.conversation.memory import MemoryAgent
-from src.agents.conversation.knowledge import KnowledgeAgent
+from src.agents.podcast.memory import MemoryAgent
+from src.agents.podcast.knowledge import KnowledgeAgent
 
 reasoning = ReasoningAgent(
     memory_agent=MemoryAgent(),       # 실제 구현
@@ -186,13 +186,11 @@ reasoning = ReasoningAgent(
 ```
 prompts/
 ├── podcast/         # 팟캐스트모드 전용
-├── conversation/    # 대화모드 전용
-└── shared/          # 공용 에이전트 (양쪽 모드)
+└── shared/          # 공용 에이전트
 ```
 
 `BaseAgent._resolve_mode()`가 모듈 경로에서 모드를 자동 추론합니다:
 - `src/agents/podcast/*.py` → `prompts/podcast/`
-- `src/agents/conversation/*.py` → `prompts/conversation/`
 - `src/agents/shared/*.py` → `prompts/shared/`
 
 ### 단일 프롬프트 형식
@@ -327,7 +325,7 @@ def base_state() -> AgentState:
         user_input="요즘 스트레스를 많이 받아요.",
         user_id="test_user_001",
         session_id="sess_test_001",
-        mode="conversation",
+        mode="podcast",
     )
 ```
 
@@ -363,7 +361,7 @@ Safety, Emotion 등은 대화모드와 팟캐스트모드 모두에서 사용됩
 ```python
 class SafetyAgent(BaseAgent):
     async def process(self, state: AgentState) -> dict[str, Any]:
-        mode = state.get("mode", "conversation")
+        mode = state.get("mode", "podcast")
 
         if mode == "podcast":
             # 팟캐스트 특화 안전 검사

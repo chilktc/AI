@@ -200,95 +200,7 @@ class SessionFeedback(BaseModel):
 
 
 # ───────────────────────────────────────────────
-# 2-2. 대화 요청 (ConversationRequest)
-# ───────────────────────────────────────────────
-
-
-class ConversationRequest(BaseModel):
-    """
-    대화 요청 — 실시간 상담 모드의 사용자 입력.
-
-    Backend 서버가 사용자 메시지를 전달할 때 사용한다.
-    서버는 이 요청을 LangGraph 파이프라인에 전달한다.
-
-    Endpoint: POST /api/v1/conversations
-    파이프라인: TIER 0 → TIER 1(병렬) → TIER 2 → TIER 3 → TIER 4
-
-    AgentState 매핑:
-        user_input  ← message
-        user_id     ← user_id
-        session_id  ← session_id
-        mode        ← "conversation" (고정)
-    """
-
-    user_id: str = Field(description="사용자 고유 ID")
-    session_id: str = Field(description="세션 고유 ID")
-    # TODO(입력 제한): 텍스트 필드의 max_length를 확정 후 적용 예정
-    # 제안: user_input 10000자, topic 500자 등 — 수치는 추후 결정
-    message: str = Field(
-        min_length=1,
-        max_length=4000,
-        description="사용자 메시지 본문 (1~4000자)",
-    )
-    context_hint: ConversationContextHint | None = Field(
-        default=None,
-        description="Backend 서버가 제공하는 맥락 힌트 (선택)",
-    )
-    preferences: ConversationPreferences | None = Field(
-        default=None,
-        description="이번 턴 한정 선호 설정 (선택)",
-    )
-    tracing: RequestTracing = Field(
-        default_factory=RequestTracing,
-        description="추적 컨텍스트",
-    )
-
-    @field_validator("message")
-    @classmethod
-    def message_not_blank(cls, v: str) -> str:
-        """공백만으로 이루어진 메시지를 거부한다."""
-        if not v.strip():
-            raise ValueError("메시지가 비어있습니다 (공백만 포함)")
-        return v
-
-
-class ConversationContextHint(BaseModel):
-    """
-    Backend 서버에서 제공하는 대화 맥락 힌트.
-
-    대화 흐름의 연속성을 위해 Backend 서버가 전달하는 부가 정보.
-    AI 파이프라인의 Context Agent가 참고한다.
-    """
-
-    previous_turn_id: str | None = Field(
-        default=None,
-        description="직전 대화 턴 ID (대화 연속성 추적용)",
-    )
-    ui_context: str | None = Field(
-        default=None,
-        description="UI 맥락 (예: '시각화 카드에서 진입', '감정 일기 작성 중')",
-    )
-    selected_emotion: str | None = Field(
-        default=None,
-        description="사용자가 UI에서 선택한 감정 (감정 선택 모달에서 진입 시)",
-    )
-
-
-class ConversationPreferences(BaseModel):
-    """이번 대화 턴에 적용할 선호 설정."""
-
-    response_length: Literal["short", "medium", "long"] | None = Field(
-        default=None,
-        description="응답 길이 선호. short=1-2문장, medium=기본, long=상세",
-    )
-    visualization_requested: bool = Field(
-        default=False,
-        description="이번 턴에 시각화를 명시적으로 요청했는지 여부",
-    )
-
-
-# ───────────────────────────────────────────────
-# 2-3. 팟캐스트 생성 요청 (PodcastRequest)
+# 2-2. 팟캐스트 생성 요청 (PodcastRequest)
 # ───────────────────────────────────────────────
 
 
@@ -456,48 +368,6 @@ class UserProfileData(BaseModel):
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-# ───────────────────────────────────────────────
-# 3-1. 대화 응답 (ConversationResponse)
-# ───────────────────────────────────────────────
-
-
-class ConversationResponse(BaseModel):
-    """
-    대화 응답 — 실시간 상담 모드의 AI 응답.
-
-    LangGraph 파이프라인 완료 후 프론트엔드에 반환하는 최종 응답.
-    final_output(Personalization Agent 출력)을 핵심으로,
-    감정 분석과 시각화 데이터를 부가 정보로 포함한다.
-
-    Endpoint 응답: POST /api/v1/conversations
-
-    AgentState 매핑:
-        response_text   ← final_output
-        emotion         ← emotion_vectors (요약)
-        safety_alert    ← safety_flags (status != "safe" 시)
-        visualization   ← visual_data (비동기 완료 후)
-    """
-
-    success: Literal[True] = True
-    turn_id: str = Field(description="대화 턴 고유 ID (이력 추적용)")
-    session_id: str = Field(description="세션 ID")
-    response_text: str = Field(description="AI 응답 텍스트 (Personalization 최종 출력)")
-    emotion: EmotionSummary | None = Field(
-        default=None,
-        description="감정 분석 요약 (프론트엔드 UI 렌더링용)",
-    )
-    safety_alert: SafetyAlertData | None = Field(
-        default=None,
-        description="안전 경고 (safety_flags.status가 'safe'가 아닌 경우에만 포함)",
-    )
-    visualization: VisualizationData | None = Field(
-        default=None,
-        description="시각화 데이터. 비동기 처리이므로 null일 수 있음",
-    )
-    metadata: ConversationResponseMeta = Field(description="응답 메타데이터")
-    tracing: RequestTracing = Field(description="추적 컨텍스트 (요청과 동일)")
-
-
 class EmotionSummary(BaseModel):
     """
     감정 분석 요약 — 프론트엔드 UI 렌더링용.
@@ -607,16 +477,6 @@ class VisualizationData(BaseModel):
         default="completed",
         description="생성 상태 ('completed', 'skipped')",
     )
-
-
-class ConversationResponseMeta(BaseModel):
-    """대화 응답 메타데이터."""
-
-    mode: Literal["conversation"] = "conversation"
-    pipeline_duration_ms: int = Field(description="파이프라인 전체 소요 시간 (밀리초)")
-    intent_type: str = Field(description="분류된 의도 타입")
-    complexity_score: float = Field(description="입력 복잡도 점수 (0.0-1.0)")
-    retry_count: int = Field(default=0, description="TIER 2→3 재시도 횟수")
 
 
 # ───────────────────────────────────────────────
@@ -908,36 +768,6 @@ class StreamEvent(BaseModel):
 # ───────────────────────────────────────────────
 
 
-class MySQLConversationTurn(BaseModel):
-    """
-    MySQL 저장 — 대화 턴 데이터.
-
-    SaveRequest(type="conversation")의 data 필드 구조.
-    테이블: conversation_turns
-
-    인덱스:
-        - PK: turn_id
-        - FK: session_id → sessions.session_id
-        - FK: user_id → users.user_id
-        - INDEX: (user_id, created_at) — 사용자별 시간순 조회
-    """
-
-    turn_id: str = Field(description="대화 턴 고유 ID (PK)")
-    session_id: str = Field(description="세션 ID (FK)")
-    user_id: str = Field(description="사용자 ID (FK)")
-    user_input: str = Field(description="사용자 원본 입력")
-    ai_response: str = Field(description="AI 최종 응답 (final_output)")
-    intent_type: str = Field(description="분류된 의도 타입")
-    complexity_score: float = Field(description="복잡도 점수")
-    risk_level: int = Field(description="위험 레벨 (0-4)")
-    pipeline_duration_ms: int = Field(description="파이프라인 소요 시간")
-    retry_count: int = Field(default=0, description="재시도 횟수")
-    # 추적 ID들
-    trace_id: str = Field(description="분산 추적 ID")
-    correlation_id: str = Field(description="상관관계 ID")
-    created_at: datetime = Field(default_factory=_now_utc, description="생성 시각")
-
-
 class MySQLEmotionLog(BaseModel):
     """
     MySQL 저장 — 감정 로그 데이터.
@@ -1195,28 +1025,6 @@ class PineconeVectorMetadata(BaseModel):
     )
 
 
-class PineconeConversationVector(PineconeVectorMetadata):
-    """
-    Pinecone — 대화 턴 벡터 메타데이터.
-
-    인덱스: mind-log-conversations
-    네임스페이스: user_id
-
-    Memory Agent가 유사 대화를 검색할 때 사용.
-    임베딩 대상: user_input + ai_response 결합 텍스트.
-    """
-
-    entity_type: Literal["conversation_turn"] = "conversation_turn"
-    turn_id: str = Field(description="대화 턴 ID (MySQL FK)")
-    intent_type: str = Field(description="의도 타입 (필터용)")
-    primary_emotion: str = Field(description="주요 감정 (필터용)")
-    # Pinecone 메타데이터 크기 제한(40KB)을 위한 요약 텍스트
-    text_preview: str = Field(
-        max_length=500,
-        description="입력+응답 요약 (500자 이내, 검색 미리보기용)",
-    )
-
-
 class PineconePodcastVector(PineconeVectorMetadata):
     """
     Pinecone — 팟캐스트 에피소드 벡터 메타데이터.
@@ -1431,7 +1239,7 @@ class S3AssetReference(BaseModel):
 #
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ 1. 프론트엔드 요청                                                     │
-# │    ConversationRequest / PodcastRequest                                │
+# │    PodcastRequest                                                      │
 # │    └── tracing: { request_id, trace_id, correlation_id }              │
 # │                                                                        │
 # │ 2. LangGraph 파이프라인                                                │
@@ -1450,7 +1258,7 @@ class S3AssetReference(BaseModel):
 # │    └── Neo4j: 관계 속성에 trace_id 포함                                │
 # │                                                                        │
 # │ 4. 응답                                                                │
-# │    ConversationResponse / PodcastEpisodeResponse                       │
+# │    PodcastEpisodeResponse                                              │
 # │    └── tracing: { request_id, trace_id, correlation_id }              │
 # │                                                                        │
 # │ ★ 추적 쿼리 예시:                                                     │

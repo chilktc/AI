@@ -1,4 +1,4 @@
-# agents/conversation/intent_classifier.py
+# agents/podcast/intent_classifier.py
 """
 Intent Classifier Agent
 사용자 입력의 의도를 분류하고 메타데이터를 추출합니다.
