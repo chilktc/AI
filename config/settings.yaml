@@ -112,7 +112,7 @@ agents:
     moderate_threshold: 0.4  # complexity_score ≥ 이 값 → depth_level "medium" (미만 → "shallow")
   podcast_reasoning:
     model: haiku  # Phase 3 최적: c3-haiku (composite 0.667)
-    max_tokens: 8192  # [수정] 실제 출력 7~11KB → 4096 초과 시 JSON 잘림 방지
+    max_tokens: 4096  # c3-haiku 모델 최대 출력 한계 (8192는 sonnet 이상에서만 유효)
     temperature: 0.3
     full_threshold: 0.0      # complexity ≥ 이 값 → full GoT/ToT/CoT 추론 (0.0=항상 full)
     standard_threshold: 0.0  # complexity ≥ 이 값 → standard 추론 (미만 → lightweight)
@@ -129,7 +129,7 @@ agents:
   # ──────────────────────────────────────
   script_generator:
     model: haiku  # Phase 3 최적: c3-haiku (composite 0.659)
-    max_tokens: 8192  # [수정] 실제 출력 8~21KB → 4096 초과 시 JSON 잘림 방지
+    max_tokens: 4096  # c3-haiku 모델 최대 출력 한계 (8192는 sonnet 이상에서만 유효)
   visualization_podcast:
     model: sonnet
     max_tokens: 2048
