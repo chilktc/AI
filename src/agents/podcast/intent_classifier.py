@@ -115,6 +115,8 @@ class IntentClassifierAgent(BaseAgent):
                     "risk_level": 4,
                     "risk_score": 1.0,
                     "safety_flags": {"risk_detected": True, "details": "Crisis keywords detected"},
+                    # NOTE(dead-code): next_step은 현재 route_after_tier0()에서 참조하지 않음.
+                    # 라우터가 항상 "tier1_podcast"를 반환. 향후 라우팅 분기 확장 시 활용 가능.
                     "next_step": "safety_intervention",
                 }
 
@@ -151,6 +153,8 @@ class IntentClassifierAgent(BaseAgent):
 
             risk_level = 4 if final_result.flags.risk_flag else 0
             risk_score = 1.0 if final_result.flags.risk_flag else 0.0
+            # NOTE(dead-code): next_step은 현재 route_after_tier0()에서 참조하지 않음.
+            # 라우터가 항상 "tier1_podcast"를 반환. 향후 라우팅 분기 확장 시 활용 가능.
             next_step = "safety_intervention" if risk_level > 0 else "process_normal"
 
             return {
@@ -173,6 +177,7 @@ class IntentClassifierAgent(BaseAgent):
                 "risk_level": 0,
                 "risk_score": 0.0,
                 "safety_flags": {"risk_detected": False, "error": str(e)},
+                # NOTE(dead-code): route_after_tier0()가 next_step을 읽지 않음.
                 "next_step": "process_normal",
             }
 

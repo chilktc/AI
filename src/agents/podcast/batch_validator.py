@@ -71,6 +71,8 @@ class BatchValidatorAgent(BaseAgent):
                     "reason": "Empty script_draft",
                     "overall_score": 0.0,
                 },
+                # NOTE(dead-code): next_step은 현재 route_after_tier3_podcast()에서 참조하지 않음.
+                # 라우터가 validation_result.verdict 필드를 직접 읽어 판단.
                 "next_step": "retry_script",
             }
 
@@ -101,6 +103,7 @@ class BatchValidatorAgent(BaseAgent):
             self.logger.info("스크립트 검증 통과 (score=%.2f)", validation.get("overall_score", 0))
             return {
                 "validation_result": validation,
+                # NOTE(dead-code): route_after_tier3_podcast()가 validation_result.verdict로 판단.
                 "next_step": "script_personalizer",
             }
 
@@ -125,6 +128,7 @@ class BatchValidatorAgent(BaseAgent):
             )
             return {
                 "validation_result": validation,
+                # NOTE(dead-code): route_after_tier3_podcast()가 validation_result.verdict로 판단.
                 "next_step": "retry_script",
             }
 
@@ -136,6 +140,7 @@ class BatchValidatorAgent(BaseAgent):
             )
             return {
                 "validation_result": {**validation, "forced_pass": True},
+                # NOTE(dead-code): route_after_tier3_podcast()가 validation_result.verdict로 판단.
                 "next_step": "script_personalizer",
             }
 
