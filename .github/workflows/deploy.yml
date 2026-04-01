@@ -74,9 +74,10 @@ jobs:
 
       - name: Deploy via AWS SSM
         run: |
-          aws ssm send-command \
+          CMD_ID=$(aws ssm send-command \
             --instance-ids "${{ secrets.AWS_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
+            --timeout-seconds 600 \
             --parameters 'commands=[
               "mkdir -p /home/ubuntu/app",
               "sudo chown -R ubuntu:ubuntu /home/ubuntu/app",
@@ -104,4 +105,12 @@ jobs:
               "sudo docker-compose up -d",
               "sudo docker image prune -a -f --filter \"until=24h\""
             ]' \
-            --region ${{ secrets.AWS_REGION }}
+            --region ${{ secrets.AWS_REGION }} \
+            --query "Command.CommandId" \
+            --output text)
+
+          echo "SSM Command ID: $CMD_ID"
+
+          aws ssm wait command-executed \
+            --command-id "$CMD_ID" \
+            --instance-id "${{ secrets.AWS_INSTANCE_ID }}"
