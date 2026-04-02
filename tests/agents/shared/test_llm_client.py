@@ -28,6 +28,16 @@ def _clean_llm_provider_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("LLM_PROVIDER", raising=False)
 
 
+@pytest.fixture(autouse=True)
+def _reset_circuit_breakers() -> None:
+    """테스트 간 Circuit Breaker 상태 격리."""
+    from src.agents.shared.llm_client import LLMClient
+
+    LLMClient._breakers = {}
+    yield
+    LLMClient._breakers = {}
+
+
 # ===================================================================
 # 공통 헬퍼
 # ===================================================================
@@ -116,6 +126,11 @@ def _mock_settings_factory(
     settings.get_openai_model_id.return_value = "gpt-4o-mini"
     settings.bedrock_region = "ap-northeast-2"
     settings.bedrock_config = {"region": "ap-northeast-2"}
+    settings.circuit_breaker_config = {
+        "fail_max": 5,
+        "reset_timeout": 30,
+        "half_open_max_calls": 1,
+    }
     settings.prompt_caching_config = {"enabled": False, "min_tokens": 1024}
     return settings
 
