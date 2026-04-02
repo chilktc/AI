@@ -39,6 +39,11 @@ class ScriptGeneratorAgent(BaseAgent):
 
         self.logger.info("[ScriptGenerator] 스크립트 생성 프로세스 시작")
 
+        # Safety 경고 컨텍스트 추출
+        safety_flags = state.get("safety_flags", {})
+        safety_status = safety_flags.get("status", "safe")
+        required_in_script = safety_flags.get("required_in_script", [])
+
         # 입력 데이터 추출 (content_analysis 등 이전 단계 결과 반영)
         content_analysis = state.get(
             "content_analysis", state
@@ -140,6 +145,10 @@ class ScriptGeneratorAgent(BaseAgent):
                     "total_words": total_words,
                     "segment_count": len(generated_segments),
                     "processing_time": (datetime.now() - start_time).total_seconds(),
+                    "safety_context": {
+                        "status": safety_status,
+                        "required_in_script": required_in_script,
+                    },
                 },
             }
 
