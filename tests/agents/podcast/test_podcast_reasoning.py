@@ -642,3 +642,110 @@ def test_build_phase_context_all_none(agent_with_stubs: PodcastReasoningAgent) -
     assert "[의도 분류]" not in context
     assert "[과거 에피소드 기억]" not in context
     assert "[GoT 그래프 분석 결과]" not in context
+
+
+# ===================================================================
+# Neo4j 저장 + Backend 전송 테스트
+# ===================================================================
+
+
+_SAMPLE_GOT_RESULT: dict[str, Any] = {
+    "nodes": [
+        {
+            "id": 1,
+            "label": "업무 과부하",
+            "type": "concept",
+            "group": "work_structure",
+            "intensity": 0.8,
+        },
+        {
+            "id": 2,
+            "label": "상사 갈등",
+            "type": "concept",
+            "group": "leadership",
+            "intensity": 0.6,
+        },
+    ],
+    "edges": [
+        {"from": 1, "to": 2, "relationship": "causes"},
+    ],
+}
+
+
+class TestSaveGotToNeo4j:
+    @pytest.mark.asyncio
+    async def test_normal_save(self, agent: PodcastReasoningAgent) -> None:
+        mock_client = AsyncMock()
+        mock_cm = AsyncMock()
+        mock_cm.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_cm.__aexit__ = AsyncMock(return_value=False)
+
+        with patch(
+            "src.db.factory.create_graph_client",
+            return_value=mock_cm,
+        ):
+            await agent._save_got_to_neo4j(_SAMPLE_GOT_RESULT, "sess_001", "ep_001")
+
+        # 2 노드 MERGE + 1 엣지 MERGE + 1 Session 관계 = 4 호출
+        assert mock_client.execute_query.call_count == 4
+
+    @pytest.mark.asyncio
+    async def test_empty_episode_id_skips(self, agent: PodcastReasoningAgent) -> None:
+        with patch("src.db.factory.create_graph_client") as mock_factory:
+            await agent._save_got_to_neo4j(_SAMPLE_GOT_RESULT, "sess_001", "")
+            mock_factory.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_neo4j_failure_graceful(self, agent: PodcastReasoningAgent) -> None:
+        with patch(
+            "src.db.factory.create_graph_client",
+            side_effect=Exception("Neo4j down"),
+        ):
+            # 예외가 전파되지 않음 (graceful degradation)
+            await agent._save_got_to_neo4j(_SAMPLE_GOT_RESULT, "sess_001", "ep_001")
+
+
+class TestPublishGraphToBackend:
+    @pytest.mark.asyncio
+    async def test_normal_publish(self, agent: PodcastReasoningAgent) -> None:
+        mock_publisher = AsyncMock()
+        state: AgentState = {"user_id": "user_001", "session_id": "sess_001"}
+
+        with patch(
+            "src.api.publisher.AgentDataPublisher",
+            return_value=mock_publisher,
+        ):
+            await agent._publish_graph_to_backend(_SAMPLE_GOT_RESULT, state)
+
+        mock_publisher.publish.assert_called_once()
+        call_kwargs = mock_publisher.publish.call_args
+        assert call_kwargs.kwargs.get("user_id") == "user_001"
+
+    @pytest.mark.asyncio
+    async def test_publish_failure_graceful(self, agent: PodcastReasoningAgent) -> None:
+        state: AgentState = {"user_id": "user_001", "session_id": "sess_001"}
+
+        with patch(
+            "src.api.publisher.AgentDataPublisher",
+            side_effect=Exception("Backend unreachable"),
+        ):
+            await agent._publish_graph_to_backend(_SAMPLE_GOT_RESULT, state)
+
+
+class TestSaveGraphData:
+    @pytest.mark.asyncio
+    async def test_calls_both_methods(self, agent: PodcastReasoningAgent) -> None:
+        state: AgentState = {"user_id": "user_001", "session_id": "sess_001"}
+
+        with (
+            patch.object(agent, "_save_got_to_neo4j", new_callable=AsyncMock) as mock_neo4j,
+            patch.object(
+                agent,
+                "_publish_graph_to_backend",
+                new_callable=AsyncMock,
+            ) as mock_publish,
+        ):
+            await agent._save_graph_data(_SAMPLE_GOT_RESULT, "sess_001", "ep_001", state)
+
+        mock_neo4j.assert_called_once_with(_SAMPLE_GOT_RESULT, "sess_001", "ep_001")
+        mock_publish.assert_called_once_with(_SAMPLE_GOT_RESULT, state)
