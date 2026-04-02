@@ -15,7 +15,7 @@ NOTE: tests/agents/podcast/conftest.py의 got_default_thresholds autouse fixture
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -672,6 +672,28 @@ _SAMPLE_GOT_RESULT: dict[str, Any] = {
 }
 
 
+def _patch_create_graph_client(**kwargs):
+    """지연 임포트(src.db.factory)를 안전하게 patch하는 헬퍼.
+
+    test_graph_routes.py가 sys.modules에 src.db를 mock으로 등록하면
+    patch("src.db.factory.create_graph_client")가 실패한다.
+    builtins.__import__를 가로채서 지연 임포트 시점에 mock을 주입한다.
+    """
+    import builtins
+
+    real_import = builtins.__import__
+    mock_fn = MagicMock(**kwargs)
+
+    def _fake_import(name, *args, **kw):
+        if name == "src.db.factory":
+            mod = MagicMock()
+            mod.create_graph_client = mock_fn
+            return mod
+        return real_import(name, *args, **kw)
+
+    return patch.object(builtins, "__import__", side_effect=_fake_import), mock_fn
+
+
 class TestSaveGotToNeo4j:
     @pytest.mark.asyncio
     async def test_normal_save(self, agent: PodcastReasoningAgent) -> None:
@@ -680,10 +702,8 @@ class TestSaveGotToNeo4j:
         mock_cm.__aenter__ = AsyncMock(return_value=mock_client)
         mock_cm.__aexit__ = AsyncMock(return_value=False)
 
-        with patch(
-            "src.db.factory.create_graph_client",
-            return_value=mock_cm,
-        ):
+        import_patch, mock_fn = _patch_create_graph_client(return_value=mock_cm)
+        with import_patch:
             await agent._save_got_to_neo4j(_SAMPLE_GOT_RESULT, "sess_001", "ep_001")
 
         # 2 노드 MERGE + 1 엣지 MERGE + 1 Session 관계 = 4 호출
@@ -691,16 +711,17 @@ class TestSaveGotToNeo4j:
 
     @pytest.mark.asyncio
     async def test_empty_episode_id_skips(self, agent: PodcastReasoningAgent) -> None:
-        with patch("src.db.factory.create_graph_client") as mock_factory:
+        import_patch, mock_factory = _patch_create_graph_client()
+        with import_patch:
             await agent._save_got_to_neo4j(_SAMPLE_GOT_RESULT, "sess_001", "")
             mock_factory.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_neo4j_failure_graceful(self, agent: PodcastReasoningAgent) -> None:
-        with patch(
-            "src.db.factory.create_graph_client",
+        import_patch, _ = _patch_create_graph_client(
             side_effect=Exception("Neo4j down"),
-        ):
+        )
+        with import_patch:
             # 예외가 전파되지 않음 (graceful degradation)
             await agent._save_got_to_neo4j(_SAMPLE_GOT_RESULT, "sess_001", "ep_001")
 

@@ -60,6 +60,7 @@ class VisualizationAgent(BaseAgent):
         return {
             "visual_data": {
                 "image_url": result.get("url"),
+                "s3_key": result.get("s3_key", ""),
                 "status": result.get("status"),
                 "retry_count": result.get("retry_count"),
                 "error": result.get("error"),
@@ -99,6 +100,7 @@ class VisualizationAgent(BaseAgent):
 
             return {
                 "url": f"https://{self.bucket_name}.s3.amazonaws.com/{s3_key}",
+                "s3_key": s3_key,
                 "status": "completed",
                 "retry_count": current_retry,
             }
