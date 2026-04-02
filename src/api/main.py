@@ -17,7 +17,7 @@ from config.loader import get_settings
 from src.api.client import BackendClient
 from src.api.external_schemas import ErrorDetail, ErrorResponse, RequestTracing
 from src.api.middleware import RequestLoggingMiddleware
-from src.api.routes import health, podcasts, sessions
+from src.api.routes import graph, health, podcasts, sessions
 from src.graph.workflow import compile_graph
 from src.monitoring.prometheus import get_metrics_router
 from src.utils.logger import get_agent_logger
@@ -195,6 +195,8 @@ async def general_exception_handler(request: Request, exc: Exception):
 app.include_router(health.router, tags=["Health Check"])
 app.include_router(sessions.router, prefix="/api/v1/sessions", tags=["Sessions"])
 app.include_router(podcasts.router, prefix="/api/v1/podcasts", tags=["Podcasts"])
+# [이관 주석] Neo4j 이관 시 아래 graph 라우터 등록을 삭제.
+app.include_router(graph.router)
 
 # Prometheus 메트릭 엔드포인트 (C-2: prometheus.py 인수 사항)
 app.include_router(get_metrics_router())
