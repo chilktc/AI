@@ -111,8 +111,8 @@ agents:
     deep_threshold: 0.7      # complexity_score ≥ 이 값 → depth_level "deep"
     moderate_threshold: 0.4  # complexity_score ≥ 이 값 → depth_level "medium" (미만 → "shallow")
   podcast_reasoning:
-    model: haiku  # Phase 3 최적: c3-haiku (composite 0.667)
-    max_tokens: 4096  # c3-haiku 모델 최대 출력 한계 (8192는 sonnet 이상에서만 유효)
+    model: sonnet_37  # haiku → sonnet_37: GoT group 6개 카테고리 분류 정확도 향상
+    max_tokens: 6000  # 4096 → 6000: group 필드 추가로 출력 증가 대비 (40%+ 마진)
     temperature: 0.3
     full_threshold: 0.0      # complexity ≥ 이 값 → full GoT/ToT/CoT 추론 (0.0=항상 full)
     standard_threshold: 0.0  # complexity ≥ 이 값 → standard 추론 (미만 → lightweight)
@@ -190,7 +190,7 @@ prompts:
   versions:
     default: "1.0.0"
     content_analyzer: "2.1.0"     # Round 4 최적 조합 A (OpenAI)
-    podcast_reasoning: "3.0.0"    # Round 4 최적 — ToT Branch Scoring
+    podcast_reasoning: "3.1.0"    # v3.0.0 + GoT group 필드 (6개 직장 카테고리)
     batch_validator: "2.3.0"      # Round 4 최적 — 감점 규칙 (avg 0.863±0.006)
 
 
