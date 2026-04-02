@@ -20,6 +20,9 @@ RESOURCE_PODCAST_EPISODE = "podcast_episodes"  # 에피소드 메타 + 세그먼
 RESOURCE_CONTENT_ANALYSIS = "content_analyses"  # ContentAnalyzer 분석 결과
 RESOURCE_EMOTION_LOG = "emotion_logs"  # 감정 벡터 데이터 저장
 RESOURCE_VISUALIZATION = "visualizations"  # 시각화(커버 이미지) 메타 저장
+# [이관 주석] 아래 리소스는 Neo4j 위치와 무관하게 항상 필요.
+# Backend가 프론트엔드에 그래프 데이터를 서빙하기 위해 사용.
+RESOURCE_GRAPH_ANALYSIS = "graph_analyses"  # GoT 그래프 분석 결과 저장
 
 # --- 협의 필요 리소스 ---
 RESOURCE_SESSION = "sessions"  # TODO(backend): 경로명 확정
@@ -39,3 +42,4 @@ TYPE_EMOTION_LOG = "emotion_log"
 TYPE_VISUALIZATION = "visualization"
 TYPE_LEARNING = "learning"
 TYPE_CONTENT_ANALYSIS = "content_analysis"
+TYPE_GRAPH_ANALYSIS = "graph_analysis"  # GoT 그래프 분석 결과
