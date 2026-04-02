@@ -24,6 +24,8 @@ from dotenv import load_dotenv
 
 # .env 파일에서 환경변수 로드
 load_dotenv()
+
+
 def _deep_merge(base: dict, update: dict) -> dict:
     """기본 설정(base)에 환경별 설정(update)을 깊은 복사로 덮어쓰는 함수"""
     for k, v in update.items():
@@ -32,6 +34,7 @@ def _deep_merge(base: dict, update: dict) -> dict:
         else:
             base[k] = v
     return base
+
 
 # 설정 파일 경로 (프로젝트 루트 기준)
 _CONFIG_DIR = Path(__file__).parent
@@ -269,7 +272,7 @@ class Settings:
     def api_max_retries(self) -> int:
         """API 최대 재시도 횟수."""
         return int(self._config["api"]["max_retries"])
-        
+
     @property
     def allowed_origins(self) -> list[str]:
         """CORS 허용 오리진 목록. 환경변수로 전달받거나 기본값을 쓴다."""
@@ -376,9 +379,7 @@ class Settings:
     @property
     def s3_upload_prefix(self) -> str:
         """S3 업로드 prefix."""
-        return str(
-            self._config.get("storage", {}).get("s3", {}).get("upload_prefix", "vis")
-        )
+        return str(self._config.get("storage", {}).get("s3", {}).get("upload_prefix", "vis"))
 
     @property
     def databases_config(self) -> dict[str, Any]:
@@ -394,9 +395,7 @@ class Settings:
     def pii_sanitization_enabled(self) -> bool:
         """PII 정제 활성화 여부를 반환한다."""
         return bool(
-            self._config.get("security", {})
-            .get("pii_sanitization", {})
-            .get("enabled", True)
+            self._config.get("security", {}).get("pii_sanitization", {}).get("enabled", True)
         )
 
 
