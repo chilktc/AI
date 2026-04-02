@@ -39,3 +39,7 @@ CREATE INDEX got_episode IF NOT EXISTS
 
 CREATE INDEX got_node_type IF NOT EXISTS
   FOR (g:GoTNode) ON (g.node_type);
+
+// 프론트엔드 카테고리 분포 쿼리 성능용
+CREATE INDEX got_group IF NOT EXISTS
+  FOR (g:GoTNode) ON (g.group);
