@@ -1047,9 +1047,17 @@ versions:
 
           노드 5-8개, 엣지로 관계 표현, sub_themes 5개(구체적 소재).
 
+          각 노드에 group 필드를 추가하세요. 반드시 다음 6개 중 하나:
+          - work_structure: 업무 구조 (과부하, 모호성, 병목, 독박책임, 목표상실)
+          - leadership: 리더십 (상하압박, 과잉배려, 과잉간섭, 책임회피, 권위실추)
+          - peer_relations: 동료 관계 (신뢰균열, 성과다툼, 소통단절, 세대갈등, 갈라치기)
+          - career_growth: 커리어 성장 (성장정체, 전문성고갈, 가면증후군, 도구화, 방향상실)
+          - culture_system: 조직문화/제도 (보상결핍, 불공정성, 사일로현상, 형식주의, 사내정치)
+          - emotional_exhaustion: 정서적 소진 (번아웃, 가면우울, 고립감, 만성불안, 회의감)
+
           {
             "core_pattern": "핵심 테마",
-            "nodes": [{"id": "1", "type": "emotion", "label": "배신감", "intensity": 0.9}],
+            "nodes": [{"id": "1", "type": "emotion", "label": "배신감", "intensity": 0.9, "group": "peer_relations"}],
             "edges": [{"from": "1", "to": "2", "relationship": "triggers"}],
             "insights": ["인사이트1", "인사이트2"],
             "sub_themes": ["테마1", "테마2", "테마3", "테마4", "테마5"]
