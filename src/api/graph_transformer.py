@@ -142,6 +142,54 @@ def transform_got_to_graph_data(got_result: dict) -> dict:
     return {"nodes": nodes, "links": links}
 
 
+def transform_neo4j_rows_to_graph_data(rows: list[dict]) -> dict:
+    """Neo4j 쿼리 결과 → 프론트엔드 ``{ nodes, links }`` 변환.
+
+    routes/graph.py에서 사용. transform_got_to_graph_data()와
+    동일한 ID 생성/group 처리 로직을 공유한다.
+
+    각 row는 ``id``, ``name``, ``grp``, ``intensity``, ``target_id`` 필드를 포함한다.
+    """
+    seen_ids: set[str] = set()
+    group_counters: dict[str, int] = {}
+    id_map: dict[str, str] = {}
+    nodes: list[dict] = []
+    links_raw: list[dict] = []
+
+    for row in rows:
+        node_id = row.get("id", "")
+        if node_id and node_id not in seen_ids:
+            seen_ids.add(node_id)
+            grp = row.get("grp", "emotional_exhaustion")
+            if grp not in VALID_GROUPS:
+                grp = "emotional_exhaustion"
+            prefix = GROUP_PREFIXES[grp]
+            group_counters[grp] = group_counters.get(grp, 0) + 1
+            frontend_id = f"{prefix}{group_counters[grp]}"
+            id_map[node_id] = frontend_id
+            nodes.append(
+                {
+                    "id": frontend_id,
+                    "name": row.get("name", ""),
+                    "group": grp,
+                    "val": intensity_to_val(row.get("intensity", 0.5)),
+                }
+            )
+
+        target = row.get("target_id")
+        if target and node_id:
+            links_raw.append({"source_raw": node_id, "target_raw": target})
+
+    links = []
+    for link in links_raw:
+        s = id_map.get(link["source_raw"])
+        t = id_map.get(link["target_raw"])
+        if s and t:
+            links.append({"source": s, "target": t})
+
+    return {"nodes": nodes, "links": links}
+
+
 def calc_category_distribution(nodes: list[dict]) -> dict[str, int]:
     """group별 노드 수 집계. 단일 에피소드에서도 계산 가능."""
     dist: dict[str, int] = {}

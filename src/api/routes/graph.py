@@ -17,10 +17,7 @@ from typing import Any
 
 from fastapi import APIRouter, Query
 
-from src.api.graph_transformer import (
-    GROUP_PREFIXES,
-    intensity_to_val,
-)
+from src.api.graph_transformer import transform_neo4j_rows_to_graph_data
 from src.db.factory import create_graph_client
 
 logger = logging.getLogger(__name__)
@@ -76,52 +73,16 @@ async def get_user_graph_data(
                 params={"user_id": user_id, "limit": limit},
             )
 
-            seen_ids: set[str] = set()
-            group_counters: dict[str, int] = {}
-            id_map: dict[str, str] = {}
-            nodes: list[dict] = []
-            links: list[dict] = []
-
-            for row in raw:
-                node_id = row.get("id", "")
-                if node_id and node_id not in seen_ids:
-                    seen_ids.add(node_id)
-                    grp = row.get("grp", "emotional_exhaustion")
-                    if grp not in GROUP_PREFIXES:
-                        grp = "emotional_exhaustion"
-                    prefix = GROUP_PREFIXES[grp]
-                    group_counters[grp] = group_counters.get(grp, 0) + 1
-                    frontend_id = f"{prefix}{group_counters[grp]}"
-                    id_map[node_id] = frontend_id
-                    nodes.append(
-                        {
-                            "id": frontend_id,
-                            "name": row.get("name", ""),
-                            "group": grp,
-                            "val": intensity_to_val(row.get("intensity", 0.5)),
-                        }
-                    )
-
-                target = row.get("target_id")
-                if target and node_id:
-                    links.append({"source_raw": node_id, "target_raw": target})
-
-            # 링크 ID 재매핑
-            mapped_links = []
-            for link in links:
-                s = id_map.get(link["source_raw"])
-                t = id_map.get(link["target_raw"])
-                if s and t:
-                    mapped_links.append({"source": s, "target": t})
+            graph_data = transform_neo4j_rows_to_graph_data(raw)
+            nodes = graph_data["nodes"]
+            mapped_links = graph_data["links"]
 
             # 2. 자주 연결된 키워드
             kw_raw = await client.execute_query(
                 CYPHER_FREQUENT_KEYWORDS,
                 params={"user_id": user_id, "limit": 10},
             )
-            frequent_keywords = (
-                kw_raw[0].get("frequent_keywords", []) if kw_raw else []
-            )
+            frequent_keywords = kw_raw[0].get("frequent_keywords", []) if kw_raw else []
 
             # 3. 카테고리 분포
             dist_raw = await client.execute_query(
@@ -129,9 +90,7 @@ async def get_user_graph_data(
                 params={"user_id": user_id},
             )
             category_distribution = {
-                row["category"]: row["count"]
-                for row in dist_raw
-                if row.get("category")
+                row["category"]: row["count"] for row in dist_raw if row.get("category")
             }
 
         return {
