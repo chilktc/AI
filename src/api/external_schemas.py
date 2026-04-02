@@ -753,7 +753,6 @@ class MySQLEmotionLog(BaseModel):
         - PK: log_id
         - FK: session_id → sessions.session_id
         - FK: user_id → users.user_id
-        - FK: turn_id → conversation_turns.turn_id (대화모드)
         - FK: episode_id → podcast_episodes.episode_id (팟캐스트모드)
         - INDEX: (user_id, created_at) — 감정 추이 조회
         - INDEX: (primary_emotion) — 감정별 필터링
@@ -763,8 +762,7 @@ class MySQLEmotionLog(BaseModel):
     session_id: str = Field(description="세션 ID (FK)")
     user_id: str = Field(description="사용자 ID (FK)")
     mode: Literal["podcast"] = Field(description="모드")
-    # 원본 컨텍스트 참조 (mode에 따라 하나만 값이 있음)
-    turn_id: str | None = Field(default=None, description="대화 턴 ID (대화모드)")
+    # 원본 컨텍스트 참조
     episode_id: str | None = Field(default=None, description="에피소드 ID (팟캐스트)")
     # Emotion Agent 분석 결과 (정규화)
     primary_emotion: str = Field(description="주요 감정 (영문 키)")
@@ -902,14 +900,13 @@ class MySQLVisualizationMeta(BaseModel):
         - PK: visualization_id
         - FK: session_id → sessions.session_id
         - FK: user_id → users.user_id
-        - FK: turn_id / episode_id — 원본 컨텍스트 참조
+        - FK: episode_id — 원본 컨텍스트 참조
     """
 
     visualization_id: str = Field(description="시각화 고유 ID (PK)")
     session_id: str = Field(description="세션 ID (FK)")
     user_id: str = Field(description="사용자 ID (FK)")
     mode: Literal["podcast"] = Field(description="모드")
-    turn_id: str | None = Field(default=None, description="대화 턴 ID (대화모드)")
     episode_id: str | None = Field(default=None, description="에피소드 ID (팟캐스트)")
     # S3 참조
     s3_key: str = Field(description="S3 객체 키 (예: vis/podcast/sess_xxx/ep_xxx.png)")
@@ -941,7 +938,6 @@ class MySQLSession(BaseModel):
     status: Literal["active", "closed", "expired"] = Field(
         default="active", description="세션 상태"
     )
-    turn_count: int = Field(default=0, description="대화 턴 수 (대화모드)")
     episode_count: int = Field(default=0, description="에피소드 수 (팟캐스트모드)")
     # 피드백
     feedback_rating: int | None = Field(default=None, description="만족도 (1-5)")
@@ -972,7 +968,6 @@ class PineconeVectorMetadata(BaseModel):
         description="MySQL 원본 레코드 PK. 전체 데이터 조회 시 MySQL을 참조",
     )
     entity_type: Literal[
-        "conversation_turn",
         "podcast_episode",
         "knowledge_document",
     ] = Field(
@@ -1165,7 +1160,6 @@ class S3AssetReference(BaseModel):
     버킷 구조:
         mind-log-bucket/
         ├── vis/
-        │   ├── conversation/{session_id}/{turn_id}.png     — 대화 감정 카드
         │   └── podcast/{session_id}/{episode_id}.png       — 팟캐스트 커버
         ├── audio/
         │   └── podcast/{session_id}/{episode_id}/
@@ -1277,7 +1271,7 @@ class StoredRecordTrace(BaseModel):
     """DB 저장 레코드 추적."""
 
     database: Literal["mysql", "pinecone", "neo4j", "s3"] = Field(description="저장된 DB")
-    entity_type: str = Field(description="엔티티 유형 (conversation_turn 등)")
+    entity_type: str = Field(description="엔티티 유형 (podcast_episode 등)")
     record_id: str = Field(description="레코드 ID")
     stored_at: datetime = Field(description="저장 시각")
 
