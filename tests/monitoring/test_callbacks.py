@@ -52,7 +52,7 @@ def test_estimate_cost(
     "kwargs, expected_session, expected_mode",
     [
         ({}, "", ""),
-        ({"session_id": "sess_001", "mode": "conversation"}, "sess_001", "conversation"),
+        ({"session_id": "sess_001", "mode": "podcast"}, "sess_001", "podcast"),
     ],
     ids=["default", "with_params"],
 )
@@ -173,7 +173,7 @@ def test_on_chain_error_records_event() -> None:
 
 def test_add_agent_metric_and_get_summary() -> None:
     """add_agent_metric → get_summary 전체 라이프사이클을 검증한다."""
-    cb = MindLogTelemetryCallback(session_id="sess_001", mode="conversation")
+    cb = MindLogTelemetryCallback(session_id="sess_001", mode="podcast")
     metric = AgentMetric(
         agent_name="safety",
         tier=1,
@@ -196,7 +196,7 @@ def test_add_agent_metric_and_get_summary() -> None:
     # get_summary 확인
     summary = cb.get_summary()
     assert summary["session_id"] == "sess_001"
-    assert summary["mode"] == "conversation"
+    assert summary["mode"] == "podcast"
     assert summary["agent_count"] == 1
     assert summary["total_llm_calls"] == 1
     assert summary["estimated_cost_usd"] > 0

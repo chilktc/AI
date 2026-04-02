@@ -28,19 +28,6 @@ MOCK_INTENT_PODCAST: dict[str, Any] = {
     "risk_score": 0.1,
 }
 
-MOCK_INTENT_CONVERSATION: dict[str, Any] = {
-    "intent": {
-        "mode": "conversation",
-        "category": "emotional_support",
-        "complexity_score": 0.6,
-        "topic_hint": "직장 스트레스",
-        "risk_flag": False,
-    },
-    "mode": "conversation",
-    "risk_level": 0,
-    "risk_score": 0.05,
-}
-
 MOCK_INTENT_CRISIS: dict[str, Any] = {
     "intent": {
         "mode": "podcast",
@@ -119,20 +106,6 @@ MOCK_CONTENT_ANALYSIS: dict[str, Any] = {
 }
 
 # ====================================================================
-# TIER 1: Context Agent (개발자3) — 대화모드
-# ====================================================================
-
-MOCK_CONTEXT: dict[str, Any] = {
-    "context": {
-        "current_topic": "직장 스트레스",
-        "topic_continuity": "new",
-        "conversation_phase": "exploration",
-        "user_engagement": "high",
-        "prior_sessions_summary": "첫 세션",
-    },
-}
-
-# ====================================================================
 # TIER 1: Reasoning (개발자3)
 # ====================================================================
 
@@ -169,23 +142,6 @@ MOCK_REASONING_PODCAST: dict[str, Any] = {
         ],
         "confidence": 0.85,
         "reasoning_strategy": "ToT",
-    },
-}
-
-MOCK_REASONING_CONVERSATION: dict[str, Any] = {
-    "reasoning_result": {
-        "reasoning_steps": [
-            "사용자의 직장 스트레스를 공감적으로 인정",
-            "뒷담화로 인한 감정(배신감, 실망)을 타당화",
-            "구체적인 대처 방법(직접 대화, 경계 설정) 탐색",
-        ],
-        "conclusion": "공감 + 실용적 조언",
-        "confidence": 0.8,
-        "synthesis_guidance": {
-            "key_points": ["공감", "감정 타당화", "대처 전략"],
-            "elements_to_include": ["감정 반영", "구체적 행동 제안"],
-            "elements_to_avoid": ["독성 긍정성", "비난"],
-        },
     },
 }
 
@@ -232,19 +188,6 @@ MOCK_SCRIPT_DRAFT: dict[str, Any] = {
         "themes": {"main": "인간관계 갈등", "sub": ["뒷담화", "감정 관리"]},
         "metadata": {"model": "mock", "generated_at": "2026-02-27T10:00:00Z"},
     },
-}
-
-# ====================================================================
-# TIER 2: Synthesis (개발자1) — 대화모드
-# ====================================================================
-
-MOCK_SYNTHESIS: dict[str, Any] = {
-    "response_draft": (
-        "직장에서 친하게 지내던 후배의 뒷담화를 들으셨군요. "
-        "그 상황에서 느끼시는 배신감과 실망감이 충분히 이해됩니다. "
-        "중간 관리자로서 위아래 사이에서 조율하려 노력하신 것도 "
-        "인정받아야 할 부분입니다."
-    ),
 }
 
 # ====================================================================
@@ -316,14 +259,6 @@ MOCK_FINAL_OUTPUT_PODCAST: dict[str, Any] = {
     ),
 }
 
-MOCK_FINAL_OUTPUT_CONVERSATION: dict[str, Any] = {
-    "final_output": (
-        "직장에서 친하게 지내던 후배의 뒷담화를 듣게 되셨군요. "
-        "중간 관리자로서 위아래 사이에서 조율하려 애쓰신 노력이 느껴집니다. "
-        "그 상황에서 느끼시는 배신감과 실망감은 자연스러운 감정이에요."
-    ),
-}
-
 # ====================================================================
 # 비동기: Visualization (개발자2)
 # ====================================================================
@@ -352,25 +287,8 @@ EXPECTED_PODCAST_FIELDS: list[str] = [
     "final_output",
 ]
 
-EXPECTED_CONVERSATION_FIELDS: list[str] = [
-    "intent",
-    "safety_flags",
-    "emotion_vectors",
-    "context",
-    "reasoning_result",
-    "response_draft",
-    "validation_result",
-    "final_output",
-]
-
 DEVELOPER_FIELDS_PODCAST: dict[str, list[str]] = {
     "개발자1": ["intent", "script_draft", "final_output"],
     "개발자2": ["safety_flags", "emotion_vectors"],
     "개발자3": ["content_analysis", "reasoning_result", "validation_result"],
-}
-
-DEVELOPER_FIELDS_CONVERSATION: dict[str, list[str]] = {
-    "개발자1": ["intent", "response_draft", "final_output"],
-    "개발자2": ["safety_flags", "emotion_vectors"],
-    "개발자3": ["context", "reasoning_result", "validation_result"],
 }

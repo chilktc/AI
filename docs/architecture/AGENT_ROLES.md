@@ -19,17 +19,6 @@ TIER 4 (Personalizer)   → 9~22 KB
 Peak State Size: 19~37 KB
 ```
 
-### 대화 모드
-
-```
-TIER 0 (Intent)         → 0.3~0.5 KB
-TIER 1 (병렬 4개)       → ~8~12 KB (Safety + Emotion + Context + Reasoning)
-TIER 2 (Synthesis)      → 0.5~2 KB
-TIER 3 (Validator)      → 0.3~0.5 KB
-TIER 4 (Personalization)→ 0.5~2 KB
-Peak State Size: ~12~18 KB (추정, 미구현)
-```
-
 ---
 
 ## 구현 현황
@@ -38,7 +27,6 @@ Peak State Size: ~12~18 KB (추정, 미구현)
 |------|----------|
 | **구현 완료 (11개)** | Intent Classifier, Safety, Emotion, Knowledge, Content Analyzer, Podcast Reasoning, Script Generator, Batch Validator, Script Personalizer, Visualization, Episode Memory |
 | **공용 구현 완료 (1개)** | Learning |
-| **미구현 (8개)** | Context, Reasoning(대화), Memory, Synthesis, Validator(대화), Personalization, Telemetry |
 | **스텁 (0개)** | — |
 
 ---
@@ -384,7 +372,7 @@ Peak State Size: ~12~18 KB (추정, 미구현)
 
 | 에이전트 | 사용 필드 | 미사용 필드 |
 |----------|-----------|-------------|
-| Synthesis (대화) | synthesis, recommended_approaches | documents 상세 |
+| Podcast Reasoning | synthesis, recommended_approaches | documents 상세 |
 
 - **데이터 효율**: 20~50% (synthesis만 주로 사용)
 - **알려진 이슈**:
@@ -604,58 +592,6 @@ agents:
 **출력**: 빈 dict `{}` (AgentState 변경 없음, 백엔드 API로 직접 저장)
 
 - **데이터 효율**: N/A (출력 없음)
-
----
-
-### 미구현 에이전트 (대화모드 전용)
-
-아래 에이전트는 아직 구현되지 않았으며, CLAUDE.md 설계 사양을 기준으로 기술합니다.
-
-#### Context Agent -- TIER 1 (병렬) / 대화
-
-- **목적**: 대화 맥락을 관리하고, 주제 연속성·사용자 상태를 분석한다.
-- **모델**: Haiku
-- **출력 필드**: `context` (dict)
-- **소비자**: Reasoning Agent, Synthesis Agent
-
-#### Reasoning Agent -- TIER 1 (병렬) / 대화
-
-- **목적**: GoT/ToT/CoT 추론으로 대화 맥락을 분석하고 응답 방향을 도출한다.
-- **모델**: Opus 4.6
-- **출력 필드**: `reasoning_result` (dict), `memory_results` (조건부), `knowledge_results` (조건부)
-- **소비자**: Synthesis Agent, Validator Agent
-
-#### Memory Agent -- 독립 / 대화
-
-- **목적**: 개인 대화 기억을 검색한다.
-- **모델**: Sonnet 4
-- **출력 필드**: `memory_results` (dict)
-- **네임스페이스**: `mem_conversation` (팟캐스트와 분리)
-
-#### Synthesis Agent -- TIER 2 / 대화
-
-- **목적**: TIER 1 결과를 종합하여 응답 내용을 생성한다 (톤 조정 없음).
-- **모델**: Sonnet 4
-- **출력 필드**: `response_draft` (str)
-- **소비자**: Validator Agent
-
-#### Validator Agent -- TIER 3 / 대화
-
-- **목적**: 응답 초안의 품질을 검증한다. 실패 시 TIER 2 재시도 (최대 2회).
-- **모델**: Sonnet 4
-- **출력 필드**: `validation_result` (dict), `next_step` (str), `iteration_count` (int)
-
-#### Personalization Agent -- TIER 4 / 대화
-
-- **목적**: 톤/스타일 조정의 단독 책임자. Safety 경고 톤 강화 포함.
-- **모델**: Sonnet 4
-- **출력 필드**: `final_output` (str)
-
-#### Telemetry Agent -- 비동기 / 공용
-
-- **목적**: 에이전트 실행 메트릭·파이프라인 성능을 기록한다.
-- **모델**: Haiku
-- **출력**: 빈 dict (백엔드에 직접 저장)
 
 ---
 

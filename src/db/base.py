@@ -79,7 +79,7 @@ class BaseVectorClient(_AsyncCloseable):
         Args:
             index: 인덱스 이름
             vectors: 벡터 데이터 리스트 (id, values, metadata)
-            namespace: 네임스페이스 (mem_conversation, mem_podcast_episode 등)
+            namespace: 네임스페이스 (mem_podcast_episode 등)
 
         Returns:
             upsert 결과 dict

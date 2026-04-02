@@ -277,8 +277,6 @@ async def tier1_podcast_fan_out(state: AgentState) -> dict[str, Any]:
     """
     팟캐스트모드 TIER 1: Safety + Emotion + ContentAnalyzer + PodcastReasoning 병렬 실행.
 
-    Safety CRISIS 선점 메커니즘은 대화모드와 동일.
-
     스트리밍 이벤트:
         tier_start → agent_complete (×4) → tier_end (또는 crisis)
     """

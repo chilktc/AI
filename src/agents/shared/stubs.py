@@ -3,8 +3,7 @@
 
 Reasoning 계열 에이전트가 조건부로 호출하는 독립 에이전트의 stub 구현.
 - Episode Memory (개발자2) — 팟캐스트모드
-- Knowledge Agent (개발자1) — 대화모드 + 팟캐스트모드
-- Memory Agent (개발자2) — 대화모드
+- Knowledge Agent (개발자1) — 팟캐스트모드
 
 git main 통합 시 실제 에이전트로 교체한다.
 

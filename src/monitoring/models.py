@@ -52,7 +52,7 @@ class PipelineMetrics:
 
     run_id: str
     session_id: str = ""
-    mode: str = ""  # conversation | podcast
+    mode: str = ""  # podcast
     total_duration_ms: int = 0
     tier_durations: dict[str, int] = field(default_factory=dict)
     agent_metrics: list[AgentMetric] = field(default_factory=list)

@@ -63,3 +63,68 @@ async def test_script_generator_process(agent):
     assert len(draft["segments"]) == 1
     assert "script_text" in draft["segments"][0]
     assert isinstance(draft["key_insights"], list)
+
+
+@pytest.mark.asyncio
+async def test_script_generator_includes_safety_context_when_warning(agent):
+    """Safety warning 상태일 때 safety_context가 스크립트 메타데이터에 포함된다."""
+    state = {
+        "content_analysis": {
+            "main_theme": "스트레스 관리",
+            "sub_themes": ["번아웃"],
+            "emotional_journey": {"opening": "불안", "resolution": "안정"},
+            "target_duration": 3,
+        },
+        "safety_flags": {
+            "status": "warning",
+            "required_in_script": [
+                "전문 상담이 필요하시면 정신건강 위기상담 전화 1577-0199로 연락해주세요."
+            ],
+        },
+        "reasoning_result": {},
+        "segment_plan": [
+            {
+                "segment_id": "seg_001",
+                "segment_type": "intro",
+                "duration_minutes": 1,
+                "key_points": ["스트레스 공감"],
+                "emotional_tone": "차분함",
+                "transition_hint": "",
+            }
+        ],
+        "knowledge_context": {},
+    }
+    result = await agent.process(state)
+    draft = result["script_draft"]
+    assert "safety_context" in draft["metadata"]
+    assert draft["metadata"]["safety_context"]["status"] == "warning"
+    assert len(draft["metadata"]["safety_context"]["required_in_script"]) > 0
+
+
+@pytest.mark.asyncio
+async def test_script_generator_no_safety_context_when_safe(agent):
+    """Safety safe 상태일 때 safety_context.status가 'safe'이다."""
+    state = {
+        "content_analysis": {
+            "main_theme": "운동 습관",
+            "sub_themes": [],
+            "emotional_journey": {},
+            "target_duration": 3,
+        },
+        "safety_flags": {"status": "safe"},
+        "reasoning_result": {},
+        "segment_plan": [
+            {
+                "segment_id": "seg_001",
+                "segment_type": "intro",
+                "duration_minutes": 1,
+                "key_points": ["운동"],
+                "emotional_tone": "활기참",
+                "transition_hint": "",
+            }
+        ],
+        "knowledge_context": {},
+    }
+    result = await agent.process(state)
+    draft = result["script_draft"]
+    assert draft["metadata"]["safety_context"]["status"] == "safe"

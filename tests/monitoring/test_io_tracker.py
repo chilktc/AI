@@ -50,7 +50,7 @@ class TestPipelineTrace:
 
     def test_get_data_flow(self) -> None:
         s1 = IOSnapshot("s1", "safety", 1, "r1", "sess_001")
-        s1.input_fields = {"user_input": "...", "mode": "conversation"}
+        s1.input_fields = {"user_input": "...", "mode": "podcast"}
         s1.output_fields = {"safety_flags": {}, "risk_level": 0}
         s1.duration_ms = 100
 
@@ -72,7 +72,7 @@ class TestAgentIOTracker:
     def test_capture_input_returns_snapshot_id(self) -> None:
         tracker = AgentIOTracker(session_id="sess_001")
         snap_id = tracker.capture_input(
-            "safety", {"user_input": "테스트", "mode": "conversation"}, run_id="run_001"
+            "safety", {"user_input": "테스트", "mode": "podcast"}, run_id="run_001"
         )
         assert snap_id.startswith("snap_")
 
@@ -162,7 +162,7 @@ class TestAgentIOTracker:
         [
             (
                 "safety",
-                {"user_input": "민감한 사용자 입력", "mode": "conversation"},
+                {"user_input": "민감한 사용자 입력", "mode": "podcast"},
                 500,
                 "user_input",
                 lambda v: isinstance(v, dict) and "_hash" in v and "_len" in v,

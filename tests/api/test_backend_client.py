@@ -47,7 +47,7 @@ def valid_save_request() -> SaveRequest:
     return SaveRequest(
         user_id="user_123",
         session_id="sess_abc123",
-        type="conversation",
+        type="podcast_episode",
         data={"turn": 1, "message": "안녕하세요"},
         timestamp=datetime.now(timezone.utc),
     )
@@ -95,7 +95,7 @@ class TestBackendClientSave:
             ),
         )
 
-        result = await backend_client.save("conversations", valid_save_request)
+        result = await backend_client.save("podcast_episodes", valid_save_request)
 
         # SaveResponse 검증
         assert isinstance(result, SaveResponse)
@@ -107,10 +107,10 @@ class TestBackendClientSave:
         url = call_args[0][0]
         json_body = call_args[1]["json"]
 
-        assert url == "http://test-backend:8080/api/v1/conversations"
+        assert url == "http://test-backend:8080/api/v1/podcast_episodes"
         assert json_body["user_id"] == "user_123"
         assert json_body["session_id"] == "sess_abc123"
-        assert json_body["type"] == "conversation"
+        assert json_body["type"] == "podcast_episode"
         assert "data" in json_body
         assert "timestamp" in json_body
 
@@ -164,13 +164,13 @@ class TestBackendClientLoad:
                 ),
             ),
             (
-                "conversations",
-                {"user_id": "user_123", "type": "conversation", "limit": 10},
+                "podcast_episodes",
+                {"user_id": "user_123", "type": "podcast_episode", "limit": 10},
                 {"success": True, "data": [], "total": 0, "page": 1},
                 lambda r, mock: (
                     r.data == []
                     and r.total == 0
-                    and mock.get.call_args[1]["params"]["type"] == "conversation"
+                    and mock.get.call_args[1]["params"]["type"] == "podcast_episode"
                     and mock.get.call_args[1]["params"]["limit"] == 10
                 ),
             ),

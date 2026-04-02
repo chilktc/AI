@@ -32,7 +32,7 @@ class TestRequestLoggingMiddleware:
         """일반 경로도 X-Request-ID 헤더를 받아야 한다."""
         response = test_client.post(
             "/api/v1/sessions",
-            json={"user_id": "test_user", "mode": "conversation"},
+            json={"user_id": "test_user", "mode": "podcast"},
         )
 
         assert "x-request-id" in response.headers

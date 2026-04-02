@@ -34,18 +34,18 @@ TIER 4 (후처리): Script Personalizer
 
 | # | 에이전트 | TIER | 모델 | 담당 개발자 |
 |---|---------|------|------|------------|
-| 01 | Intent Classifier | TIER 0 | Haiku | 개발자1 |
-| 02 | Safety Agent | TIER 1 (병렬) | Sonnet 4 | 개발자2 |
-| 03 | Emotion Agent | TIER 1 (병렬) | Sonnet 4 | 개발자2 |
-| 04 | Content Analyzer | TIER 1 (병렬) | Sonnet 4 | 개발자3 |
-| 05 | Podcast Reasoning | TIER 1 (병렬) | Sonnet 4 | 개발자3 |
-| 06 | Episode Memory | 독립 (Reasoning 조건부) | Sonnet 4 | 개발자2 |
-| 07 | Knowledge Agent | 독립 (Reasoning 조건부) | Sonnet 4 | 개발자1 |
-| 08 | Script Generator | TIER 2 (병렬) | Sonnet 4 | 개발자1 |
-| 09 | Visualization | TIER 2 (병렬) / 비동기 | Sonnet 4 | 개발자2 |
-| 10 | Batch Validator | TIER 3 | Sonnet 4 | 개발자3 |
-| 11 | Script Personalizer | TIER 4 | Sonnet 4 | 개발자1 |
-| 부가 | Learning Agent | 비동기 후처리 | Haiku | 개발자3 |
+| 01 | Intent Classifier | TIER 0 | Sonnet 3.7 | 개발자1 |
+| 02 | Safety Agent | TIER 1 (병렬) | Sonnet 3.7 | 개발자2 |
+| 03 | Emotion Agent | TIER 1 (병렬) | Haiku | 개발자2 |
+| 04 | Content Analyzer | TIER 1 (병렬) | Haiku | 개발자3 |
+| 05 | Podcast Reasoning | TIER 1 (병렬) | Haiku | 개발자3 |
+| 06 | Episode Memory | 독립 (Reasoning 조건부) | Sonnet 3.5 | 개발자2 |
+| 07 | Knowledge Agent | 독립 (Reasoning 조건부) | Sonnet 3.5 | 개발자1 |
+| 08 | Script Generator | TIER 2 (병렬) | Haiku | 개발자1 |
+| 09 | Visualization | TIER 2 (병렬) / 비동기 | Haiku | 개발자2 |
+| 10 | Batch Validator | TIER 3 | Haiku | 개발자3 |
+| 11 | Script Personalizer | TIER 4 | Sonnet 3.7 | 개발자1 |
+| 부가 | Learning Agent | 비동기 후처리 | Sonnet 3.5 | 개발자3 |
 
 ### 파일 위치
 
@@ -172,26 +172,24 @@ class AgentState(TypedDict, total=False):
     session_id: str
     mode: Literal["podcast"]
 
-    # === 개발자1 담당 ===
+    # === 분석 필드 ===
     intent: dict              # Intent Classifier → 의도 분류 결과
+    emotion_vectors: dict     # Emotion → 감정 벡터
+    content_analysis: dict    # Content Analyzer → 팟캐스트 주제 분석
+
+    # === 추론/생성 필드 ===
+    memory_results: dict      # Episode Memory → 기억 검색 결과
     knowledge_results: dict   # Knowledge → 전문 지식 검색 결과
-    response_draft: str       # Synthesis → 응답 초안
-    final_output: str         # Personalization → 최종 응답
+    reasoning_result: dict    # Podcast Reasoning → GoT/ToT/CoT 추론 결과
     script_draft: dict        # Script Generator → 팟캐스트 스크립트
 
-    # === 개발자2 담당 ===
-    emotion_vectors: dict     # Emotion → 감정 벡터
+    # === 검증/부가 필드 ===
     risk_level: int           # Safety → 위험 레벨 (0-4)
     risk_score: float         # Safety → Risk Score (0.0-1.0)
     safety_flags: dict        # Safety → 안전 플래그
-    memory_results: dict      # Memory → 개인 기억 검색 결과
+    validation_result: dict   # Batch Validator → 검증 결과
+    final_output: str         # Script Personalizer → 최종 응답
     visual_data: dict         # Visualization → 시각화 메타데이터
-
-    # === 개발자3 담당 ===
-    context: dict             # Context → 대화 맥락
-    content_analysis: dict    # Content Analyzer → 팟캐스트 주제 분석
-    reasoning_result: dict    # Reasoning → GoT/ToT/CoT 추론 결과
-    validation_result: dict   # Validator → 검증 결과
 
     # === 제어 ===
     next_step: str            # 워크플로우 라우팅 플래그
@@ -203,9 +201,9 @@ class AgentState(TypedDict, total=False):
 
 | 개발자 | 쓰기 가능 필드 | 읽기 가능 필드 |
 |--------|--------------|--------------|
-| 개발자1 | intent, knowledge_results, response_draft, final_output, script_draft | user_input, user_id, session_id, mode |
+| 개발자1 | intent, knowledge_results, final_output, script_draft | user_input, user_id, session_id, mode |
 | 개발자2 | emotion_vectors, risk_level, risk_score, safety_flags, memory_results, visual_data | 개발자1 쓰기 필드 + 개발자1 읽기 필드 |
-| 개발자3 | context, content_analysis, reasoning_result, validation_result | 전체 필드 읽기 가능 |
+| 개발자3 | content_analysis, reasoning_result, validation_result | 전체 필드 읽기 가능 |
 
 > **예외**: Intent Classifier(개발자1)는 TIER 0에서 1차 위기 감지를 위해
 > risk_level, risk_score, safety_flags를 초기 설정한다.
@@ -467,12 +465,12 @@ class ReasoningAgent:
 
 ---
 
-## 구현 현황 (2026-03-30 기준)
+## 구현 현황 (2026-04-02 기준)
 
 | 구분 | 구현 에이전트 | 진행률 |
 |------|------------|--------|
-| **TIER 0-4** | Intent Classifier, Safety, Emotion, Content Analyzer, Podcast Reasoning, Script Generator, Visualization, Batch Validator, Script Personalizer | 9/11 |
-| **독립** | Episode Memory, Knowledge | 2/11 |
+| **TIER 0-4** | Intent Classifier, Safety, Emotion, Content Analyzer, Podcast Reasoning, Script Generator, Visualization, Batch Validator, Script Personalizer | 9/9 |
+| **독립** | Episode Memory, Knowledge | 2/2 |
 | **비동기** | Learning Agent | 1/1 |
 
 > **메시지 프로토콜 v2.0 현황**: `BaseAgent.create_message()`로 `MessageEnvelope` 생성이 가능하나,

@@ -156,7 +156,7 @@ class PromptLoader:
         legacy YAML: [version] 1개 리스트 반환
 
         Args:
-            mode: 에이전트 모드 ("podcast", "conversation", "shared")
+            mode: 에이전트 모드 ("podcast", "shared")
             agent_name: 에이전트 이름
 
         Returns:
@@ -184,7 +184,7 @@ class PromptLoader:
         단일 프롬프트를 로드한다.
 
         Args:
-            mode: 에이전트 모드 ("podcast", "conversation", "shared")
+            mode: 에이전트 모드 ("podcast", "shared")
             agent_name: 에이전트 이름 (예: "content_analyzer")
             prompt_key: 프롬프트 키 (기본: "system_prompt")
             version: 로드할 버전 (None이면 기본 버전 사용, 멀티버전 전용)
@@ -225,7 +225,7 @@ class PromptLoader:
         단일 프롬프트 에이전트나 다중 프롬프트 에이전트의 user_prompt를 로드한다.
 
         Args:
-            mode: 에이전트 모드 ("podcast", "conversation", "shared")
+            mode: 에이전트 모드 ("podcast", "shared")
             agent_name: 에이전트 이름 (예: "script_generator")
             prompt_key: 프롬프트 키 (기본: "user_prompt")
             version: 로드할 버전 (None이면 기본 버전 사용, 멀티버전 전용)
@@ -268,7 +268,7 @@ class PromptLoader:
         다중 프롬프트 에이전트: {"got": "...", "tot": "...", "cot": "..."}
 
         Args:
-            mode: 에이전트 모드 ("podcast", "conversation", "shared")
+            mode: 에이전트 모드 ("podcast", "shared")
             agent_name: 에이전트 이름
             version: 로드할 버전 (None이면 기본 버전 사용, 멀티버전 전용)
 
