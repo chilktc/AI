@@ -31,7 +31,6 @@ logger = logging.getLogger(__name__)
 # 에이전트별 TIER 매핑 — 노드 이름으로 TIER 판별
 _NODE_TIER_MAP: dict[str, int] = {
     "intent_classifier": 0,
-    "tier1_conversation": 1,
     "tier1_podcast": 1,
     "safety": 1,
     "emotion": 1,
