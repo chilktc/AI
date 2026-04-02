@@ -64,7 +64,7 @@ llm:
 agents:
   # TIER 0
   intent_classifier:
-    model: sonnet_37  # Phase 3 최적: c37-sonnet (composite 0.848)
+    model: sonnet_37  # Phase 3 검증: c37-sonnet Q=0.910 (5 runs) — c35-sonnet-v2보다 우위
     max_tokens: 1024
     temperature: 0.3
 
@@ -130,10 +130,6 @@ agents:
   script_generator:
     model: haiku  # Phase 3 최적: c3-haiku (composite 0.659)
     max_tokens: 4096  # c3-haiku 모델 최대 출력 한계 (8192는 sonnet 이상에서만 유효)
-  visualization_podcast:
-    model: sonnet
-    max_tokens: 2048
-
   # ──────────────────────────────────────
   # 팟캐스트모드 TIER 3
   # ──────────────────────────────────────
@@ -152,9 +148,6 @@ agents:
   # ──────────────────────────────────────
   # 공용 비동기
   # ──────────────────────────────────────
-  telemetry:
-    model: haiku
-    max_tokens: 1024
   learning:
     model: sonnet  # Phase 3 최적: c35-sonnet-v2 (composite 0.619)
     max_tokens: 1024
@@ -208,13 +201,12 @@ security:
   pii_sanitization:
     enabled: true
 
-# [미사용] Feature flags — 향후 에이전트별 활성화/비활성화 제어 시 사용 예정
-# 현재 코드에서 읽지 않음. 활성화 시 config/loader.py에 property 추가 필요.
-features:
-  podcast_mode: true
-  visualization: true
-  telemetry: true
-  learning: true
+# [미사용] Feature flags — 코드에서 읽지 않음.
+# 향후 에이전트별 활성화/비활성화 제어 시 config/loader.py에 property 추가 필요.
+# features:
+#   podcast_mode: true
+#   visualization: true
+#   learning: true
 
 # 모니터링 & Observability
 monitoring:

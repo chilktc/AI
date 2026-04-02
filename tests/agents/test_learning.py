@@ -161,9 +161,7 @@ def test_build_context(
     expected_not_in: list[str],
 ) -> None:
     """상태 필드 조합에 따라 학습 컨텍스트가 올바르게 생성된다."""
-    state = AgentState(
-        user_id="u", session_id="s", mode="podcast", **state_kwargs
-    )
+    state = AgentState(user_id="u", session_id="s", mode="podcast", **state_kwargs)
     context = agent._build_learning_context(state)
 
     for text in expected_in:
@@ -187,7 +185,9 @@ def test_build_context(
     ids=["minimal_returns_default", "truncates_long_output"],
 )
 def test_build_context_edge_cases(
-    agent: LearningAgent, state_kwargs: dict, check,
+    agent: LearningAgent,
+    state_kwargs: dict,
+    check,
 ) -> None:
     """최소 필드 → 기본 메시지, 긴 출력 → truncation."""
     state = AgentState(user_id="u", session_id="s", mode="podcast", **state_kwargs)
@@ -215,8 +215,10 @@ async def test_api_save_failure_does_not_raise(
             agent, "call_llm_json", new_callable=AsyncMock, return_value=mock_learning_data
         ),
         patch.object(
-            agent._api_client, "save",
-            new_callable=AsyncMock, side_effect=error_cls("저장 실패"),
+            agent._api_client,
+            "save",
+            new_callable=AsyncMock,
+            side_effect=error_cls("저장 실패"),
         ),
     ):
         result = await agent.process(full_state)

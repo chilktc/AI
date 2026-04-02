@@ -55,9 +55,7 @@ def test_load_multi_prompt_by_key() -> None:
         ("podcast", "podcast_reasoning", ["got", "tot", "cot"], 3),
     ],
 )
-def test_load_all(
-    mode: str, agent: str, expected_keys: list[str], expected_count: int
-) -> None:
+def test_load_all(mode: str, agent: str, expected_keys: list[str], expected_count: int) -> None:
     """load_all()이 단일/다중 프롬프트를 올바르게 반환한다."""
     loader = PromptLoader(base_dir="prompts")
     prompts = loader.load_all(mode, agent)
@@ -150,9 +148,7 @@ def test_path_traversal_prevented(tmp_path: Path) -> None:
     ],
     ids=["invalid_yaml", "non_dict", "missing_version", "missing_prompt"],
 )
-def test_yaml_validation_errors(
-    tmp_path: Path, content: str, match_pattern: str
-) -> None:
+def test_yaml_validation_errors(tmp_path: Path, content: str, match_pattern: str) -> None:
     """잘못된 YAML 파일에 대한 검증 에러를 테스트한다."""
     prompts_dir = tmp_path / "prompts"
     (prompts_dir / "podcast").mkdir(parents=True)
@@ -218,9 +214,7 @@ def test_get_prompt_base_dir_default_and_env() -> None:
         ("src.agents.podcast.learning", "LearningAgent"),
     ],
 )
-def test_agent_loads_prompts_and_version(
-    import_path: str, agent_cls_name: str
-) -> None:
+def test_agent_loads_prompts_and_version(import_path: str, agent_cls_name: str) -> None:
     """에이전트 생성 시 YAML 프롬프트가 로드되고 유효한 semver 버전이다."""
     import importlib
     import re
@@ -231,6 +225,6 @@ def test_agent_loads_prompts_and_version(
 
     # 프롬프트 버전 확인 (semver 형식)
     assert agent.prompt_version is not None
-    assert re.match(r"^\d+\.\d+\.\d+$", agent.prompt_version), (
-        f"{agent_cls_name} 버전이 잘못된 형식: {agent.prompt_version}"
-    )
+    assert re.match(
+        r"^\d+\.\d+\.\d+$", agent.prompt_version
+    ), f"{agent_cls_name} 버전이 잘못된 형식: {agent.prompt_version}"

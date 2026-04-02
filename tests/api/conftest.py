@@ -13,32 +13,34 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Mock: compiled_graph (LangGraph)
 # ---------------------------------------------------------------------------
 
+
 def _make_default_pipeline_result() -> dict[str, Any]:
     """기본 파이프라인 실행 결과 (podcast 모드)."""
     return {
-        "final_output": json.dumps({
-            "episode_id": "ep_test001",
-            "episode_title": "테스트 에피소드",
-            "total_duration": 3,
-            "segments": [
-                {
-                    "segment_id": "seg_01",
-                    "segment_type": "intro",
-                    "duration_minutes": 1,
-                    "script_text": "안녕하세요, 테스트 에피소드입니다.",
-                    "word_count": 10,
-                    "emotional_tone": "warm",
-                    "tts_markers": [],
-                }
-            ],
-            "key_insights": ["테스트 인사이트"],
-            "themes": ["테스트"],
-        }),
+        "final_output": json.dumps(
+            {
+                "episode_id": "ep_test001",
+                "episode_title": "테스트 에피소드",
+                "total_duration": 3,
+                "segments": [
+                    {
+                        "segment_id": "seg_01",
+                        "segment_type": "intro",
+                        "duration_minutes": 1,
+                        "script_text": "안녕하세요, 테스트 에피소드입니다.",
+                        "word_count": 10,
+                        "emotional_tone": "warm",
+                        "tts_markers": [],
+                    }
+                ],
+                "key_insights": ["테스트 인사이트"],
+                "themes": ["테스트"],
+            }
+        ),
         "emotion_vectors": {
             "primary_emotion": "calm",
             "intensity": 0.6,
@@ -79,6 +81,7 @@ def mock_backend_client():
 # FastAPI TestClient
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def test_client(mock_compiled_graph, mock_backend_client):
     """FastAPI TestClient (동기). compiled_graph와 backend_client를 mock 주입."""
@@ -89,6 +92,7 @@ def test_client(mock_compiled_graph, mock_backend_client):
         patch("src.api.routes.health.backend_client", mock_backend_client, create=True),
     ):
         from fastapi.testclient import TestClient
+
         from src.api.main import app
 
         yield TestClient(app, raise_server_exceptions=False)
@@ -102,6 +106,7 @@ def test_client_not_ready():
         patch("src.api.main.backend_client", None),
     ):
         from fastapi.testclient import TestClient
+
         from src.api.main import app
 
         yield TestClient(app, raise_server_exceptions=False)
@@ -110,6 +115,7 @@ def test_client_not_ready():
 # ---------------------------------------------------------------------------
 # 도우미 함수
 # ---------------------------------------------------------------------------
+
 
 def make_pipeline_result(**overrides: Any) -> dict[str, Any]:
     """파이프라인 결과를 커스터마이즈할 수 있는 팩토리 함수."""

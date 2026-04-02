@@ -49,9 +49,7 @@ class _StubAgent(BaseAgent):
                 "output_tokens": 200,
                 "total_tokens": 700,
             }
-            mock_client.parse_json_response = MagicMock(
-                return_value={"key": "value"}
-            )
+            mock_client.parse_json_response = MagicMock(return_value={"key": "value"})
             mock_llm_cls.return_value = mock_client
 
             super().__init__(name="test_agent", tier=1)
@@ -72,9 +70,7 @@ class TestTracedLlmCall:
         agent = _StubAgent()
 
         with (
-            patch(
-                "src.agents.shared.base_agent.get_settings"
-            ) as mock_settings,
+            patch("src.agents.shared.base_agent.get_settings") as mock_settings,
             patch("src.agents.shared.base_agent._HAS_LANGSMITH", False),
         ):
             settings = MagicMock()
@@ -94,9 +90,7 @@ class TestTracedLlmCall:
         """tracing_enabled=false 시 직접 호출한다."""
         agent = _StubAgent()
 
-        with patch(
-            "src.agents.shared.base_agent.get_settings"
-        ) as mock_settings:
+        with patch("src.agents.shared.base_agent.get_settings") as mock_settings:
             settings = MagicMock()
             settings.langsmith_tracing_enabled = False
             mock_settings.return_value = settings
@@ -120,9 +114,7 @@ class TestTracedLlmCall:
         mock_traceable.side_effect = lambda **kwargs: lambda fn: fn
 
         with (
-            patch(
-                "src.agents.shared.base_agent.get_settings"
-            ) as mock_settings,
+            patch("src.agents.shared.base_agent.get_settings") as mock_settings,
             patch("src.agents.shared.base_agent._HAS_LANGSMITH", True),
             patch("src.agents.shared.base_agent._traceable", mock_traceable),
         ):
@@ -147,9 +139,7 @@ class TestTracedLlmCall:
         """_traced_llm_call()은 항상 str을 반환한다."""
         agent = _StubAgent()
 
-        with patch(
-            "src.agents.shared.base_agent.get_settings"
-        ) as mock_settings:
+        with patch("src.agents.shared.base_agent.get_settings") as mock_settings:
             settings = MagicMock()
             settings.langsmith_tracing_enabled = False
             mock_settings.return_value = settings
@@ -187,9 +177,7 @@ class TestCallLlmTracing:
     async def test_call_llm_json_delegates_to_traced(self) -> None:
         """call_llm_json()이 _traced_llm_call() + JSON 파싱을 수행한다."""
         agent = _StubAgent()
-        agent._traced_llm_call = AsyncMock(
-            return_value='{"key": "value"}'
-        )
+        agent._traced_llm_call = AsyncMock(return_value='{"key": "value"}')
         agent.llm_client.parse_json_response.return_value = {"key": "value"}
 
         result = await agent.call_llm_json(
@@ -199,9 +187,7 @@ class TestCallLlmTracing:
 
         assert result == {"key": "value"}
         agent._traced_llm_call.assert_called_once()
-        agent.llm_client.parse_json_response.assert_called_once_with(
-            '{"key": "value"}'
-        )
+        agent.llm_client.parse_json_response.assert_called_once_with('{"key": "value"}')
         assert agent._llm_call_count == 1
 
     @pytest.mark.asyncio
@@ -209,9 +195,7 @@ class TestCallLlmTracing:
         """LLM 호출 후 토큰 사용량이 llm_client.last_usage에 유지된다."""
         agent = _StubAgent()
 
-        with patch(
-            "src.agents.shared.base_agent.get_settings"
-        ) as mock_settings:
+        with patch("src.agents.shared.base_agent.get_settings") as mock_settings:
             settings = MagicMock()
             settings.langsmith_tracing_enabled = False
             mock_settings.return_value = settings

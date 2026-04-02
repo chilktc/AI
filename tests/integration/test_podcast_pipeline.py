@@ -63,5 +63,3 @@ async def test_tier1_podcast_fan_out_all_fields(
     assert result["content_analysis"]["main_theme"] == "감정 일기와 자기 돌봄"
     assert "main_theme" in result["content_analysis"]
     assert "emotional_journey" in result["content_analysis"]
-
-

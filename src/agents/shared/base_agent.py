@@ -23,6 +23,9 @@ from __future__ import annotations
 
 import contextvars
 import hashlib
+
+# langsmith 모듈 레벨 캐싱 — 매 호출마다 import 시도하지 않고 한 번만 검사
+import importlib.util as _importlib_util
 import time
 from abc import ABC, abstractmethod
 from typing import Any
@@ -39,9 +42,6 @@ from src.models.message import (
     Priority,
 )
 from src.utils.logger import get_agent_logger
-
-# langsmith 모듈 레벨 캐싱 — 매 호출마다 import 시도하지 않고 한 번만 검사
-import importlib.util as _importlib_util
 
 _HAS_LANGSMITH = _importlib_util.find_spec("langsmith") is not None
 if _HAS_LANGSMITH:
@@ -428,7 +428,9 @@ class BaseAgent(ABC):
                 _active_ab_variant.reset(token)
 
     async def _traced_process(
-        self, state: AgentState, tier_label: str,
+        self,
+        state: AgentState,
+        tier_label: str,
     ) -> dict[str, Any]:
         """
         LangSmith 트레이싱으로 감싼 process() 실행.
@@ -597,6 +599,7 @@ class BaseAgent(ABC):
         """
         if model is None:
             from config.loader import get_settings
+
             agent_config = get_settings().get_agent_config(self.name)
             model = agent_config.get("image_model", "dall-e-3")
 
@@ -618,29 +621,32 @@ class BaseAgent(ABC):
         리전은 settings.yaml의 에이전트별 image_region 설정을 사용한다.
         """
         import asyncio
-        import json
         import base64
+        import json
 
         import boto3  # type: ignore
 
         from config.loader import get_settings
+
         settings = get_settings()
         agent_config = settings.get_agent_config(self.name)
         image_region = agent_config.get("image_region", "us-east-1")
 
         bedrock_client = boto3.client("bedrock-runtime", region_name=image_region)
 
-        request_body = json.dumps({
-            "taskType": "TEXT_IMAGE",
-            "textToImageParams": {"text": prompt},
-            "imageGenerationConfig": {
-                "numberOfImages": 1,
-                "quality": quality,
-                "cfgScale": 8.0,
-                "height": 1024,
-                "width": 1024,
-            },
-        })
+        request_body = json.dumps(
+            {
+                "taskType": "TEXT_IMAGE",
+                "textToImageParams": {"text": prompt},
+                "imageGenerationConfig": {
+                    "numberOfImages": 1,
+                    "quality": quality,
+                    "cfgScale": 8.0,
+                    "height": 1024,
+                    "width": 1024,
+                },
+            }
+        )
 
         response = await asyncio.to_thread(
             bedrock_client.invoke_model,

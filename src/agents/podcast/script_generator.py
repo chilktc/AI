@@ -144,7 +144,9 @@ class ScriptGeneratorAgent(BaseAgent):
             }
 
             self.logger.info(
-                f"[ScriptGenerator] 전체 생성 완료. 총 {total_words}단어, 예상 시간 {total_duration}분"
+                "[ScriptGenerator] 전체 생성 완료. " "총 %d단어, 예상 시간 %d분",
+                total_words,
+                total_duration,
             )
 
             return {"script_draft": script_draft}
@@ -173,18 +175,27 @@ class ScriptGeneratorAgent(BaseAgent):
             "resolution", emotional_journey.get("resolution_emotion", "None")
         )
 
-        # yaml 내에 user_prompt 도 정의해 두었거나, 기존처럼 코드 내에 유지하되 yaml의 system_prompt 만 사용할 수도 있습니다.
-        # 코드 변경사항을 최소화하기 위해 user_message는 기존 형식을 유지하고, system_prompt만 로더에서 가져옵니다.
-        # 혹은 yaml에서 가져온 user_prompt도 format하여 사용할 수 있습니다. 여기서는 yaml도 고려하여 두 가지 모두 가져옵니다.
-        
-        prompts = self._prompt_loader.load_all("podcast", "script_generator")
-        
-        user_prompt = self._prompt_loader.load_user_prompt("podcast", "script_generator", "generate_title")
+        # yaml 내에 user_prompt 도 정의해 두었거나,
+        # 기존처럼 코드 내에 유지하되 yaml의 system_prompt 만
+        # 사용할 수도 있습니다.
+        # 코드 변경사항을 최소화하기 위해 user_message는
+        # 기존 형식을 유지하고, system_prompt만 로더에서
+        # 가져옵니다.
+        # 혹은 yaml에서 가져온 user_prompt도 format하여
+        # 사용할 수 있습니다. 여기서는 yaml도 고려하여
+        # 두 가지 모두 가져옵니다.
+
+        # load_all은 현재 미사용이지만 향후 확장 시 참조용으로 유지
+        _ = self._prompt_loader.load_all("podcast", "script_generator")
+
+        user_prompt = self._prompt_loader.load_user_prompt(
+            "podcast", "script_generator", "generate_title"
+        )
         prompt = user_prompt.format(
             main_theme=main_theme,
             sub_themes=", ".join(sub_themes),
             start_emotion=start_emotion,
-            resolution_emotion=resolution_emotion
+            resolution_emotion=resolution_emotion,
         )
 
         try:
@@ -232,7 +243,9 @@ class ScriptGeneratorAgent(BaseAgent):
 
         key_points_text = "\n".join([f"- {kp}" for kp in segment.get("key_points", [])])
 
-        user_prompt = self._prompt_loader.load_user_prompt("podcast", "script_generator", "generate_segment")
+        user_prompt = self._prompt_loader.load_user_prompt(
+            "podcast", "script_generator", "generate_segment"
+        )
         prompt = user_prompt.format(
             episode_title=episode_title,
             main_theme=main_theme,
@@ -242,7 +255,7 @@ class ScriptGeneratorAgent(BaseAgent):
             emotional_tone=segment.get("emotional_tone", "neutral"),
             transition_hint=segment.get("transition_hint", "natural transition"),
             previous_context=previous_context or "This is the opening segment.",
-            knowledge_summary=knowledge_summary
+            knowledge_summary=knowledge_summary,
         )
 
         try:
@@ -268,7 +281,9 @@ class ScriptGeneratorAgent(BaseAgent):
                 "segment_id": segment.get("segment_id", f"error_seg_{uuid.uuid4().hex[:4]}"),
                 "segment_type": segment.get("segment_type", "body"),
                 "duration_minutes": duration_minutes,
-                "script_text": f"(스크립트 작성 실패: {main_theme} 관련 내용을 논의하는 부분입니다.)",
+                "script_text": (
+                    f"(스크립트 작성 실패: {main_theme} " "관련 내용을 논의하는 부분입니다.)"
+                ),
                 "word_count": 10,
                 "emotional_tone": "neutral",
                 "tts_markers": [],
@@ -294,10 +309,10 @@ class ScriptGeneratorAgent(BaseAgent):
             full_script = full_script[:5000] + "..."
 
         system_prompt = self.get_prompt("extract_insights")
-        user_prompt = self._prompt_loader.load_user_prompt("podcast", "script_generator", "extract_insights")
-        user_message = user_prompt.format(
-            full_script=full_script
+        user_prompt = self._prompt_loader.load_user_prompt(
+            "podcast", "script_generator", "extract_insights"
         )
+        user_message = user_prompt.format(full_script=full_script)
 
         try:
             insights = await self.call_llm_json(

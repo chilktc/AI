@@ -70,14 +70,16 @@ class PipelineTrace:
         """에이전트 간 데이터 흐름을 시각화용 dict로 반환한다."""
         flow = []
         for snap in self.snapshots:
-            flow.append({
-                "agent": snap.agent_name,
-                "tier": snap.tier,
-                "input_keys": list(snap.input_fields.keys()),
-                "output_keys": list(snap.output_fields.keys()),
-                "duration_ms": snap.duration_ms,
-                "status": snap.status,
-            })
+            flow.append(
+                {
+                    "agent": snap.agent_name,
+                    "tier": snap.tier,
+                    "input_keys": list(snap.input_fields.keys()),
+                    "output_keys": list(snap.output_fields.keys()),
+                    "duration_ms": snap.duration_ms,
+                    "status": snap.status,
+                }
+            )
         return flow
 
 

@@ -124,26 +124,31 @@ def mock_podcast_nodes(monkeypatch):
     import src.graph.workflow as wf
 
     monkeypatch.setattr(
-        wf, "intent_classifier_node",
+        wf,
+        "intent_classifier_node",
         AsyncMock(return_value=MOCK_INTENT_PODCAST),
     )
     monkeypatch.setattr(wf, "safety_node", AsyncMock(return_value=MOCK_SAFETY_SAFE))
     monkeypatch.setattr(wf, "emotion_node", AsyncMock(return_value=MOCK_EMOTION))
     monkeypatch.setattr(
-        wf, "content_analyzer_node",
+        wf,
+        "content_analyzer_node",
         AsyncMock(return_value=MOCK_CONTENT_ANALYSIS),
     )
     monkeypatch.setattr(
-        wf, "podcast_reasoning_node",
+        wf,
+        "podcast_reasoning_node",
         AsyncMock(return_value=MOCK_REASONING_PODCAST),
     )
     monkeypatch.setattr(
-        wf, "script_generator_node",
+        wf,
+        "script_generator_node",
         AsyncMock(return_value=MOCK_SCRIPT_DRAFT),
     )
     monkeypatch.setattr(wf, "batch_validator_node", AsyncMock(return_value=MOCK_BV_PASS))
     monkeypatch.setattr(
-        wf, "script_personalizer_node",
+        wf,
+        "script_personalizer_node",
         AsyncMock(return_value=MOCK_FINAL_OUTPUT_PODCAST),
     )
     monkeypatch.setattr(wf, "visualization_node", AsyncMock(return_value=MOCK_VISUALIZATION))
@@ -156,29 +161,35 @@ def mock_crisis_nodes(monkeypatch):
     import src.graph.workflow as wf
 
     monkeypatch.setattr(
-        wf, "intent_classifier_node",
+        wf,
+        "intent_classifier_node",
         AsyncMock(return_value=MOCK_INTENT_CRISIS),
     )
     monkeypatch.setattr(wf, "safety_node", AsyncMock(return_value=MOCK_SAFETY_CRISIS))
     monkeypatch.setattr(wf, "emotion_node", AsyncMock(return_value=MOCK_EMOTION))
     monkeypatch.setattr(
-        wf, "content_analyzer_node",
+        wf,
+        "content_analyzer_node",
         AsyncMock(return_value=MOCK_CONTENT_ANALYSIS),
     )
     monkeypatch.setattr(
-        wf, "podcast_reasoning_node",
+        wf,
+        "podcast_reasoning_node",
         AsyncMock(return_value=MOCK_REASONING_PODCAST),
     )
     monkeypatch.setattr(
-        wf, "script_generator_node",
+        wf,
+        "script_generator_node",
         AsyncMock(side_effect=AssertionError("CRISIS 시 TIER 2는 실행되면 안 됨")),
     )
     monkeypatch.setattr(
-        wf, "batch_validator_node",
+        wf,
+        "batch_validator_node",
         AsyncMock(side_effect=AssertionError("CRISIS 시 TIER 3는 실행되면 안 됨")),
     )
     monkeypatch.setattr(
-        wf, "script_personalizer_node",
+        wf,
+        "script_personalizer_node",
         AsyncMock(side_effect=AssertionError("CRISIS 시 TIER 4는 실행되면 안 됨")),
     )
     monkeypatch.setattr(wf, "visualization_node", AsyncMock(return_value=MOCK_VISUALIZATION))
@@ -200,9 +211,9 @@ async def test_podcast_e2e_full(mock_podcast_nodes, podcast_initial_state):
 
     # 모든 expected 필드 존재
     validation = _validate_result(final_state, EXPECTED_PODCAST_FIELDS)
-    assert validation["fields_present"] == validation["fields_total"], (
-        f"Missing: {[k for k, v in validation['field_details'].items() if v == 'MISSING']}"
-    )
+    assert (
+        validation["fields_present"] == validation["fields_total"]
+    ), f"Missing: {[k for k, v in validation['field_details'].items() if v == 'MISSING']}"
 
     # 3명의 개발자 모두 기여
     for developer, fields in DEVELOPER_FIELDS_PODCAST.items():
@@ -282,28 +293,33 @@ async def test_retry_then_pass(monkeypatch, podcast_initial_state):
     import src.graph.workflow as wf
 
     monkeypatch.setattr(
-        wf, "intent_classifier_node",
+        wf,
+        "intent_classifier_node",
         AsyncMock(return_value=MOCK_INTENT_PODCAST),
     )
     monkeypatch.setattr(wf, "safety_node", AsyncMock(return_value=MOCK_SAFETY_SAFE))
     monkeypatch.setattr(wf, "emotion_node", AsyncMock(return_value=MOCK_EMOTION))
     monkeypatch.setattr(
-        wf, "content_analyzer_node",
+        wf,
+        "content_analyzer_node",
         AsyncMock(return_value=MOCK_CONTENT_ANALYSIS),
     )
     monkeypatch.setattr(
-        wf, "podcast_reasoning_node",
+        wf,
+        "podcast_reasoning_node",
         AsyncMock(return_value=MOCK_REASONING_PODCAST),
     )
     monkeypatch.setattr(
-        wf, "script_generator_node",
+        wf,
+        "script_generator_node",
         AsyncMock(return_value=MOCK_SCRIPT_DRAFT),
     )
 
     bv_mock = AsyncMock(side_effect=[MOCK_BV_FAIL, MOCK_BV_PASS])
     monkeypatch.setattr(wf, "batch_validator_node", bv_mock)
     monkeypatch.setattr(
-        wf, "script_personalizer_node",
+        wf,
+        "script_personalizer_node",
         AsyncMock(return_value=MOCK_FINAL_OUTPUT_PODCAST),
     )
     monkeypatch.setattr(wf, "visualization_node", AsyncMock(return_value=MOCK_VISUALIZATION))
@@ -329,8 +345,13 @@ def test_podcast_graph_required_nodes():
     from src.graph.workflow import build_podcast_graph
 
     expected_nodes = {
-        "tier1_podcast", "tier2_podcast", "batch_validator",
-        "script_personalizer", "crisis_response", "async_post", "increment_iteration",
+        "tier1_podcast",
+        "tier2_podcast",
+        "batch_validator",
+        "script_personalizer",
+        "crisis_response",
+        "async_post",
+        "increment_iteration",
     }
     compiled = build_podcast_graph().compile()
     node_names = [n for n in compiled.nodes.keys() if not n.startswith("__")]

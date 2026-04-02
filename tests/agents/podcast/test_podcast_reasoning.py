@@ -107,20 +107,28 @@ def mock_tot_result() -> dict[str, Any]:
                 "structure_summary": "원인 탐색 → 극복 사례 → 실천법",
                 "segments": [
                     {
-                        "segment": "intro", "title": "오프닝",
-                        "duration_seconds": 20, "focus": "공감",
+                        "segment": "intro",
+                        "title": "오프닝",
+                        "duration_seconds": 20,
+                        "focus": "공감",
                     },
                     {
-                        "segment": "body_1", "title": "원인 탐색",
-                        "duration_seconds": 80, "focus": "분석",
+                        "segment": "body_1",
+                        "title": "원인 탐색",
+                        "duration_seconds": 80,
+                        "focus": "분석",
                     },
                     {
-                        "segment": "body_2", "title": "극복 사례",
-                        "duration_seconds": 80, "focus": "사례",
+                        "segment": "body_2",
+                        "title": "극복 사례",
+                        "duration_seconds": 80,
+                        "focus": "사례",
                     },
                     {
-                        "segment": "outro", "title": "마무리",
-                        "duration_seconds": 20, "focus": "격려",
+                        "segment": "outro",
+                        "title": "마무리",
+                        "duration_seconds": 20,
+                        "focus": "격려",
                     },
                 ],
                 "strengths": ["체계적 구조", "실용적"],
@@ -132,16 +140,22 @@ def mock_tot_result() -> dict[str, Any]:
                 "structure_summary": "감정 인정 → 공감 대화 → 작은 실천",
                 "segments": [
                     {
-                        "segment": "intro", "title": "감정 인정",
-                        "duration_seconds": 30, "focus": "공감",
+                        "segment": "intro",
+                        "title": "감정 인정",
+                        "duration_seconds": 30,
+                        "focus": "공감",
                     },
                     {
-                        "segment": "body_1", "title": "공감 대화",
-                        "duration_seconds": 120, "focus": "대화",
+                        "segment": "body_1",
+                        "title": "공감 대화",
+                        "duration_seconds": 120,
+                        "focus": "대화",
                     },
                     {
-                        "segment": "outro", "title": "작은 실천",
-                        "duration_seconds": 30, "focus": "실천",
+                        "segment": "outro",
+                        "title": "작은 실천",
+                        "duration_seconds": 30,
+                        "focus": "실천",
                     },
                 ],
                 "strengths": ["높은 공감력", "따뜻한 톤"],
@@ -159,12 +173,27 @@ def mock_cot_result() -> dict[str, Any]:
     """CoT 상세화 모의 결과 (3-5분 범위, 210초)."""
     return {
         "episode_structure": [
-            {"segment": "intro", "title": "오늘의 이야기", "duration_seconds": 30,
-             "content_summary": "에피소드 소개", "tone": "warm"},
-            {"segment": "body_1", "title": "스트레스의 본질", "duration_seconds": 150,
-             "content_summary": "스트레스 원인 탐색", "tone": "informative"},
-            {"segment": "outro", "title": "마무리", "duration_seconds": 30,
-             "content_summary": "격려와 마무리", "tone": "encouraging"},
+            {
+                "segment": "intro",
+                "title": "오늘의 이야기",
+                "duration_seconds": 30,
+                "content_summary": "에피소드 소개",
+                "tone": "warm",
+            },
+            {
+                "segment": "body_1",
+                "title": "스트레스의 본질",
+                "duration_seconds": 150,
+                "content_summary": "스트레스 원인 탐색",
+                "tone": "informative",
+            },
+            {
+                "segment": "outro",
+                "title": "마무리",
+                "duration_seconds": 30,
+                "content_summary": "격려와 마무리",
+                "tone": "encouraging",
+            },
         ],
         "narrative_flow": "공감 → 탐색 → 실천 → 격려",
         "key_points": ["스트레스 인식", "대처 전략", "자기돌봄"],
@@ -287,9 +316,9 @@ async def test_di_call_routing(
         intent={"primary_intent": "test", "complexity_score": complexity},
     )
     side_effect = (
-        [mock_got_result, mock_tot_result, mock_cot_result] if complexity >= 0.8
-        else [mock_tot_result, mock_cot_result] if complexity >= 0.5
-        else [mock_cot_result]
+        [mock_got_result, mock_tot_result, mock_cot_result]
+        if complexity >= 0.8
+        else [mock_tot_result, mock_cot_result] if complexity >= 0.5 else [mock_cot_result]
     )
     with patch.object(agent, "call_llm_json", AsyncMock(side_effect=side_effect)):
         await agent.process(state)
@@ -394,7 +423,8 @@ async def test_got_tot_cot_structure_and_context(
         got = await agent._graph_of_thoughts(
             user_input="스트레스 관리",
             intent={"primary_intent": "coping", "complexity_score": 0.9},
-            memory_result=None, knowledge_result=None,
+            memory_result=None,
+            knowledge_result=None,
         )
     assert "core_pattern" in got and "nodes" in got and "edges" in got
     assert "스트레스 관리" in _get_user_message(mock_g)
@@ -406,7 +436,9 @@ async def test_got_tot_cot_structure_and_context(
         tot = await agent._tree_of_thoughts(
             user_input="스트레스 관리",
             intent={"primary_intent": "coping"},
-            got_result=mock_got_result, memory_result=None, knowledge_result=None,
+            got_result=mock_got_result,
+            memory_result=None,
+            knowledge_result=None,
         )
     assert "alternatives" in tot and "selected" in tot
     assert "GoT 그래프 분석 결과" in _get_user_message(mock_t)
@@ -417,8 +449,10 @@ async def test_got_tot_cot_structure_and_context(
         cot = await agent._chain_of_thoughts(
             user_input="스트레스 관리",
             intent={"primary_intent": "coping"},
-            got_result=None, tot_result=mock_tot_result,
-            memory_result=None, knowledge_result=None,
+            got_result=None,
+            tot_result=mock_tot_result,
+            memory_result=None,
+            knowledge_result=None,
         )
     assert "episode_structure" in cot and "narrative_flow" in cot and "confidence" in cot
     assert "ToT 구조 탐색 결과" in _get_user_message(mock_c)
@@ -461,8 +495,13 @@ async def test_legacy_fields_present(
         result = await agent.process(state)
 
     reasoning = result["reasoning_result"]
-    for field in ("episode_structure", "narrative_flow", "key_points",
-                  "emotional_journey", "confidence"):
+    for field in (
+        "episode_structure",
+        "narrative_flow",
+        "key_points",
+        "emotional_journey",
+        "confidence",
+    ):
         assert field in reasoning, f"Missing legacy field: {field}"
     assert reasoning["reasoning_depth"] == depth_label
     assert ("got_result" in reasoning) == has_got
@@ -501,8 +540,9 @@ async def test_edge_case_inputs(
         state_data["intent"] = {"primary_intent": "unknown", "complexity_score": 0.3}
     state = AgentState(**state_data)
 
-    effects = ([mock_tot_result, mock_cot_result] if expected_depth == "standard"
-               else [mock_cot_result])
+    effects = (
+        [mock_tot_result, mock_cot_result] if expected_depth == "standard" else [mock_cot_result]
+    )
     with patch.object(agent, "call_llm_json", AsyncMock(side_effect=effects)):
         result = await agent.process(state)
 
@@ -576,8 +616,9 @@ async def test_di_exception_propagation(
         mode="podcast",
         intent={"primary_intent": "test", "complexity_score": 0.7},
     )
-    with patch.object(agent, "call_llm_json",
-                      AsyncMock(side_effect=[mock_tot_result, mock_cot_result])):
+    with patch.object(
+        agent, "call_llm_json", AsyncMock(side_effect=[mock_tot_result, mock_cot_result])
+    ):
         with pytest.raises(Exception, match=error_msg):
             await agent.process(state)
 

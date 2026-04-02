@@ -47,15 +47,23 @@ class ScriptPersonalizerAgent(BaseAgent):
     def __init__(
         self,
         db_client: Any | None = None,
-        enable_deep_personalization: bool = False,
+        enable_deep_personalization: bool | None = None,
     ):
         """
         Args:
             db_client: 데이터베이스 클라이언트 (사용자 프로필 조회용) - 외부에서 주입
-            enable_deep_personalization: 심화 개인화 활성화 여부
+            enable_deep_personalization: 심화 개인화 활성화 여부.
+                None이면 settings.yaml의
+                agents.script_personalizer.deep_personalization
+                값을 사용한다.
         """
         super().__init__(name="script_personalizer", tier=4)
 
+        if enable_deep_personalization is None:
+            from config.loader import get_settings
+
+            agent_cfg = get_settings().get_agent_config("script_personalizer")
+            enable_deep_personalization = agent_cfg.get("deep_personalization", False)
         self.enable_deep_personalization = enable_deep_personalization
         if not self.enable_deep_personalization:
             self.llm_client = None
@@ -80,24 +88,30 @@ class ScriptPersonalizerAgent(BaseAgent):
             # script_draft에서 Pydantic 객체 복원
             script_data = state.get("script_draft", {})
             validated_script = ValidatedScript(**script_data) if script_data else None
-            
+
             # AgentState에서 감정적 여정 정보 추출
             content_analysis = state.get("content_analysis", {})
             emotional_journey_data = content_analysis.get(
                 "emotional_journey", state.get("emotional_journey")
             )
-            
+
             emotional_journey = None
             if emotional_journey_data:
                 try:
                     emotional_journey = EmotionalJourney(
-                        opening=emotional_journey_data.get("opening", emotional_journey_data.get("start_emotion", "차분함")),
+                        opening=emotional_journey_data.get(
+                            "opening", emotional_journey_data.get("start_emotion", "차분함")
+                        ),
                         development=emotional_journey_data.get("development", "공감"),
-                        resolution=emotional_journey_data.get("resolution", emotional_journey_data.get("resolution_emotion", "따뜻함")),
-                        journey_type=emotional_journey_data.get("journey_type", "healing")
+                        resolution=emotional_journey_data.get(
+                            "resolution", emotional_journey_data.get("resolution_emotion", "따뜻함")
+                        ),
+                        journey_type=emotional_journey_data.get("journey_type", "healing"),
                     )
                 except Exception as e:
-                    self.logger.warning("[ScriptPersonalizer] Failed to parse EmotionalJourney: %s", e)
+                    self.logger.warning(
+                        "[ScriptPersonalizer] Failed to parse EmotionalJourney: %s", e
+                    )
 
             # 에피소드 ID 생성
             episode_id = f"ep_{uuid.uuid4().hex[:12]}"
@@ -146,7 +160,8 @@ class ScriptPersonalizerAgent(BaseAgent):
             self.logger.info("[ScriptPersonalizer] Completed in %.2fms", processing_time)
 
             return {
-                "final_output": personalized_script.model_dump_json()  # 문자열 형태의 최종 스크립트 반환
+                # 문자열 형태의 최종 스크립트 반환
+                "final_output": personalized_script.model_dump_json()
             }
 
         except Exception as e:
@@ -211,14 +226,13 @@ class ScriptPersonalizerAgent(BaseAgent):
         # MySQL 쿼리 예시 (실제 구현 시 수정 필요)
         # 예: SQLAlchemy, PyMySQL 등에 맞게 조정
         try:
-            # 예시 쿼리 구조
-            query = """
-                SELECT user_id, age_group, preferred_style, 
-                       preferred_attitude, accessibility_needs
-                FROM user_profiles
-                WHERE user_id = %s
-            """
-            # 실제 실행은 db_client 인터페이스에 따라 다름
+            # 예시 쿼리 구조 (DB 연결 시 아래 주석 해제)
+            # query = """
+            #     SELECT user_id, age_group, preferred_style,
+            #            preferred_attitude, accessibility_needs
+            #     FROM user_profiles
+            #     WHERE user_id = %s
+            # """
             # result = self.db_client.execute(query, (user_id,))
             # return result.fetchone()
 
@@ -344,7 +358,7 @@ class ScriptPersonalizerAgent(BaseAgent):
         if attitude not in ATTITUDE_SETTINGS:
             return text
 
-        settings = ATTITUDE_SETTINGS[attitude]
+        _settings = ATTITUDE_SETTINGS[attitude]  # noqa: F841 — 향후 규칙 확장 시 사용
 
         # 간단한 규칙: 특정 키워드 앞에 공감 표현 추가
         if attitude == "empathetic":
@@ -445,7 +459,7 @@ class ScriptPersonalizerAgent(BaseAgent):
                 emotional_journey=emotional_journey,
             )
 
-            # 3. 통합된 텍스트를 하나의 'full_episode' 세그먼트에 담아 반환 
+            # 3. 통합된 텍스트를 하나의 'full_episode' 세그먼트에 담아 반환
             # (Validation/Schemas 와의 호환성을 위해 단일 요소의 list로 처리)
             single_segment = ScriptSegment(
                 segment_id="full_episode",
@@ -503,9 +517,9 @@ Emotional Journey:
             preferred_attitude=user_profile.preferred_attitude,
             interaction_summary=interaction_summary,
             emotional_context=emotional_context,
-            formality=strategy.get('formality', 'medium'),
-            attitude=strategy.get('attitude', 'balanced'),
-            explanation_depth=strategy.get('explanation_depth', 'moderate')
+            formality=strategy.get("formality", "medium"),
+            attitude=strategy.get("attitude", "balanced"),
+            explanation_depth=strategy.get("explanation_depth", "moderate"),
         )
 
         try:
@@ -535,7 +549,9 @@ Emotional Journey:
             if "emotion" in interaction:
                 emotions.add(interaction["emotion"])
 
-        return f"Topics: {', '.join(topics) if topics else 'various'}; Emotions: {', '.join(emotions) if emotions else 'mixed'}"
+        topics_str = ", ".join(topics) if topics else "various"
+        emotions_str = ", ".join(emotions) if emotions else "mixed"
+        return f"Topics: {topics_str}; " f"Emotions: {emotions_str}"
 
     # =========================================================================
     # STEP 4: 최종 스크립트 구성
@@ -639,14 +655,14 @@ Emotional Journey:
 
 
 async def create_script_personalizer_node(
-    db_client: Any | None = None, enable_deep_personalization: bool = False
+    db_client: Any | None = None, enable_deep_personalization: bool | None = None
 ):
     """
     LangGraph에서 사용할 노드 함수 생성
 
-    TODO: enable_deep_personalization을 하드코딩(False) 대신
-          settings.agents.script_personalizer.deep_personalization 값으로 읽도록 변경
-          (config/settings.yaml에 deep_personalization: false 추가됨)
+    NOTE(dead-code): 이 팩토리 함수는 현재 운영에서 미사용.
+    workflow.py는 script_personalizer_node()에서 ScriptPersonalizerAgent()를 직접 생성한다.
+    deep_personalization 설정은 ScriptPersonalizerAgent.__init__()에서 settings.yaml을 직접 읽음.
     """
     agent = ScriptPersonalizerAgent(
         db_client=db_client, enable_deep_personalization=enable_deep_personalization

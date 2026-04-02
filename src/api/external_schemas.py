@@ -25,8 +25,7 @@ from datetime import datetime, timezone
 from enum import StrEnum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
-
+from pydantic import BaseModel, Field
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 1. 공용 기반 스키마 — 추적, 페이징, 에러
@@ -200,95 +199,7 @@ class SessionFeedback(BaseModel):
 
 
 # ───────────────────────────────────────────────
-# 2-2. 대화 요청 (ConversationRequest)
-# ───────────────────────────────────────────────
-
-
-class ConversationRequest(BaseModel):
-    """
-    대화 요청 — 실시간 상담 모드의 사용자 입력.
-
-    Backend 서버가 사용자 메시지를 전달할 때 사용한다.
-    서버는 이 요청을 LangGraph 파이프라인에 전달한다.
-
-    Endpoint: POST /api/v1/conversations
-    파이프라인: TIER 0 → TIER 1(병렬) → TIER 2 → TIER 3 → TIER 4
-
-    AgentState 매핑:
-        user_input  ← message
-        user_id     ← user_id
-        session_id  ← session_id
-        mode        ← "conversation" (고정)
-    """
-
-    user_id: str = Field(description="사용자 고유 ID")
-    session_id: str = Field(description="세션 고유 ID")
-    # TODO(입력 제한): 텍스트 필드의 max_length를 확정 후 적용 예정
-    # 제안: user_input 10000자, topic 500자 등 — 수치는 추후 결정
-    message: str = Field(
-        min_length=1,
-        max_length=4000,
-        description="사용자 메시지 본문 (1~4000자)",
-    )
-    context_hint: ConversationContextHint | None = Field(
-        default=None,
-        description="Backend 서버가 제공하는 맥락 힌트 (선택)",
-    )
-    preferences: ConversationPreferences | None = Field(
-        default=None,
-        description="이번 턴 한정 선호 설정 (선택)",
-    )
-    tracing: RequestTracing = Field(
-        default_factory=RequestTracing,
-        description="추적 컨텍스트",
-    )
-
-    @field_validator("message")
-    @classmethod
-    def message_not_blank(cls, v: str) -> str:
-        """공백만으로 이루어진 메시지를 거부한다."""
-        if not v.strip():
-            raise ValueError("메시지가 비어있습니다 (공백만 포함)")
-        return v
-
-
-class ConversationContextHint(BaseModel):
-    """
-    Backend 서버에서 제공하는 대화 맥락 힌트.
-
-    대화 흐름의 연속성을 위해 Backend 서버가 전달하는 부가 정보.
-    AI 파이프라인의 Context Agent가 참고한다.
-    """
-
-    previous_turn_id: str | None = Field(
-        default=None,
-        description="직전 대화 턴 ID (대화 연속성 추적용)",
-    )
-    ui_context: str | None = Field(
-        default=None,
-        description="UI 맥락 (예: '시각화 카드에서 진입', '감정 일기 작성 중')",
-    )
-    selected_emotion: str | None = Field(
-        default=None,
-        description="사용자가 UI에서 선택한 감정 (감정 선택 모달에서 진입 시)",
-    )
-
-
-class ConversationPreferences(BaseModel):
-    """이번 대화 턴에 적용할 선호 설정."""
-
-    response_length: Literal["short", "medium", "long"] | None = Field(
-        default=None,
-        description="응답 길이 선호. short=1-2문장, medium=기본, long=상세",
-    )
-    visualization_requested: bool = Field(
-        default=False,
-        description="이번 턴에 시각화를 명시적으로 요청했는지 여부",
-    )
-
-
-# ───────────────────────────────────────────────
-# 2-3. 팟캐스트 생성 요청 (PodcastRequest)
+# 2-2. 팟캐스트 생성 요청 (PodcastRequest)
 # ───────────────────────────────────────────────
 
 
@@ -356,9 +267,7 @@ class PodcastPreferences(BaseModel):
         le=5,
         description="목표 에피소드 길이 (분). 시스템 제한: 3~5분",
     )
-    tone: Literal[
-        "warm", "professional", "casual", "motivational"
-    ] | None = Field(
+    tone: Literal["warm", "professional", "casual", "motivational"] | None = Field(
         default=None,
         description="에피소드 톤 선호",
     )
@@ -385,26 +294,20 @@ class UserProfileUpdateRequest(BaseModel):
     """
 
     user_id: str = Field(description="사용자 고유 ID")
-    display_name: str | None = Field(
-        default=None, max_length=50, description="표시 이름"
-    )
-    age_group: Literal[
-        "10s", "20s", "30s", "40s", "50s", "60s_plus"
-    ] | None = Field(
+    display_name: str | None = Field(default=None, max_length=50, description="표시 이름")
+    age_group: Literal["10s", "20s", "30s", "40s", "50s", "60s_plus"] | None = Field(
         default=None,
         description="연령대",
     )
-    preferred_style: Literal[
-        "warm", "professional", "casual", "neutral"
-    ] | None = Field(
+    preferred_style: Literal["warm", "professional", "casual", "neutral"] | None = Field(
         default=None,
         description="선호 대화 스타일",
     )
-    preferred_attitude: Literal[
-        "supportive", "analytical", "balanced", "motivational"
-    ] | None = Field(
-        default=None,
-        description="선호 상담 태도",
+    preferred_attitude: Literal["supportive", "analytical", "balanced", "motivational"] | None = (
+        Field(
+            default=None,
+            description="선호 상담 태도",
+        )
     )
     accessibility_needs: list[str] | None = Field(
         default=None,
@@ -441,9 +344,7 @@ class UserProfileData(BaseModel):
     age_group: str = Field(default="30s", description="연령대")
     preferred_style: str = Field(default="neutral", description="선호 대화 스타일")
     preferred_attitude: str = Field(default="balanced", description="선호 상담 태도")
-    accessibility_needs: list[str] = Field(
-        default_factory=list, description="접근성 요구사항"
-    )
+    accessibility_needs: list[str] = Field(default_factory=list, description="접근성 요구사항")
     notification_enabled: bool = Field(default=True, description="알림 수신 동의")
     created_at: datetime = Field(description="계정 생성 시각")
     updated_at: datetime = Field(description="마지막 수정 시각")
@@ -454,48 +355,6 @@ class UserProfileData(BaseModel):
 # ═══════════════════════════════════════════════════════════════════════════
 # 3. 외부 출력 스키마 — AI 파이프라인 → Backend 서버
 # ═══════════════════════════════════════════════════════════════════════════
-
-
-# ───────────────────────────────────────────────
-# 3-1. 대화 응답 (ConversationResponse)
-# ───────────────────────────────────────────────
-
-
-class ConversationResponse(BaseModel):
-    """
-    대화 응답 — 실시간 상담 모드의 AI 응답.
-
-    LangGraph 파이프라인 완료 후 프론트엔드에 반환하는 최종 응답.
-    final_output(Personalization Agent 출력)을 핵심으로,
-    감정 분석과 시각화 데이터를 부가 정보로 포함한다.
-
-    Endpoint 응답: POST /api/v1/conversations
-
-    AgentState 매핑:
-        response_text   ← final_output
-        emotion         ← emotion_vectors (요약)
-        safety_alert    ← safety_flags (status != "safe" 시)
-        visualization   ← visual_data (비동기 완료 후)
-    """
-
-    success: Literal[True] = True
-    turn_id: str = Field(description="대화 턴 고유 ID (이력 추적용)")
-    session_id: str = Field(description="세션 ID")
-    response_text: str = Field(description="AI 응답 텍스트 (Personalization 최종 출력)")
-    emotion: EmotionSummary | None = Field(
-        default=None,
-        description="감정 분석 요약 (프론트엔드 UI 렌더링용)",
-    )
-    safety_alert: SafetyAlertData | None = Field(
-        default=None,
-        description="안전 경고 (safety_flags.status가 'safe'가 아닌 경우에만 포함)",
-    )
-    visualization: VisualizationData | None = Field(
-        default=None,
-        description="시각화 데이터. 비동기 처리이므로 null일 수 있음",
-    )
-    metadata: ConversationResponseMeta = Field(description="응답 메타데이터")
-    tracing: RequestTracing = Field(description="추적 컨텍스트 (요청과 동일)")
 
 
 class EmotionSummary(BaseModel):
@@ -520,12 +379,8 @@ class EmotionSummary(BaseModel):
     primary_emotion_kr: str = Field(
         description="주요 감정 한국어 (UI 표시용: 슬픔, 불안, 기쁨 등)",
     )
-    intensity: float = Field(
-        ge=0.0, le=1.0, description="감정 강도 (0.0=매우 약함, 1.0=매우 강함)"
-    )
-    valence: float = Field(
-        ge=-1.0, le=1.0, description="감정 가치 (-1.0=부정, 0=중립, 1.0=긍정)"
-    )
+    intensity: float = Field(ge=0.0, le=1.0, description="감정 강도 (0.0=매우 약함, 1.0=매우 강함)")
+    valence: float = Field(ge=-1.0, le=1.0, description="감정 가치 (-1.0=부정, 0=중립, 1.0=긍정)")
     secondary_emotions: list[str] = Field(
         default_factory=list, description="부수 감정 목록 (영문 키)"
     )
@@ -609,16 +464,6 @@ class VisualizationData(BaseModel):
     )
 
 
-class ConversationResponseMeta(BaseModel):
-    """대화 응답 메타데이터."""
-
-    mode: Literal["conversation"] = "conversation"
-    pipeline_duration_ms: int = Field(description="파이프라인 전체 소요 시간 (밀리초)")
-    intent_type: str = Field(description="분류된 의도 타입")
-    complexity_score: float = Field(description="입력 복잡도 점수 (0.0-1.0)")
-    retry_count: int = Field(default=0, description="TIER 2→3 재시도 횟수")
-
-
 # ───────────────────────────────────────────────
 # 3-2. 팟캐스트 에피소드 응답 (PodcastEpisodeResponse)
 # ───────────────────────────────────────────────
@@ -693,13 +538,9 @@ class PodcastEpisodeData(BaseModel):
     episode_title: str = Field(description="에피소드 제목 (한국어)")
     total_duration: int = Field(description="총 에피소드 길이 (분)")
     segments: list[PodcastSegment] = Field(description="세그먼트 목록")
-    key_insights: list[str] = Field(
-        default_factory=list, description="핵심 인사이트 (3-5개)"
-    )
+    key_insights: list[str] = Field(default_factory=list, description="핵심 인사이트 (3-5개)")
     themes: list[str] = Field(default_factory=list, description="에피소드 주제 태그")
-    created_at: datetime = Field(
-        default_factory=_now_utc, description="에피소드 생성 시각"
-    )
+    created_at: datetime = Field(default_factory=_now_utc, description="에피소드 생성 시각")
 
 
 class PodcastSegment(BaseModel):
@@ -726,9 +567,7 @@ class PodcastSegment(BaseModel):
     script_text: str = Field(description="스크립트 텍스트 (TTS 입력)")
     word_count: int = Field(default=0, description="단어 수")
     emotional_tone: str = Field(default="neutral", description="감정 톤")
-    tts_markers: list[TTSMarkerData] = Field(
-        default_factory=list, description="TTS 제어 마커"
-    )
+    tts_markers: list[TTSMarkerData] = Field(default_factory=list, description="TTS 제어 마커")
 
 
 class TTSMarkerData(BaseModel):
@@ -745,9 +584,7 @@ class PodcastResponseMeta(BaseModel):
     pipeline_duration_ms: int = Field(description="파이프라인 전체 소요 시간 (밀리초)")
     intent_type: str = Field(description="분류된 의도 타입")
     complexity_score: float = Field(description="입력 복잡도 점수")
-    reasoning_depth: str = Field(
-        description="추론 깊이 (full / standard / minimal)"
-    )
+    reasoning_depth: str = Field(description="추론 깊이 (full / standard / minimal)")
     retry_count: int = Field(default=0, description="TIER 2→3 재시도 횟수")
     total_words: int = Field(default=0, description="전체 스크립트 단어 수")
 
@@ -787,9 +624,7 @@ class EmotionLogEntry(BaseModel):
     intensity: float = Field(description="감정 강도 (0.0-1.0)")
     valence: float = Field(description="감정 가치 (-1.0~1.0)")
     arousal: float = Field(description="각성도 (0.0-1.0)")
-    secondary_emotions: list[str] = Field(
-        default_factory=list, description="부수 감정"
-    )
+    secondary_emotions: list[str] = Field(default_factory=list, description="부수 감정")
     created_at: datetime = Field(description="기록 시각")
 
 
@@ -831,13 +666,13 @@ class PodcastEpisodeSummary(BaseModel):
 class StreamEventType(StrEnum):
     """스트리밍 이벤트 유형."""
 
-    TIER_START = "tier_start"             # TIER 실행 시작
-    AGENT_COMPLETE = "agent_complete"     # 개별 에이전트 완료
-    TIER_END = "tier_end"                 # TIER 실행 완료
-    CRISIS_DETECTED = "crisis_detected"   # CRISIS 감지
-    PARTIAL_RESPONSE = "partial_response" # 부분 응답 (스트리밍)
-    FINAL_RESPONSE = "final_response"     # 최종 응답
-    ERROR = "error"                       # 에러 발생
+    TIER_START = "tier_start"  # TIER 실행 시작
+    AGENT_COMPLETE = "agent_complete"  # 개별 에이전트 완료
+    TIER_END = "tier_end"  # TIER 실행 완료
+    CRISIS_DETECTED = "crisis_detected"  # CRISIS 감지
+    PARTIAL_RESPONSE = "partial_response"  # 부분 응답 (스트리밍)
+    FINAL_RESPONSE = "final_response"  # 최종 응답
+    ERROR = "error"  # 에러 발생
 
 
 class StreamEvent(BaseModel):
@@ -856,13 +691,9 @@ class StreamEvent(BaseModel):
     session_id: str = Field(description="세션 ID")
     tier: int | None = Field(default=None, description="현재 TIER (0-4)")
     agent: str | None = Field(default=None, description="에이전트 이름 (해당 시)")
-    data: dict[str, Any] = Field(
-        default_factory=dict, description="이벤트 페이로드"
-    )
+    data: dict[str, Any] = Field(default_factory=dict, description="이벤트 페이로드")
     elapsed_ms: int = Field(default=0, description="TIER 시작 이후 경과 시간")
-    timestamp: datetime = Field(
-        default_factory=_now_utc, description="이벤트 발생 시각"
-    )
+    timestamp: datetime = Field(default_factory=_now_utc, description="이벤트 발생 시각")
     trace_id: str = Field(description="추적 ID")
 
 
@@ -908,36 +739,6 @@ class StreamEvent(BaseModel):
 # ───────────────────────────────────────────────
 
 
-class MySQLConversationTurn(BaseModel):
-    """
-    MySQL 저장 — 대화 턴 데이터.
-
-    SaveRequest(type="conversation")의 data 필드 구조.
-    테이블: conversation_turns
-
-    인덱스:
-        - PK: turn_id
-        - FK: session_id → sessions.session_id
-        - FK: user_id → users.user_id
-        - INDEX: (user_id, created_at) — 사용자별 시간순 조회
-    """
-
-    turn_id: str = Field(description="대화 턴 고유 ID (PK)")
-    session_id: str = Field(description="세션 ID (FK)")
-    user_id: str = Field(description="사용자 ID (FK)")
-    user_input: str = Field(description="사용자 원본 입력")
-    ai_response: str = Field(description="AI 최종 응답 (final_output)")
-    intent_type: str = Field(description="분류된 의도 타입")
-    complexity_score: float = Field(description="복잡도 점수")
-    risk_level: int = Field(description="위험 레벨 (0-4)")
-    pipeline_duration_ms: int = Field(description="파이프라인 소요 시간")
-    retry_count: int = Field(default=0, description="재시도 횟수")
-    # 추적 ID들
-    trace_id: str = Field(description="분산 추적 ID")
-    correlation_id: str = Field(description="상관관계 ID")
-    created_at: datetime = Field(default_factory=_now_utc, description="생성 시각")
-
-
 class MySQLEmotionLog(BaseModel):
     """
     MySQL 저장 — 감정 로그 데이터.
@@ -970,9 +771,7 @@ class MySQLEmotionLog(BaseModel):
     intensity: float = Field(description="감정 강도 (0.0-1.0)")
     valence: float = Field(description="감정 가치 (-1.0~1.0)")
     arousal: float = Field(description="각성도 (0.0-1.0)")
-    secondary_emotions: list[str] = Field(
-        default_factory=list, description="부수 감정 목록"
-    )
+    secondary_emotions: list[str] = Field(default_factory=list, description="부수 감정 목록")
     tone_recommendation: str = Field(description="추천 톤")
     # 추적
     trace_id: str = Field(description="분산 추적 ID")
@@ -1003,16 +802,12 @@ class MySQLPodcastEpisode(BaseModel):
     total_duration: int = Field(description="총 길이 (분)")
     total_words: int = Field(default=0, description="전체 단어 수")
     segment_count: int = Field(description="세그먼트 개수")
-    key_insights: list[str] = Field(
-        default_factory=list, description="핵심 인사이트"
-    )
+    key_insights: list[str] = Field(default_factory=list, description="핵심 인사이트")
     themes: list[str] = Field(default_factory=list, description="주제 태그")
     reasoning_depth: str = Field(
         default="standard", description="추론 깊이 (full/standard/minimal)"
     )
-    cover_image_url: str | None = Field(
-        default=None, description="커버 이미지 S3 URL"
-    )
+    cover_image_url: str | None = Field(default=None, description="커버 이미지 S3 URL")
     # 파이프라인 메타
     intent_type: str = Field(default="unknown", description="의도 분류 타입")
     complexity_score: float = Field(default=0.0, description="입력 복잡도 (0.0-1.0)")
@@ -1046,9 +841,7 @@ class MySQLPodcastSegment(BaseModel):
     script_text: str = Field(description="스크립트 텍스트 (전문)")
     word_count: int = Field(default=0, description="단어 수")
     emotional_tone: str = Field(default="neutral", description="감정 톤")
-    tts_markers_json: str = Field(
-        default="[]", description="TTS 마커 JSON 문자열 (직렬화)"
-    )
+    tts_markers_json: str = Field(default="[]", description="TTS 마커 JSON 문자열 (직렬화)")
 
 
 class MySQLLearningPattern(BaseModel):
@@ -1072,9 +865,7 @@ class MySQLLearningPattern(BaseModel):
     user_id: str = Field(description="사용자 ID (FK)")
     mode: Literal["podcast"] = Field(description="모드")
     # Learning Agent LLM 분석 결과
-    preferred_topics: list[str] = Field(
-        default_factory=list, description="선호 주제 패턴"
-    )
+    preferred_topics: list[str] = Field(default_factory=list, description="선호 주제 패턴")
     emotional_patterns: list[str] = Field(
         default_factory=list, description="감정 패턴 (예: '주로 저녁에 불안 호소')"
     )
@@ -1190,31 +981,7 @@ class PineconeVectorMetadata(BaseModel):
     user_id: str = Field(description="사용자 ID (네임스페이스 또는 필터용)")
     session_id: str = Field(description="세션 ID")
     mode: Literal["podcast"] = Field(description="모드")
-    created_at: str = Field(
-        description="생성 시각 (ISO 8601 문자열 — Pinecone은 datetime 미지원)"
-    )
-
-
-class PineconeConversationVector(PineconeVectorMetadata):
-    """
-    Pinecone — 대화 턴 벡터 메타데이터.
-
-    인덱스: mind-log-conversations
-    네임스페이스: user_id
-
-    Memory Agent가 유사 대화를 검색할 때 사용.
-    임베딩 대상: user_input + ai_response 결합 텍스트.
-    """
-
-    entity_type: Literal["conversation_turn"] = "conversation_turn"
-    turn_id: str = Field(description="대화 턴 ID (MySQL FK)")
-    intent_type: str = Field(description="의도 타입 (필터용)")
-    primary_emotion: str = Field(description="주요 감정 (필터용)")
-    # Pinecone 메타데이터 크기 제한(40KB)을 위한 요약 텍스트
-    text_preview: str = Field(
-        max_length=500,
-        description="입력+응답 요약 (500자 이내, 검색 미리보기용)",
-    )
+    created_at: str = Field(description="생성 시각 (ISO 8601 문자열 — Pinecone은 datetime 미지원)")
 
 
 class PineconePodcastVector(PineconeVectorMetadata):
@@ -1251,9 +1018,7 @@ class PineconeKnowledgeVector(PineconeVectorMetadata):
     chunk_index: int = Field(description="문서 내 청크 인덱스")
     domain: str = Field(description="지식 도메인 (mental_health, psychology 등)")
     source: str = Field(description="출처 (논문, 가이드라인 등)")
-    text_preview: str = Field(
-        max_length=500, description="청크 미리보기 (500자 이내)"
-    )
+    text_preview: str = Field(max_length=500, description="청크 미리보기 (500자 이내)")
 
 
 # ───────────────────────────────────────────────
@@ -1334,9 +1099,7 @@ class Neo4jTopicNode(Neo4jNodeBase):
     """
 
     topic_name: str = Field(description="주제 이름 (유니크 제약)")
-    domain: str = Field(
-        default="general", description="주제 도메인 (직장, 가족, 건강 등)"
-    )
+    domain: str = Field(default="general", description="주제 도메인 (직장, 가족, 건강 등)")
 
 
 class Neo4jGoTNode(Neo4jNodeBase):
@@ -1380,8 +1143,7 @@ class Neo4jRelationship(BaseModel):
     properties: dict[str, Any] = Field(
         default_factory=dict,
         description=(
-            "관계 속성. "
-            "예: {intensity: 0.8, weight: 1.0, count: 5, relation_type: 'causal'}"
+            "관계 속성. " "예: {intensity: 0.8, weight: 1.0, count: 5, relation_type: 'causal'}"
         ),
     )
     trace_id: str = Field(description="추적 ID (관계 생성 출처)")
@@ -1431,7 +1193,7 @@ class S3AssetReference(BaseModel):
 #
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ 1. 프론트엔드 요청                                                     │
-# │    ConversationRequest / PodcastRequest                                │
+# │    PodcastRequest                                                      │
 # │    └── tracing: { request_id, trace_id, correlation_id }              │
 # │                                                                        │
 # │ 2. LangGraph 파이프라인                                                │
@@ -1450,7 +1212,7 @@ class S3AssetReference(BaseModel):
 # │    └── Neo4j: 관계 속성에 trace_id 포함                                │
 # │                                                                        │
 # │ 4. 응답                                                                │
-# │    ConversationResponse / PodcastEpisodeResponse                       │
+# │    PodcastEpisodeResponse                                              │
 # │    └── tracing: { request_id, trace_id, correlation_id }              │
 # │                                                                        │
 # │ ★ 추적 쿼리 예시:                                                     │
@@ -1475,12 +1237,8 @@ class TraceQuery(BaseModel):
     """
 
     trace_id: str = Field(description="조회할 추적 ID")
-    include_agent_logs: bool = Field(
-        default=False, description="에이전트별 I/O 스냅샷 포함 여부"
-    )
-    include_db_records: bool = Field(
-        default=True, description="DB 저장 레코드 포함 여부"
-    )
+    include_agent_logs: bool = Field(default=False, description="에이전트별 I/O 스냅샷 포함 여부")
+    include_db_records: bool = Field(default=True, description="DB 저장 레코드 포함 여부")
 
 
 class TraceResult(BaseModel):
@@ -1496,14 +1254,10 @@ class TraceResult(BaseModel):
     # 요청 단계
     request_summary: dict[str, Any] = Field(description="원본 요청 요약")
     # 파이프라인 단계
-    pipeline_stages: list[PipelineStageTrace] = Field(
-        description="TIER별 파이프라인 실행 추적"
-    )
+    pipeline_stages: list[PipelineStageTrace] = Field(description="TIER별 파이프라인 실행 추적")
     total_pipeline_duration_ms: int = Field(description="파이프라인 전체 소요 시간")
     # 저장 단계
-    stored_records: list[StoredRecordTrace] = Field(
-        description="DB 저장 레코드 목록"
-    )
+    stored_records: list[StoredRecordTrace] = Field(description="DB 저장 레코드 목록")
 
 
 class PipelineStageTrace(BaseModel):
@@ -1512,9 +1266,7 @@ class PipelineStageTrace(BaseModel):
     tier: int = Field(description="TIER 번호 (0-4)")
     agents: list[str] = Field(description="실행된 에이전트 목록")
     duration_ms: int = Field(description="TIER 소요 시간")
-    status: Literal["ok", "crisis", "retry", "error"] = Field(
-        description="TIER 실행 결과"
-    )
+    status: Literal["ok", "crisis", "retry", "error"] = Field(description="TIER 실행 결과")
     agent_metrics: list[dict[str, Any]] | None = Field(
         default=None,
         description="에이전트별 메트릭 (include_agent_logs=True 시)",
@@ -1524,9 +1276,7 @@ class PipelineStageTrace(BaseModel):
 class StoredRecordTrace(BaseModel):
     """DB 저장 레코드 추적."""
 
-    database: Literal["mysql", "pinecone", "neo4j", "s3"] = Field(
-        description="저장된 DB"
-    )
+    database: Literal["mysql", "pinecone", "neo4j", "s3"] = Field(description="저장된 DB")
     entity_type: str = Field(description="엔티티 유형 (conversation_turn 등)")
     record_id: str = Field(description="레코드 ID")
     stored_at: datetime = Field(description="저장 시각")

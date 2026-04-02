@@ -41,7 +41,7 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
 
     async def process(self, state: AgentState) -> dict[str, Any]:
         """
-        BaseMemoryAgent의 흐름을 따르되, 
+        BaseMemoryAgent의 흐름을 따르되,
         우리가 정의한 인출(_retrieve_from_store) 로직을 사용하여 결과를 반환합니다.
         """
         query = state.get("memory_query")
@@ -49,18 +49,14 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
             query = str(state.get("user_input", ""))
 
         # 1. 기억 인출 (Mock DB에서 가져오기)
-        items = await self._retrieve_from_store(query)
+        items = await self._retrieve_from_store(str(query))
 
         # 2. 결과 구조화 (스크립트 에이전트가 읽을 수 있는 규격)
         payload = {
             "items": items,
             "summary": f"'{query}'와 관련된 과거 기록을 {len(items)}건 찾았습니다.",
             "suggested_personalization": {"topic": "Restoration of Color"},
-            "_meta": {
-                "namespace": "mem_podcast_episode",
-                "engine": "mock_db",
-                "status": "success"
-            }
+            "_meta": {"namespace": "mem_podcast_episode", "engine": "mock_db", "status": "success"},
         }
 
         return {"memory_results": payload}
@@ -71,7 +67,10 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
         if self.endpoint and self.api_token:
             async with httpx.AsyncClient() as client:
                 try:
-                    headers = {"Authorization": f"Bearer {self.api_token}", "Content-Type": "application/json"}
+                    headers = {
+                        "Authorization": f"Bearer {self.api_token}",
+                        "Content-Type": "application/json",
+                    }
                     payload = {"model": "upstage/embedding-query", "input": query}
                     await client.post(self.endpoint, headers=headers, json=payload, timeout=5.0)
                 except Exception as e:
@@ -82,9 +81,10 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
             return []
 
         with open(_MOCK_DB_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
+            result: list[dict] = json.load(f)
+            return result
 
-    async def _save_to_store(self, text: str, metadata: dict = None) -> bool:
+    async def _save_to_store(self, text: str, metadata: dict | None = None) -> bool:
         """[저장] 텍스트를 임베딩하여 mock_db.json에 추가한다."""
         self.logger.debug("새로운 기억 저장 시작: %s...", text[:20])
 
@@ -93,9 +93,14 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
         if self.endpoint and self.api_token:
             async with httpx.AsyncClient() as client:
                 try:
-                    headers = {"Authorization": f"Bearer {self.api_token}", "Content-Type": "application/json"}
+                    headers = {
+                        "Authorization": f"Bearer {self.api_token}",
+                        "Content-Type": "application/json",
+                    }
                     payload = {"model": "upstage/embedding-query", "input": text}
-                    response = await client.post(self.endpoint, headers=headers, json=payload, timeout=10.0)
+                    response = await client.post(
+                        self.endpoint, headers=headers, json=payload, timeout=10.0
+                    )
 
                     if response.status_code == 200:
                         vector = response.json()["data"][0]["embedding"]
@@ -115,7 +120,8 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
             "text": text,
             "vector": vector,
             "score": 1.0,
-            "metadata": metadata or {
+            "metadata": metadata
+            or {
                 "date": datetime.datetime.now().strftime("%Y-%m-%d"),
                 "type": "user_log",
             },
@@ -134,8 +140,11 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
             self.logger.error("파일 쓰기 실패: %s", e)
             return False
 
-# 싱글톤 및 노드 래퍼
-episode_memory_agent = EpisodeMemoryAgent()
 
-async def episode_memory_node(state: AgentState):
-    return await episode_memory_agent(state)
+async def episode_memory_node(state: AgentState) -> dict[str, Any]:
+    """LangGraph 노드 — Episode Memory.
+
+    요청마다 새 인스턴스를 생성하여 동시 요청 간 상태를 격리한다.
+    """
+    agent = EpisodeMemoryAgent()
+    return await agent(state)

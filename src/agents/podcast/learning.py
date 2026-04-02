@@ -126,8 +126,13 @@ class LearningAgent(BaseAgent):
             output_sec = ""
 
         result = build_context(
-            user_input_sec, emotion_sec, content_sec,
-            intent_sec, safety_sec, reasoning_sec, validation_sec,
+            user_input_sec,
+            emotion_sec,
+            content_sec,
+            intent_sec,
+            safety_sec,
+            reasoning_sec,
+            validation_sec,
             output_sec,
         )
         return result if result else "세션 데이터가 부족합니다."

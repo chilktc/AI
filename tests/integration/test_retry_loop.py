@@ -27,16 +27,20 @@ from src.models.agent_state import AgentState
         ("PASS", 0, "tier4_podcast"),
         ("FAIL", 0, "tier2_podcast"),
         ("FAIL", 2, "tier4_podcast"),  # 최대 재시도 초과 → 강제 통과
-        ("CRITICAL_FAIL", 0, "tier2_podcast"),      # 재시도
-        ("CRITICAL_FAIL", 3, "tier2_podcast"),      # 재시도 (4회 미만)
-        ("CRITICAL_FAIL", 4, "tier4_podcast"),      # 4회 소진 → 강제 통과
+        ("CRITICAL_FAIL", 0, "tier2_podcast"),  # 재시도
+        ("CRITICAL_FAIL", 3, "tier2_podcast"),  # 재시도 (4회 미만)
+        ("CRITICAL_FAIL", 4, "tier4_podcast"),  # 4회 소진 → 강제 통과
     ],
-    ids=["pass", "fail_retry", "fail_force_pass",
-         "critical_retry_first", "critical_retry_last", "critical_force_pass"],
+    ids=[
+        "pass",
+        "fail_retry",
+        "fail_force_pass",
+        "critical_retry_first",
+        "critical_retry_last",
+        "critical_force_pass",
+    ],
 )
-def test_podcast_routing(
-    verdict: str, iteration_count: int, expected_route: str
-) -> None:
+def test_podcast_routing(verdict: str, iteration_count: int, expected_route: str) -> None:
     """팟캐스트모드 TIER 3 verdict에 따른 라우팅을 검증한다."""
     state = AgentState(
         validation_result={"verdict": verdict},

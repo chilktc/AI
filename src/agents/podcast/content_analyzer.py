@@ -197,7 +197,7 @@ class ContentAnalyzerAgent(BaseAgent):
         # 1. 주제 길이 검증 — 100자 초과 시 잘라냄
         main_theme = corrected.get("main_theme", corrected.get("topic", ""))
         if len(main_theme) > self.max_theme_length:
-            main_theme = main_theme[:self.max_theme_length] + "..."
+            main_theme = main_theme[: self.max_theme_length] + "..."
         corrected["main_theme"] = main_theme
 
         # 2. 하위 주제 개수 보정 — 3~5개 범위
@@ -205,7 +205,7 @@ class ContentAnalyzerAgent(BaseAgent):
         if not isinstance(sub_themes, list):
             sub_themes = []
         if len(sub_themes) > self.max_sub_themes:
-            sub_themes = sub_themes[:self.max_sub_themes]
+            sub_themes = sub_themes[: self.max_sub_themes]
         corrected["sub_themes"] = sub_themes
 
         # 3. 에피소드 길이 보정 — 3~5분 범위 고정

@@ -23,17 +23,18 @@ import socket
 import httpx
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # 1차: 네트워크 연결 확인
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.live
 class TestBackendConnectivity:
     """Backend 서버 네트워크 연결 테스트."""
 
     def test_backend_server_reachable(
-        self, backend_host_port: tuple[str, int],
+        self,
+        backend_host_port: tuple[str, int],
     ) -> None:
         """Backend 서버에 TCP 연결이 가능해야 한다.
 
@@ -53,7 +54,8 @@ class TestBackendConnectivity:
             )
 
     def test_backend_responds_to_http(
-        self, skip_if_no_backend: None,
+        self,
+        skip_if_no_backend: None,
         backend_url: str,
         http_client: httpx.Client,
     ) -> None:
@@ -87,12 +89,14 @@ class TestBackendConnectivity:
 # 2차: 헬스체크 엔드포인트 확인
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.live
 class TestBackendHealthEndpoint:
     """Backend 서버 헬스체크 엔드포인트 검증."""
 
     def test_health_returns_200(
-        self, skip_if_no_backend: None,
+        self,
+        skip_if_no_backend: None,
         backend_url: str,
         http_client: httpx.Client,
     ) -> None:
@@ -116,13 +120,14 @@ class TestBackendHealthEndpoint:
                 results.append(f"  {path} → 연결 실패 ({e})")
 
         assert success, (
-            f"Backend 헬스체크 엔드포인트를 찾을 수 없습니다:\n"
+            "Backend 헬스체크 엔드포인트를 찾을 수 없습니다:\n"
             + "\n".join(results)
             + "\n  백엔드팀에 헬스체크 경로를 확인하세요."
         )
 
     def test_health_response_is_json(
-        self, skip_if_no_backend: None,
+        self,
+        skip_if_no_backend: None,
         backend_url: str,
         http_client: httpx.Client,
     ) -> None:
@@ -135,9 +140,7 @@ class TestBackendHealthEndpoint:
                 if response.status_code == 200:
                     # JSON 파싱 시도
                     data = response.json()
-                    assert isinstance(data, dict), (
-                        f"헬스체크 응답이 dict가 아닙니다: {type(data)}"
-                    )
+                    assert isinstance(data, dict), f"헬스체크 응답이 dict가 아닙니다: {type(data)}"
                     return
             except httpx.ConnectError:
                 continue
@@ -149,12 +152,14 @@ class TestBackendHealthEndpoint:
 # 3차: API 기본 경로 확인
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.live
 class TestBackendApiBase:
     """Backend API v1 기본 경로 접근 확인."""
 
     def test_api_v1_path_exists(
-        self, skip_if_no_backend: None,
+        self,
+        skip_if_no_backend: None,
         backend_api_url: str,
         http_client: httpx.Client,
     ) -> None:
@@ -179,13 +184,15 @@ class TestBackendApiBase:
 # 4차: BackendClient 초기화 검증
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.live
 class TestBackendClientLive:
     """BackendClient를 실제 Backend URL로 초기화하여 검증."""
 
     @pytest.mark.asyncio
     async def test_client_initialization(
-        self, skip_if_no_backend: None,
+        self,
+        skip_if_no_backend: None,
         backend_api_url: str,
     ) -> None:
         """BackendClient(base_url) 생성 및 close가 정상 동작해야 한다."""
@@ -201,7 +208,8 @@ class TestBackendClientLive:
 
     @pytest.mark.asyncio
     async def test_client_timeout_setting(
-        self, skip_if_no_backend: None,
+        self,
+        skip_if_no_backend: None,
         backend_api_url: str,
     ) -> None:
         """BackendClient 타임아웃이 설정값과 일치해야 한다."""

@@ -8,7 +8,6 @@ v9에서 도입된 Anthropic + AWS Bedrock 듀얼 아키텍처를 검증한다.
 
 from __future__ import annotations
 
-import io
 import json
 from pathlib import Path
 from typing import Any
@@ -112,12 +111,8 @@ def _mock_settings_factory(
     if model_id is not None:
         agent_config["model_id"] = model_id
     settings.get_agent_config.return_value = agent_config
-    settings.get_model_id.return_value = (
-        model_id or "claude-sonnet-4-5-20250929"
-    )
-    settings.get_bedrock_model_id.return_value = (
-        "anthropic.claude-sonnet-4-5-20250929-v2:0"
-    )
+    settings.get_model_id.return_value = model_id or "claude-sonnet-4-5-20250929"
+    settings.get_bedrock_model_id.return_value = "anthropic.claude-sonnet-4-5-20250929-v2:0"
     settings.get_openai_model_id.return_value = "gpt-4o-mini"
     settings.bedrock_region = "ap-northeast-2"
     settings.bedrock_config = {"region": "ap-northeast-2"}
@@ -165,8 +160,12 @@ def test_settings_llm_provider_env_override(test_settings: Settings) -> None:
         ("get_openai_model_id", "opus", "gpt-4o"),
     ],
     ids=[
-        "bedrock_haiku", "bedrock_sonnet", "bedrock_opus",
-        "openai_haiku", "openai_sonnet", "openai_opus",
+        "bedrock_haiku",
+        "bedrock_sonnet",
+        "bedrock_opus",
+        "openai_haiku",
+        "openai_sonnet",
+        "openai_opus",
     ],
 )
 def test_settings_model_id_by_provider(
@@ -189,9 +188,7 @@ def test_settings_bedrock_model_id_env_override(test_settings: Settings) -> None
 
 @patch("src.agents.shared.llm_client.anthropic.AsyncAnthropic")
 @patch("src.agents.shared.llm_client.get_settings")
-def test_anthropic_client_init(
-    mock_settings: MagicMock, mock_anthropic: MagicMock
-) -> None:
+def test_anthropic_client_init(mock_settings: MagicMock, mock_anthropic: MagicMock) -> None:
     """기본 Anthropic 모드로 LLMClient가 초기화된다."""
     mock_settings.return_value = _mock_settings_factory()
 
@@ -204,9 +201,7 @@ def test_anthropic_client_init(
 
 @patch("src.agents.shared.llm_client.anthropic.AsyncAnthropic")
 @patch("src.agents.shared.llm_client.get_settings")
-async def test_anthropic_generate(
-    mock_settings: MagicMock, mock_anthropic_cls: MagicMock
-) -> None:
+async def test_anthropic_generate(mock_settings: MagicMock, mock_anthropic_cls: MagicMock) -> None:
     """Anthropic generate()가 API를 호출하고 텍스트를 반환한다."""
     mock_settings.return_value = _mock_settings_factory()
     mock_client = MagicMock()
@@ -240,9 +235,7 @@ async def test_anthropic_generate_json(
     from src.agents.shared.llm_client import LLMClient
 
     client = LLMClient(agent_name="content_analyzer")
-    result = await client.generate_json(
-        system_prompt="JSON으로 응답하라.", user_message="테스트"
-    )
+    result = await client.generate_json(system_prompt="JSON으로 응답하라.", user_message="테스트")
 
     assert result == {"key": "value", "score": 0.95}
 
@@ -262,9 +255,7 @@ def test_bedrock_client_init(mock_settings: MagicMock) -> None:
     with patch.dict("sys.modules", {"boto3": mock_boto3}):
         from src.agents.shared.llm_client import LLMClient
 
-        client = LLMClient(
-            agent_name="content_analyzer", provider_override="bedrock"
-        )
+        client = LLMClient(agent_name="content_analyzer", provider_override="bedrock")
         assert client.provider == "bedrock"
         assert client.model_id == "anthropic.claude-sonnet-4-5-20250929-v2:0"
 
@@ -276,11 +267,7 @@ async def test_bedrock_generate(mock_settings: MagicMock) -> None:
 
     mock_bedrock_client = MagicMock()
     mock_bedrock_client.converse.return_value = {
-        "output": {
-            "message": {
-                "content": [{"text": "Bedrock 응답입니다."}]
-            }
-        },
+        "output": {"message": {"content": [{"text": "Bedrock 응답입니다."}]}},
         "usage": {"inputTokens": 10, "outputTokens": 5},
     }
     mock_boto3 = MagicMock()
@@ -289,9 +276,7 @@ async def test_bedrock_generate(mock_settings: MagicMock) -> None:
     with patch.dict("sys.modules", {"boto3": mock_boto3}):
         from src.agents.shared.llm_client import LLMClient
 
-        client = LLMClient(
-            agent_name="content_analyzer", provider_override="bedrock"
-        )
+        client = LLMClient(agent_name="content_analyzer", provider_override="bedrock")
         result = await client.generate(system_prompt="시스템", user_message="메시지")
 
         assert result == "Bedrock 응답입니다."
@@ -323,9 +308,7 @@ def test_provider_override_trumps_env_and_settings(
     ):
         from src.agents.shared.llm_client import LLMClient
 
-        client = LLMClient(
-            agent_name="content_analyzer", provider_override="bedrock"
-        )
+        client = LLMClient(agent_name="content_analyzer", provider_override="bedrock")
         assert client.provider == "bedrock"
 
 
@@ -384,9 +367,7 @@ def test_bedrock_without_boto3_raises(mock_settings: MagicMock) -> None:
         from src.agents.shared.llm_client import LLMClient
 
         with pytest.raises(ImportError, match="boto3"):
-            LLMClient(
-                agent_name="content_analyzer", provider_override="bedrock"
-            )
+            LLMClient(agent_name="content_analyzer", provider_override="bedrock")
 
 
 # ===================================================================
@@ -411,9 +392,7 @@ async def test_custom_provider_lifecycle(mock_settings: MagicMock) -> None:
         assert "test_local" in LLMClient._custom_providers
 
         # 초기화
-        client = LLMClient(
-            agent_name="content_analyzer", provider_override="test_local"
-        )
+        client = LLMClient(agent_name="content_analyzer", provider_override="test_local")
         assert client.provider == "test_local"
         mock_provider_cls.assert_called_once_with(model_id="sonnet")
 
@@ -446,9 +425,7 @@ async def test_custom_provider_error_propagates(mock_settings: MagicMock) -> Non
 
     try:
         LLMClient.register_provider("test_err", mock_provider_cls)
-        client = LLMClient(
-            agent_name="content_analyzer", provider_override="test_err"
-        )
+        client = LLMClient(agent_name="content_analyzer", provider_override="test_err")
 
         with pytest.raises(ConnectionError, match="Ollama 서버 연결 실패"):
             await client.generate(system_prompt="시스템", user_message="메시지")
@@ -472,9 +449,7 @@ def test_openai_client_init(mock_settings: MagicMock) -> None:
     with patch.dict("sys.modules", {"openai": mock_openai}):
         from src.agents.shared.llm_client import LLMClient
 
-        client = LLMClient(
-            agent_name="content_analyzer", provider_override="openai"
-        )
+        client = LLMClient(agent_name="content_analyzer", provider_override="openai")
         assert client.provider == "openai"
         assert client.model_id == "gpt-4o-mini"
 
@@ -496,18 +471,14 @@ async def test_openai_generate(mock_settings: MagicMock) -> None:
     mock_response.usage = mock_usage
 
     mock_client_instance = MagicMock()
-    mock_client_instance.chat.completions.create = AsyncMock(
-        return_value=mock_response
-    )
+    mock_client_instance.chat.completions.create = AsyncMock(return_value=mock_response)
     mock_openai = MagicMock()
     mock_openai.AsyncOpenAI.return_value = mock_client_instance
 
     with patch.dict("sys.modules", {"openai": mock_openai}):
         from src.agents.shared.llm_client import LLMClient
 
-        client = LLMClient(
-            agent_name="content_analyzer", provider_override="openai"
-        )
+        client = LLMClient(agent_name="content_analyzer", provider_override="openai")
         result = await client.generate(
             system_prompt="시스템 프롬프트", user_message="사용자 메시지"
         )
@@ -516,9 +487,7 @@ async def test_openai_generate(mock_settings: MagicMock) -> None:
         mock_client_instance.chat.completions.create.assert_called_once()
 
         # API 호출 파라미터 검증
-        call_kwargs = (
-            mock_client_instance.chat.completions.create.call_args.kwargs
-        )
+        call_kwargs = mock_client_instance.chat.completions.create.call_args.kwargs
         assert call_kwargs["model"] == "gpt-4o-mini"
         assert call_kwargs["messages"][0] == {
             "role": "system",

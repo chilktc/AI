@@ -17,7 +17,7 @@ from typing import Any
 
 from config.loader import get_settings
 from src.agents.shared.base_agent import BaseAgent
-from src.agents.shared.context_utils import build_context, build_section
+from src.agents.shared.context_utils import build_section
 from src.models.agent_state import AgentState
 
 # 시스템 프롬프트는 prompts/podcast/batch_validator.yaml에서 로드한다.
@@ -64,13 +64,17 @@ class BatchValidatorAgent(BaseAgent):
 
         # 빈 스크립트 조기 반환 — LLM 호출 절약
         if not script_draft:
-            self.logger.warning("스크립트가 비어있어 검증 실패 (iteration_count=%d)", iteration_count)
+            self.logger.warning(
+                "스크립트가 비어있어 검증 실패 (iteration_count=%d)", iteration_count
+            )
             return {
                 "validation_result": {
                     "verdict": "FAIL",
                     "reason": "Empty script_draft",
                     "overall_score": 0.0,
                 },
+                # NOTE(dead-code): next_step은 현재 route_after_tier3_podcast()에서 참조하지 않음.
+                # 라우터가 validation_result.verdict 필드를 직접 읽어 판단.
                 "next_step": "retry_script",
             }
 
@@ -101,6 +105,7 @@ class BatchValidatorAgent(BaseAgent):
             self.logger.info("스크립트 검증 통과 (score=%.2f)", validation.get("overall_score", 0))
             return {
                 "validation_result": validation,
+                # NOTE(dead-code): route_after_tier3_podcast()가 validation_result.verdict로 판단.
                 "next_step": "script_personalizer",
             }
 
@@ -125,6 +130,7 @@ class BatchValidatorAgent(BaseAgent):
             )
             return {
                 "validation_result": validation,
+                # NOTE(dead-code): route_after_tier3_podcast()가 validation_result.verdict로 판단.
                 "next_step": "retry_script",
             }
 
@@ -136,6 +142,7 @@ class BatchValidatorAgent(BaseAgent):
             )
             return {
                 "validation_result": {**validation, "forced_pass": True},
+                # NOTE(dead-code): route_after_tier3_podcast()가 validation_result.verdict로 판단.
                 "next_step": "script_personalizer",
             }
 
@@ -150,7 +157,9 @@ class BatchValidatorAgent(BaseAgent):
         """검증에 필요한 컨텍스트 정보를 조합한다."""
         parts = [self._build_script_context(script_draft)]
         parts.extend(
-            self._build_analysis_context(content_analysis, reasoning_result, safety_flags, emotion_vectors)
+            self._build_analysis_context(
+                content_analysis, reasoning_result, safety_flags, emotion_vectors
+            )
         )
         return "\n\n".join(parts)
 
@@ -225,11 +234,17 @@ class BatchValidatorAgent(BaseAgent):
             safety_parts = [f"[Safety 상태]\n- 상태: {status}"]
             if status == "safe":
                 safety_parts.append(
-                    "- Safety Agent가 'safe'로 판정하였으므로, 별도의 안전 경고 문구는 필요하지 않습니다.\n"
-                    "- safety_compliance는 유해 콘텐츠 부재와 의료/법률 조언 경계만 확인하세요."
+                    "- Safety Agent가 'safe'로 판정하였으므로, "
+                    "별도의 안전 경고 문구는 필요하지 않습니다.\n"
+                    "- safety_compliance는 유해 콘텐츠 부재와 "
+                    "의료/법률 조언 경계만 확인하세요."
                 )
             elif status == "warning":
-                safety_parts.append("- 주의: Safety Agent가 'warning'을 발행했으므로, 스크립트에 안전 경고 문구가 포함되어야 합니다.")
+                safety_parts.append(
+                    "- 주의: Safety Agent가 'warning'을 "
+                    "발행했으므로, 스크립트에 안전 경고 문구가 "
+                    "포함되어야 합니다."
+                )
                 required = safety_flags.get("required_in_script", [])
                 if required:
                     safety_parts.append(f"- 스크립트에 포함 필요: {required}")

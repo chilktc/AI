@@ -100,7 +100,7 @@ def _setup_openai(model: str = "gpt-4o-mini") -> None:
         "src.agents.podcast.podcast_reasoning",
         "src.agents.podcast.batch_validator",
         "src.agents.podcast.visualization",
-        "src.agents.shared.learning",
+        "src.agents.podcast.learning",
         "src.agents.podcast.episode_memory",
     ]
     for mod_name in agent_modules:

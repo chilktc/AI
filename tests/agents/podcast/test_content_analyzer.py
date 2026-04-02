@@ -141,9 +141,7 @@ async def test_process_intent_context(
         pytest.param(0.0, "light", id="zero"),
     ],
 )
-def test_depth_routing(
-    agent: ContentAnalyzerAgent, score: float, expected_depth: str
-) -> None:
+def test_depth_routing(agent: ContentAnalyzerAgent, score: float, expected_depth: str) -> None:
     """complexity_score 기반 분석 깊이 결정."""
     assert agent._determine_depth(score) == expected_depth
 
@@ -208,9 +206,7 @@ async def test_depth_in_prompt(
         pytest.param("", "", id="empty"),
     ],
 )
-def test_normalize_input(
-    agent: ContentAnalyzerAgent, raw: str, expected: str
-) -> None:
+def test_normalize_input(agent: ContentAnalyzerAgent, raw: str, expected: str) -> None:
     """입력 전처리 — 공백/줄바꿈 정규화."""
     assert agent._normalize_input(raw) == expected
 
@@ -262,9 +258,7 @@ def test_validate_main_theme(
         ),
     ],
 )
-def test_validate_sub_themes(
-    agent: ContentAnalyzerAgent, analysis: dict, check_fn
-) -> None:
+def test_validate_sub_themes(agent: ContentAnalyzerAgent, analysis: dict, check_fn) -> None:
     """sub_themes 후처리 — 잘라내기, 폴백, 타입 보정."""
     result = agent._validate_and_correct(analysis, "moderate")
     assert check_fn(result)
@@ -296,9 +290,7 @@ def test_validate_duration(
 @pytest.mark.parametrize(
     "analysis, expected_structure",
     [
-        pytest.param(
-            {"narrative_structure": "reflection"}, "reflection", id="valid"
-        ),
+        pytest.param({"narrative_structure": "reflection"}, "reflection", id="valid"),
         pytest.param(
             {"narrative_structure": "invalid_structure"}, "reflection", id="invalid_fallback"
         ),
@@ -365,9 +357,7 @@ async def test_legacy_field_names(agent: ContentAnalyzerAgent) -> None:
         session_id="sess_test_001",
         mode="podcast",
     )
-    with patch.object(
-        agent, "call_llm_json", new_callable=AsyncMock, return_value=legacy_response
-    ):
+    with patch.object(agent, "call_llm_json", new_callable=AsyncMock, return_value=legacy_response):
         result = await agent.process(state)
 
     analysis = result["content_analysis"]

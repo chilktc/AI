@@ -60,8 +60,7 @@ docker compose up -d
 
 - `ProjectDocs/INDEX.md` — 마스터 인덱스
 - `ProjectDocs/ARCHITECTURE_v4.0.md` — v4.0 아키텍처 명세
-- `ProjectDocs/agents/conversation/` — 대화모드 에이전트 13개 상세 문서
-- `ProjectDocs/agents/podcast/` — 팟캐스트모드 에이전트 7개 상세 문서
+- `ProjectDocs/agents/podcast/` — 팟캐스트모드 에이전트 상세 문서
 
 ---
 
@@ -75,7 +74,7 @@ docker compose up -d
 변경된 필드만 `dict`로 반환하면 LangGraph가 자동 병합합니다:
 
 ```python
-# src/agents/conversation/emotion.py 예시
+# src/agents/podcast/emotion.py 예시
 
 from typing import Any
 
@@ -117,20 +116,20 @@ git pull origin develop
 git checkout -b feature/analysis-emotion-agent
 
 # 2. 에이전트 구현
-# src/agents/conversation/emotion.py 작성
+# src/agents/podcast/emotion.py 작성
 
 # 3. 테스트 작성
-# tests/agents/conversation/test_emotion.py 작성
+# tests/agents/podcast/test_emotion.py 작성
 
 # 4. 테스트 실행
-pytest tests/agents/conversation/test_emotion.py -v
+pytest tests/agents/podcast/test_emotion.py -v
 
 # 5. 린트 확인
-black src/agents/conversation/emotion.py
-ruff check src/agents/conversation/emotion.py
+black src/agents/podcast/emotion.py
+ruff check src/agents/podcast/emotion.py
 
 # 6. 커밋 및 PR
-git add src/agents/conversation/emotion.py tests/agents/conversation/test_emotion.py
+git add src/agents/podcast/emotion.py tests/agents/podcast/test_emotion.py
 git commit -m "feat(emotion): Emotion Agent 감정 벡터 분석 구현"
 git push origin feature/analysis-emotion-agent
 # GitHub에서 PR 생성
@@ -145,10 +144,10 @@ git push origin feature/analysis-emotion-agent
 담당 에이전트: `Intent Classifier`, `Knowledge`, `Synthesis`, `Personalization` / `Script Generator`, `Script Personalizer`
 
 참고 문서:
-- `ProjectDocs/agents/conversation/01_intent_classifier.md`
-- `ProjectDocs/agents/conversation/06_knowledge.md`
-- `ProjectDocs/agents/conversation/08_synthesis.md`
-- `ProjectDocs/agents/conversation/10_personalization.md`
+- `ProjectDocs/agents/podcast/01_intent_classifier.md`
+- `ProjectDocs/agents/podcast/06_knowledge.md`
+- `ProjectDocs/agents/podcast/08_synthesis.md`
+- `ProjectDocs/agents/podcast/10_personalization.md`
 - `ProjectDocs/agents/podcast/04_script_generator.md`
 
 ### 개발자2 (브랜치: feature/reasoning-*)
@@ -156,10 +155,10 @@ git push origin feature/analysis-emotion-agent
 담당 에이전트: `Safety`, `Memory`, `Visualization`, `Emotion` / `Episode Memory`, `Visualization(Podcast)`
 
 참고 문서:
-- `ProjectDocs/agents/conversation/02_safety.md`
-- `ProjectDocs/agents/conversation/05_memory.md`
-- `ProjectDocs/agents/conversation/11_visualization.md`
-- `ProjectDocs/agents/conversation/03_emotion.md`
+- `ProjectDocs/agents/podcast/02_safety.md`
+- `ProjectDocs/agents/podcast/05_memory.md`
+- `ProjectDocs/agents/podcast/11_visualization.md`
+- `ProjectDocs/agents/podcast/03_emotion.md`
 - `ProjectDocs/agents/podcast/02_episode_memory.md`
 
 ### 개발자3 (브랜치: feature/validation-*)
@@ -167,10 +166,10 @@ git push origin feature/analysis-emotion-agent
 담당 에이전트: `Reasoning`, `Context`, `Validator`, `Learning` / `Podcast Reasoning`, `Content Analyzer`, `Batch Validator`
 
 참고 문서:
-- `ProjectDocs/agents/conversation/07_reasoning.md`
-- `ProjectDocs/agents/conversation/04_context.md`
-- `ProjectDocs/agents/conversation/09_validator.md`
-- `ProjectDocs/agents/conversation/13_learning.md`
+- `ProjectDocs/agents/podcast/07_reasoning.md`
+- `ProjectDocs/agents/podcast/04_context.md`
+- `ProjectDocs/agents/podcast/09_validator.md`
+- `ProjectDocs/agents/podcast/13_learning.md`
 - `ProjectDocs/agents/podcast/03_podcast_reasoning.md`
 - `ProjectDocs/agents/podcast/01_content_analyzer.md`
 - `ProjectDocs/agents/podcast/05_batch_validator.md`
@@ -241,7 +240,7 @@ python3 -m dev.live_tests.run_live --all --provider anthropic
 pytest tests/ -v
 
 # 특정 에이전트 테스트
-pytest tests/agents/conversation/test_emotion.py -v
+pytest tests/agents/podcast/test_emotion.py -v
 
 # 통합 테스트
 pytest tests/integration/ -v
