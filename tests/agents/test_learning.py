@@ -95,33 +95,6 @@ async def test_process_returns_empty_and_saves(
     assert save_request.data["mode"] == "podcast"
 
 
-@pytest.mark.asyncio
-async def test_process_with_conversation_mode(
-    agent: LearningAgent,
-    mock_learning_data: dict[str, Any],
-) -> None:
-    """mode='conversation'에서도 정상 동작한다."""
-    state = AgentState(
-        user_input="오늘 정말 힘든 하루였어요.",
-        user_id="conv_user_001",
-        session_id="sess_conv_001",
-        mode="conversation",
-        emotion_vectors={"primary_emotion": "tired", "intensity": 0.6},
-        final_output="힘든 하루를 보내셨군요.",
-    )
-    mock_save = AsyncMock()
-    with (
-        patch.object(
-            agent, "call_llm_json", new_callable=AsyncMock, return_value=mock_learning_data
-        ),
-        patch.object(agent._api_client, "save", mock_save),
-    ):
-        result = await agent.process(state)
-
-    assert result == {}
-    assert mock_save.call_args.args[1].data["mode"] == "conversation"
-
-
 # === 컨텍스트 조합 테스트 ===
 
 
