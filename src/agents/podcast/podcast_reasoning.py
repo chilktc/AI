@@ -107,7 +107,14 @@ class PodcastReasoningAgent(BaseAgent):
             knowledge_result=knowledge_result,
         )
 
-        # 4단계: 결과 조립
+        # 4단계: GoT 결과 저장 (Neo4j + Backend 전송)
+        got_result = reasoning.get("got_result")
+        if got_result:
+            session_id = state.get("session_id", "")
+            episode_id = f"ep_{session_id}" if session_id else ""
+            await self._save_graph_data(got_result, session_id, episode_id, state)
+
+        # 5단계: 결과 조립
         result: dict[str, Any] = {
             "reasoning_result": reasoning,
         }
@@ -451,6 +458,116 @@ class PodcastReasoningAgent(BaseAgent):
             )
 
         return None
+
+    # === GoT 그래프 데이터 저장 ===
+
+    async def _save_graph_data(
+        self,
+        got_result: dict[str, Any],
+        session_id: str,
+        episode_id: str,
+        state: AgentState,
+    ) -> None:
+        """GoT 결과를 Neo4j에 저장하고 Backend에 전송한다.
+
+        두 작업 모두 실패해도 파이프라인은 계속 진행한다.
+        """
+        # [이관 주석] Neo4j 저장은 이관 후 삭제. Backend 전송만 유지.
+        await self._save_got_to_neo4j(got_result, session_id, episode_id)
+        await self._publish_graph_to_backend(got_result, state)
+
+    async def _save_got_to_neo4j(
+        self,
+        got_result: dict[str, Any],
+        session_id: str,
+        episode_id: str,
+    ) -> None:
+        """GoT 노드/엣지를 Neo4j에 저장한다.
+
+        실패해도 파이프라인은 계속 진행한다 (graceful degradation).
+
+        [이관 주석] Neo4j를 Backend로 이관 시:
+        - 이 메서드 전체를 삭제한다.
+        - _save_graph_data()에서 이 호출도 제거한다.
+        - Backend 전송(_publish_graph_to_backend)만 유지한다.
+        """
+        if not episode_id:
+            return
+        try:
+            from src.db.factory import create_graph_client
+
+            async with create_graph_client() as client:
+                for node in got_result.get("nodes", []):
+                    await client.execute_query(
+                        "MERGE (g:GoTNode {got_node_id: $id}) "
+                        "SET g.node_type = $type, g.label = $label, "
+                        "g.weight = $intensity, g.episode_id = $episode_id, "
+                        "g.group = $group",
+                        params={
+                            "id": f"{episode_id}_{node.get('id', '')}",
+                            "type": node.get("type", "concept"),
+                            "label": node.get("label", ""),
+                            "intensity": node.get("intensity", 0.5),
+                            "episode_id": episode_id,
+                            "group": node.get("group", "emotional_exhaustion"),
+                        },
+                    )
+                for edge in got_result.get("edges", []):
+                    await client.execute_query(
+                        "MATCH (a:GoTNode {got_node_id: $from_id}), "
+                        "(b:GoTNode {got_node_id: $to_id}) "
+                        "MERGE (a)-[:LEADS_TO {relationship: $rel}]->(b)",
+                        params={
+                            "from_id": f"{episode_id}_{edge.get('from', '')}",
+                            "to_id": f"{episode_id}_{edge.get('to', '')}",
+                            "rel": edge.get("relationship", "related"),
+                        },
+                    )
+                # Session → GoTNode 관계
+                if session_id:
+                    await client.execute_query(
+                        "MATCH (s:Session {session_id: $sid}), (g:GoTNode) "
+                        "WHERE g.episode_id = $eid "
+                        "MERGE (s)-[:REASONED_BY]->(g)",
+                        params={"sid": session_id, "eid": episode_id},
+                    )
+        except Exception as e:
+            self.logger.warning("Neo4j 저장 실패 (파이프라인 계속): %s", e)
+
+    async def _publish_graph_to_backend(
+        self,
+        got_result: dict[str, Any],
+        state: AgentState,
+    ) -> None:
+        """GoT 결과를 변환하여 Backend에 전송한다.
+
+        [이관 주석] 이 메서드는 Neo4j 위치와 무관하게 항상 유지.
+        Backend가 프론트엔드에 그래프 데이터를 서빙하기 위해 필요.
+        """
+        try:
+            from src.api.backend_resources import RESOURCE_GRAPH_ANALYSIS
+            from src.api.graph_transformer import (
+                calc_category_distribution,
+                transform_got_to_graph_data,
+            )
+            from src.api.publisher import AgentDataPublisher
+
+            transformed = transform_got_to_graph_data(got_result)
+            category_dist = calc_category_distribution(transformed["nodes"])
+
+            publisher = AgentDataPublisher()
+            await publisher.publish(
+                resource=RESOURCE_GRAPH_ANALYSIS,
+                data={
+                    "got_result": got_result,
+                    "graph_data": transformed,
+                    "category_distribution": category_dist,
+                },
+                user_id=state.get("user_id", ""),
+                session_id=state.get("session_id", ""),
+            )
+        except Exception as e:
+            self.logger.warning("Backend 그래프 전송 실패 (파이프라인 계속): %s", e)
 
 
 async def podcast_reasoning_node(state: AgentState) -> dict[str, Any]:
