@@ -1,9 +1,25 @@
+import enum
 import os
 import sys
+import typing
 
 import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# =============================================================================
+# Python 3.11+ 타입 백포트 (로컬 3.9 환경 호환)
+# 프로젝트 대상: Python 3.11+ / 로컬 시스템: Python 3.9
+# =============================================================================
+if not hasattr(enum, "StrEnum"):
+
+    class _StrEnum(str, enum.Enum):
+        pass
+
+    enum.StrEnum = _StrEnum  # type: ignore[attr-defined]
+
+if not hasattr(typing, "Self"):
+    typing.Self = typing.TypeVar("Self")  # type: ignore[attr-defined]
 
 # =============================================================================
 # 외부 API 안전장치

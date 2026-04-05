@@ -15,14 +15,17 @@ markers = [
 [tool.black]
 line-length = 100
 target-version = ["py311"]
+extend-exclude = "dev/"
 
 [tool.isort]
 profile = "black"
 line_length = 100
+skip_glob = ["dev/*"]
 
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+extend-exclude = ["dev/"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I"]
