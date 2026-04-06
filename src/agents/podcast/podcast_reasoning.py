@@ -473,7 +473,8 @@ class PodcastReasoningAgent(BaseAgent):
         세 작업 모두 실패해도 파이프라인은 계속 진행한다.
         """
         # [이관 주석] Neo4j 저장은 이관 후 삭제. Backend 전송만 유지.
-        await self._save_got_to_neo4j(got_result, session_id, episode_id)
+        user_id = state.get("user_id", "")
+        await self._save_got_to_neo4j(got_result, session_id, episode_id, user_id)
         await self._publish_graph_to_backend(got_result, state)
 
         # [신규] RDB 누적 그래프 — label+group 기준 통합 UPSERT
@@ -485,6 +486,7 @@ class PodcastReasoningAgent(BaseAgent):
         got_result: dict[str, Any],
         session_id: str,
         episode_id: str,
+        user_id: str = "",
     ) -> None:
         """GoT 노드/엣지를 Neo4j에 저장한다.
 
@@ -527,8 +529,22 @@ class PodcastReasoningAgent(BaseAgent):
                             "rel": edge.get("relationship", "related"),
                         },
                     )
-                # Session → GoTNode 관계
+                # User → Session → GoTNode 관계
                 if session_id:
+                    # User, Session 노드 생성 및 HAS_SESSION 관계
+                    if user_id:
+                        await client.execute_query(
+                            "MERGE (u:User {user_id: $uid}) "
+                            "MERGE (s:Session {session_id: $sid}) "
+                            "MERGE (u)-[:HAS_SESSION]->(s)",
+                            params={"uid": user_id, "sid": session_id},
+                        )
+                    else:
+                        await client.execute_query(
+                            "MERGE (s:Session {session_id: $sid})",
+                            params={"sid": session_id},
+                        )
+                    # Session → GoTNode 관계
                     await client.execute_query(
                         "MATCH (s:Session {session_id: $sid}), (g:GoTNode) "
                         "WHERE g.episode_id = $eid "

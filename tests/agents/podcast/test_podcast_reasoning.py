@@ -704,10 +704,12 @@ class TestSaveGotToNeo4j:
 
         import_patch, mock_fn = _patch_create_graph_client(return_value=mock_cm)
         with import_patch:
-            await agent._save_got_to_neo4j(_SAMPLE_GOT_RESULT, "sess_001", "ep_001")
+            await agent._save_got_to_neo4j(
+                _SAMPLE_GOT_RESULT, "sess_001", "ep_001", "user_001",
+            )
 
-        # 2 노드 MERGE + 1 엣지 MERGE + 1 Session 관계 = 4 호출
-        assert mock_client.execute_query.call_count == 4
+        # 2 노드 MERGE + 1 엣지 MERGE + 1 User/Session MERGE + 1 Session→GoTNode 관계 = 5 호출
+        assert mock_client.execute_query.call_count == 5
 
     @pytest.mark.asyncio
     async def test_empty_episode_id_skips(self, agent: PodcastReasoningAgent) -> None:
@@ -768,5 +770,5 @@ class TestSaveGraphData:
         ):
             await agent._save_graph_data(_SAMPLE_GOT_RESULT, "sess_001", "ep_001", state)
 
-        mock_neo4j.assert_called_once_with(_SAMPLE_GOT_RESULT, "sess_001", "ep_001")
+        mock_neo4j.assert_called_once_with(_SAMPLE_GOT_RESULT, "sess_001", "ep_001", "user_001")
         mock_publish.assert_called_once_with(_SAMPLE_GOT_RESULT, state)
