@@ -498,7 +498,7 @@ image_prompt: str = planning.get("image_prompt") or ""
 
 ---
 
-## Change 9: workflow.py — `_with_timeout()` 타임아웃 마커 + TIER 3 자동 PASS 방지 [신규, CRITICAL]
+## Change 9: workflow.py — TIER 3 자동 PASS 방지 [신규, CRITICAL]
 
 ### 근거
 
@@ -509,9 +509,11 @@ except asyncio.TimeoutError:
     return {}  # ← 빈 dict
 ```
 
-**빈 dict가 downstream에서 일으키는 숨은 버그:**
+LangGraph는 `{}` 반환을 state에 merge한다 — 즉 기존 state 필드를 건드리지 않는다.
 
-TIER 3 (Batch Validator)가 타임아웃 → `_with_timeout()`이 `{}` 반환 → LangGraph가 state에 merge → `validation_result` 필드 없음(이전 값 유지 또는 없음)
+**타임아웃이 일으키는 숨은 버그:**
+
+TIER 3 (Batch Validator)가 타임아웃 → `_with_timeout()`이 `{}` 반환 → state의 `validation_result` 필드 **미설정(초회) 또는 이전 값 유지**
 
 `route_after_tier3_podcast()`:
 ```python
@@ -519,79 +521,62 @@ validation = state.get("validation_result", {})
 verdict = validation.get("verdict", "PASS")  # ← 기본값 "PASS"
 ```
 
-→ **Batch Validator가 타임아웃됐는데 자동으로 PASS 처리 → TIER 4 진행 → 검증 없는 스크립트 최종 출력**
+→ **초회 타임아웃 시 `validation_result` 없음 → `verdict` 기본값 "PASS" → TIER 4 진행 → 검증 없는 스크립트 최종 출력**
 
-### 수정 대상 (workflow.py — 2곳)
+### 수정 대상 (workflow.py — 1곳)
 
-**변경 1 — `_with_timeout()` (라인 87-94):**
+**`_with_timeout()` 수정 불필요.** `{}` 반환은 다른 TIER 노드(TIER 0, 1, 2, 4)에서도 동일하게 사용되며, state merge 동작이 의도적이다. 변경하면 모든 타임아웃 노드의 동작이 바뀐다.
+
+> **오류 주의:** `_with_timeout()`이 `{"_timeout": True}` 를 반환하면 LangGraph는 이를 state **최상위 레벨**에 merge한다 (`state["_timeout"] = True`). `state["validation_result"]` 하위에는 변화가 없으므로 `validation.get("_timeout")`은 항상 None — 마커 감지 불가.
+
+**`route_after_tier3_podcast()` (라인 431 근처):**
 ```python
 # 변경 전:
-except asyncio.TimeoutError:
-    logger.error("[%s] 타임아웃 (%ds)", name, timeout)
-    return {}
+validation = state.get("validation_result", {})
+verdict = validation.get("verdict", "PASS")  # 기본값 "PASS" — 타임아웃 시 자동 PASS 버그
 
 # 변경 후:
-except asyncio.TimeoutError:
-    logger.error("[%s] 타임아웃 (%ds) — 타임아웃 마커 반환", name, timeout)
-    return {"_timeout": True, "_timeout_node": name}
+validation = state.get("validation_result", {})
+verdict = validation.get("verdict")  # 기본값 제거 — None이면 FAIL로 처리
+
+if verdict is None:
+    # validation_result 미설정 = BV 초회 타임아웃 또는 실행 실패
+    iteration_count = state.get("iteration_count", 0)
+    logger.warning(
+        "[BatchValidator] verdict 없음 (타임아웃/실패) — FAIL 처리 (iteration=%d/%d)",
+        iteration_count, _MAX_RETRIES,
+    )
+    if iteration_count < _MAX_RETRIES:
+        return "tier2_podcast"
+    logger.warning("[BatchValidator] 재시도 소진 — 강제 통과")
+    return "tier4_podcast"
+# 이하 기존 verdict 처리 로직 동일
 ```
-
-**변경 2 — `route_after_tier3_podcast()` (라인 431 근처, 시작 부분에 추가):**
-```python
-def route_after_tier3_podcast(state: AgentState) -> str:
-    next_step = state.get("next_step", "")
-    if next_step == "crisis_response":
-        return "crisis_response"
-
-    # [Change 9] 타임아웃 마커 감지 — 재시도 또는 강제 통과
-    validation = state.get("validation_result", {})
-    if validation.get("_timeout"):
-        iteration_count = state.get("iteration_count", 0)
-        logger.warning(
-            "[BatchValidator] 타임아웃 — FAIL로 처리 (iteration=%d/%d)",
-            iteration_count, _MAX_RETRIES,
-        )
-        if iteration_count < _MAX_RETRIES:
-            return "tier2_podcast"
-        logger.warning("[BatchValidator] 타임아웃 + 재시도 소진 — 강제 통과")
-        return "tier4_podcast"
-
-    # 기존 verdict 처리 로직 이하 동일
-    ...
-```
-
-**주의:** `_timeout` 마커는 `AgentState`의 `validation_result: dict`에 임시 포함. `AgentState` 스키마 변경 불필요 (dict 내부 키이므로).
 
 ### 테스트
 
 ```python
 @pytest.mark.asyncio
-async def test_with_timeout_returns_timeout_marker():
-    """_with_timeout 타임아웃 시 {'_timeout': True} 반환."""
-    async def slow_node(state):
-        await asyncio.sleep(10)
-        return {"result": "done"}
-
-    result = await _with_timeout(slow_node, {}, timeout=0.01, name="test")
-    assert result.get("_timeout") is True
-
-@pytest.mark.asyncio
-async def test_tier3_timeout_triggers_retry_not_pass():
-    """Batch Validator 타임아웃 시 자동 PASS가 아닌 재시도."""
-    state = {
-        "validation_result": {"_timeout": True, "_timeout_node": "batch_validator"},
-        "iteration_count": 0,
-    }
+async def test_tier3_timeout_first_run_triggers_retry_not_pass():
+    """Batch Validator 초회 타임아웃 시 자동 PASS가 아닌 재시도."""
+    # validation_result 없음 = 초회 타임아웃 시뮬레이션 (_with_timeout이 {} 반환)
+    state = {"iteration_count": 0}
     route = route_after_tier3_podcast(state)
     assert route == "tier2_podcast"  # PASS가 아닌 재시도
+
+@pytest.mark.asyncio
+async def test_tier3_timeout_retry_exhausted_allows_pass():
+    """재시도 소진 시 강제 통과."""
+    state = {"iteration_count": 1}  # _MAX_RETRIES=1 기준
+    route = route_after_tier3_podcast(state)
+    assert route == "tier4_podcast"
 ```
 
 ### 구현 절차
 
-- [ ] Step 1: `_with_timeout()` 반환값 `{}` → `{"_timeout": True, "_timeout_node": name}` 수정
-- [ ] Step 2: `route_after_tier3_podcast()` 시작 부분에 타임아웃 마커 처리 추가
-- [ ] Step 3: 테스트 추가
-- [ ] Step 4: `pytest tests/graph/ -v`
+- [ ] Step 1: `route_after_tier3_podcast()`의 `verdict` 기본값 `"PASS"` 제거 → `None` 처리 분기 추가
+- [ ] Step 2: 테스트 추가
+- [ ] Step 3: `pytest tests/graph/ -v`
 
 > **Protected File — Change 1, 1-B와 동일 PR. 3인 합의 필수.**
 
@@ -660,4 +645,4 @@ pipeline:
 
 ---
 
-*Part 1 — v5 (2026-04-07) | Change 8 (visualization), Change 9 (_with_timeout 타임아웃 마커), Settings 조정 신규 추가. 취약점 재점검 완료.*
+*Part 1 — v6 (2026-04-07) | Change 9 수정: `_with_timeout()` 변경 제거(LangGraph state merge 구조 오류), `route_after_tier3_podcast()` verdict None 처리만으로 단순화.*

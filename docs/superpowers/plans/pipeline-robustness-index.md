@@ -112,7 +112,7 @@ Phase 2는 다음 **3가지 단순 개선**으로 축소:
 
 ## 공통 검증 체크리스트에 추가 (Phase 1 완료 후)
 
-- [ ] TIER 3 타임아웃 시뮬레이션: `_TIER3_TIMEOUT`을 1초로 임시 설정 → `validation_result._timeout=True` 기록 확인 (Change 9 효과)
+- [ ] TIER 3 타임아웃 시뮬레이션: `_TIER3_TIMEOUT`을 1초로 임시 설정 → `validation_result` 없을 때 `route_after_tier3_podcast()`가 PASS 아닌 재시도 경로 진입 확인 (Change 9 효과)
 - [ ] visualization.py LLM 실패 시 `visual_data.error=="llm_call_failed"` 반환 확인 (Change 8 효과)
 
 ---
