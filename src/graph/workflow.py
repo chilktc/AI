@@ -301,9 +301,11 @@ async def tier1_podcast_fan_out(state: AgentState) -> dict[str, Any]:
         run_with_cancel(podcast_reasoning_node(state), cancel_event, "podcast_reasoning"),
     ]
 
+    # 타임아웃 시 이미 완료된 에이전트 결과를 보존하기 위한 공유 dict
+    partial_results: dict[str, Any] = {}
+
     async def _run_tier1_pod() -> dict[str, Any]:
-        nonlocal tasks
-        merged: dict[str, Any] = {}
+        nonlocal tasks, partial_results
         completed_count = 0
         for coro in asyncio.as_completed(tasks):
             name, result = await coro
@@ -342,9 +344,9 @@ async def tier1_podcast_fan_out(state: AgentState) -> dict[str, Any]:
                     "progress": f"{completed_count}/{len(agent_names)}",
                 }
             )
-            merged.update(result)
+            partial_results.update(result)
 
-        return merged
+        return partial_results
 
     try:
         merged = await asyncio.wait_for(_run_tier1_pod(), timeout=_TIER1_TIMEOUT)
@@ -354,7 +356,7 @@ async def tier1_podcast_fan_out(state: AgentState) -> dict[str, Any]:
             _TIER1_TIMEOUT,
         )
         cancel_event.set()
-        merged = {}
+        merged = partial_results
 
     writer(
         {
