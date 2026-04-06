@@ -634,5 +634,21 @@ class LLMClient:
 
         # strict=False: 로컬 LLM(Ollama 등)이 JSON 문자열 내에
         # 제어 문자(줄바꿈, 탭 등)를 포함할 수 있으므로 허용한다.
-        result: dict[str, Any] = json.loads(cleaned, strict=False)
-        return result
+        try:
+            result: dict[str, Any] = json.loads(cleaned, strict=False)
+            return result
+        except json.JSONDecodeError:
+            pass
+
+        # Fallback: LLM이 JSON 뒤에 추가 텍스트를 붙인 경우
+        # 첫 번째 '{' ~ 마지막 '}' 사이를 추출하여 재시도한다.
+        first_brace = cleaned.find("{")
+        last_brace = cleaned.rfind("}")
+        if first_brace != -1 and last_brace > first_brace:
+            json_candidate = cleaned[first_brace : last_brace + 1]
+            result = json.loads(json_candidate, strict=False)
+            return result
+
+        raise json.JSONDecodeError(
+            "JSON 객체를 찾을 수 없습니다", cleaned, 0,
+        )
