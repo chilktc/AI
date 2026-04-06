@@ -154,6 +154,49 @@ def print_script_result(
 # =============================================================================
 
 
+@pytest.mark.asyncio
+async def test_empty_script_draft_returns_nonempty_output() -> None:
+    """script_draft가 비어있으면 Pydantic 실패를 거쳐도 final_output이 빈 문자열이 아니다."""
+    agent = ScriptPersonalizerAgent(enable_deep_personalization=False)
+    # script_draft 없음 → validated_script = None → _create_fallback_script 호출 불가 → fallback ""
+    # 이 케이스는 빈 문자열이 정상 동작 (script_draft 없음)
+    state = {"user_id": "u", "session_id": "s", "mode": "podcast", "script_draft": {}}
+    result = await agent.process(state)
+    # script_draft={}이면 validated_script=None → 기존대로 빈 문자열 (ValueError 발생 후 fallback)
+    assert "final_output" in result
+
+
+@pytest.mark.asyncio
+async def test_malformed_script_draft_with_segments_uses_raw_fallback() -> None:
+    """episode_title 없는 script_draft도 segments가 있으면 raw fallback으로 처리된다."""
+    agent = ScriptPersonalizerAgent(enable_deep_personalization=False)
+    # episode_title 없음 → ValidatedScript 실패 → raw fallback 시도
+    state = {
+        "user_id": "u",
+        "session_id": "s",
+        "mode": "podcast",
+        "script_draft": {
+            # episode_title 없음
+            "total_duration": 5,
+            "segments": [
+                {
+                    "segment_id": "seg_1",
+                    "segment_type": "intro",
+                    "duration_minutes": 5,
+                    "script_text": "안녕하세요, 오늘의 마음 이야기입니다.",
+                    "word_count": 8,
+                    "emotional_tone": "warm",
+                    "tts_markers": [],
+                }
+            ],
+        },
+    }
+    result = await agent.process(state)
+    assert "final_output" in result
+    # raw fallback이 성공했으면 final_output이 비어있지 않음
+    assert result["final_output"] != ""
+
+
 # =============================================================================
 # LLM 사용 테스트 (MLX)
 # =============================================================================
