@@ -650,5 +650,7 @@ class LLMClient:
             return result
 
         raise json.JSONDecodeError(
-            "JSON 객체를 찾을 수 없습니다", cleaned, 0,
+            "JSON 객체를 찾을 수 없습니다",
+            cleaned,
+            0,
         )

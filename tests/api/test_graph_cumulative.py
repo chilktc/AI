@@ -18,7 +18,6 @@ from src.api.graph_cumulative import (
     publish_graph_to_rdb,
 )
 
-
 # ═══════════════════════════════════════════════════════════════════════
 # Fixture: src.api.main mock 모듈 주입 (Python 3.9 호환)
 # ═══════════════════════════════════════════════════════════════════════
@@ -97,7 +96,11 @@ class TestCalcTrend:
 
 class TestMergeNodesFromGot:
     def test_new_nodes_added(self) -> None:
-        got = {"nodes": [{"id": "1", "label": "번아웃", "group": "emotional_exhaustion", "intensity": 0.8}]}
+        got = {
+            "nodes": [
+                {"id": "1", "label": "번아웃", "group": "emotional_exhaustion", "intensity": 0.8}
+            ]
+        }
         result = merge_nodes_from_got(got, [], alpha=0.3)
         assert len(result) == 1
         assert result[0]["label"] == "번아웃"
@@ -106,8 +109,20 @@ class TestMergeNodesFromGot:
         assert result[0]["trend"] == "stable"
 
     def test_existing_node_ema_update(self) -> None:
-        got = {"nodes": [{"id": "1", "label": "번아웃", "group": "emotional_exhaustion", "intensity": 0.7}]}
-        existing = [{"label": "번아웃", "grp": "emotional_exhaustion", "weight": 0.8, "mention_count": 1, "first_seen": "2026-01-01"}]
+        got = {
+            "nodes": [
+                {"id": "1", "label": "번아웃", "group": "emotional_exhaustion", "intensity": 0.7}
+            ]
+        }
+        existing = [
+            {
+                "label": "번아웃",
+                "grp": "emotional_exhaustion",
+                "weight": 0.8,
+                "mention_count": 1,
+                "first_seen": "2026-01-01",
+            }
+        ]
         result = merge_nodes_from_got(got, existing, alpha=0.3)
         assert len(result) == 1
         assert round(result[0]["weight"], 2) == 0.77
@@ -121,7 +136,9 @@ class TestMergeNodesFromGot:
                 {"id": "2", "label": "업무과부하", "group": "work_structure", "intensity": 0.9},
             ]
         }
-        existing = [{"label": "번아웃", "grp": "emotional_exhaustion", "weight": 0.8, "mention_count": 2}]
+        existing = [
+            {"label": "번아웃", "grp": "emotional_exhaustion", "weight": 0.8, "mention_count": 2}
+        ]
         result = merge_nodes_from_got(got, existing, alpha=0.3)
         assert len(result) == 2
         labels = {n["label"] for n in result}
@@ -133,8 +150,14 @@ class TestMergeNodesFromGot:
         assert result[0]["grp"] == "emotional_exhaustion"  # keyword fallback
 
     def test_trend_calculation(self) -> None:
-        got = {"nodes": [{"id": "1", "label": "업무과부하", "group": "work_structure", "intensity": 0.9}]}
-        existing = [{"label": "업무과부하", "grp": "work_structure", "weight": 0.5, "mention_count": 1}]
+        got = {
+            "nodes": [
+                {"id": "1", "label": "업무과부하", "group": "work_structure", "intensity": 0.9}
+            ]
+        }
+        existing = [
+            {"label": "업무과부하", "grp": "work_structure", "weight": 0.5, "mention_count": 1}
+        ]
         result = merge_nodes_from_got(got, existing, alpha=0.3)
         # new_weight = 0.3*0.9 + 0.7*0.5 = 0.62, diff = 0.12 > 0.05
         assert result[0]["trend"] == "increasing"
@@ -168,13 +191,15 @@ class TestMergeEdgesFromGot:
             ],
             "edges": [{"from": "1", "to": "2"}],
         }
-        existing = [{
-            "source_label": "번아웃",
-            "source_grp": "emotional_exhaustion",
-            "target_label": "업무과부하",
-            "target_grp": "work_structure",
-            "weight": 2,
-        }]
+        existing = [
+            {
+                "source_label": "번아웃",
+                "source_grp": "emotional_exhaustion",
+                "target_label": "업무과부하",
+                "target_grp": "work_structure",
+                "weight": 2,
+            }
+        ]
         result = merge_edges_from_got(got, existing)
         assert result[0]["weight"] == 3
 
@@ -223,7 +248,12 @@ class TestPublishGraphModeA:
         mock_backend_client.load.return_value = mock_load_resp
         mock_backend_client.update.return_value = MagicMock(success=True)
 
-        got = {"nodes": [{"id": "1", "label": "번아웃", "group": "emotional_exhaustion", "intensity": 0.8}], "edges": []}
+        got = {
+            "nodes": [
+                {"id": "1", "label": "번아웃", "group": "emotional_exhaustion", "intensity": 0.8}
+            ],
+            "edges": [],
+        }
         state = {"user_id": "u1", "session_id": "s1"}
 
         result = await publish_graph_cumulative_mode_a(got, state)
@@ -235,7 +265,12 @@ class TestPublishGraphModeA:
         mock_backend_client.load.side_effect = Exception("connection error")
         mock_backend_client.update.return_value = MagicMock(success=True)
 
-        got = {"nodes": [{"id": "1", "label": "번아웃", "group": "emotional_exhaustion", "intensity": 0.8}], "edges": []}
+        got = {
+            "nodes": [
+                {"id": "1", "label": "번아웃", "group": "emotional_exhaustion", "intensity": 0.8}
+            ],
+            "edges": [],
+        }
         state = {"user_id": "u1", "session_id": "s1"}
 
         result = await publish_graph_cumulative_mode_a(got, state)
@@ -248,7 +283,12 @@ class TestPublishGraphModeA:
         mock_backend_client.load.return_value = mock_load_resp
         mock_backend_client.update.side_effect = Exception("server error")
 
-        got = {"nodes": [{"id": "1", "label": "번아웃", "group": "emotional_exhaustion", "intensity": 0.8}], "edges": []}
+        got = {
+            "nodes": [
+                {"id": "1", "label": "번아웃", "group": "emotional_exhaustion", "intensity": 0.8}
+            ],
+            "edges": [],
+        }
         state = {"user_id": "u1", "session_id": "s1"}
 
         result = await publish_graph_cumulative_mode_a(got, state)
@@ -273,7 +313,12 @@ class TestPublishGraphModeB:
     async def test_success(self, mock_backend_client) -> None:
         mock_backend_client.save.return_value = MagicMock(success=True)
 
-        got = {"nodes": [{"id": "1", "label": "번아웃", "group": "emotional_exhaustion", "intensity": 0.8}], "edges": []}
+        got = {
+            "nodes": [
+                {"id": "1", "label": "번아웃", "group": "emotional_exhaustion", "intensity": 0.8}
+            ],
+            "edges": [],
+        }
         state = {"user_id": "u1", "session_id": "s1"}
 
         result = await publish_graph_raw_mode_b(got, state, "ep_123")
@@ -283,7 +328,10 @@ class TestPublishGraphModeB:
     async def test_group_validated(self, mock_backend_client) -> None:
         mock_backend_client.save.return_value = MagicMock(success=True)
 
-        got = {"nodes": [{"id": "1", "label": "번아웃", "group": "INVALID", "intensity": 0.8}], "edges": []}
+        got = {
+            "nodes": [{"id": "1", "label": "번아웃", "group": "INVALID", "intensity": 0.8}],
+            "edges": [],
+        }
         state = {"user_id": "u1", "session_id": "s1"}
 
         result = await publish_graph_raw_mode_b(got, state, "ep_123")
@@ -298,7 +346,12 @@ class TestPublishGraphModeB:
     async def test_save_failure_returns_false(self, mock_backend_client) -> None:
         mock_backend_client.save.side_effect = Exception("server error")
 
-        got = {"nodes": [{"id": "1", "label": "번아웃", "group": "emotional_exhaustion", "intensity": 0.8}], "edges": []}
+        got = {
+            "nodes": [
+                {"id": "1", "label": "번아웃", "group": "emotional_exhaustion", "intensity": 0.8}
+            ],
+            "edges": [],
+        }
         state = {"user_id": "u1", "session_id": "s1"}
 
         result = await publish_graph_raw_mode_b(got, state, "ep_123")
@@ -317,8 +370,12 @@ class TestPublishGraphToRdb:
         mock_settings.graph_upsert_mode = "ai_server"
         mock_settings.graph_ema_alpha = 0.3
 
-        with patch("src.api.graph_cumulative.get_settings", return_value=mock_settings), \
-             patch("src.api.graph_cumulative.publish_graph_cumulative_mode_a", new_callable=AsyncMock) as mock_a:
+        with (
+            patch("src.api.graph_cumulative.get_settings", return_value=mock_settings),
+            patch(
+                "src.api.graph_cumulative.publish_graph_cumulative_mode_a", new_callable=AsyncMock
+            ) as mock_a,
+        ):
             mock_a.return_value = True
             result = await publish_graph_to_rdb({"nodes": []}, {"user_id": "u1"})
             mock_a.assert_called_once()
@@ -329,8 +386,12 @@ class TestPublishGraphToRdb:
         mock_settings = MagicMock()
         mock_settings.graph_upsert_mode = "backend"
 
-        with patch("src.api.graph_cumulative.get_settings", return_value=mock_settings), \
-             patch("src.api.graph_cumulative.publish_graph_raw_mode_b", new_callable=AsyncMock) as mock_b:
+        with (
+            patch("src.api.graph_cumulative.get_settings", return_value=mock_settings),
+            patch(
+                "src.api.graph_cumulative.publish_graph_raw_mode_b", new_callable=AsyncMock
+            ) as mock_b,
+        ):
             mock_b.return_value = True
             result = await publish_graph_to_rdb({"nodes": []}, {"user_id": "u1"}, "ep_123")
             mock_b.assert_called_once()

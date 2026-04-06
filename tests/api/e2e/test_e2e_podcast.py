@@ -1,3 +1,13 @@
+"""팟캐스트 모드 E2E 완주 테스트 (로컬 복구용).
+
+직접 실행 전용 스크립트:
+    python tests/api/e2e/test_e2e_podcast.py
+
+pytest로 수집되어도 테스트 함수가 없으므로 실행되지 않지만,
+모듈 레벨 monkey-patch가 다른 테스트를 오염시키지 않도록
+모든 패치를 __main__ 가드 안에서만 적용한다.
+"""
+
 import asyncio
 import json
 import os
@@ -5,71 +15,65 @@ import sys
 import traceback
 from pathlib import Path
 
-# 1. 환경 설정
-sys.path.insert(0, os.getcwd())
-try:
-    from dotenv import load_dotenv
-
-    load_dotenv(dotenv_path=Path(os.getcwd()) / ".env")
-except ImportError:
-    pass
-
-# 2. [전역 패치] LLMClient 가로채기 (인자 충돌 및 JSON 사족 해결)
-from src.agents.shared.llm_client import LLMClient
-
 CHEAP_MODEL = "anthropic.claude-3-haiku-20240307-v1:0"
 
-original_generate = LLMClient.generate
-original_parse = LLMClient.parse_json_response
 
-
-async def patched_generate(self, *args, **kwargs):
-    # [STUB] Validator는 모델 호출 없이 바로 합격 처리 (Haiku의 JSON 파싱 에러 방지)
-    current_sys_p = kwargs.get("system_prompt") or (args[0] if len(args) > 0 else "")
-    if "검수" in current_sys_p or "validator" in current_sys_p.lower():
-        return json.dumps({"is_valid": True, "score": 1.0, "feedback": "Stub Pass Success"})
-
-    # [모델 고정] 서울 리전에서 가장 안정적인 Haiku 사용
-    self._model_id = CHEAP_MODEL
-
-    # [인자 충돌 방지] 중복되는 인자는 kwargs에서 제거 (TypeError 방지)
-    sys_p = kwargs.pop("system_prompt", None) or (args[0] if len(args) > 0 else "")
-    user_p = kwargs.pop("user_message", None) or (args[1] if len(args) > 1 else "")
-    kwargs.pop("model", None)  # 시각화 에이전트 전용 인자 제거
-
-    # [설정 최적화] 하이쿠가 수용 가능한 인자만 필터링 및 토큰 상향
-    allowed = {"max_tokens", "temperature", "top_p", "top_k", "stop_sequences"}
-    safe_kwargs = {k: v for k, v in kwargs.items() if k in allowed}
-    safe_kwargs["max_tokens"] = 4096
-
-    return await original_generate(self, sys_p, user_p, **safe_kwargs)
-
-
-def patched_parse(*args, **kwargs):
-    raw_text = args[-1] if args else ""
+def _setup_environment():
+    """환경 설정: sys.path, .env 로드."""
+    sys.path.insert(0, os.getcwd())
     try:
-        return original_parse(raw_text)
-    except Exception:
-        # [사족 제거] 앞뒤 설명글을 버리고 { } 블록만 강제 추출
+        from dotenv import load_dotenv
+
+        load_dotenv(dotenv_path=Path(os.getcwd()) / ".env")
+    except ImportError:
+        pass
+
+
+def _apply_llm_patches():
+    """LLMClient monkey-patch 적용 (E2E 테스트 전용)."""
+    from src.agents.shared.llm_client import LLMClient
+
+    original_generate = LLMClient.generate
+    original_parse = LLMClient.parse_json_response
+
+    async def patched_generate(self, *args, **kwargs):
+        # [STUB] Validator는 모델 호출 없이 바로 합격 처리 (Haiku의 JSON 파싱 에러 방지)
+        current_sys_p = kwargs.get("system_prompt") or (args[0] if len(args) > 0 else "")
+        if "검수" in current_sys_p or "validator" in current_sys_p.lower():
+            return json.dumps({"is_valid": True, "score": 1.0, "feedback": "Stub Pass Success"})
+
+        # [모델 고정] 서울 리전에서 가장 안정적인 Haiku 사용
+        self._model_id = CHEAP_MODEL
+
+        # [인자 충돌 방지] 중복되는 인자는 kwargs에서 제거 (TypeError 방지)
+        sys_p = kwargs.pop("system_prompt", None) or (args[0] if len(args) > 0 else "")
+        user_p = kwargs.pop("user_message", None) or (args[1] if len(args) > 1 else "")
+        kwargs.pop("model", None)  # 시각화 에이전트 전용 인자 제거
+
+        # [설정 최적화] 하이쿠가 수용 가능한 인자만 필터링 및 토큰 상향
+        allowed = {"max_tokens", "temperature", "top_p", "top_k", "stop_sequences"}
+        safe_kwargs = {k: v for k, v in kwargs.items() if k in allowed}
+        safe_kwargs["max_tokens"] = 4096
+
+        return await original_generate(self, sys_p, user_p, **safe_kwargs)
+
+    def patched_parse(*args, **kwargs):
+        raw_text = args[-1] if args else ""
         try:
-            start, end = raw_text.find("{"), raw_text.rfind("}")
-            if start != -1 and end != -1:
-                return json.loads(raw_text[start : end + 1], strict=False)
-            raise
-        except Exception as e:
-            print(f"\n🔥 [파싱 실패 원문]:\n{raw_text}")
-            raise e
+            return original_parse(raw_text)
+        except Exception:
+            # [사족 제거] 앞뒤 설명글을 버리고 { } 블록만 강제 추출
+            try:
+                start, end = raw_text.find("{"), raw_text.rfind("}")
+                if start != -1 and end != -1:
+                    return json.loads(raw_text[start : end + 1], strict=False)
+                raise
+            except Exception as e:
+                print(f"\n🔥 [파싱 실패 원문]:\n{raw_text}")
+                raise e
 
-
-LLMClient.generate = patched_generate
-LLMClient.parse_json_response = patched_parse
-
-# 3. 에이전트 및 워크플로우 로드
-from src.agents.podcast.content_analyzer import ContentAnalyzerAgent  # noqa: E402
-from src.agents.podcast.emotion import EmotionAgent  # noqa: E402
-from src.agents.podcast.podcast_reasoning import PodcastReasoningAgent  # noqa: E402
-from src.agents.podcast.safety import SafetyAgent  # noqa: E402
-from src.graph.workflow import compile_graph  # noqa: E402
+    LLMClient.generate = patched_generate
+    LLMClient.parse_json_response = patched_parse
 
 
 def _force_cheap_model():
@@ -80,6 +84,11 @@ def _force_cheap_model():
     실제 모델 강제는 상단의 patched_generate 몽키패치가 담당한다.
     이 함수는 import 정상 여부 확인 + 로그 출력 용도로만 유지한다.
     """
+    from src.agents.podcast.content_analyzer import ContentAnalyzerAgent
+    from src.agents.podcast.emotion import EmotionAgent
+    from src.agents.podcast.podcast_reasoning import PodcastReasoningAgent
+    from src.agents.podcast.safety import SafetyAgent
+
     agent_classes = {
         "safety": SafetyAgent,
         "emotion": EmotionAgent,
@@ -94,6 +103,8 @@ def _force_cheap_model():
 async def run_complete_flow():
     _force_cheap_model()
     print(f"\n{'='*60}\n 팟캐스트 모드 E2E 완주 테스트 (로컬 복구용)\n{'='*60}")
+
+    from src.graph.workflow import compile_graph
 
     INITIAL_STATE = {
         "user_input": "팀장님이 배포 빨리 하라고 쪼아대서 너무 스트레스 받아.. 도와줘!",
@@ -127,4 +138,6 @@ async def run_complete_flow():
 
 
 if __name__ == "__main__":
+    _setup_environment()
+    _apply_llm_patches()
     asyncio.run(run_complete_flow())

@@ -224,7 +224,15 @@ class TestTransformCumulativeToFrontend:
         from src.api.graph_transformer import transform_cumulative_to_frontend
 
         nodes = [
-            {"label": "업무과부하", "grp": "work_structure", "weight": 0.81, "mention_count": 3, "trend": "increasing", "first_seen": "2026-03-20", "last_seen": "2026-04-05"},
+            {
+                "label": "업무과부하",
+                "grp": "work_structure",
+                "weight": 0.81,
+                "mention_count": 3,
+                "trend": "increasing",
+                "first_seen": "2026-03-20",
+                "last_seen": "2026-04-05",
+            },
         ]
         edges: list[dict] = []
         result = transform_cumulative_to_frontend(nodes, edges)
@@ -261,7 +269,13 @@ class TestTransformCumulativeToFrontend:
             {"label": "B", "grp": "leadership", "weight": 0.6},
         ]
         edges = [
-            {"source_label": "A", "source_grp": "work_structure", "target_label": "B", "target_grp": "leadership", "weight": 3},
+            {
+                "source_label": "A",
+                "source_grp": "work_structure",
+                "target_label": "B",
+                "target_grp": "leadership",
+                "weight": 3,
+            },
         ]
         result = transform_cumulative_to_frontend(nodes, edges)
         assert len(result["links"]) == 1
@@ -279,7 +293,15 @@ class TestTransformCumulativeToFrontend:
         from src.api.graph_transformer import transform_cumulative_to_frontend
 
         nodes = [
-            {"label": "X", "grp": "career_growth", "weight": 0.4, "mention_count": 5, "trend": "decreasing", "first_seen": "2026-01-01", "last_seen": "2026-04-01"},
+            {
+                "label": "X",
+                "grp": "career_growth",
+                "weight": 0.4,
+                "mention_count": 5,
+                "trend": "decreasing",
+                "first_seen": "2026-01-01",
+                "last_seen": "2026-04-01",
+            },
         ]
         result = transform_cumulative_to_frontend(nodes, [])
         node = result["nodes"][0]
@@ -292,7 +314,15 @@ class TestTransformCumulativeToFrontend:
         from src.api.graph_transformer import transform_cumulative_to_frontend
 
         nodes = [{"label": "A", "grp": "work_structure", "weight": 0.5}]
-        edges = [{"source_label": "A", "source_grp": "work_structure", "target_label": "A", "target_grp": "work_structure", "weight": 1}]
+        edges = [
+            {
+                "source_label": "A",
+                "source_grp": "work_structure",
+                "target_label": "A",
+                "target_grp": "work_structure",
+                "weight": 1,
+            }
+        ]
         result = transform_cumulative_to_frontend(nodes, edges)
         assert len(result["links"]) == 0
 
