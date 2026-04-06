@@ -320,3 +320,27 @@ async def test_escalate_sets_critical_fail_verdict(
 
     assert "next_step" not in result  # 라우팅은 route_after_tier3_podcast()가 전담
     assert result["validation_result"]["verdict"] == "CRITICAL_FAIL"
+
+
+@pytest.mark.asyncio
+async def test_llm_call_failure_returns_fail_verdict(agent: BatchValidatorAgent) -> None:
+    """LLM 호출 실패 시 FAIL verdict를 반환하고 파이프라인이 중단되지 않는다."""
+    state = AgentState(
+        user_input="스트레스",
+        user_id="u",
+        session_id="s",
+        mode="podcast",
+        script_draft={"segments": [{"script_text": "내용"}]},
+        content_analysis={},
+        reasoning_result={},
+        safety_flags={},
+        emotion_vectors={},
+        iteration_count=0,
+    )
+    mock = AsyncMock(side_effect=Exception("LLM timeout"))
+    with patch.object(agent, "call_llm_json", mock):
+        result = await agent.process(state)
+
+    vr = result["validation_result"]
+    assert vr["verdict"] == "FAIL"
+    assert vr.get("error") == "llm_call_failed"
