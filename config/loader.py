@@ -398,6 +398,16 @@ class Settings:
             self._config.get("security", {}).get("pii_sanitization", {}).get("enabled", True)
         )
 
+    @property
+    def graph_upsert_mode(self) -> str:
+        """그래프 누적 저장 모드를 반환한다 ('ai_server' 또는 'backend')."""
+        return str(self._config.get("graph", {}).get("upsert_mode", "ai_server"))
+
+    @property
+    def graph_ema_alpha(self) -> float:
+        """그래프 EMA 가중치 알파값을 반환한다 (0.0~1.0)."""
+        return float(self._config.get("graph", {}).get("ema_alpha", 0.3))
+
 
 # 싱글톤 인스턴스 (모듈 레벨에서 한 번만 로드)
 _settings_instance: Settings | None = None
