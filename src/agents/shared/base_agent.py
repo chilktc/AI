@@ -363,6 +363,17 @@ class BaseAgent(ABC):
         """
         ...
 
+    def get_fallback_output(self, state: AgentState) -> dict[str, Any]:
+        """
+        process() 실패 시 반환할 최소 fallback dict.
+
+        기본 구현은 빈 dict를 반환한다.
+        필요한 에이전트만 오버라이드하여 의미 있는 기본값을 제공할 수 있다.
+
+        이 메서드는 abstractmethod가 아니다 — 오버라이드는 선택사항이다.
+        """
+        return {}
+
     async def __call__(self, state: AgentState) -> dict[str, Any]:
         """
         LangGraph 노드 함수로 사용하기 위한 호출 인터페이스.
