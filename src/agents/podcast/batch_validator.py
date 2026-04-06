@@ -7,7 +7,7 @@ TIER 3에서 Script Generator(개발자1)가 생성한 script_draft를 검증한
 iteration_count 증가는 workflow의 increment_iteration_node()가 전담한다.
 
 담당: 개발자3
-출력 필드: validation_result, next_step
+출력 필드: validation_result
 모델: Sonnet 4
 """
 
@@ -73,9 +73,6 @@ class BatchValidatorAgent(BaseAgent):
                     "reason": "Empty script_draft",
                     "overall_score": 0.0,
                 },
-                # NOTE(dead-code): next_step은 현재 route_after_tier3_podcast()에서 참조하지 않음.
-                # 라우터가 validation_result.verdict 필드를 직접 읽어 판단.
-                "next_step": "retry_script",
             }
 
         # 검증 컨텍스트 조합
@@ -105,8 +102,6 @@ class BatchValidatorAgent(BaseAgent):
             self.logger.info("스크립트 검증 통과 (score=%.2f)", validation.get("overall_score", 0))
             return {
                 "validation_result": validation,
-                # NOTE(dead-code): route_after_tier3_podcast()가 validation_result.verdict로 판단.
-                "next_step": "script_personalizer",
             }
 
         elif decision == "escalate":
@@ -130,8 +125,6 @@ class BatchValidatorAgent(BaseAgent):
             )
             return {
                 "validation_result": validation,
-                # NOTE(dead-code): route_after_tier3_podcast()가 validation_result.verdict로 판단.
-                "next_step": "retry_script",
             }
 
         else:
@@ -142,8 +135,6 @@ class BatchValidatorAgent(BaseAgent):
             )
             return {
                 "validation_result": {**validation, "forced_pass": True},
-                # NOTE(dead-code): route_after_tier3_podcast()가 validation_result.verdict로 판단.
-                "next_step": "script_personalizer",
             }
 
     def _build_validation_context(

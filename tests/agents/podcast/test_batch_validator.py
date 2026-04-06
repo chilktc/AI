@@ -87,13 +87,12 @@ async def test_pass_routes_to_script_personalizer(
     base_state: AgentState,
     passing_validation: dict[str, Any],
 ) -> None:
-    """검증 통과 시 next_step='script_personalizer', 점수 보존, 카운터 미변경."""
+    """검증 통과 시 verdict='PASS', 점수 보존, 카운터 미변경."""
     with patch.object(
         agent, "call_llm_json", new_callable=AsyncMock, return_value=passing_validation
     ):
         result = await agent.process(base_state)
 
-    assert result["next_step"] == "script_personalizer"
     assert result["validation_result"]["verdict"] == "PASS"
     assert result["validation_result"]["overall_score"] == 0.85
     assert "iteration_count" not in result
@@ -137,7 +136,7 @@ async def test_fail_routes_to_retry_without_incrementing(
     ):
         result = await agent.process(state)
 
-    assert result["next_step"] == "retry_script"
+    assert result["validation_result"]["verdict"] == "FAIL"
     assert "iteration_count" not in result
 
 
@@ -166,7 +165,6 @@ async def test_max_retries_forces_pass(
     ):
         result = await agent.process(state)
 
-    assert result["next_step"] == "script_personalizer"
     assert result["validation_result"]["forced_pass"] is True
     assert result["validation_result"]["verdict"] == "FAIL"
     assert result["validation_result"]["overall_score"] == 0.45
@@ -199,7 +197,6 @@ async def test_empty_script_early_return_skips_llm(
         result = await agent.process(state)
 
     mock.assert_not_called()
-    assert result["next_step"] == "retry_script"
     assert result["validation_result"]["verdict"] == "FAIL"
     assert result["validation_result"]["overall_score"] == 0.0
     assert "iteration_count" not in result
@@ -259,14 +256,13 @@ async def test_missing_optional_fields(
 
     mock.assert_called_once()
     assert "validation_result" in result
-    assert "next_step" in result
 
 
 @pytest.mark.parametrize(
-    "llm_response, expected_next_step, expected_verdict",
+    "llm_response, expected_verdict",
     [
-        ({}, "retry_script", "FAIL"),
-        ({"action": {"decision": "approve"}}, "script_personalizer", "PASS"),
+        ({}, "FAIL"),
+        ({"action": {"decision": "approve"}}, "PASS"),
     ],
     ids=["empty_dict_retries", "minimal_approve_passes"],
 )
@@ -274,10 +270,9 @@ async def test_missing_optional_fields(
 async def test_llm_edge_case_responses(
     agent: BatchValidatorAgent,
     llm_response: dict[str, Any],
-    expected_next_step: str,
     expected_verdict: str,
 ) -> None:
-    """LLM 응답 엣지 케이스: 빈 dict → 재시도, 최소 approve → 통과."""
+    """LLM 응답 엣지 케이스: 빈 dict → FAIL verdict, 최소 approve → PASS verdict."""
     state = AgentState(
         user_input="테스트",
         user_id="u",
@@ -293,7 +288,6 @@ async def test_llm_edge_case_responses(
     with patch.object(agent, "call_llm_json", new_callable=AsyncMock, return_value=llm_response):
         result = await agent.process(state)
 
-    assert result["next_step"] == expected_next_step
     assert result["validation_result"]["verdict"] == expected_verdict
 
 

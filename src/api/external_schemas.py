@@ -225,8 +225,6 @@ class PodcastRequest(BaseModel):
 
     user_id: str = Field(description="사용자 고유 ID")
     session_id: str = Field(description="세션 고유 ID")
-    # TODO(입력 제한): 텍스트 필드의 max_length를 확정 후 적용 예정
-    # 제안: user_input 10000자, topic 500자 등 — 수치는 추후 결정
     situation: str = Field(
         min_length=2,
         max_length=500,

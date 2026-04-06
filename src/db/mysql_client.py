@@ -52,7 +52,12 @@ class MySQLClient(BaseRDBClient):
     """
 
     def __init__(self, url: str | None = None) -> None:
-        self._url = url or os.getenv("MYSQL_URL", "mysql+pymysql://root:@localhost:3306/mindlog")
+        self._url = (
+            url
+            if url is not None
+            else os.getenv("MYSQL_URL", "mysql+pymysql://root:@localhost:3306/mindlog")
+        )
+        assert isinstance(self._url, str)
         self._conn_params = _parse_mysql_url(self._url)
         self._connection: pymysql.Connection | None = None
 
@@ -75,7 +80,7 @@ class MySQLClient(BaseRDBClient):
         with conn.cursor() as cursor:
             affected = cursor.execute(query, params)
             conn.commit()
-            return affected
+            return int(affected)
 
     async def fetch(
         self,

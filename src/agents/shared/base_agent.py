@@ -679,7 +679,7 @@ class BaseAgent(ABC):
             api_key=os.getenv("OPENAI_API_KEY"),
         )
 
-        response = await client.images.generate(
+        response = await client.images.generate(  # type: ignore[call-overload]
             model=model,
             prompt=prompt,
             size=size,

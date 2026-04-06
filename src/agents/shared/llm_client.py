@@ -440,7 +440,7 @@ class LLMClient:
                 input_tokens=response.usage.prompt_tokens or 0,
                 output_tokens=response.usage.completion_tokens or 0,
             )
-        return response.choices[0].message.content
+        return str(response.choices[0].message.content or "")
 
     async def _generate_anthropic(
         self,
@@ -512,7 +512,7 @@ class LLMClient:
             self._prompt_caching_enabled
             and len(system_prompt.encode()) >= self._prompt_caching_min_tokens * 4
         )
-        system_block = [{"text": system_prompt}]
+        system_block: list[dict[str, Any]] = [{"text": system_prompt}]
         if use_cache:
             system_block.append({"cachePoint": {"type": "default"}})
 

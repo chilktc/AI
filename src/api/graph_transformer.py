@@ -10,6 +10,8 @@ GoT JSON → 프론트엔드 형식 변환은 AI서버의 책임.
 
 from __future__ import annotations
 
+from typing import Any
+
 VALID_GROUPS = frozenset(
     {
         "work_structure",
@@ -76,9 +78,9 @@ GROUP_PREFIXES: dict[str, str] = {
 }
 
 
-def validate_group(node: dict) -> str:
+def validate_group(node: dict[str, Any]) -> str:
     """LLM이 생성한 group을 검증. 유효하지 않으면 label 키워드로 재분류."""
-    group = node.get("group", "")
+    group: str = str(node.get("group", ""))
     if group in VALID_GROUPS:
         return group
 

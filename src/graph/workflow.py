@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # 스트리밍 헬퍼
 # ---------------------------------------------------------------------------
-def _get_writer():
+def _get_writer() -> Any:
     """LangGraph 스트림 라이터를 안전하게 가져온다.
 
     LangGraph 컨텍스트 외부(단위 테스트 등)에서 호출 시 no-op 함수를 반환한다.
@@ -521,8 +521,8 @@ def build_podcast_graph() -> StateGraph:
             script_personalizer_node, s, _TIER4_TIMEOUT, "script_personalizer"
         )
 
-    graph.add_node("batch_validator", _bv_timeout)
-    graph.add_node("script_personalizer", _sp_timeout)
+    graph.add_node("batch_validator", _bv_timeout)  # type: ignore[arg-type]
+    graph.add_node("script_personalizer", _sp_timeout)  # type: ignore[arg-type]
     graph.add_node("crisis_response", crisis_response_node)
     graph.add_node("async_post", async_post_processing_node)
     graph.add_node("increment_iteration", increment_iteration_node)
@@ -586,8 +586,8 @@ def build_unified_graph() -> StateGraph:
             script_personalizer_node, s, _TIER4_TIMEOUT, "script_personalizer"
         )
 
-    graph.add_node("batch_validator", _batch_validator_with_timeout)
-    graph.add_node("script_personalizer", _script_personalizer_with_timeout)
+    graph.add_node("batch_validator", _batch_validator_with_timeout)  # type: ignore[arg-type]
+    graph.add_node("script_personalizer", _script_personalizer_with_timeout)  # type: ignore[arg-type]
 
     # --- 공용 노드 ---
     graph.add_node("crisis_response", crisis_response_node)

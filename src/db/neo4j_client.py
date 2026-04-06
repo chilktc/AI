@@ -40,9 +40,11 @@ class Neo4jClient(BaseGraphClient):
         user: str | None = None,
         password: str | None = None,
     ) -> None:
-        self._url = url or os.getenv("NEO4J_URL", "bolt://localhost:7687")
-        self._user = user or os.getenv("NEO4J_USER", "neo4j")
-        self._password = password or os.getenv("NEO4J_PASSWORD", "")
+        self._url = url if url is not None else os.getenv("NEO4J_URL", "bolt://localhost:7687")
+        self._user = user if user is not None else os.getenv("NEO4J_USER", "neo4j")
+        self._password = password if password is not None else os.getenv("NEO4J_PASSWORD", "")
+        assert isinstance(self._url, str)
+        assert isinstance(self._user, str) and isinstance(self._password, str)
         self._driver = AsyncGraphDatabase.driver(
             self._url,
             auth=(self._user, self._password),

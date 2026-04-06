@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import logging
 import re
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -192,7 +193,7 @@ def sanitize_dict_values(data: dict, target_keys: list[str] | None = None) -> di
             else:
                 sanitized[key] = value
         elif isinstance(value, list):
-            sanitized_list = []
+            sanitized_list: list[Any] = []
             for item in value:
                 if isinstance(item, str) and (target_keys is None or key in target_keys):
                     clean, _ = sanitize_output(item)

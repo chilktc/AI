@@ -8,11 +8,13 @@ TIER 0 에이전트: 모든 대화의 첫 번째 처리 단계
 - complexity_score 산출하여 Reasoning Agent에 전달
 """
 
+from __future__ import annotations
+
 import json
 import re
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, Callable, Coroutine
 
 from config.app_config import (
     CRISIS_KEYWORDS,
@@ -23,6 +25,7 @@ from config.app_config import (
     REDIS_CONFIG,
 )
 from src.agents.shared.base_agent import BaseAgent
+from src.agents.shared.llm_client import LLMClient
 from src.models.agent_state import AgentState
 from src.models.schemas import (
     DetectedEntities,
@@ -57,7 +60,7 @@ class IntentClassifierAgent(BaseAgent):
 
         self.use_llm = use_llm
         if not self.use_llm:
-            self.llm_client = None
+            self.llm_client: LLMClient | None = None  # type: ignore[assignment]
 
         self.use_redis = use_redis
         self.redis_client = redis_client
@@ -116,9 +119,6 @@ class IntentClassifierAgent(BaseAgent):
                     "risk_level": 4,
                     "risk_score": 1.0,
                     "safety_flags": {"risk_detected": True, "details": "Crisis keywords detected"},
-                    # NOTE(dead-code): next_step은 현재 route_after_tier0()에서 참조하지 않음.
-                    # 라우터가 항상 "tier1_podcast"를 반환. 향후 라우팅 분기 확장 시 활용 가능.
-                    "next_step": "safety_intervention",
                 }
 
             # STEP 2: LLM 기반 정밀 분류
@@ -156,16 +156,12 @@ class IntentClassifierAgent(BaseAgent):
 
             risk_level = 4 if final_result.flags.risk_flag else 0
             risk_score = 1.0 if final_result.flags.risk_flag else 0.0
-            # NOTE(dead-code): next_step은 현재 route_after_tier0()에서 참조하지 않음.
-            # 라우터가 항상 "tier1_podcast"를 반환. 향후 라우팅 분기 확장 시 활용 가능.
-            next_step = "safety_intervention" if risk_level > 0 else "process_normal"
 
             return {
                 "intent": final_result.model_dump(),
                 "risk_level": risk_level,
                 "risk_score": risk_score,
                 "safety_flags": {"risk_detected": final_result.flags.risk_flag},
-                "next_step": next_step,
             }
 
         except Exception as e:
@@ -180,8 +176,6 @@ class IntentClassifierAgent(BaseAgent):
                 "risk_level": 0,
                 "risk_score": 0.0,
                 "safety_flags": {"risk_detected": False, "error": str(e)},
-                # NOTE(dead-code): route_after_tier0()가 next_step을 읽지 않음.
-                "next_step": "process_normal",
             }
 
     # =========================================================================
@@ -208,7 +202,7 @@ class IntentClassifierAgent(BaseAgent):
         - 팟캐스트 요청 감지
         - 기본 의도 추정
         """
-        result = {
+        result: dict[str, Any] = {
             "is_crisis": False,
             "is_podcast_request": False,
             "detected_keywords": [],
@@ -439,7 +433,7 @@ class IntentClassifierAgent(BaseAgent):
     def _extract_entities_rule_based(self, normalized_input: str) -> dict[str, list[str]]:
         """규칙 기반 엔티티 추출"""
 
-        entities = {"emotions": [], "topics": [], "persons": []}
+        entities: dict[str, list[str]] = {"emotions": [], "topics": [], "persons": []}
 
         # 감정 키워드 매핑
         emotion_keywords = {
@@ -612,7 +606,8 @@ class IntentClassifierAgent(BaseAgent):
             key = f"intent:session:{session_id}:latest"
             cached = self.redis_client.get(key)
             if cached:
-                return json.loads(cached)
+                result: dict[str, Any] = json.loads(cached)
+                return result
         except Exception as e:
             self.logger.warning("[IntentClassifier] Redis get failed: %s", e)
 
@@ -654,7 +649,7 @@ class IntentClassifierAgent(BaseAgent):
 
 async def create_intent_classifier_node(
     use_llm: bool = True, use_redis: bool = False, redis_client: Any | None = None
-):
+) -> Callable[[AgentState], Coroutine[Any, Any, dict[str, Any]]]:
     """
     LangGraph에서 사용할 노드 함수 생성
     """

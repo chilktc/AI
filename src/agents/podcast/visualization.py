@@ -52,7 +52,7 @@ class VisualizationAgent(BaseAgent):
             system_prompt=system_prompt,
             user_message=user_context,
         )
-        image_prompt = planning.get("image_prompt")
+        image_prompt: str = planning.get("image_prompt") or ""
 
         # 2. [생성 및 검증] 자체 재시도 로직 가동
         result = await self._internal_generate_flow(image_prompt, user_id)

@@ -5,6 +5,9 @@ API 서버의 뼈대로서 CORS, 예외 핸들링, 라우터 등록 및 Lifespan
 관리를 담당한다.
 """
 
+from __future__ import annotations
+
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -31,7 +34,7 @@ compiled_graph = None
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """
     애플리케이션 수명주기 이벤트.
     앱 시작 시 초기화하고 종료 시 리소스를 반환한다.
@@ -132,7 +135,7 @@ app.add_middleware(RequestLoggingMiddleware)
 
 
 @app.exception_handler(StarletteHTTPException)
-async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
     """표준 HTTP 에러를 ErrorResponse 스키마에 맞게 래핑"""
     tracing = RequestTracing()  # 가상의 기본값. 실제로는 dependency로 주입받을 수 있음.
 
@@ -152,7 +155,9 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
 
 
 @app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
+async def validation_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
     """요청 검증 실패 에러를 ErrorResponse 스키마에 맞게 래핑"""
     tracing = RequestTracing()
 
@@ -174,7 +179,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 
 @app.exception_handler(Exception)
-async def general_exception_handler(request: Request, exc: Exception):
+async def general_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """처리되지 않은 모든 서버 에러 핸들러"""
     tracing = RequestTracing()
 

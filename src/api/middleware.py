@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import time
 import uuid
-from typing import Callable
+from typing import Callable, cast
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -44,7 +44,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         # 2. 제외 경로 확인
         path = request.url.path
         if path in _EXCLUDED_PATHS:
-            response = await call_next(request)
+            response = cast(Response, await call_next(request))
             response.headers["X-Request-ID"] = request_id
             return response
 
@@ -65,7 +65,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         # 4. 다음 핸들러 호출 + 소요 시간 측정
         start_time = time.monotonic()
         try:
-            response = await call_next(request)
+            response = cast(Response, await call_next(request))
         except Exception:
             elapsed_ms = int((time.monotonic() - start_time) * 1000)
             logger.error(

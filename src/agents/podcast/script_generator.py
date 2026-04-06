@@ -7,7 +7,7 @@ TIER 2 에이전트: Podcast Reasoning에서 넘어온 기획안을 바탕으로
 
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 from src.agents.shared.base_agent import BaseAgent
 from src.models.agent_state import AgentState
@@ -22,7 +22,7 @@ class ScriptGeneratorAgent(BaseAgent):
     # 한국어 기준 평균 발화 속도 (KBS 아나운서 기준 ~150 WPM). 팟캐스트 시간 추정에 사용.
     WORDS_PER_MINUTE = 150
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(name="script_generator", tier=2)
 
     async def process(self, state: AgentState) -> dict:
@@ -40,27 +40,34 @@ class ScriptGeneratorAgent(BaseAgent):
         self.logger.info("[ScriptGenerator] 스크립트 생성 프로세스 시작")
 
         # Safety 경고 컨텍스트 추출
-        safety_flags = state.get("safety_flags", {})
-        safety_status = safety_flags.get("status", "safe")
-        required_in_script = safety_flags.get("required_in_script", [])
+        safety_flags: dict[str, Any] = cast(dict[str, Any], state.get("safety_flags", {}))
+        safety_status: str = str(safety_flags.get("status", "safe"))
+        required_in_script: list[Any] = list(safety_flags.get("required_in_script", []))
 
         # 입력 데이터 추출 (content_analysis 등 이전 단계 결과 반영)
-        content_analysis = state.get(
-            "content_analysis", state
+        content_analysis: dict[str, Any] = cast(
+            dict[str, Any], state.get("content_analysis", state)
         )  # state 최상단에 병합됐을 수도 있고 dict 형태일 수도 있음
-        main_theme = content_analysis.get("main_theme", state.get("main_theme", "Mental Health"))
-        sub_themes = content_analysis.get("sub_themes", state.get("sub_themes", []))
-        emotional_journey = content_analysis.get(
-            "emotional_journey", state.get("emotional_journey", {})
+        main_theme: str = str(
+            content_analysis.get("main_theme", state.get("main_theme", "Mental Health"))
+        )
+        sub_themes: list[str] = cast(
+            list[str], content_analysis.get("sub_themes", state.get("sub_themes", []))
+        )
+        emotional_journey: dict[str, Any] = cast(
+            dict[str, Any],
+            content_analysis.get("emotional_journey", state.get("emotional_journey", {})),
         )
 
-        target_duration = content_analysis.get(
-            "target_duration", state.get("target_duration", 5)
+        target_duration: float = float(
+            cast(Any, content_analysis.get("target_duration", state.get("target_duration", 5)))
         )  # 전체 목표 시간
 
         # Reasoning에서 생성된 segment_plan (또는 episode_structure) 추출
-        reasoning_result = state.get("reasoning_result", {})
-        segment_plan = state.get("segment_plan", [])
+        reasoning_result: dict[str, Any] = cast(dict[str, Any], state.get("reasoning_result", {}))
+        segment_plan: list[dict[str, Any]] = cast(
+            list[dict[str, Any]], state.get("segment_plan", [])
+        )
         if not segment_plan and "episode_structure" in reasoning_result:
             episode_structure = reasoning_result["episode_structure"]
             num_sections = max(len(episode_structure), 1)
@@ -71,8 +78,8 @@ class ScriptGeneratorAgent(BaseAgent):
                 if isinstance(sec, str):
                     sec = {"section": sec}
 
-                duration_ratio = float(sec.get("duration_ratio", default_ratio))
-                calc_duration = max(1, int(target_duration * duration_ratio))
+                duration_ratio: float = float(sec.get("duration_ratio", default_ratio))
+                calc_duration: int = max(1, int(target_duration * duration_ratio))
 
                 segment_plan.append(
                     {
@@ -87,8 +94,8 @@ class ScriptGeneratorAgent(BaseAgent):
 
         # 그래도 플랜이 없다면 임시 플랜 생성
         if not segment_plan:
-            start_emotion = emotional_journey.get(
-                "opening", emotional_journey.get("start_emotion", "차분함")
+            start_emotion: str = str(
+                emotional_journey.get("opening", emotional_journey.get("start_emotion", "차분함"))
             )
             segment_plan = [
                 {
@@ -101,7 +108,7 @@ class ScriptGeneratorAgent(BaseAgent):
                 }
             ]
 
-        knowledge_context = state.get("knowledge_context", {})
+        knowledge_context: dict[str, Any] = cast(dict[str, Any], state.get("knowledge_context", {}))
 
         try:
             # 1. 에피소드 제목 생성
@@ -109,7 +116,7 @@ class ScriptGeneratorAgent(BaseAgent):
             self.logger.info("[ScriptGenerator] 제목 생성 완료: %s", episode_title)
 
             # 2. 세그먼트별 스크립트 생성
-            generated_segments = []
+            generated_segments: list[dict[str, Any]] = []
             for idx, segment in enumerate(segment_plan):
                 self.logger.info(
                     f"[ScriptGenerator] 세그먼트 {idx + 1}/{len(segment_plan)} 생성 중..."
@@ -330,9 +337,9 @@ class ScriptGeneratorAgent(BaseAgent):
             )
             # 만약 dict로 오면 values 추출, list면 그대로
             if isinstance(insights, dict) and "insights" in insights:
-                return insights["insights"]
+                return list(insights["insights"])
             if isinstance(insights, list):
-                return insights[:5]
+                return list(insights[:5])
             return []
         except Exception:
             return ["감정 수용하기", "스스로에게 친절하게 대하기"]
