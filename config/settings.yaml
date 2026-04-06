@@ -238,3 +238,8 @@ databases:
 
     index_memory_podcast: "mem_podcast_episode"
     # PINECONE_API_KEY 환경변수 필수
+
+# 그래프 누적 저장 설정
+graph:
+  upsert_mode: "ai_server"   # "ai_server" | "backend"
+  ema_alpha: 0.3              # EMA 최근 반영 비율 (0.0~1.0)

@@ -199,3 +199,72 @@ def calc_category_distribution(nodes: list[dict]) -> dict[str, int]:
         g = node.get("group", "emotional_exhaustion")
         dist[g] = dist.get(g, 0) + 1
     return dist
+
+
+def transform_cumulative_to_frontend(
+    nodes: list[dict],
+    edges: list[dict],
+) -> dict:
+    """RDB 누적 그래프 데이터 → 프론트엔드 ``{ nodes, links }`` 변환.
+
+    입력은 RDB 누적 테이블에서 조회한 데이터이며,
+    각 노드는 ``label``, ``grp``, ``weight``, ``mention_count``, ``trend``,
+    ``first_seen``, ``last_seen`` 필드를 포함한다.
+
+    에피소드별 변환(``transform_got_to_graph_data``)과 달리:
+    - **weight 원본값**을 그대로 전달 (``intensity_to_val()`` 미사용)
+    - ``mention_count``, ``trend``, ``first_seen``, ``last_seen`` 메타데이터 포함
+    - ID 생성은 기존 ``GROUP_PREFIXES`` + 순번 규칙 동일
+
+    Args:
+        nodes: RDB 누적 노드 목록 (label, grp, weight, mention_count, trend 등)
+        edges: RDB 누적 엣지 목록 (source_label, source_grp, target_label, target_grp, weight)
+
+    Returns:
+        ``{ "nodes": [...], "links": [...] }`` 프론트엔드 형식
+    """
+    group_counters: dict[str, int] = {}
+    # (label, grp) → frontend_id 매핑
+    key_to_id: dict[tuple[str, str], str] = {}
+
+    frontend_nodes: list[dict] = []
+    for node in nodes:
+        label = node.get("label", "")
+        grp = node.get("grp", "emotional_exhaustion")
+        if grp not in VALID_GROUPS:
+            grp = "emotional_exhaustion"
+
+        prefix = GROUP_PREFIXES[grp]
+        group_counters[grp] = group_counters.get(grp, 0) + 1
+        frontend_id = f"{prefix}{group_counters[grp]}"
+        key_to_id[(label, grp)] = frontend_id
+
+        frontend_nodes.append(
+            {
+                "id": frontend_id,
+                "name": label,
+                "group": grp,
+                "weight": node.get("weight", 0.0),
+                "mention_count": node.get("mention_count", 1),
+                "trend": node.get("trend", "stable"),
+                "first_seen": node.get("first_seen", ""),
+                "last_seen": node.get("last_seen", ""),
+            }
+        )
+
+    frontend_links: list[dict] = []
+    for edge in edges:
+        source_key = (edge.get("source_label", ""), edge.get("source_grp", ""))
+        target_key = (edge.get("target_label", ""), edge.get("target_grp", ""))
+        source_id = key_to_id.get(source_key)
+        target_id = key_to_id.get(target_key)
+        if source_id and target_id and source_id != target_id:
+            frontend_links.append(
+                {
+                    "source": source_id,
+                    "target": target_id,
+                    "weight": edge.get("weight", 1),
+                }
+            )
+
+    return {"nodes": frontend_nodes, "links": frontend_links}

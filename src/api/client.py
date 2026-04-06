@@ -91,3 +91,25 @@ class BackendClient:
         )
         response.raise_for_status()
         return LoadResponse.model_validate(response.json())
+
+    @with_retry(max_retries=3, base_delay=1.0)
+    async def update(self, resource: str, data: SaveRequest) -> SaveResponse:
+        """
+        백엔드에 데이터를 갱신(UPSERT)한다.
+
+        Args:
+            resource: 리소스 경로 (예: "graph_nodes")
+            data: 갱신할 데이터 (SaveRequest 스키마)
+
+        Returns:
+            갱신 결과 (SaveResponse)
+
+        Raises:
+            httpx.HTTPStatusError: HTTP 에러 응답 시
+        """
+        response = await self._client.put(
+            f"{self._base_url}/{resource}",
+            json=data.model_dump(mode="json"),
+        )
+        response.raise_for_status()
+        return SaveResponse.model_validate(response.json())
