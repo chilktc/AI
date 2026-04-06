@@ -98,3 +98,26 @@ async def test_clamp_out_of_range_values(agent: EmotionAgent) -> None:
     assert ev["arousal"] == 0.3  # default
     assert ev["secondary_emotions"] == []  # type-safe
     assert ev["emotional_journey_hint"] == []  # type-safe
+
+
+@pytest.mark.asyncio
+async def test_llm_failure_fallback_uses_intent_emotions(agent: EmotionAgent) -> None:
+    """LLM 실패 시 intent.detected_entities.emotions를 1순위 fallback으로 사용한다."""
+    state = AgentState(
+        user_input="요즘 힘들다",  # 키워드 없음 → 키워드만으론 neutral
+        user_id="u",
+        session_id="s",
+        mode="podcast",
+        intent={
+            "detected_entities": {
+                "emotions": ["sadness", "fatigue"]
+            }
+        },
+    )
+    mock = AsyncMock(side_effect=Exception("LLM error"))
+    with patch.object(agent, "call_llm_json", mock):
+        result = await agent.process(state)
+
+    ev = result["emotion_vectors"]
+    assert ev["primary_emotion"] == "sadness"
+    assert ev["secondary_emotions"] == ["fatigue"]
