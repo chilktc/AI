@@ -27,6 +27,7 @@ class ReadyResponse(BaseModel):
     storage_mode: str = "local"
 
 
+@router.get("/", response_model=HealthResponse, include_in_schema=False)
 @router.get("/health", response_model=HealthResponse)
 async def health_check() -> HealthResponse:
     """
