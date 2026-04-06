@@ -468,13 +468,17 @@ class PodcastReasoningAgent(BaseAgent):
         episode_id: str,
         state: AgentState,
     ) -> None:
-        """GoT 결과를 Neo4j에 저장하고 Backend에 전송한다.
+        """GoT 결과를 Neo4j에 저장하고 Backend에 전송 + RDB 누적 그래프 갱신한다.
 
-        두 작업 모두 실패해도 파이프라인은 계속 진행한다.
+        세 작업 모두 실패해도 파이프라인은 계속 진행한다.
         """
         # [이관 주석] Neo4j 저장은 이관 후 삭제. Backend 전송만 유지.
         await self._save_got_to_neo4j(got_result, session_id, episode_id)
         await self._publish_graph_to_backend(got_result, state)
+
+        # [신규] RDB 누적 그래프 — label+group 기준 통합 UPSERT
+        from src.api.graph_cumulative import publish_graph_to_rdb
+        await publish_graph_to_rdb(got_result, state, episode_id)
 
     async def _save_got_to_neo4j(
         self,
