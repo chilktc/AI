@@ -46,8 +46,10 @@ class ScriptGeneratorAgent(BaseAgent):
 
         # 입력 데이터 추출 (content_analysis 등 이전 단계 결과 반영)
         content_analysis: dict[str, Any] = cast(
-            dict[str, Any], state.get("content_analysis", state)
-        )  # state 최상단에 병합됐을 수도 있고 dict 형태일 수도 있음
+            dict[str, Any], state.get("content_analysis", {})
+        )
+        if not content_analysis:
+            self.logger.warning("[ScriptGenerator] content_analysis 없음 — 기본값으로 생성")
         main_theme: str = str(
             content_analysis.get("main_theme", state.get("main_theme", "Mental Health"))
         )
@@ -110,6 +112,25 @@ class ScriptGeneratorAgent(BaseAgent):
 
         knowledge_context: dict[str, Any] = cast(dict[str, Any], state.get("knowledge_context", {}))
 
+        # [Change 7] FAIL 재시도 시 이전 검증 피드백 주입
+        iteration_count = state.get("iteration_count", 0)
+        revision_feedback = ""
+        if iteration_count > 0:
+            prev_action = state.get("validation_result", {}).get("action", {})
+            rev_instructions = prev_action.get("revision_instructions") or ""
+            priority_fixes = prev_action.get("priority_fixes") or []
+            if rev_instructions or priority_fixes:
+                fixes_text = "\n".join(f"- {f}" for f in priority_fixes[:3])
+                revision_feedback = (
+                    f"\n[이전 검증 실패 피드백 (재시도 {iteration_count}회차)]\n"
+                    f"수정 지침: {rev_instructions}\n"
+                    f"우선 수정 항목:\n{fixes_text}"
+                )
+                self.logger.info(
+                    "[ScriptGenerator] 재시도 피드백 주입 (iteration=%d, fixes=%d개)",
+                    iteration_count, len(priority_fixes),
+                )
+
         try:
             # 1. 에피소드 제목 생성
             episode_title = await self._generate_title(main_theme, sub_themes, emotional_journey)
@@ -130,6 +151,7 @@ class ScriptGeneratorAgent(BaseAgent):
                     emotional_journey=emotional_journey,
                     previous_context=prev_context,
                     knowledge_context=knowledge_context,
+                    revision_feedback=revision_feedback,   # [Change 7]
                 )
                 generated_segments.append(segment_script)
 
@@ -233,6 +255,7 @@ class ScriptGeneratorAgent(BaseAgent):
         emotional_journey: dict,
         previous_context: str,
         knowledge_context: dict,
+        revision_feedback: str = "",   # [Change 7]
     ) -> dict:
         """개별 세그먼트의 스크립트 텍스트를 LLM으로 생성한다.
 
@@ -273,6 +296,9 @@ class ScriptGeneratorAgent(BaseAgent):
             previous_context=previous_context or "This is the opening segment.",
             knowledge_summary=knowledge_summary,
         )
+
+        if revision_feedback:
+            prompt += revision_feedback
 
         try:
             script_text = await self.call_llm(
