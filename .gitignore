@@ -35,6 +35,8 @@ ENV/
 # Environment variables
 .env
 .env.local
+.env.*
+!.env.example
 
 # Model files
 *.bin
@@ -99,3 +101,26 @@ docs/**/CLAUDE.md
 
 # 발표 자료 (저장소 외부)
 발표_자료/
+
+# 시크릿 & 인증서
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+service-account*.json
+secrets.yaml
+secrets.json
+config/local.*
+config/secrets.*
+
+# 가상환경 (추가 패턴)
+.venv/
+
+# 로컬 데이터베이스
+*.sqlite
+*.db
+!dev/local_db/.env.db.example
+
+# SSH
+.ssh/

@@ -5,17 +5,17 @@ services:
     ports:
       - "3306:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: mindlog_root
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-localdev_root}
       MYSQL_DATABASE: mindlog
       MYSQL_USER: mindlog_user
-      MYSQL_PASSWORD: mindlog_pass
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-localdev_pass}
       MYSQL_CHARACTER_SET_SERVER: utf8mb4
       MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
     volumes:
       - mindlog_dev_mysql:/var/lib/mysql
       - ./mysql/init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pmindlog_root"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-localdev_root}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -28,14 +28,14 @@ services:
       - "7474:7474"
       - "7687:7687"
     environment:
-      NEO4J_AUTH: neo4j/mindlog_neo4j
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-localdev_neo4j}
       NEO4J_PLUGINS: '[]'
       NEO4J_server_memory_heap_initial__size: 256m
       NEO4J_server_memory_heap_max__size: 512m
     volumes:
       - mindlog_dev_neo4j:/data
     healthcheck:
-      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "mindlog_neo4j", "RETURN 1"]
+      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "${NEO4J_PASSWORD:-localdev_neo4j}", "RETURN 1"]
       interval: 10s
       timeout: 5s
       retries: 5

@@ -6,10 +6,10 @@ AI 서버 ↔ Backend 서버 간 통신을 검증한다.
 
 사용법:
     # 백엔드 URL 지정
-    pytest tests/api/e2e/ -v -m live --backend-url=http://10.7.10.20:8080
+    pytest tests/api/e2e/ -v -m live --backend-url=http://<BACKEND_IP>:8080
 
     # 환경변수로 지정
-    BACKEND_API_URL=http://10.7.10.20:8080/api/v1 pytest tests/api/e2e/ -v -m live
+    BACKEND_API_URL=http://<BACKEND_IP>:8080/api/v1 pytest tests/api/e2e/ -v -m live
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         "--backend-url",
         action="store",
         default=None,
-        help="Backend 서버 URL (예: http://10.7.10.20:8080)",
+        help="Backend 서버 URL (예: http://<BACKEND_IP>:8080)",
     )
 
 

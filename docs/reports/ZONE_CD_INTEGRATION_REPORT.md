@@ -217,10 +217,10 @@ Backend 서버(app-3:8080)     ← 데이터 영속화
 ```bash
 # Backend URL 지정하여 실행 (app-3 IP)
 pytest tests/api/e2e/test_backend_health.py -v -m live \
-    --backend-url=http://10.7.10.20:8080
+    --backend-url=http://<APP3_IP>:8080
 
 # 또는 환경변수로 실행
-BACKEND_API_URL=http://10.7.10.20:8080/api/v1 \
+BACKEND_API_URL=http://<APP3_IP>:8080/api/v1 \
     pytest tests/api/e2e/test_backend_health.py -v -m live
 
 # 로컬 개발 시 (localhost)
@@ -246,7 +246,7 @@ pytest tests/api/e2e/test_backend_health.py -v -m live \
 
 ```bash
 pytest tests/api/e2e/test_backend_integration.py -v -m live \
-    --backend-url=http://10.7.10.20:8080
+    --backend-url=http://<APP3_IP>:8080
 ```
 
 현재 모든 테스트에 `pytest.skip("API 명세 미확정")` 적용됨. 활성화 절차:
@@ -306,7 +306,7 @@ curl http://localhost:8000/metrics
 
 ```bash
 # .env 파일
-BACKEND_API_URL=http://10.7.10.20:8080/api/v1
+BACKEND_API_URL=http://<APP3_IP>:8080/api/v1
 STORAGE_MODE=proxy
 ```
 

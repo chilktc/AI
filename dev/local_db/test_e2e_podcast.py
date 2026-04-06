@@ -131,7 +131,9 @@ def _probe_mysql() -> bool:
         import pymysql
         from src.db.mysql_client import _parse_mysql_url
 
-        url = os.getenv("MYSQL_URL", "mysql+pymysql://root:@localhost:3306/mindlog")
+        url = os.getenv("MYSQL_URL", "")
+        if not url:
+            return False
         params = _parse_mysql_url(url)
         params["connect_timeout"] = 3
         conn = pymysql.connect(**params)

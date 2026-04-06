@@ -82,9 +82,11 @@ rm -rf dev/local_db/
 
 | DB | URL | 사용자 | 비밀번호 |
 |----|-----|--------|---------|
-| MySQL | `localhost:3306/mindlog` | `mindlog_user` | `mindlog_pass` |
-| Neo4j Browser | `http://localhost:7474` | `neo4j` | `mindlog_neo4j` |
-| Neo4j Bolt | `bolt://localhost:7687` | `neo4j` | `mindlog_neo4j` |
+| MySQL | `localhost:3306/mindlog` | `mindlog_user` | `.env.db` 참조 |
+| Neo4j Browser | `http://localhost:7474` | `neo4j` | `.env.db` 참조 |
+| Neo4j Bolt | `bolt://localhost:7687` | `neo4j` | `.env.db` 참조 |
+
+> 비밀번호는 `dev/local_db/.env.db`에서 관리합니다. `.env.db.example`을 복사하여 설정하세요.
 
 ## 트러블슈팅
 
