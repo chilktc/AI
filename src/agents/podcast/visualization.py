@@ -48,10 +48,20 @@ class VisualizationAgent(BaseAgent):
             f"Emotion: {emotion}\nContent: {content}\nMode: {state.get('mode', 'podcast')}"
         )
 
-        planning = await self.call_llm_json(
-            system_prompt=system_prompt,
-            user_message=user_context,
-        )
+        try:
+            planning = await self.call_llm_json(
+                system_prompt=system_prompt,
+                user_message=user_context,
+            )
+        except Exception as e:
+            logger.error("[Visualization] LLM 호출 실패 — 빈 이미지로 처리: %s", e)
+            return {
+                "visual_data": {
+                    "status": "failed",
+                    "error": "llm_call_failed",
+                    "image_url": None,
+                }
+            }
         image_prompt: str = planning.get("image_prompt") or ""
 
         # 2. [생성 및 검증] 자체 재시도 로직 가동
