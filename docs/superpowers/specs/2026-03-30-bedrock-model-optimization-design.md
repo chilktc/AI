@@ -617,7 +617,7 @@ evaluation = await evaluator.evaluate(
 
 | 항목 | 값 | 비고 |
 |------|---|------|
-| 인스턴스 | app-2 (t3.medium) | Private IP: 10.7.11.10 |
+| 인스턴스 | app-2 (t3.medium) | Private IP: <APP2_IP> |
 | vCPU | 2 | 버스팅 가능 (T3 크레딧) |
 | RAM | 3.8GB | Swap 미설정 (설정 필요) |
 | 디스크 | 29GB (여유 ~11GB) | Docker 이미지 9.1GB 차지 |

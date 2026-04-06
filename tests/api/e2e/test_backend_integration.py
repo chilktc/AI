@@ -10,7 +10,7 @@ BackendClient의 save/load 메서드를 실제 Backend 서버(app-3)에
 
 실행 방법:
     pytest tests/api/e2e/test_backend_integration.py -v -m live \\
-        --backend-url=http://10.7.10.20:8080
+        --backend-url=http://<BACKEND_IP>:8080
 """
 
 from __future__ import annotations

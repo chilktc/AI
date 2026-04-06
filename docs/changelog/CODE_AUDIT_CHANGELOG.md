@@ -35,7 +35,7 @@ git history에 이미 기록되었으므로 **토큰 로테이션이 필요**하
 **변경 전**:
 ```python
 self.endpoint = "https://no753ozr79oq.proxy.aifoundry.ktcloud.com/v1/embeddings"
-self.api_token = "kt_cctc5n..."
+self.api_token = "kt_***REDACTED***"
 ```
 
 **변경 후**:

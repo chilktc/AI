@@ -9,10 +9,10 @@ AI 서버(app-2) → Backend 서버(app-3) 간 네트워크 연결과
 실행 방법:
     # Backend URL 지정하여 실행
     pytest tests/api/e2e/test_backend_health.py -v -m live \\
-        --backend-url=http://10.7.10.20:8080
+        --backend-url=http://<BACKEND_IP>:8080
 
     # 환경변수로 실행
-    BACKEND_API_URL=http://10.7.10.20:8080/api/v1 \\
+    BACKEND_API_URL=http://<BACKEND_IP>:8080/api/v1 \\
         pytest tests/api/e2e/test_backend_health.py -v -m live
 """
 
@@ -34,6 +34,7 @@ class TestBackendConnectivity:
 
     def test_backend_server_reachable(
         self,
+        skip_if_no_backend: None,
         backend_host_port: tuple[str, int],
     ) -> None:
         """Backend 서버에 TCP 연결이 가능해야 한다.

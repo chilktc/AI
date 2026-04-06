@@ -4,7 +4,7 @@
 
 > **작성일**: 2026-03-09
 > **기준 문서**: AI_Team_Infrastructure_Guide.docx
-> **배포 타겟**: app-2 (EC2 t3.medium, 10.7.11.10), Docker, FastAPI:8000
+> **배포 타겟**: app-2 (EC2 t3.medium, <APP2_IP>), Docker, FastAPI:8000
 
 내부 파이프라인(LangGraph TIER 기반)을 완성 단계까지 구축한 상태에서,
 AWS EC2 배포, 백엔드 API 연동, 모니터링 연결 등 외부 인프라 작업을 진행한다.
@@ -32,24 +32,24 @@ AWS EC2 배포, 백엔드 API 연동, 모니터링 연결 등 외부 인프라 �
 
 - VPC 10.7.0.0/16, AZ 2개 (ap-northeast-2a, 2c)
 - EC2 t3.medium x4 (Ubuntu 22.04, Docker/Docker Compose 사전 설치)
-- ALB: `t7-mindlog-prod-alb-1834710625.ap-northeast-2.elb.amazonaws.com`
+- ALB: `<ALB_DOMAIN>`
 
 ### 서버 할당
 
 | 서버 | IP | 역할 | 포트 |
 |------|-----|------|------|
-| app-1 | 10.7.10.10 | 모니터링 | Grafana:3001, OpenSearch:5601, Prometheus:9090 |
-| app-2 | 10.7.11.10 | **AI 서비스** | FastAPI:8000 |
-| app-3 | 10.7.10.20 | Backend | Spring Boot:8080 |
-| app-4 | 10.7.11.20 | Frontend | Next.js:3000 |
+| app-1 | <APP1_IP> | 모니터링 | Grafana:3001, OpenSearch:5601, Prometheus:9090 |
+| app-2 | <APP2_IP> | **AI 서비스** | FastAPI:8000 |
+| app-3 | <APP3_IP> | Backend | Spring Boot:8080 |
+| app-4 | <APP4_IP> | Frontend | Next.js:3000 |
 
 ### 접근/보안
 
-- IAM 사용자: `260308_7team_AI` / 그룹: `7team_AI_Group`
+- IAM 사용자: `<IAM_USER_AI>` / 그룹: `7team_AI_Group`
 - SSM 접근 구성 완료 (SSH 차단, SSM 전용)
 - S3 읽기 전용 (s3:Get*, s3:List*)
 - 배포 경로: `/home/ubuntu/app/`, Docker 유저: ubuntu (sudo 불필요)
-- S3 백업 버킷: `t7-mindlog-prod-logs-backup`
+- S3 백업 버킷: `<S3_LOGS_BUCKET>`
 
 ---
 
@@ -59,7 +59,7 @@ AWS EC2 배포, 백엔드 API 연동, 모니터링 연결 등 외부 인프라 �
 
 ### 콘솔 접속
 
-- [ ] AWS 콘솔 로그인: `https://274130523831.signin.aws.amazon.com/console` (사용자명: `260308_7team_AI`)
+- [ ] AWS 콘솔 로그인: `https://<AWS_ACCOUNT_ID>.signin.aws.amazon.com/console` (사용자명: `<IAM_USER_AI>`)
 - [ ] EC2 > Instances에서 `app-2` 선택 > Connect > Session Manager 탭 > Connect
 - [ ] app-2 터미널에서 확인:
   ```bash
@@ -79,7 +79,7 @@ AWS EC2 배포, 백엔드 API 연동, 모니터링 연결 등 외부 인프라 �
   ```
 - [ ] S3 읽기 테스트:
   ```bash
-  aws s3 ls s3://t7-mindlog-prod-logs-backup/
+  aws s3 ls s3://<S3_LOGS_BUCKET>/
   ```
 - [ ] IAM 권한 확인 (Bedrock 권한 포함 여부):
   ```bash
@@ -88,14 +88,14 @@ AWS EC2 배포, 백엔드 API 연동, 모니터링 연결 등 외부 인프라 �
 
 ### 모니터링 대시보드
 
-- [ ] Grafana: `http://ALB_DOMAIN:3001` 접속 (admin / Mindlog123!@#)
-- [ ] OpenSearch: `http://ALB_DOMAIN:5601` 접속 (admin / Mindlog123!@#)
+- [ ] Grafana: `http://ALB_DOMAIN:3001` 접속 (admin / <팀장에게 별도 확인>)
+- [ ] OpenSearch: `http://ALB_DOMAIN:5601` 접속 (admin / <팀장에게 별도 확인>)
 
 ### 네트워크 확인 (app-2 SSM 접속 후)
 
 - [ ] Backend 통신 테스트:
   ```bash
-  curl http://10.7.10.20:8080
+  curl http://<APP3_IP>:8080
   ```
 - [ ] Bedrock 권한 테스트:
   ```bash
@@ -259,7 +259,7 @@ if __name__ == "__main__":
 ```
 
 **환경 분리 포인트**:
-- `ALLOWED_ORIGINS`: 로컬 `*` / 프로덕션 `http://10.7.10.20:8080`
+- `ALLOWED_ORIGINS`: 로컬 `*` / 프로덕션 `http://<APP3_IP>:8080`
 - `APP_ENV`: 로컬 `development`(reload=True) / 프로덕션 `production`(reload=False)
 - `PORT`: 기본 8000, 환경변수로 오버라이드 가능
 
@@ -676,7 +676,7 @@ services:
 
 **환경 분리**:
 - 로컬: `.env`에 `LLM_PROVIDER=ollama` 또는 `openai`
-- 프로덕션: `.env`에 `LLM_PROVIDER=bedrock`, `BACKEND_API_URL=http://10.7.10.20:8080/api/v1`
+- 프로덕션: `.env`에 `LLM_PROVIDER=bedrock`, `BACKEND_API_URL=http://<APP3_IP>:8080/api/v1`
 - `prompts/` 볼륨 마운트로 프롬프트 독립 배포
 
 **담당**: 아무 개발자 / **복잡도**: S
@@ -730,8 +730,8 @@ prompts/
 # APP_ENV=production
 # LLM_PROVIDER=bedrock
 # AWS_REGION=ap-northeast-2
-# BACKEND_API_URL=http://10.7.10.20:8080/api/v1
-# ALLOWED_ORIGINS=http://10.7.10.20:8080,http://10.7.11.20:3000
+# BACKEND_API_URL=http://<APP3_IP>:8080/api/v1
+# ALLOWED_ORIGINS=http://<APP3_IP>:8080,http://<APP4_IP>:3000
 # LOG_FORMAT=json
 # LOG_LEVEL=INFO
 # PROMPT_DIR=prompts
@@ -945,7 +945,7 @@ class S3ReadClient:
 
     def __init__(self, bucket: str | None = None) -> None:
         settings = get_settings()
-        self._bucket = bucket or "t7-mindlog-prod-logs-backup"
+        self._bucket = bucket or "<S3_LOGS_BUCKET>"
         self._client = boto3.client("s3", region_name=settings.bedrock_region)
 
     def get_object(self, key: str) -> bytes:
