@@ -13,27 +13,61 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-# Python 3.11+ 전용 모듈(Self, StrEnum) 임포트 체인 우회
-# routes/__init__.py → podcasts → external_schemas(StrEnum)
-# graph.py → src.db.factory → src.db.base(Self)
-for _mod in (
+# ---------------------------------------------------------------------------
+# sys.modules 임시 패치 — graph 라우터 import에만 필요
+# import 완료 후 즉시 복구하여 다른 테스트 모듈에 영향을 주지 않는다.
+#
+# 주의: src.api.routes 패키지 자체는 mock하지 않는다 (서브모듈 import 불가).
+#       __init__.py가 import하는 podcasts, sessions, health만 mock한다.
+# ---------------------------------------------------------------------------
+
+_MODULES_TO_MOCK = (
     "src.api.external_schemas",
     "src.api.routes.podcasts",
     "src.api.routes.sessions",
+    "src.api.routes.health",
     "src.db.base",
     "src.db",
     "src.db.factory",
-):
-    if _mod not in sys.modules:
-        sys.modules[_mod] = MagicMock()
+)
 
-# create_graph_client mock 설정
+# 1. 현재 상태 저장 + mock 주입
+_saved: dict[str, object] = {}
+_added: list[str] = []
+
+for _mod in _MODULES_TO_MOCK:
+    if _mod in sys.modules:
+        _saved[_mod] = sys.modules[_mod]
+    else:
+        _added.append(_mod)
+    sys.modules[_mod] = MagicMock()
+
 sys.modules["src.db.factory"].create_graph_client = MagicMock()
 
+# 2. graph 라우터 import (패치된 환경에서)
 from fastapi import FastAPI  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 from src.api.routes.graph import router as graph_router  # noqa: E402
+
+# 3. 즉시 복구 — 주입한 mock을 제거/복원하여 다른 테스트에 영향 없도록
+for _mod in _added:
+    sys.modules.pop(_mod, None)
+for _mod, _orig in _saved.items():
+    sys.modules[_mod] = _orig
+
+# src.api.routes 패키지의 attribute 캐시도 정리
+#   __init__.py가 "from src.api.routes import podcasts as podcasts" 등을 실행하여
+#   routes 패키지 객체에 mock attribute가 남을 수 있다.
+import src.api.routes as _routes_pkg
+
+for _attr in ("podcasts", "sessions", "health"):
+    if hasattr(_routes_pkg, _attr) and isinstance(getattr(_routes_pkg, _attr), MagicMock):
+        delattr(_routes_pkg, _attr)
+
+del _saved, _added, _routes_pkg
+
+# ---------------------------------------------------------------------------
 
 _test_app = FastAPI()
 _test_app.include_router(graph_router)

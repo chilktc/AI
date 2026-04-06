@@ -705,7 +705,10 @@ class TestSaveGotToNeo4j:
         import_patch, mock_fn = _patch_create_graph_client(return_value=mock_cm)
         with import_patch:
             await agent._save_got_to_neo4j(
-                _SAMPLE_GOT_RESULT, "sess_001", "ep_001", "user_001",
+                _SAMPLE_GOT_RESULT,
+                "sess_001",
+                "ep_001",
+                "user_001",
             )
 
         # 2 노드 MERGE + 1 엣지 MERGE + 1 User/Session MERGE + 1 Session→GoTNode 관계 = 5 호출
