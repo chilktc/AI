@@ -38,7 +38,7 @@ TIER 4 (후처리): Script Personalizer
 | 02 | Safety Agent | TIER 1 (병렬) | Sonnet 3.7 | 개발자2 |
 | 03 | Emotion Agent | TIER 1 (병렬) | Haiku | 개발자2 |
 | 04 | Content Analyzer | TIER 1 (병렬) | Haiku | 개발자3 |
-| 05 | Podcast Reasoning | TIER 1 (병렬) | Haiku | 개발자3 |
+| 05 | Podcast Reasoning | TIER 1 (병렬) | Sonnet 3.7 | 개발자3 |
 | 06 | Episode Memory | 독립 (Reasoning 조건부) | Sonnet 3.5 | 개발자2 |
 | 07 | Knowledge Agent | 독립 (Reasoning 조건부) | Sonnet 3.5 | 개발자1 |
 | 08 | Script Generator | TIER 2 (병렬) | Haiku | 개발자1 |
@@ -444,7 +444,7 @@ class ReasoningAgent:
 `config/settings.yaml`의 `prompts.versions` 섹션에서 에이전트별 사용 버전을 핀닝한다.
 
 현재 핀닝 (2026-03-13 최종 확정, Round 4):
-- Content Analyzer: v2.1.0 / Podcast Reasoning: v3.0.0 / Batch Validator: v2.3.0
+- Content Analyzer: v2.1.0 / Podcast Reasoning: v3.1.0 / Batch Validator: v2.3.0
 
 상세: `docs/guides/PROMPT_VERSIONING.md`
 

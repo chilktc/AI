@@ -260,8 +260,13 @@ class Settings:
 
     @property
     def api_base_url(self) -> str:
-        """백엔드 API 기본 URL. 환경변수 BACKEND_API_URL로 설정."""
-        return os.getenv("BACKEND_API_URL", "http://localhost:8080/api/v1")
+        """백엔드 API 기본 URL. 환경변수 BACKEND_API_URL로 설정.
+
+        GitHub Actions에서 미등록 Secret은 빈 문자열로 치환되므로
+        빈 문자열인 경우에도 기본값을 사용한다.
+        """
+        val = os.getenv("BACKEND_API_URL", "").strip()
+        return val if val else "http://localhost:8080/api/v1"
 
     @property
     def api_timeout(self) -> int:
