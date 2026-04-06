@@ -6,9 +6,12 @@ CBT, DBT 등 심리치료 기법, 정신건강 전문 지식을 검색하여 근
 독립 에이전트: Podcast Reasoning Agent가 필요 시 조건부 호출.
 """
 
+from __future__ import annotations
+
 import json
+from collections.abc import Callable, Coroutine
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 from src.agents.shared.base_agent import BaseAgent
 from src.models.agent_state import AgentState
@@ -40,8 +43,8 @@ class KnowledgeAgent(BaseAgent):
         # 실제 환경에서는 보통 독립적으로 query와 context를 받지만
         # LangGraph State에서는 최상위 필드로 오거나 파편화되어 있을 수 있습니다.
         query = state.get("user_input", "")
-        domain_hints = state.get("domain_hints", [])
-        user_context = state.get("user_context", {})
+        domain_hints = cast(list[str], state.get("domain_hints", []))
+        user_context = cast(dict[str, Any], state.get("user_context", {}))
 
         self.logger.info("[KnowledgeAgent] Processing knowledge search for query: %s", query)
 
@@ -66,7 +69,7 @@ class KnowledgeAgent(BaseAgent):
                 }
 
             # 3. PostgreSQL(또는 지원 DB)에서 전체 메타데이터 및 문서 원문 조회
-            doc_ids = [r.get("id") for r in vector_results if "id" in r]
+            doc_ids: list[str] = [str(r.get("id")) for r in vector_results if "id" in r]
             documents = await self._get_documents(doc_ids)
 
             # 4. 사용자 맥락 적합성 평가 (LLM 검증)
@@ -135,7 +138,8 @@ class KnowledgeAgent(BaseAgent):
                 top_k=5,
                 include_metadata=True,
             )
-            return results.get("matches", [])
+            matches: list[dict[str, Any]] = results.get("matches", [])
+            return matches
         except Exception as e:
             self.logger.error("[KnowledgeAgent] Vector search failed: %s", e)
             return []
@@ -189,13 +193,20 @@ class KnowledgeAgent(BaseAgent):
         )
 
         try:
-            scores_list = await self.call_llm_json(
+            scores_response = await self.call_llm_json(
                 system_prompt=system_prompt,
                 user_message=user_message,
             )
+            # LLM 응답에서 scores 리스트 추출
+            scores_list: list[dict[str, Any]] = cast(
+                list[dict[str, Any]],
+                scores_response.get("scores", scores_response.get("results", [])),
+            )
             # 리스트를 딕셔너리로 맵핑
-            result = {}
+            result: dict[str, dict[str, Any]] = {}
             for s in scores_list:
+                if not isinstance(s, dict):
+                    continue
                 doc_id = str(s.get("doc_id", ""))
                 result[doc_id] = {
                     "score": s.get("applicability_score", 0.5),
@@ -292,7 +303,7 @@ async def create_knowledge_node(
     db_client: Any | None = None,
     pinecone_client: Any | None = None,
     embedding_client: Any | None = None,
-):
+) -> Callable[[AgentState], Coroutine[Any, Any, dict[str, Any]]]:
     """LangGraph 노드 생성 팩토리"""
     agent = KnowledgeAgent(
         db_client=db_client, pinecone_client=pinecone_client, embedding_client=embedding_client

@@ -28,7 +28,7 @@ class ReadyResponse(BaseModel):
 
 
 @router.get("/health", response_model=HealthResponse)
-async def health_check():
+async def health_check() -> HealthResponse:
     """
     ALB 헬스체크용 엔드포인트.
     애플리케이션이 실행 중인지(200 OK)만 확인한다.
@@ -37,7 +37,7 @@ async def health_check():
 
 
 @router.get("/health/ready", response_model=ReadyResponse)
-async def ready_check():
+async def ready_check() -> ReadyResponse:
     """
     심층 상태 점검 (Docker 컨테이너 Readiness Probe).
 

@@ -6,7 +6,7 @@ Intent Classifier, Script Personalizer 등 에이전트 전용 모델을 포함�
 """
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -40,7 +40,7 @@ class IntentClassifierOutput(BaseModel):
     complexity_score: float = Field(..., ge=0.0, le=1.0, description="복잡도 점수")
     detected_entities: DetectedEntities = Field(default_factory=DetectedEntities)
     flags: IntentFlags = Field(default_factory=IntentFlags)
-    reasoning: str | None = Field(default=None, description="분류 근거 설명")
+    reasoning: Optional[str] = Field(default=None, description="분류 근거 설명")
     trace_id: str = Field(..., description="추적 ID")
     classified_at: datetime = Field(default_factory=datetime.now)
 
@@ -77,7 +77,7 @@ class UserProfile(BaseModel):
     interaction_history: list[dict[str, Any]] = Field(
         default_factory=list, description="상호작용 이력"
     )
-    accessibility_needs: list[str] | None = Field(default=None, description="접근성 요구사항")
+    accessibility_needs: Optional[list[str]] = Field(default=None, description="접근성 요구사항")
     preferred_attitude: str = Field(default="balanced", description="선호 태도")
 
 

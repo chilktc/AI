@@ -78,7 +78,7 @@ class LLMClient:
 | 7 | complexity 기반 추론 라우팅 | 단순 쿼리의 LLM 비용 절감 |
 | 8 | 세션 기반 A/B variant | 동일 세션 내 일관된 경험 보장 |
 | 9 | contextvars 사용 | LangGraph 병렬 실행에서 비동기 안전 격리 |
-| 10 | DI 패턴 (스텁) | Memory/Knowledge 미구현 상태에서도 파이프라인 테스트 가능 |
+| 10 | DI 패턴 (스텁) | Memory/Knowledge 구현 완료. 스텁은 Pinecone 연결 전까지 폴백으로 유지 |
 | 11 | 관계형 DB → MySQL | PostgreSQL에서 MySQL로 변경 |
 | 12 | LLM 멀티 프로바이더 | Anthropic SDK + AWS Bedrock + OpenAI + 커스텀(Ollama) 플러그인으로 유연성 확보 |
 | 13 | json.loads strict=False | 로컬 LLM(Ollama 등)의 제어 문자 포함 JSON 응답 허용 |
@@ -99,9 +99,9 @@ class LLMClient:
 ### 중기 (대화모드 착수) — 진행 중
 
 6. ~~Intent Classifier~~ ✅, ~~Safety~~ ✅, ~~Emotion~~ ✅ — 구현 완료 (팟캐스트 공용)
-7. Context, Memory, Reasoning, Synthesis — ⏳ 미구현
-8. Validator, Personalization — ⏳ 미구현
-9. 대화모드 LangGraph 워크플로우 통합 — ⏳ 미구현
+7. ~~Content Analyzer~~ ✅, ~~Podcast Reasoning~~ ✅, ~~Episode Memory~~ ✅, ~~Knowledge~~ ✅ — 팟캐스트 모드 구현 완료
+8. ~~Batch Validator~~ ✅, ~~Script Personalizer~~ ✅ — 팟캐스트 모드 구현 완료
+9. 대화모드 에이전트 (Context, Synthesis 등) + 워크플로우 통합 — ⏳ 미구현 (대화모드 재설계 필요)
 
 ### 장기 (플랫폼 완성)
 

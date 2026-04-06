@@ -10,10 +10,12 @@ from __future__ import annotations
 import json
 import logging
 import uuid
+from collections.abc import AsyncIterator
 from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter
+from fastapi.responses import StreamingResponse
 
 # src.api.main import removed from top level to prevent circular import
 from src.api.backend_resources import (
@@ -377,7 +379,7 @@ def _now_iso() -> str:
 
 
 @router.post("/episodes/stream")
-async def stream_podcast_episode(request: PodcastRequest):
+async def stream_podcast_episode(request: PodcastRequest) -> StreamingResponse:
     """팟캐스트 에피소드 생성 — SSE 스트리밍.
 
     TIER별 진행 상황을 실시간으로 전송한다.
@@ -430,7 +432,7 @@ async def stream_podcast_episode(request: PodcastRequest):
         "callbacks": [telemetry_cb],
     }
 
-    async def event_generator():
+    async def event_generator() -> AsyncIterator[str]:
         """SSE 이벤트 생성기 — astream(stream_mode=["updates","custom"])."""
         yield _sse_format(
             {

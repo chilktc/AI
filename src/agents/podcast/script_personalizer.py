@@ -8,8 +8,11 @@ TIER 4 에이전트: 팟캐스트 모드의 마지막 처리 단계
 - Learning Agent로 학습 이벤트 전송
 """
 
+from __future__ import annotations
+
 import re
 import uuid
+from collections.abc import Awaitable, Callable
 from datetime import datetime
 from typing import Any
 
@@ -66,7 +69,7 @@ class ScriptPersonalizerAgent(BaseAgent):
             enable_deep_personalization = agent_cfg.get("deep_personalization", False)
         self.enable_deep_personalization = enable_deep_personalization
         if not self.enable_deep_personalization:
-            self.llm_client = None
+            self.llm_client = None  # type: ignore[assignment]
 
         self.db_client = db_client
 
@@ -656,7 +659,7 @@ Emotional Journey:
 
 async def create_script_personalizer_node(
     db_client: Any | None = None, enable_deep_personalization: bool | None = None
-):
+) -> Callable[[AgentState], Awaitable[dict[str, Any]]]:
     """
     LangGraph에서 사용할 노드 함수 생성
 
