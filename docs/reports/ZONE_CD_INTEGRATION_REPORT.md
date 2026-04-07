@@ -1,5 +1,8 @@
 # Zone C/D ↔ Zone A 통합 및 백엔드 연동 테스트 가이드
 
+> **⚠️ 역사적 보고서**: 이 문서는 2026-03-11 Zone A-D 체계 기준으로 작성된 통합 보고서입니다.
+> 이후 대화모드 제거(PR #45, #48, #49, #61)로 `conversation` 리소스 타입 및 `conversations` 경로가 삭제되었습니다. 현재 활성 리소스는 `src/api/backend_resources.py`를 참조하세요.
+
 > **작성일**: 2026-03-11
 > **담당**: 개발자3 (Zone C: 관측성, Zone D: Backend 저장소 추상화)
 > **브랜치**: `feature/validation-zone-cd-integration`
