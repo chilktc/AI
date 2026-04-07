@@ -161,9 +161,9 @@ storage:
     # region은 별도 정의 안 함 — 기존 llm.bedrock.region / AWS_REGION 재사용
     upload_prefix: "vis"           # TODO(backend): 4-4 prefix 확정
   pinecone:
-    index_knowledge: "expert_knowledge"
+    index_knowledge: "expert-knowledge"
 
-    index_memory_podcast: "mem_podcast_episode"
+    index_memory_podcast: "mem-podcast-episode"
 
 # 파이프라인 설정
 pipeline:
