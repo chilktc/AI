@@ -1,7 +1,7 @@
 # 마스터 계획 인덱스 (Master Plan Index)
 
 **목적**: 모든 기획 문서의 현황 추적 및 상태 관리  
-**버전**: v7  
+**버전**: v8  
 **마지막 업데이트**: 2026-04-07  
 **관리 원칙**:
 - 완료된 계획 → PR 링크 + 간단한 변경 사항 기록
@@ -19,7 +19,7 @@
 | 3 | 동시성 격리 리팩토링 정리 | `2026-03-30-refactor-commit-and-cleanup.md` | ✅ 완료 | #38 | v27 커밋(ffe5290) 포함 |
 | 4 | Bedrock 모델 최적화 v2 | `2026-03-31-bedrock-model-optimization-v2.md` | 🔶 대부분 완료 | #39, #46 | EC2 벤치마크(Task 6)만 미완료 |
 | 5 | 대화모드 잔재 제거 | `2026-03-31-conversation-removal.md` | ✅ 완료 | #45, #48, #49, #61 | 빈 디렉토리 제거 완료 |
-| 6 | 프로젝트 종합 점검 (품질) | `2026-03-31-project-quality-review.md` | ✅ 완료 | #48, #52, #58, #60, #61 | safety.py·batch_validator.py 독스트링 통일 완료 |
+| 6 | 프로젝트 종합 점검 (품질) | `2026-03-31-project-quality-review.md` | ✅ 완료 | #48, #52, #58, #60, #61, #62 | 9개 Phase 전체 완료 (Phase 8-9 문서 정리 포함) |
 | 7 | 잔여 테스트 현황 확인 | `2026-03-31-remaining-issues-investigation.md` | 🔶 대부분 완료 | #46, #48 | EC2 Bedrock 벤치마크만 미완료 |
 | 8 | 종합 점검 (미완료/미해결) | `2026-04-01-comprehensive-review.md` | 🔶 대부분 완료 | #52, #48, #49 | Phase 3/4 의도적 보류, E-2/G-1,2/H-1~5 미완료 |
 | 9 | Neo4j 배포 + 프론트엔드 그래프 | `2026-04-02-neo4j-deployment-frontend-graph.md` | ✅ 완료 | #50, #51 | GoT→Neo4j→Backend 완료 |
@@ -30,8 +30,9 @@
 | 14 | 파이프라인 견고성 강화 마스터 | `pipeline-robustness-index.md` | ✅ 완료 | #60 | 13개 취약점 수정 |
 | 15 | 파이프라인 견고성 - Phase 1 | `pipeline-robustness-part1.md` | ✅ 완료 | #60 | Changes 1-9 완료 |
 | 16 | 파이프라인 견고성 - Phase 2 | `pipeline-robustness-part2.md` | ✅ 완료 | #60 | get_fallback_output() 추가 |
-| 17 | 독스트링 품질 개선 구현 | `plans/2026-04-07-docs-quality-implementation.md` | ✅ 완료 | #61 | Phase 1-4 구현 + CB/SSE 테스트 추가 (479 passed, 14 skipped) |
+| 17 | 독스트링 품질 개선 구현 | `plans/2026-04-07-docs-quality-implementation.md` | ✅ 완료 | #61 (MERGED) | Phase 1-4 구현 + CB/SSE 테스트 추가 (479 passed, 14 skipped) |
 | 18 | Neo4j 통합 구현 계획 | `plans/2026-04-07-neo4j-integration-plan.md` | 🔶 대부분 완료 | — | seed group 필드 수정 완료, E2E 검증은 인프라 선행 필요 |
+| 19 | Pinecone 벡터 DB 공통 인프라 | `plans/2026-04-07-pinecone-vector-db-integration.md` | 🔲 구현 대기 | — | 공통 클라이언트 + 팩토리 + CLI 스크립트, 개발자3 담당 |
 
 **범례:**
 - ✅ 완료 — 코드 구현 완료, PR 머지됨
@@ -110,6 +111,10 @@
 | 대화모드 제거 (기능) | 전체 | PR #45/#48/#49 |
 | features 섹션 비활성화 | `config/settings.yaml:207` | 주석 처리됨 |
 | prompts/_archive/ README | `prompts/podcast/_archive/README.md` | 작성됨 |
+| AGENT_ROLES.md 모델명/이슈 갱신 | `docs/architecture/AGENT_ROLES.md` | PR #62 |
+| QUICK_START.md ProjectDocs 참조 수정 | `docs/getting-started/QUICK_START.md` | PR #62 |
+| README.md 프로젝트 구조 보완 | `README.md` | PR #62 |
+| 코드 품질 9개 Phase 전체 완료 | `QUALITY_REVIEW_CHECKLIST.md` v6 | PR #52~#62 |
 | 루트 테스트 파일 이동 | — | 파일 자체 없음 |
 | deploy.yml printf 전환 | `.github/workflows/deploy.yml` | PR #59 |
 
@@ -132,8 +137,9 @@
 | #58 | feature/reasoning-security-remediation | 보안 강화 |
 | #59 | feature/reasoning-aws-env-remediation | 환경변수 보안 |
 | #60 | feature/reasoning-pipeline-robustness | 파이프라인 취약점 13개 |
-| #61 | feature/reasoning-docs-quality | 독스트링 품질 + CB/SSE 테스트 (OPEN) |
+| #61 | feature/reasoning-docs-quality | 독스트링 품질 + CB/SSE 테스트 (MERGED) |
+| #62 | feature/reasoning-code-quality-cleanup | 코드 품질 정리 — dead code 제거 + Phase 8-9 문서 (OPEN) |
 
 ---
 
-*마스터 인덱스 v7 — 2026-04-07 (그룹 2 테스트 보완 완료: CB 9개 + SSE 11개)*
+*마스터 인덱스 v8 — 2026-04-07 (Plan #19 Pinecone 추가, PR #62 Phase 8-9 문서 완료, 코드 품질 9 Phase 전체 완료)*
