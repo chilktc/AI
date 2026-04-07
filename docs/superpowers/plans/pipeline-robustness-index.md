@@ -13,7 +13,7 @@
 |------|------|---------|
 | **이 파일** | 인덱스, 취약점 요약, 실행 순서 | — |
 | [Part 1](./pipeline-robustness-part1.md) | Phase 1: 개별 방어 코드 (Changes 1-7) | **즉시** |
-| [Part 2](./pipeline-robustness-part2.md) | Phase 2: Structured Fallback 아키텍처 | 합의 후 |
+| [Part 2](./pipeline-robustness-part2.md) | Phase 2: `get_fallback_output()` 선택적 메서드 (v5 축소) | ✅ 완료 |
 
 ---
 

@@ -203,6 +203,12 @@
 - [x] `src/api/backend_resources.py` — `RESOURCE_GRAPH_NODES` 삭제
 - [x] `docs/architecture/NEO4J_INTEGRATION.md` — Mode A 내용 제거, 단일 흐름 기술
 
+### 🔲 Neo4j 잔여 작업 (Plan #18 미완료)
+
+| 항목 | 내용 | 의존성 |
+|------|------|--------|
+| E2E 검증 | Neo4j 프로덕션 환경 E2E 테스트 | 인프라팀 Neo4j 인스턴스 배포 |
+
 ### 🔲 Pinecone 잔여 작업 (Plan #19 미완료)
 
 | 항목 | 내용 | 의존성 |

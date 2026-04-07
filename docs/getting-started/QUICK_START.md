@@ -85,9 +85,8 @@ from src.models.agent_state import AgentState
 class EmotionAgent(BaseAgent):
     """Emotion Agent: 사용자 입력의 감정을 분석한다."""
 
-    @property
-    def agent_name(self) -> str:
-        return "emotion"
+    def __init__(self) -> None:
+        super().__init__(name="emotion", tier=1)
 
     async def process(self, state: AgentState) -> dict[str, Any]:
         # 1. 입력 읽기 (자기 담당 읽기 필드만)

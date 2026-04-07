@@ -47,6 +47,9 @@ Mind-Log 프로젝트 문서 마스터 네비게이션입니다.
 
 ## 구현 계획 (Implementation Plans)
 
+> 전체 20개 계획의 상태 추적: [PLAN_INDEX.md](superpowers/PLAN_INDEX.md)
+> 구현 로드맵: [IMPLEMENTATION_ROADMAP.md](superpowers/IMPLEMENTATION_ROADMAP.md)
+
 | 문서 | 설명 |
 |------|------|
 | [2026-03-16-db-integration-tests.md](plans/2026-03-16-db-integration-tests.md) | DB 통합 테스트 구현 계획 |
