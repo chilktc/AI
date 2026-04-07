@@ -775,3 +775,52 @@ class TestSaveGraphData:
 
         mock_neo4j.assert_called_once_with(_SAMPLE_GOT_RESULT, "sess_001", "ep_001", "user_001")
         mock_publish.assert_called_once_with(_SAMPLE_GOT_RESULT, state)
+
+
+# === Change 2 + 4-C: user_input 안전접근 + GoT/ToT/CoT try/except ===
+
+
+@pytest.mark.asyncio
+async def test_missing_or_empty_user_input_returns_fallback() -> None:
+    """user_input 없거나 빈 문자열 → error fallback 반환."""
+    agent = PodcastReasoningAgent()
+
+    # Case 1: 키 없음
+    state_no_key = AgentState(user_id="u", session_id="s", mode="podcast")
+    result = await agent.process(state_no_key)
+    rr = result["reasoning_result"]
+    assert rr.get("error") == "user_input_missing"
+    assert rr["confidence"] == 0.0
+
+    # Case 2: 빈 문자열
+    state_empty = AgentState(user_input="", user_id="u", session_id="s", mode="podcast")
+    result2 = await agent.process(state_empty)
+    rr2 = result2["reasoning_result"]
+    assert rr2.get("error") == "user_input_missing"
+
+
+@pytest.mark.asyncio
+async def test_got_llm_failure_returns_empty_dict() -> None:
+    """GoT LLM 실패 시 {} 반환 — 파이프라인 중단 없음."""
+    agent = PodcastReasoningAgent()
+    with patch.object(agent, "call_llm_json", side_effect=Exception("LLM error")):
+        result = await agent._graph_of_thoughts("테스트", {}, None, None)
+    assert result == {}
+
+
+@pytest.mark.asyncio
+async def test_tot_llm_failure_returns_empty_dict() -> None:
+    """ToT LLM 실패 시 {} 반환."""
+    agent = PodcastReasoningAgent()
+    with patch.object(agent, "call_llm_json", side_effect=Exception("LLM error")):
+        result = await agent._tree_of_thoughts("테스트", {}, None, None, None)
+    assert result == {}
+
+
+@pytest.mark.asyncio
+async def test_cot_llm_failure_returns_empty_dict() -> None:
+    """CoT LLM 실패 시 {} 반환."""
+    agent = PodcastReasoningAgent()
+    with patch.object(agent, "call_llm_json", side_effect=Exception("LLM error")):
+        result = await agent._chain_of_thoughts("테스트", {}, None, None, None, None)
+    assert result == {}

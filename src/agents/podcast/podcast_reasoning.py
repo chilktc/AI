@@ -78,7 +78,16 @@ class PodcastReasoningAgent(BaseAgent):
             같은 TIER 1에서 병렬 실행되므로 이 에이전트에서 참조하지 않는다.
             Podcast Reasoning은 user_input과 intent만으로 독립적으로 추론한다.
         """
-        user_input = state["user_input"]
+        user_input = state.get("user_input", "")
+        if not user_input:
+            self.logger.error("[PodcastReasoning] user_input 없음")
+            return {
+                "reasoning_result": {
+                    "episode_structure": [], "key_themes": [], "emotional_arc": {},
+                    "confidence": 0.0, "reasoning_depth": "minimal",
+                    "error": "user_input_missing",
+                }
+            }
         user_id = state.get("user_id", "")
         intent = state.get("intent", {})
         execution_plan = state.get("execution_plan", {})
@@ -267,10 +276,14 @@ class PodcastReasoningAgent(BaseAgent):
             memory_result=memory_result,
             knowledge_result=knowledge_result,
         )
-        return await self.call_llm_json(
-            system_prompt=self.get_prompt("got"),
-            user_message=context,
-        )
+        try:
+            return await self.call_llm_json(
+                system_prompt=self.get_prompt("got"),
+                user_message=context,
+            )
+        except Exception as e:
+            self.logger.warning("[PodcastReasoning] GoT LLM 실패: %s", e)
+            return {}
 
     # === ToT (Tree of Thoughts) ===
 
@@ -295,10 +308,14 @@ class PodcastReasoningAgent(BaseAgent):
             memory_result=memory_result,
             knowledge_result=knowledge_result,
         )
-        return await self.call_llm_json(
-            system_prompt=self.get_prompt("tot"),
-            user_message=context,
-        )
+        try:
+            return await self.call_llm_json(
+                system_prompt=self.get_prompt("tot"),
+                user_message=context,
+            )
+        except Exception as e:
+            self.logger.warning("[PodcastReasoning] ToT LLM 실패: %s", e)
+            return {}
 
     # === CoT (Chain of Thoughts) ===
 
@@ -325,10 +342,14 @@ class PodcastReasoningAgent(BaseAgent):
             memory_result=memory_result,
             knowledge_result=knowledge_result,
         )
-        return await self.call_llm_json(
-            system_prompt=self.get_prompt("cot"),
-            user_message=context,
-        )
+        try:
+            return await self.call_llm_json(
+                system_prompt=self.get_prompt("cot"),
+                user_message=context,
+            )
+        except Exception as e:
+            self.logger.warning("[PodcastReasoning] CoT LLM 실패: %s", e)
+            return {}
 
     # === 컨텍스트 조합 헬퍼 ===
 

@@ -96,14 +96,21 @@ class EmotionAgent(BaseAgent):
             )
         except Exception:
             self.logger.warning("[EmotionAgent] LLM 응답 파싱 실패 — 폴백 적용", exc_info=True)
-            text = user_input
-            primary = "anxiety" if "불안" in text else ("sadness" if "우울" in text else "neutral")
+            detected_emotions = (
+                intent.get("detected_entities", {}).get("emotions", [])
+                if isinstance(intent.get("detected_entities"), dict) else []
+            )
+            detected_emotions = detected_emotions if isinstance(detected_emotions, list) else []
+            primary = detected_emotions[0] if detected_emotions else None
+            if not primary:
+                primary = "anxiety" if "불안" in user_input else ("sadness" if "우울" in user_input else "neutral")
+            secondary = detected_emotions[1:] if len(detected_emotions) > 1 else []
             vec = {
                 "primary_emotion": primary,
                 "intensity": 0.7 if primary != "neutral" else 0.3,
                 "valence": -0.4 if primary in ("anxiety", "sadness") else 0.0,
                 "arousal": 0.7 if primary == "anxiety" else 0.3,
-                "secondary_emotions": [],
+                "secondary_emotions": secondary,
                 "tone_recommendation": "supportive_neutral",
                 "emotional_journey_hint": ["공감", "정리", "실행 가능한 한 가지", "마무리"],
             }

@@ -42,9 +42,16 @@ class SafetyAgent(BaseAgent):
         )
 
         # 1. LLM 호출 (시스템 프롬프트는 YAML에서 정의된 경로를 통해 자동 로드됨)
-        result = await self.call_llm_json(
-            system_prompt=self.get_prompt("system_prompt"), user_message=user_message
-        )
+        try:
+            result = await self.call_llm_json(
+                system_prompt=self.get_prompt("system_prompt"), user_message=user_message
+            )
+        except Exception as e:
+            self.logger.error("[SafetyAgent] LLM 호출 실패 — safe fallback: %s", e)
+            result = {
+                "risk_level": 0, "risk_score": 0.0, "status": "safe",
+                "flags": {}, "required_in_script": [], "error": "llm_call_failed",
+            }
 
         # 2. 판정 결과 및 상태 추출
         status = result.get("status", "safe")  # safe, warning, crisis

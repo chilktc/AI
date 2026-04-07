@@ -364,3 +364,23 @@ async def test_legacy_field_names(agent: ContentAnalyzerAgent) -> None:
     assert analysis["main_theme"] == "레거시 주제"
     assert analysis["sub_themes"] == ["테마1", "테마2", "테마3"]
     assert analysis["narrative_structure"] == "expert_qa"
+
+
+# === 11. user_input 안전 접근 ===
+
+
+@pytest.mark.asyncio
+async def test_missing_or_empty_user_input_returns_fallback(agent: ContentAnalyzerAgent) -> None:
+    """user_input이 없거나 빈 문자열이면 error fallback을 반환한다."""
+    # Case 1: 키 자체 없음
+    state_no_key = AgentState(user_id="u", session_id="s", mode="podcast")
+    result = await agent.process(state_no_key)
+    ca = result["content_analysis"]
+    assert ca.get("error") == "user_input_missing"
+    assert ca["depth_level"] == "light"
+
+    # Case 2: 빈 문자열
+    state_empty = AgentState(user_input="", user_id="u", session_id="s", mode="podcast")
+    result2 = await agent.process(state_empty)
+    ca2 = result2["content_analysis"]
+    assert ca2.get("error") == "user_input_missing"

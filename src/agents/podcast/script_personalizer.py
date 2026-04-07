@@ -90,7 +90,39 @@ class ScriptPersonalizerAgent(BaseAgent):
 
             # script_draft에서 Pydantic 객체 복원
             script_data = state.get("script_draft", {})
-            validated_script = ValidatedScript(**script_data) if script_data else None
+            validated_script: ValidatedScript | None = None
+            if script_data:
+                try:
+                    validated_script = ValidatedScript(**script_data)
+                except Exception as pydantic_err:
+                    self.logger.warning(
+                        "[ScriptPersonalizer] Pydantic 실패 — raw fallback: %s", pydantic_err
+                    )
+                    raw_segments = script_data.get("segments", [])
+                    raw_title = script_data.get("episode_title", "마음 이야기")
+                    if raw_segments:
+                        try:
+                            min_segments = [
+                                ScriptSegment(
+                                    segment_id=seg.get("segment_id", f"seg_{i}"),
+                                    segment_type=seg.get("segment_type", "body"),
+                                    duration_minutes=int(seg.get("duration_minutes", 5)),
+                                    script_text=str(seg.get("script_text", "")),
+                                    word_count=len(str(seg.get("script_text", "")).split()),
+                                    emotional_tone=seg.get("emotional_tone", "neutral"),
+                                    tts_markers=[],
+                                )
+                                for i, seg in enumerate(raw_segments)
+                                if isinstance(seg, dict) and seg.get("script_text")
+                            ]
+                            if min_segments:
+                                validated_script = ValidatedScript(
+                                    episode_title=raw_title,
+                                    total_duration=script_data.get("total_duration", 5),
+                                    segments=min_segments, key_insights=[], themes=[],
+                                )
+                        except Exception:
+                            pass
 
             # AgentState에서 감정적 여정 정보 추출
             content_analysis = state.get("content_analysis", {})

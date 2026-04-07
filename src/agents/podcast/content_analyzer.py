@@ -78,7 +78,15 @@ class ContentAnalyzerAgent(BaseAgent):
         출력:
             - content_analysis: 에피소드 주제, 테마, 구조 분석 결과
         """
-        user_input = state["user_input"]
+        user_input = state.get("user_input", "")
+        if not user_input:
+            self.logger.error("[ContentAnalyzer] user_input 없음")
+            return {
+                "content_analysis": {
+                    "main_theme": "", "sub_themes": [], "emotional_journey": {},
+                    "depth_level": "light", "error": "user_input_missing",
+                }
+            }
         intent = state.get("intent", {})
 
         # STEP 1: 입력 전처리 — 특수문자 정규화 + 길이 검증

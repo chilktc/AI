@@ -1,8 +1,10 @@
 import time
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from src.agents.podcast.script_generator import ScriptGeneratorAgent
+from src.models.agent_state import AgentState
 
 
 @pytest.fixture
@@ -128,3 +130,87 @@ async def test_script_generator_no_safety_context_when_safe(agent):
     result = await agent.process(state)
     draft = result["script_draft"]
     assert draft["metadata"]["safety_context"]["status"] == "safe"
+
+
+# ──────────────────────────────────────────────
+# Mock 기반 단위 테스트 (Ollama 불필요)
+# ──────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_retry_injects_revision_feedback_into_prompt():
+    """iteration_count > 0일 때 validation_result.action이 _generate_segment_script에 전달된다."""
+    agent = ScriptGeneratorAgent()
+
+    state = AgentState(
+        user_input="스트레스 관리",
+        user_id="u1", session_id="s1", mode="podcast",
+        iteration_count=1,
+        validation_result={
+            "verdict": "FAIL",
+            "action": {
+                "decision": "revise",
+                "revision_instructions": "도입부 감정 공감 강화 필요",
+                "priority_fixes": ["도입부 공감 강화", "톤 조정"],
+            }
+        },
+        reasoning_result={"episode_structure": [{"section": "intro", "duration_ratio": 1.0}]},
+        content_analysis={"main_theme": "스트레스", "sub_themes": [], "target_duration": 5},
+    )
+
+    with patch.object(agent, "_generate_segment_script", new_callable=AsyncMock) as mock_gen, \
+         patch.object(agent, "_generate_title", new_callable=AsyncMock, return_value="테스트 제목"), \
+         patch.object(agent, "_extract_insights", new_callable=AsyncMock, return_value=[]):
+        mock_gen.return_value = {
+            "segment_id": "seg_1", "script_text": "내용", "word_count": 10,
+            "duration_minutes": 5, "emotional_tone": "neutral", "tts_markers": [],
+        }
+        await agent.process(state)
+
+    call_kwargs = mock_gen.call_args.kwargs
+    assert "revision_feedback" in call_kwargs
+    assert "도입부 감정 공감 강화 필요" in call_kwargs["revision_feedback"]
+
+
+@pytest.mark.asyncio
+async def test_no_revision_feedback_on_first_attempt():
+    """iteration_count == 0이면 revision_feedback이 빈 문자열이다."""
+    agent = ScriptGeneratorAgent()
+    state = AgentState(
+        user_input="테스트", user_id="u1", session_id="s1", mode="podcast",
+        iteration_count=0,
+    )
+
+    with patch.object(agent, "_generate_segment_script", new_callable=AsyncMock) as mock_gen, \
+         patch.object(agent, "_generate_title", new_callable=AsyncMock, return_value="제목"), \
+         patch.object(agent, "_extract_insights", new_callable=AsyncMock, return_value=[]):
+        mock_gen.return_value = {
+            "segment_id": "s1", "script_text": "내용", "word_count": 5,
+            "duration_minutes": 5, "emotional_tone": "neutral", "tts_markers": [],
+        }
+        await agent.process(state)
+
+    call_kwargs = mock_gen.call_args.kwargs
+    assert call_kwargs.get("revision_feedback", "") == ""
+
+
+@pytest.mark.asyncio
+async def test_missing_content_analysis_uses_empty_dict_not_state():
+    """content_analysis 없을 때 state 전체가 아닌 빈 dict를 fallback으로 사용한다."""
+    agent = ScriptGeneratorAgent()
+    state = AgentState(
+        user_input="테스트", user_id="u1", session_id="s1", mode="podcast",
+        # content_analysis 없음
+    )
+
+    with patch.object(agent, "_generate_segment_script", new_callable=AsyncMock) as mock_gen, \
+         patch.object(agent, "_generate_title", new_callable=AsyncMock, return_value="제목"), \
+         patch.object(agent, "_extract_insights", new_callable=AsyncMock, return_value=[]):
+        mock_gen.return_value = {
+            "segment_id": "s1", "script_text": "내용", "word_count": 5,
+            "duration_minutes": 5, "emotional_tone": "neutral", "tts_markers": [],
+        }
+        result = await agent.process(state)
+
+    # state 전체가 아닌 기본값으로 처리됨 — script_draft가 정상 반환되어야 함
+    assert "script_draft" in result

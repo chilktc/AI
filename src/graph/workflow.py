@@ -115,7 +115,7 @@ from src.agents.podcast.visualization import visualization_node  # noqa: E402
 async def intent_classifier_node(state: AgentState) -> dict[str, Any]:
     """Intent Classifier 노드 — 요청마다 새 인스턴스를 생성하여 동시 요청 간 상태를 격리한다."""
     agent = IntentClassifierAgent()
-    return await agent.process(state)
+    return await agent(state)
 
 
 # --- TIER 2 팟캐스트모드 (개발자1) ---
@@ -124,7 +124,7 @@ async def intent_classifier_node(state: AgentState) -> dict[str, Any]:
 async def script_generator_node(state: AgentState) -> dict[str, Any]:
     """Script Generator 노드 — 요청마다 새 인스턴스를 생성하여 동시 요청 간 상태를 격리한다."""
     agent = ScriptGeneratorAgent()
-    return await agent.process(state)
+    return await agent(state)
 
 
 async def tier2_podcast_fan_out(state: AgentState) -> dict[str, Any]:
@@ -182,7 +182,7 @@ async def tier2_podcast_fan_out(state: AgentState) -> dict[str, Any]:
 async def script_personalizer_node(state: AgentState) -> dict[str, Any]:
     """Script Personalizer 노드 — 요청마다 새 인스턴스를 생성하여 동시 요청 간 상태를 격리한다."""
     agent = ScriptPersonalizerAgent()
-    return await agent.process(state)
+    return await agent(state)
 
 
 # ===================================================================
@@ -441,7 +441,19 @@ def route_after_tier3_podcast(state: AgentState) -> str:
         return "crisis_response"
 
     validation = state.get("validation_result", {})
-    verdict = validation.get("verdict", "PASS")
+    verdict = validation.get("verdict")  # None이면 FAIL 처리
+
+    if verdict is None:
+        # validation_result 미설정 = BV 초회 타임아웃 또는 실행 실패
+        iteration_count = state.get("iteration_count", 0)
+        logger.warning(
+            "[BatchValidator] verdict 없음 (타임아웃/실패) — FAIL 처리 (iteration=%d/%d)",
+            iteration_count, _MAX_RETRIES,
+        )
+        if iteration_count < _MAX_RETRIES:
+            return "tier2_podcast"
+        logger.warning("[BatchValidator] 재시도 소진 — 강제 통과")
+        return "tier4_podcast"
 
     if verdict == "CRITICAL_FAIL":
         iteration_count = state.get("iteration_count", 0)
@@ -573,7 +585,9 @@ def build_unified_graph() -> StateGraph:
     graph = StateGraph(AgentState)
 
     # --- TIER 0: Intent Classifier ---
-    graph.add_node("intent_classifier", intent_classifier_node)
+    async def _intent_classifier_with_timeout(s: AgentState) -> dict[str, Any]:
+        return await _with_timeout(intent_classifier_node, s, _TIER0_TIMEOUT, "intent_classifier")
+    graph.add_node("intent_classifier", _intent_classifier_with_timeout)
 
     # --- 팟캐스트 노드 ---
     graph.add_node("tier1_podcast", tier1_podcast_fan_out)

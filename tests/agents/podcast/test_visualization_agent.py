@@ -151,3 +151,24 @@ async def test_skip_visualization_env(agent: VisualizationAgent) -> None:
         result = await agent.process(state)
 
     assert result["visual_data"]["status"] == "skipped"
+
+
+@pytest.mark.asyncio
+async def test_visualization_llm_failure_returns_failed_status(agent: VisualizationAgent) -> None:
+    """call_llm_json() 실패 시 status='failed' visual_data를 반환한다."""
+    state = AgentState(
+        user_input="테스트",
+        user_id="u",
+        session_id="s",
+        mode="podcast",
+        emotion_vectors={},
+        content_analysis={},
+    )
+    mock = AsyncMock(side_effect=Exception("LLM error"))
+    with patch.object(agent, "call_llm_json", mock):
+        result = await agent.process(state)
+
+    vd = result["visual_data"]
+    assert vd["status"] == "failed"
+    assert vd["error"] == "llm_call_failed"
+    assert vd["image_url"] is None

@@ -81,10 +81,22 @@ class BatchValidatorAgent(BaseAgent):
         )
 
         # LLM으로 스크립트 품질 검증
-        validation = await self.call_llm_json(
-            system_prompt=self.get_prompt("system_prompt"),
-            user_message=validation_context,
-        )
+        try:
+            validation = await self.call_llm_json(
+                system_prompt=self.get_prompt("system_prompt"),
+                user_message=validation_context,
+            )
+        except Exception as e:
+            self.logger.error("[BatchValidator] LLM 호출 실패 — FAIL 처리: %s", e)
+            return {
+                "validation_result": {
+                    "verdict": "FAIL",
+                    "decision": "revise",
+                    "overall_score": 0.0,
+                    "action": {"decision": "revise"},
+                    "error": "llm_call_failed",
+                }
+            }
 
         # 검증 결과에 따른 라우팅 결정
         # 프롬프트 출력: action.decision = "approve" | "revise" | "escalate"

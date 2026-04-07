@@ -97,3 +97,22 @@ async def test_warning_status_gets_default_safety_text(agent: SafetyAgent) -> No
     assert sf["status"] == "warning"
     assert isinstance(sf["required_in_script"], list)
     assert len(sf["required_in_script"]) >= 2  # 기본 2개 문구
+
+
+@pytest.mark.asyncio
+async def test_llm_failure_returns_safe_fallback(agent: SafetyAgent) -> None:
+    """LLM 호출 실패 시 safe fallback을 반환하고 파이프라인이 중단되지 않는다."""
+    state = AgentState(
+        user_input="테스트 입력",
+        user_id="u",
+        session_id="s",
+        mode="podcast",
+    )
+    mock = AsyncMock(side_effect=Exception("LLM connection error"))
+    with patch.object(agent, "call_llm_json", mock):
+        result = await agent.process(state)
+
+    sf = result["safety_flags"]
+    assert sf["status"] == "safe"
+    assert sf.get("error") == "llm_call_failed"
+    assert "next_step" not in result  # crisis_response 라우팅 없음
