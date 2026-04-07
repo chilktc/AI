@@ -1,9 +1,13 @@
 # GoT 그래프 데이터 누적 저장 및 프론트엔드 서빙 설계서
 
 > **작성일**: 2026-04-06
-> **상태**: 설계 검토 중
-> **관련 PR**: #51 (Neo4j Deployment + Frontend Graph)
+> **상태**: 완료 (Mode B 채택 — PR #69)
+> **관련 PR**: #51 (Neo4j Deployment + Frontend Graph), #69 (Mode A 삭제, Mode B 단일화)
 > **대상 독자**: 개발자 1·2·3 + 백엔드 팀
+>
+> **⚠️ 이력 주의**: 이 문서는 Mode A/B 설계 검토 당시의 원본이다. PR #69에서 Mode A가 삭제되어
+> `upsert_mode`, `ema_alpha` 설정은 `config/settings.yaml`에서 제거되었다.
+> Mode A 관련 코드 섹션은 역사적 참고용으로만 보존한다.
 
 ---
 
@@ -83,17 +87,20 @@ GoT 생성 (Podcast Reasoning)
 
 ### 2.3 UPSERT 주체 모드 (Mode A / Mode B)
 
-두 모드 모두 구현하되, 설정으로 전환한다. 확정 후 미사용 모드의 코드를 제거하면 된다.
+> **결정 완료**: Mode B 채택. Mode A는 PR #69에서 삭제되었다.
+> `graph.upsert_mode` 설정은 `config/settings.yaml`에서 제거되었다.
 
-| 항목 | Mode A (AI 서버 UPSERT) | Mode B (Backend UPSERT) |
+~~두 모드 모두 구현하되, 설정으로 전환한다. 확정 후 미사용 모드의 코드를 제거하면 된다.~~
+
+| 항목 | ~~Mode A (AI 서버 UPSERT)~~ | **Mode B (Backend UPSERT) ← 채택** |
 |------|------------------------|------------------------|
-| **UPSERT 주체** | AI 서버 | Backend 서버 |
-| **AI 서버 역할** | 기존 조회 → EMA 계산 → 갱신 전송 | 에피소드별 raw 데이터만 전송 |
-| **Backend 역할** | 단순 저장/조회 (CRUD) | 수신 시 EMA 계산 + UPSERT |
-| **장점** | 도메인 로직이 AI 서버에 집중 | AI 서버 부담 감소 |
-| **단점** | 조회→계산→저장 3단계 (네트워크 2회) | 도메인 로직을 Backend에 인계 필요 |
-| **사용 함수** | `publish_graph_cumulative_mode_a()` | `publish_graph_raw_mode_b()` |
-| **설정값** | `graph.upsert_mode: "ai_server"` | `graph.upsert_mode: "backend"` |
+| **UPSERT 주체** | ~~AI 서버~~ | Backend 서버 |
+| **AI 서버 역할** | ~~기존 조회 → EMA 계산 → 갱신 전송~~ | 에피소드별 raw 데이터만 전송 |
+| **Backend 역할** | ~~단순 저장/조회 (CRUD)~~ | 수신 시 EMA 계산 + UPSERT |
+| **장점** | ~~도메인 로직이 AI 서버에 집중~~ | AI 서버 부담 감소 |
+| **단점** | ~~조회→계산→저장 3단계 (네트워크 2회)~~ | 도메인 로직을 Backend에 인계 필요 |
+| **사용 함수** | ~~`publish_graph_cumulative_mode_a()`~~ | `publish_graph_raw_mode_b()` |
+| **설정값** | ~~`graph.upsert_mode: "ai_server"`~~ | ~~`graph.upsert_mode: "backend"`~~ (설정 삭제됨) |
 
 ---
 
@@ -209,7 +216,7 @@ emotional_exhaustion — 감정 소진/번아웃
 ```
 새 weight = α × 신규값 + (1 - α) × 기존 weight
 
-α = 0.3 (설정 가능: config/settings.yaml → graph.ema_alpha)
+α = 0.3 (PR #69 이후 Backend 책임 — AI 서버 config에서 제거됨)
 ```
 
 ### 4.2 계산 예시
@@ -497,23 +504,22 @@ src/agents/podcast/
 
 ### 6.2 신규 파일: `src/api/graph_cumulative.py`
 
-핵심 로직을 담는 신규 모듈이다. Mode A / Mode B 함수를 모두 포함한다.
+> **PR #69 반영**: Mode A 삭제, Mode B 단일화. 아래는 설계 당시 원본 (역사적 참고).
+
+핵심 로직을 담는 신규 모듈이다. ~~Mode A / Mode B 함수를 모두 포함한다.~~ → Mode B 단일 함수.
 
 ```python
 """
 GoT 그래프 데이터 누적 저장 모듈.
 
 에피소드별 GoT 결과를 사용자별 누적 그래프로 통합하여 RDB에 저장한다.
-Mode A(AI 서버 UPSERT)와 Mode B(Backend UPSERT) 두 가지 방식을 지원한다.
+Mode B(Backend UPSERT) 단일 방식으로 확정 (PR #69에서 Mode A 삭제).
 
 사용 방법:
-    - Mode A (AI 서버가 UPSERT):
-        await publish_graph_cumulative_mode_a(got_result, state)
     - Mode B (Backend가 UPSERT):
         await publish_graph_raw_mode_b(got_result, state)
 
-모드 전환:
-    config/settings.yaml → graph.upsert_mode: "ai_server" | "backend"
+(이하 설계 원본 — upsert_mode/ema_alpha 설정은 PR #69에서 삭제됨)
 
 확정 후:
     사용하지 않는 모드의 함수를 삭제하거나 주석 처리해도 다른 모드에 영향 없음.
@@ -892,10 +898,10 @@ async def publish_graph_raw_mode_b(
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# 모드 디스패처
+# 모드 디스패처 (PR #69 이후: Mode B 직접 호출로 단순화됨)
 #
-# podcast_reasoning.py에서 이 함수 하나만 호출하면
-# settings.yaml의 graph.upsert_mode 값에 따라 자동 분기한다.
+# podcast_reasoning.py에서 이 함수 하나만 호출한다.
+# graph.upsert_mode 분기 로직은 PR #69에서 제거됨.
 # ═══════════════════════════════════════════════════════════════════════
 
 
@@ -903,9 +909,9 @@ async def publish_graph_to_rdb(
     got_result: dict[str, Any],
     state: AgentState,
 ) -> bool:
-    """설정에 따라 적절한 모드로 누적 그래프를 RDB에 저장한다.
+    """누적 그래프를 RDB에 저장한다 (Mode B — Backend UPSERT).
 
-    config/settings.yaml → graph.upsert_mode 값으로 분기:
+    PR #69에서 graph.upsert_mode 분기 제거. Mode B 직접 호출.
         - "ai_server" → publish_graph_cumulative_mode_a()
         - "backend"   → publish_graph_raw_mode_b()
 
@@ -1088,7 +1094,7 @@ async def _save_graph_data(
     await self._publish_graph_to_backend(got_result, state)
 
     # [신규] RDB 누적 그래프 — label+group 기준 통합 UPSERT
-    # settings.yaml의 graph.upsert_mode에 따라 Mode A/B 자동 분기.
+    # PR #69: graph.upsert_mode 분기 제거, Mode B(Backend UPSERT) 단일 호출.
     from src.api.graph_cumulative import publish_graph_to_rdb
     await publish_graph_to_rdb(got_result, state)
 ```
@@ -1208,19 +1214,14 @@ async def _save_graph_data(self, got_result, session_id, episode_id, state):
 
 ## 8. 설정 (config/settings.yaml)
 
-```yaml
-# === 그래프 누적 저장 설정 ===
-graph:
-  # UPSERT 주체 모드
-  #   "ai_server" → Mode A: AI 서버가 기존 조회 → EMA 계산 → PUT 전송
-  #   "backend"   → Mode B: Backend가 수신 시 EMA 계산 + UPSERT
-  upsert_mode: "ai_server"
+> **PR #69 반영**: `graph.upsert_mode` 및 `graph.ema_alpha` 설정은 삭제됨.
+> EMA 계산은 Backend 책임으로 이관. 아래는 설계 당시 원본 (역사적 참고).
 
-  # EMA 알파값 (최근 반영 비율)
-  #   0.2: 보수적 (과거 중시)
-  #   0.3: 균형 (기본값, 멘탈케어 추천)
-  #   0.5: 최근 중시
-  ema_alpha: 0.3
+```yaml
+# === 그래프 누적 저장 설정 (삭제됨 — PR #69) ===
+# graph:
+#   upsert_mode: "backend"  # Mode B 확정, 설정 자체 불필요로 제거
+#   ema_alpha: 0.3           # Backend 책임으로 이관, AI 서버 config에서 제거
 ```
 
 ---
@@ -1287,17 +1288,13 @@ graph:
 │   → Backend에 인계: calc_ema(), calc_trend(),            │
 │     validate_group(), KEYWORD_MAP                       │
 │                                                         │
-│ ■ 디스패처 (자동 분기):                                    │
+│ ■ 디스패처 (PR #69 이후: Mode B 직접 호출):                │
 │   publish_graph_to_rdb()                                │
-│   → settings.yaml → graph.upsert_mode 값으로 분기        │
+│   → Mode B 직접 호출 (upsert_mode 분기 제거됨)            │
 │                                                         │
 │ ■ 프론트엔드 변환:                                        │
 │   transform_cumulative_to_frontend()                    │
 │   → RDB 누적 데이터 → 프론트엔드 {nodes, links} 변환     │
-│                                                         │
-│ ■ 확정 후 정리:                                           │
-│   사용하지 않는 모드의 함수를 삭제/주석 처리.               │
-│   publish_graph_to_rdb()의 분기 조건만 수정하면 완료.      │
 └─────────────────────────────────────────────────────────┘
 ```
 
