@@ -1,5 +1,10 @@
 # Ollama 로컬 모델 비교 테스트 리포트 v2
 
+> **⚠️ DEPRECATED**: 이 보고서는 2026-02-24 기준 Ollama 로컬 모델 테스트 결과입니다.
+> Round 4(2026-03-06) 이후 프로덕션 환경은 **AWS Bedrock / OpenAI**로 전환되었습니다.
+> Ollama는 로컬 개발/오프라인 테스트 전용으로만 유효합니다.
+> 최신 E2E 테스트 결과: `docs/reports/BEDROCK_E2E_IMPROVEMENT_PLAN_20260326.md`
+
 > **테스트 일시**: 2026-02-24
 > **테스트 환경**: Apple M4 Pro / 24GB RAM / macOS Darwin 24.3.0
 > **Ollama 버전**: localhost:11434
