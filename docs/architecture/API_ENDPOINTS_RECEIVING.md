@@ -209,7 +209,7 @@
 | emotions | Array[EmotionLogEntry] | false | 감정 로그 항목 배열 (최신순 정렬, 결과 없으면 빈 배열) |
 | emotions[].log_id | String | false | 감정 로그 고유 ID. 형식: `emo_{uuid_hex[:8]}` |
 | emotions[].session_id | String | false | 소속 세션 ID. 형식: `sess_{uuid_hex[:12]}` |
-| emotions[].mode | String | false | 모드 (`conversation` 또는 `podcast`) |
+| emotions[].mode | String | false | 모드 (`podcast`) |
 | emotions[].primary_emotion | String | false | 주감정 (영문 키, e.g. `anxiety`, `joy`) |
 | emotions[].intensity | Float | false | 감정 강도 (0.0~1.0) |
 | emotions[].valence | Float | false | 극성 (-1.0~1.0, 부정~긍정) |
@@ -609,7 +609,7 @@
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | user_id | String (UUID) | true | 사용자 고유 ID |
-| mode | String | false | 모드 (`"conversation"` 또는 `"podcast"`, 기본 `"conversation"`) |
+| mode | String | false | 모드 (`"podcast"`) |
 | device_info | Object | false | 디바이스 정보 |
 | tracing | Object | false | 추적 컨텍스트 (미전송 시 서버가 자동 생성) |
 

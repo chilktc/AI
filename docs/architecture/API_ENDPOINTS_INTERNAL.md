@@ -138,8 +138,8 @@
 |-------|------|----------|-------------|
 | type | String | true | `"emotion_log"` |
 | data.log_id | String | true | 로그 ID (`elog_{hash12}`) |
-| data.mode | String | true | 모드 (`podcast`/`conversation`) |
-| data.episode_id | String | false | 에피소드 ID (팟캐스트 전용, `null` 가능) |
+| data.mode | String | true | 모드 (`podcast`) |
+| data.episode_id | String | false | 에피소드 ID (`null` 가능) |
 | data.primary_emotion | String | true | 주요 감정 (영문, e.g. `anxiety`) |
 | data.intensity | Float | true | 감정 강도 (0.0~1.0) |
 | data.valence | Float | true | 감정 극성 (-1.0~1.0) |
@@ -187,8 +187,8 @@
 |-------|------|----------|-------------|
 | type | String | true | `"visualization"` |
 | data.visualization_id | String | true | 시각화 ID (`vis_{hash12}`) |
-| data.mode | String | true | 모드 (`podcast`/`conversation`) |
-| data.episode_id | String | false | 에피소드 ID (팟캐스트 전용, `null` 가능) |
+| data.mode | String | true | 모드 (`podcast`) |
+| data.episode_id | String | false | 에피소드 ID (`null` 가능) |
 | data.s3_key | String | true | S3 객체 키 |
 | data.cdn_url | String | true | CDN URL |
 | data.image_prompt | String | true | 이미지 생성 프롬프트 (영문) |
@@ -236,7 +236,7 @@
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | type | String | true | `"learning"` |
-| data.mode | String | true | 모드 (`podcast`/`conversation`) |
+| data.mode | String | true | 모드 (`podcast`) |
 | data.learning_data | Object | true | 학습 결과 (가변 JSON) |
 | data.learning_data.preferred_topics | Array[String] | false | 선호 주제 |
 | data.learning_data.emotional_patterns | Array[String] | false | 감정 패턴 |

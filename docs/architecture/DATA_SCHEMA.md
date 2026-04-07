@@ -60,7 +60,7 @@
 |------|------|---------|------|
 | `session_id` | VARCHAR | **PK** | `sess_{uuid_hex[:12]}` 형식 |
 | `user_id` | VARCHAR | **FK** → users | |
-| `mode` | ENUM | not null | `podcast` (향후 `conversation` 추가) |
+| `mode` | ENUM | not null | `podcast` |
 | `status` | ENUM | default `active` | `active\|closed\|expired` |
 | `episode_count` | INT | default `0` | 세션 내 에피소드 수 |
 | `feedback_rating` | INT | nullable | 1-5 |
