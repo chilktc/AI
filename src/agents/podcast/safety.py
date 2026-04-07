@@ -22,7 +22,31 @@ class SafetyAgent(BaseAgent):
         super().__init__(name="safety", tier=1)
 
     async def process(self, state: AgentState) -> dict[str, Any]:
-        """안전성 판정 및 시스템 상수 결합 로직을 수행한다."""
+        """안전성 판정 및 시스템 상수 결합 로직을 수행한다.
+
+        user_input과 intent의 risk_flag를 기반으로 LLM에 위험도 평가를 요청한다.
+        CRISIS/warning 판정 시 SAFETY_MESSAGES 상수를 required_in_script 최상단에 결합한다
+        (법적/임상 안내 문구 우선 배치).
+
+        Args:
+            state: 현재 AgentState. 참조 필드:
+                - user_input (str): 사용자 입력 텍스트.
+                - intent (dict): Intent Classifier 결과.
+                  flags.risk_flag만 추출 (1차 위기 감지 여부).
+
+        Returns:
+            변경된 필드만 포함한 dict:
+                - safety_flags (dict): LLM 평가 전체 결과
+                  (status, risk_level, risk_score, reasons, required_in_script 포함).
+                  CRISIS/warning 시 required_in_script[0]은 SAFETY_MESSAGES 고정 문구.
+                - risk_level (int): 위험 레벨 (0–4).
+                - risk_score (float): 위험 점수 (0.0–1.0).
+                - next_step (str): crisis 판정 시에만 포함. 값: "crisis_response".
+
+        Raises:
+            없음. LLM 호출 실패 시 status="safe" fallback 결과를 반환한다
+            (safety_flags.error="llm_call_failed" 포함, required_in_script 미설정).
+        """
         user_input = state.get("user_input", "")
 
         # [최적화] AGENT_IO_ANALYSIS.md 권고에 따라 intent 전체가 아닌 risk_flag만 추출
