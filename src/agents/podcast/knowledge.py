@@ -132,7 +132,7 @@ class KnowledgeAgent(BaseAgent):
             embedding = await self.embedding_client.get_embedding(query)
 
             results = await self.pinecone_client.query(
-                index="expert_knowledge",
+                index="expert-knowledge",
                 vector=embedding,
                 filter={"domain": {"$in": domains}},
                 top_k=5,
