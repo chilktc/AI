@@ -65,30 +65,45 @@
 
 ## 선택적 작업 (별도 PR 검토)
 
-### 작업 5: Circuit Breaker 상태 전환 테스트 (우선순위: 🟡 중간)
+### ✅ 작업 5: Circuit Breaker 상태 전환 테스트
 
 **출처**: PLAN_INDEX.md 그룹 2
 
-| 항목 | 파일 | 내용 |
+| 항목 | 파일 | 완료 |
 |------|------|------|
-| CLOSED→OPEN 시나리오 | `tests/agents/shared/test_llm_client.py` | 임계값 초과 시 전환 테스트 |
-| OPEN→HALF_OPEN 시나리오 | `tests/agents/shared/test_llm_client.py` | cooldown 경과 후 전환 테스트 |
+| CLOSED→OPEN (fail_max 초과) | `tests/agents/shared/test_llm_client.py` | ✅ |
+| OPEN→CircuitOpenError | `tests/agents/shared/test_llm_client.py` | ✅ |
+| OPEN→HALF_OPEN (timeout 경과) | `tests/agents/shared/test_llm_client.py` | ✅ |
+| HALF_OPEN→CLOSED (1회 성공) | `tests/agents/shared/test_llm_client.py` | ✅ |
+| HALF_OPEN→OPEN (1회 실패) | `tests/agents/shared/test_llm_client.py` | ✅ |
+| success failure_count 리셋 | `tests/agents/shared/test_llm_client.py` | ✅ |
+| CLOSED check() 통과 | `tests/agents/shared/test_llm_client.py` | ✅ |
+| OPEN timeout 미경과 유지 | `tests/agents/shared/test_llm_client.py` | ✅ |
+| 초기 상태 CLOSED 확인 | `tests/agents/shared/test_llm_client.py` | ✅ |
 
-**구현체**: `src/agents/shared/llm_client.py:42` (`_CircuitBreaker` 클래스 — 이미 구현됨)  
-**현재**: 구현체만 있고 상태 전환 테스트 없음
+**총 9개 테스트 추가**
 
 ---
 
-### 작업 6: SSE 엔드포인트 테스트 (우선순위: 🟡 중간)
+### ✅ 작업 6: SSE 엔드포인트 테스트
 
 **출처**: PLAN_INDEX.md 그룹 2
 
-| 항목 | 파일 | 내용 |
+| 항목 | 파일 | 완료 |
 |------|------|------|
-| POST /episodes/stream | `tests/api/` 신규 파일 | SSE 스트리밍 응답 테스트 |
+| Content-Type 검증 | `tests/api/test_sse_streaming.py` | ✅ |
+| Cache 헤더 검증 | `tests/api/test_sse_streaming.py` | ✅ |
+| connected 첫 이벤트 | `tests/api/test_sse_streaming.py` | ✅ |
+| done 마지막 이벤트 | `tests/api/test_sse_streaming.py` | ✅ |
+| custom tier 이벤트 전달 | `tests/api/test_sse_streaming.py` | ✅ |
+| result 이벤트 데이터 | `tests/api/test_sse_streaming.py` | ✅ |
+| timestamp 포함 확인 | `tests/api/test_sse_streaming.py` | ✅ |
+| 전체 이벤트 순서 검증 | `tests/api/test_sse_streaming.py` | ✅ |
+| 파이프라인 에러 핸들링 | `tests/api/test_sse_streaming.py` | ✅ |
+| compiled_graph=None 에러 | `tests/api/test_sse_streaming.py` | ✅ |
+| 잘못된 요청 422 반환 | `tests/api/test_sse_streaming.py` | ✅ |
 
-**구현체**: `src/api/routes/podcasts.py:381` — 이미 구현됨 (PR #48)  
-**현재**: 엔드포인트 구현 있으나 테스트 없음
+**총 11개 테스트 추가**
 
 ---
 
@@ -243,5 +258,5 @@ docs: 독스트링 보강 + docstring 오류 수정 + 빈 디렉토리 제거
 
 ---
 
-*구현 로드맵 v4 — 2026-04-07 15:00*  
-*v1~v3: 기획/점검 → v4: 작업 1-3 구현 완료 (PR #61), 작업 4~6 외부 의존성 미변경*
+*구현 로드맵 v5 — 2026-04-07*  
+*v1~v3: 기획/점검 → v4: 작업 1-3 구현 완료 (PR #61) → v5: 작업 5-6 테스트 구현 완료 (CB 9개 + SSE 11개)*

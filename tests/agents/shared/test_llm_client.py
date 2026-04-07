@@ -565,3 +565,136 @@ async def test_token_usage_lifecycle(
     total_copy = client.total_usage
     total_copy["input_tokens"] = 99999
     assert client.total_usage["input_tokens"] == 0
+
+
+# ===================================================================
+# Circuit Breaker 상태 전환 테스트
+# ===================================================================
+
+
+class TestCircuitBreakerStateTransitions:
+    """_CircuitBreaker 상태 머신의 전이를 검증한다.
+
+    상태 전이:
+        CLOSED → (fail_max 연속 실패) → OPEN
+        OPEN → (reset_timeout 경과) → HALF_OPEN
+        HALF_OPEN → (1회 성공) → CLOSED
+        HALF_OPEN → (1회 실패) → OPEN
+    """
+
+    @pytest.fixture
+    def cb(self):
+        """테스트용 Circuit Breaker (fail_max=3, reset_timeout=1.0)."""
+        from src.agents.shared.llm_client import _CircuitBreaker
+
+        return _CircuitBreaker(fail_max=3, reset_timeout=1.0)
+
+    async def test_initial_state_is_closed(self, cb) -> None:
+        """초기 상태는 CLOSED이다."""
+        assert cb.state == "closed"
+
+    async def test_closed_to_open_after_fail_max(self, cb) -> None:
+        """CLOSED에서 fail_max(3)회 연속 실패 시 OPEN으로 전환한다."""
+        assert cb.state == "closed"
+
+        await cb.record_failure()
+        assert cb.state == "closed"  # 1회 — 아직 CLOSED
+
+        await cb.record_failure()
+        assert cb.state == "closed"  # 2회 — 아직 CLOSED
+
+        await cb.record_failure()
+        assert cb.state == "open"  # 3회 — OPEN 전환
+
+    async def test_open_state_raises_circuit_open_error(self, cb) -> None:
+        """OPEN 상태에서 check() 호출 시 CircuitOpenError가 발생한다."""
+        from src.agents.shared.llm_client import CircuitOpenError
+
+        # OPEN 상태로 전환
+        for _ in range(3):
+            await cb.record_failure()
+        assert cb.state == "open"
+
+        with pytest.raises(CircuitOpenError, match="Circuit OPEN"):
+            await cb.check()
+
+    async def test_open_to_half_open_after_timeout(self, cb) -> None:
+        """OPEN에서 reset_timeout 경과 후 check() 호출 시 HALF_OPEN으로 전환한다."""
+        # OPEN 상태로 전환
+        for _ in range(3):
+            await cb.record_failure()
+        assert cb.state == "open"
+
+        # reset_timeout(1.0s) 경과 시뮬레이션
+        with patch("src.agents.shared.llm_client.time") as mock_time:
+            # record_failure 시점 + reset_timeout 이상 경과
+            mock_time.time.return_value = cb._last_failure_time + 2.0
+            await cb.check()
+
+        assert cb.state == "half_open"
+
+    async def test_half_open_to_closed_on_success(self, cb) -> None:
+        """HALF_OPEN에서 1회 성공 시 CLOSED로 복구한다."""
+        # OPEN → HALF_OPEN 으로 전환
+        for _ in range(3):
+            await cb.record_failure()
+
+        with patch("src.agents.shared.llm_client.time") as mock_time:
+            mock_time.time.return_value = cb._last_failure_time + 2.0
+            await cb.check()
+        assert cb.state == "half_open"
+
+        # 1회 성공 → CLOSED 복구
+        await cb.record_success()
+        assert cb.state == "closed"
+
+    async def test_half_open_to_open_on_failure(self, cb) -> None:
+        """HALF_OPEN에서 1회 실패 시 다시 OPEN으로 전환한다."""
+        # OPEN → HALF_OPEN 으로 전환
+        for _ in range(3):
+            await cb.record_failure()
+
+        with patch("src.agents.shared.llm_client.time") as mock_time:
+            mock_time.time.return_value = cb._last_failure_time + 2.0
+            await cb.check()
+        assert cb.state == "half_open"
+
+        # 1회 실패 → OPEN (failure_count가 이미 3이므로 >= fail_max)
+        await cb.record_failure()
+        assert cb.state == "open"
+
+    async def test_success_resets_failure_count(self, cb) -> None:
+        """성공 기록은 failure_count를 0으로 초기화한다."""
+        await cb.record_failure()
+        await cb.record_failure()
+        assert cb.state == "closed"  # 아직 fail_max 미만
+
+        await cb.record_success()
+        assert cb._failure_count == 0
+
+        # 다시 fail_max까지 실패해야 OPEN 전환
+        await cb.record_failure()
+        await cb.record_failure()
+        assert cb.state == "closed"
+
+        await cb.record_failure()
+        assert cb.state == "open"
+
+    async def test_check_passes_in_closed_state(self, cb) -> None:
+        """CLOSED 상태에서 check()는 예외 없이 통과한다."""
+        await cb.check()  # 예외 없음
+
+    async def test_open_not_expired_stays_open(self, cb) -> None:
+        """OPEN에서 reset_timeout 미경과 시 OPEN을 유지하고 에러를 발생시킨다."""
+        from src.agents.shared.llm_client import CircuitOpenError
+
+        for _ in range(3):
+            await cb.record_failure()
+
+        # timeout 미경과 시뮬레이션
+        with patch("src.agents.shared.llm_client.time") as mock_time:
+            mock_time.time.return_value = cb._last_failure_time + 0.5  # 1.0s 미만
+            with pytest.raises(CircuitOpenError):
+                await cb.check()
+
+        assert cb.state == "open"

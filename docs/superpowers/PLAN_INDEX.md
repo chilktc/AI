@@ -52,12 +52,12 @@
 | 3 | external_schemas.py docstring 불일치 수정 | `src/api/external_schemas.py` | 684-685 | `/conversations/stream` → `/episodes/stream` |
 | 4 | src/agents/conversation/ 빈 디렉토리 제거 | `src/agents/conversation/` | — | 빈 껍데기 디렉토리 |
 
-### 그룹 2: 테스트 보완 (선택적, 별도 PR 검토)
+### 그룹 2: 테스트 보완 ✅ 완료
 
-| # | 작업 | 파일 | 성격 |
+| # | 작업 | 파일 | 상태 |
 |---|------|------|------|
-| 5 | Circuit Breaker 상태 전환 테스트 | `tests/agents/shared/test_llm_client.py` | CLOSED→OPEN, OPEN→HALF_OPEN 시나리오 |
-| 6 | SSE `/episodes/stream` 엔드포인트 테스트 | `tests/api/` 신규 | 엔드포인트 구현 있으나 테스트 없음 |
+| 5 | Circuit Breaker 상태 전환 테스트 | `tests/agents/shared/test_llm_client.py` | ✅ 9개 테스트 추가 (CLOSED→OPEN, OPEN→HALF_OPEN, HALF_OPEN→CLOSED/OPEN 등) |
+| 6 | SSE `/episodes/stream` 엔드포인트 테스트 | `tests/api/test_sse_streaming.py` | ✅ 11개 테스트 추가 (SSE 이벤트 시퀀스, 에러 핸들링, 422 검증) |
 
 ### 그룹 3: 외부 의존성 (코드로 해결 불가)
 
@@ -133,4 +133,4 @@
 
 ---
 
-*마스터 인덱스 v6 — 2026-04-07 15:00 (Plan #17 구현 완료, #5/#6 완료 전환)*
+*마스터 인덱스 v7 — 2026-04-07 (그룹 2 테스트 보완 완료: CB 9개 + SSE 11개)*
