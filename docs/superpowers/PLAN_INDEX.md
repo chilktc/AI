@@ -67,7 +67,7 @@
 | ~~7~~ | ~~Bedrock EC2 벤치마크~~ | ~~인프라~~ | ✅ 완료 — 에이전트별 최적 모델 settings.yaml 반영 |
 | 8 | TODO(backend) 21건 해소 | 백엔드 팀 | api_proxy.py 15건, backend_resources.py 5건, s3_client.py 1건 |
 | 9 | API Key 인증 / max_length / Rate Limiting 협의 | 백엔드 팀 | comprehensive-review.md H-2,5,E-2 |
-| 10 | Neo4j Backend 이관 | 인프라 팀 | 시기 미정 |
+| ~~10~~ | ~~Neo4j Backend 이관~~ | — | ✅ 이관 불필요 — AI 서버에서 직접 운영 확정 |
 
 ### 그룹 4: 보안 수동 조치 (SECURITY_REMEDIATION_TRACKER.md)
 
