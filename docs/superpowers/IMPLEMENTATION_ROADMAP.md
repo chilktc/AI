@@ -1,7 +1,7 @@
 # 최종 구현 로드맵
 
 **목적**: 실제 미완료 작업만 포함한 최종 구현 계획  
-**버전**: v5  
+**버전**: v6  
 **마지막 업데이트**: 2026-04-07
 
 > **v2 → v3 변경 이유:**  
@@ -127,6 +127,28 @@
 - [x] Circuit Breaker 상태 전환 테스트 9개 (`tests/agents/shared/test_llm_client.py`)
 - [x] SSE `/episodes/stream` 엔드포인트 테스트 11개 (`tests/api/test_sse_streaming.py`)
 
+---
+
+## 완료된 작업 (v6 — PR #62 브랜치: feature/reasoning-code-quality-cleanup)
+
+### ✅ 작업 7: 코드 품질 Phase 5 — dead code 제거
+
+- [x] `config/settings.yaml` — features 주석 블록 삭제, databases 섹션 삭제
+- [x] `config/loader.py` — 미사용 `databases_config` 프로퍼티 삭제
+- [x] `src/api/routes/podcasts.py` — `visual_data_raw` 중복 선언 통합
+
+### ✅ 작업 8: 코드 품질 Phase 8 — 문서 통일성
+
+- [x] `docs/architecture/AGENT_ROLES.md` — 모델명 12개 settings.yaml 기준 갱신, C-1/B-5/C-4/C-5 RESOLVED
+- [x] `docs/getting-started/QUICK_START.md` — ProjectDocs/ 직접 참조 제거, INFRA→AGENT_ROLES로 필수 문서 변경
+- [x] `README.md` — 프로젝트 구조 보완 (monitoring/, prompts/ 추가, 문서 링크 보강)
+
+### ✅ 작업 9: 코드 품질 Phase 9 — 문서 정리
+
+- [x] 계획서 점검: PLAN_INDEX/ROADMAP/PLAN_PRIORITY_REVISED 각각 목적 상이 → 병합 불필요
+- [x] INFRA_*.md 3개 이미 아카이브 표시 확인
+- [x] QUALITY_REVIEW_CHECKLIST v6: 전체 9개 Phase 완료 반영
+
 ### 최종 검증
 
 ```
@@ -165,5 +187,5 @@
 
 ---
 
-*구현 로드맵 v5 — 2026-04-07*  
-*v1~v3: 기획/점검 → v4: 작업 1-3 구현 완료 (PR #61) → v5: 작업 5-6 테스트 구현 완료 (CB 9개 + SSE 11개)*
+*구현 로드맵 v6 — 2026-04-07*  
+*v1~v3: 기획/점검 → v4: 작업 1-3 구현 완료 (PR #61) → v5: 작업 5-6 테스트 (CB 9개 + SSE 11개) → v6: 작업 7-9 코드 품질 Phase 5/8/9 (PR #62)*

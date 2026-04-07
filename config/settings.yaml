@@ -202,13 +202,6 @@ security:
   pii_sanitization:
     enabled: true
 
-# [미사용] Feature flags — 코드에서 읽지 않음.
-# 향후 에이전트별 활성화/비활성화 제어 시 config/loader.py에 property 추가 필요.
-# features:
-#   podcast_mode: true
-#   visualization: true
-#   learning: true
-
 # 모니터링 & Observability
 monitoring:
   enabled: true
@@ -228,17 +221,6 @@ monitoring:
   alerting:
     crisis_alert_enabled: true
     latency_threshold_ms: 10000
-
-# 데이터베이스 설정
-databases:
-  neo4j:
-    uri: "bolt://localhost:7687"  # 환경변수 NEO4J_URI로 오버라이드
-    # NEO4J_USER / NEO4J_PASSWORD 환경변수 필수
-  pinecone:
-    index_knowledge: "expert_knowledge"
-
-    index_memory_podcast: "mem_podcast_episode"
-    # PINECONE_API_KEY 환경변수 필수
 
 # 그래프 누적 저장 설정
 graph:

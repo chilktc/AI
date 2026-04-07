@@ -387,11 +387,6 @@ class Settings:
         return str(self._config.get("storage", {}).get("s3", {}).get("upload_prefix", "vis"))
 
     @property
-    def databases_config(self) -> dict[str, Any]:
-        """데이터베이스 설정을 반환한다."""
-        return cast(dict[str, Any], self._config.get("databases", {}))
-
-    @property
     def circuit_breaker_config(self) -> dict[str, Any]:
         """Circuit Breaker 설정을 반환한다."""
         return cast(dict[str, Any], self._config.get("llm", {}).get("circuit_breaker", {}))
