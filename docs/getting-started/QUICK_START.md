@@ -52,15 +52,15 @@ docker compose up -d
 |------|------|------|
 | 1 | CLAUDE.md | 아키텍처 요약, 협업 규칙, 브랜치 전략, API 규약 |
 | 2 | docs/guides/AGENT_DEV_GUIDE.md | 에이전트 개발 템플릿, 테스트 패턴 |
-| 3 | docs/guides/INFRA_ZONE_ASSIGNMENT.md | Zone A/B/C/D 작업 영역 분할 |
+| 3 | docs/architecture/AGENT_ROLES.md | 에이전트별 역할·입출력·이슈 정의서 |
 
 ### 에이전트 설계 문서
 
-에이전트 상세 설계는 `ProjectDocs/` 폴더에 있습니다:
+에이전트 상세 설계 원본은 저장소 외부(`ProjectDocs/`)에 있으며, 임의 수정이 금지된 참고 문서입니다. 저장소 내에서 참조할 수 있는 주요 문서:
 
-- `ProjectDocs/INDEX.md` — 마스터 인덱스
-- `ProjectDocs/ARCHITECTURE_v4.0.md` — v4.0 아키텍처 명세
-- `ProjectDocs/agents/podcast/` — 팟캐스트모드 에이전트 상세 문서
+- `CLAUDE.md` — 아키텍처 요약 및 에이전트 구성 (루트)
+- `docs/architecture/AGENT_ROLES.md` — 코드 기반 에이전트 역할 정의서
+- `docs/architecture/API_SPEC.md` — REST API 명세 인덱스
 
 ---
 
@@ -141,38 +141,21 @@ git push origin feature/analysis-emotion-agent
 
 ### 개발자1 (브랜치: feature/analysis-*)
 
-담당 에이전트: `Intent Classifier`, `Knowledge`, `Synthesis`, `Personalization` / `Script Generator`, `Script Personalizer`
+담당 에이전트: `Intent Classifier`, `Knowledge`, `Script Generator`, `Script Personalizer`
 
-참고 문서:
-- `ProjectDocs/agents/podcast/01_intent_classifier.md`
-- `ProjectDocs/agents/podcast/06_knowledge.md`
-- `ProjectDocs/agents/podcast/08_synthesis.md`
-- `ProjectDocs/agents/podcast/10_personalization.md`
-- `ProjectDocs/agents/podcast/04_script_generator.md`
+참고: `CLAUDE.md`의 에이전트 구성표, `docs/architecture/AGENT_ROLES.md` 해당 섹션
 
 ### 개발자2 (브랜치: feature/reasoning-*)
 
-담당 에이전트: `Safety`, `Memory`, `Visualization`, `Emotion` / `Episode Memory`, `Visualization(Podcast)`
+담당 에이전트: `Safety`, `Emotion`, `Visualization`, `Episode Memory`
 
-참고 문서:
-- `ProjectDocs/agents/podcast/02_safety.md`
-- `ProjectDocs/agents/podcast/05_memory.md`
-- `ProjectDocs/agents/podcast/11_visualization.md`
-- `ProjectDocs/agents/podcast/03_emotion.md`
-- `ProjectDocs/agents/podcast/02_episode_memory.md`
+참고: `CLAUDE.md`의 에이전트 구성표, `docs/architecture/AGENT_ROLES.md` 해당 섹션
 
 ### 개발자3 (브랜치: feature/validation-*)
 
-담당 에이전트: `Reasoning`, `Context`, `Validator`, `Learning` / `Podcast Reasoning`, `Content Analyzer`, `Batch Validator`
+담당 에이전트: `Podcast Reasoning`, `Content Analyzer`, `Batch Validator`, `Learning`
 
-참고 문서:
-- `ProjectDocs/agents/podcast/07_reasoning.md`
-- `ProjectDocs/agents/podcast/04_context.md`
-- `ProjectDocs/agents/podcast/09_validator.md`
-- `ProjectDocs/agents/podcast/13_learning.md`
-- `ProjectDocs/agents/podcast/03_podcast_reasoning.md`
-- `ProjectDocs/agents/podcast/01_content_analyzer.md`
-- `ProjectDocs/agents/podcast/05_batch_validator.md`
+참고: `CLAUDE.md`의 에이전트 구성표, `docs/architecture/AGENT_ROLES.md` 해당 섹션
 
 ---
 
@@ -253,4 +236,4 @@ pytest tests/ --cov=src --cov-report=html
 
 *자세한 협업 규칙과 API 규약은 CLAUDE.md를 참조하세요.*
 
-*마지막 업데이트: 2026-03-13*
+*마지막 업데이트: 2026-04-07*

@@ -78,11 +78,14 @@ mind-log/
 │   │   ├── podcast/      # 팟캐스트 에이전트 (11개 + Learning)
 │   │   └── shared/       # 공용 인프라 (BaseAgent, LLMClient 등)
 │   ├── models/           # AgentState, AgentMessage 스키마
-│   ├── api/              # 백엔드 API 클라이언트
+│   ├── api/              # FastAPI 라우트 + 백엔드 API 클라이언트
 │   ├── graph/            # LangGraph 워크플로우 정의
+│   ├── monitoring/       # 콜백, 메트릭, 토큰 사용량 추적
+│   ├── db/               # DB 연결 유틸리티
 │   └── utils/            # 공통 유틸리티
-├── config/               # 환경 설정 파일
-├── tests/                # 테스트 코드
+├── config/               # 환경 설정 파일 (settings.yaml)
+├── prompts/              # 에이전트 프롬프트 YAML (멀티버전)
+├── tests/                # 테스트 코드 (479 passed)
 ├── docs/                 # 프로젝트 문서
 └── CLAUDE.md             # AI 개발 가이드 (아키텍처 + 협업 규칙)
 ```
@@ -96,6 +99,8 @@ mind-log/
 | [CLAUDE.md](CLAUDE.md) | 아키텍처 + 협업 규칙 + API 규약 통합 가이드 |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | 브랜치 전략, 커밋 컨벤션, PR 가이드, 기여 규칙 |
 | [docs/getting-started/QUICK_START.md](docs/getting-started/QUICK_START.md) | 환경 설정 및 첫 에이전트 개발 가이드 |
+| [docs/architecture/AGENT_ROLES.md](docs/architecture/AGENT_ROLES.md) | 에이전트별 역할·입출력·이슈 정의서 |
+| [docs/architecture/API_SPEC.md](docs/architecture/API_SPEC.md) | REST API 명세 인덱스 |
 
 ---
 
