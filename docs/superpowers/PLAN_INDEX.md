@@ -1,8 +1,8 @@
 # 마스터 계획 인덱스 (Master Plan Index)
 
 **목적**: 모든 기획 문서의 현황 추적 및 상태 관리  
-**버전**: v11  
-**마지막 업데이트**: 2026-04-07  
+**버전**: v12  
+**마지막 업데이트**: 2026-04-08  
 **관리 원칙**:
 - 완료된 계획 → PR 링크 + 간단한 변경 사항 기록
 - 미완료 계획 → 상태 및 다음 액션 기록
@@ -34,6 +34,7 @@
 | 18 | Neo4j 통합 구현 계획 | `2026-04-07-neo4j-integration-plan.md` | 🔶 대부분 완료 | — | seed group 필드 수정 완료, E2E 검증은 인프라 선행 필요 |
 | 19 | Pinecone 벡터 DB 공통 인프라 | `2026-04-07-pinecone-vector-db-integration.md` | 🔶 대부분 완료 | #64~#68 | CLI 스크립트+pinecone_client+테스트 59개 구현, EC2 연결 검증, 인덱스명 하이픈 통일. 미완: BedrockEmbeddingClient, 팩토리 연동, 가이드 문서 |
 | 20 | Graph Mode B 단일화 리팩터 | `2026-04-07-graph-mode-b-refactor.md` | ✅ 완료 | #69 | Mode A 삭제, publish_graph_to_rdb 단일 경로 확정, EMA를 Backend 책임으로 이관 (538 passed) |
+| 21 | 문서 전수 점검 및 정합성 수정 | *(인라인 — 별도 계획서 없음)* | ✅ 완료 | #70~#80 | 4차 사이클 점검: 대화모드 잔재·링크·날짜·버전 일관성·설계 결정 갱신 전체 완료 |
 
 **범례:**
 - ✅ 완료 — 코드 구현 완료, PR 머지됨
@@ -149,7 +150,18 @@
 | #66 | feature/reasoning-code-quality-cleanup | requirements.txt pinecone-client → pinecone 패키지명 수정 (MERGED) |
 | #67 | feature/reasoning-code-quality-cleanup | Pinecone 인덱스명 언더스코어→하이픈 (config, dev/scripts, tests) (MERGED) |
 | #68 | feature/reasoning-code-quality-cleanup | knowledge.py 인덱스명 수정 + PLAN_INDEX v10 + Pinecone 완료 현황 (MERGED) |
+| #70 | feature/reasoning-docs-stage1 | 대화모드 잔재 제거 + 해소된 이슈 RESOLVED 처리 (MERGED) |
+| #71 | feature/reasoning-docs-stage2 | 버전/수치 동기화 + Neo4j PR 반영 (MERGED) |
+| #72 | feature/reasoning-docs-stage3 | 코드 예시/경로/기타 정합성 수정 (MERGED) |
+| #73 | feature/reasoning-docs-stage4 | 구식 문서 아카이브 + 미기재 기능 보충 (MERGED) |
+| #74 | feature/reasoning-docs-stage5-high | Pinecone 인덱스명 통일 + 대화모드 잔재 + DEPRECATED 표기 (MERGED) |
+| #75 | feature/reasoning-docs-stage6-medium | 테스트 수 갱신 + 날짜 + 대화모드 TODO 제거 + 에이전트 템플릿 교체 (MERGED) |
+| #76 | feature/reasoning-docs-stage7-low | 클래스명 동기화 + Mode A 삭제 반영 + 링크 6개 수정 (MERGED) |
+| #77 | feature/reasoning-docs-stage8-high | 대화모드 잔재 제거 + PROJECT_DECISIONS 로드맵 갱신 (MERGED) |
+| #78 | feature/reasoning-docs-stage9-medium | 앵커 오류 + PLAN_INDEX PR/테스트수 + graph-design 이력 주석 (MERGED) |
+| #79 | feature/reasoning-docs-stage10-low | 날짜 갱신 3건 + README CONTRIBUTING 설명 보완 (MERGED) |
+| #80 | feature/reasoning-docs-stage11 | PR 버전 불일치 + 대화모드 잔재 + 설계 결정 #15~#18 추가 (MERGED) |
 
 ---
 
-*마스터 인덱스 v11 — 2026-04-07 (Plan #19 테스트 59개 완료+인덱스명 통일, PR #62~#68 전체 MERGED, Plan #20 Graph Mode B 등록)*
+*마스터 인덱스 v12 — 2026-04-08 (Plan #21 문서 전수 점검 완료, PR #70~#80 전체 MERGED)*

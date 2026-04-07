@@ -4,6 +4,7 @@
 
 | 버전 | 파일 | 요약 |
 |------|------|------|
+| v28 | [CHANGELOG_v28.md](CHANGELOG_v28.md) | 문서 전수 점검 4사이클 — 대화모드 잔재, 링크/앵커, Pinecone 인덱스명, 설계 결정 갱신 (PR #70~#80) |
 | v27 | [CHANGELOG_v27.md](CHANGELOG_v27.md) | 동시성 격리 리팩토링 — 10개 에이전트 싱글톤→요청별 인스턴스 + 문서 정비 |
 | v26 | [CHANGELOG_v26.md](CHANGELOG_v26.md) | Docker 배포 차단 해제 + Visualization settings 기반 전환 + Bedrock Converse API + CRISIS 버그 수정 |
 | v25 | [CHANGELOG_v25.md](CHANGELOG_v25.md) | API 응답 슬림화 + Visualization TIER 2 이동 + 재시도 중복 방지 |
@@ -23,4 +24,4 @@
 
 ---
 
-*마지막 업데이트: 2026-04-07*
+*마지막 업데이트: 2026-04-08*
