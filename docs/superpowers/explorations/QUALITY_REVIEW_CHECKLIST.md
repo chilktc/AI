@@ -2,7 +2,9 @@
 
 **출처**: `2026-03-31-project-quality-review.md` 상세 분석  
 **탐색 에이전트**: Haiku (자동화 목록화)  
-**목적**: 코드 품질 개선 계획의 구현 항목 세분화
+**목적**: 코드 품질 개선 계획의 구현 항목 세분화  
+**버전**: v4  
+**마지막 업데이트**: 2026-04-07
 
 ---
 
@@ -26,16 +28,16 @@
 
 ## Phase별 체크리스트
 
-### Phase 1: 타입 힌트 현대화 (Dict → dict)
+### Phase 1: 타입 힌트 현대화 (Dict → dict) ✅ 완료 — PR #52
 
-| 항목 | 대상 | 우선순위 | 복잡도 | 영향 |
-|------|------|---------|--------|------|
-| [ ] Dict → dict | script_generator, knowledge, intent_classifier, script_personalizer, schemas.py | 🔴 높음 | 낮음 | 5개 파일 |
-| [ ] List → list | 동일 파일 | 🔴 높음 | 낮음 | 동일 |
-| [ ] Optional[T] → T \| None | 동일 파일 | 🟡 중간 | 낮음 | 동일 |
-| [ ] Union[A, B] → A \| B | 동일 파일 | 🟡 중간 | 낮음 | 동일 |
+| 항목 | 대상 | 상태 |
+|------|------|------|
+| ~~Dict → dict~~ | script_generator, knowledge, intent_classifier, script_personalizer, schemas.py | ✅ PR #52 완료 |
+| ~~List → list~~ | 동일 파일 | ✅ PR #52 완료 |
+| ~~Optional[T] → T \| None~~ | 동일 파일 | ✅ PR #52 완료 |
+| ~~Union[A, B] → A \| B~~ | 동일 파일 | ✅ PR #52 완료 |
 
-**자동화 가능**: ruff + isort 자동 수정 (`ruff check --fix`)
+**검증**: mypy 63개 에러 → 0 (PR #52 커밋 `678a8fb` 확인)
 
 ---
 
@@ -52,27 +54,31 @@
 
 ---
 
-### Phase 3: 독스트링 통일 (Google-style)
+### Phase 3: 독스트링 통일 (Google-style) ✅ 완료
 
-| 항목 | 대상 | 우선순위 | 복잡도 | 영향 |
-|------|------|---------|--------|------|
-| [ ] BaseAgent 스타일 적용 | 모든 에이전트 | 🔴 높음 | 중간 | 11개 파일 |
-| [ ] Args/Returns 섹션 추가 | 에이전트 메서드 | 🔴 높음 | 중간 | 50+ 메서드 |
-| [ ] Raises 섹션 추가 | exception 던지는 함수 | 🟡 중간 | 중간 | 20+ 함수 |
-| [ ] 예제 코드 추가 | public 메서드 | 🟡 중간 | 높음 | 30+ 메서드 |
+| 항목 | 대상 | 상태 |
+|------|------|------|
+| BaseAgent 스타일 적용 | 모든 에이전트 (11개) | ✅ 전체 완료 |
+| Args/Returns 섹션 추가 | 에이전트 메서드 | ✅ safety.py + batch_validator.py process() 완료 |
+| Raises 섹션 추가 | exception 던지는 함수 | ✅ safety.py + batch_validator.py 완료 |
+| 예제 코드 추가 | public 메서드 | ⏸ 보류 (필수 아님) |
 
 **표준**: Google 스타일 (base_agent.py 참조)
 
 ---
 
-### Phase 4: 주석 보완
+### Phase 4: 주석 보완 ✅ 완료 — 4-에이전트 검증 확인
 
-| 항목 | 대상 | 우선순위 | 복잡도 | 영향 |
-|------|------|---------|--------|------|
-| [ ] 기능 설명 주석 | 복잡 함수 (15+ 줄) | 🔴 높음 | 낮음 | 40+ 위치 |
-| [ ] 로직 설명 주석 | 조건부 로직 | 🟡 중간 | 중간 | 30+ 위치 |
-| [ ] 상수 설명 | 임의 수치 상수 | 🟡 중간 | 낮음 | 15+ 위치 |
-| [ ] 주의사항 주석 | subtle logic | 🟡 중간 | 중간 | 10+ 위치 |
+| 항목 | 대상 | 상태 |
+|------|------|------|
+| ~~기능 설명 주석~~ | `base_agent.py:192` `_resolve_ab_variant()` | ✅ 주석 이미 존재 |
+| ~~로직 설명 주석~~ | `src/agents/shared/llm_client.py:389` `_generate_bedrock()` | ✅ 주석 이미 존재 |
+| ~~취소 메커니즘 주석~~ | `src/graph/workflow.py:211` `run_with_cancel()` | ✅ 주석 이미 존재 |
+| ~~상수 설명~~ | `src/monitoring/callbacks.py:52` `_MODEL_COSTS` | ✅ 주석 이미 존재 |
+| ~~상수 설명~~ | `src/agents/podcast/script_generator.py:22` `WORDS_PER_MINUTE` | ✅ 주석 이미 존재 |
+
+> 경로 수정: ~~`src/utils/callbacks.py`~~ → 실제 경로: `src/monitoring/callbacks.py`  
+> 경로 수정: ~~`src/api/routers/podcasts.py`~~ → 실제 경로: `src/api/routes/podcasts.py`
 
 **원칙**: "왜(why)"를 설명, 코드 리딩만으로 이해 불가능한 부분만
 
@@ -90,16 +96,16 @@
 
 ---
 
-### Phase 6: 에러 처리 보완
+### Phase 6: 에러 처리 보완 ✅ 완료 — PR #60
 
-| 항목 | 대상 | 우선순위 | 복잡도 | 영향 |
-|------|------|---------|--------|------|
-| [ ] try-except 추가 | 외부 API 호출 | 🔴 높음 | 중간 | 15+ 위치 |
-| [ ] 타입 검증 추가 | 상태 접근 | 🔴 높음 | 중간 | 20+ 위치 |
-| [ ] 타임아웃 처리 | LLM 호출 | 🔴 높음 | 중간 | 5+ 위치 |
-| [ ] 로깅 + 폴백 | 에러 핸들링 | 🟡 중간 | 중간 | 25+ 위치 |
+| 항목 | 대상 | 상태 |
+|------|------|------|
+| ~~try-except 추가~~ | 외부 API 호출 | ✅ PR #60 파이프라인 견고성 강화 (13개 취약점 수정) |
+| ~~타입 검증 추가~~ | 상태 접근 | ✅ PR #60 완료 |
+| ~~타임아웃 처리~~ | LLM 호출 | ✅ PR #60 완료 (TIER 0~4 타임아웃 래퍼 추가) |
+| ~~로깅 + 폴백~~ | 에러 핸들링 | ✅ PR #60 `get_fallback_output()` 추가 |
 
-**참고**: Phase 1 (파이프라인 견고성)과 중복 가능 — 조율 필요
+**검증**: `pipeline-robustness-index.md` — 13개 취약점 수정 확인 (PR #60)
 
 ---
 
@@ -138,70 +144,38 @@
 
 ## 실행 전략
 
-### PR A: 타입 힌트 + 로깅 (Phase 1-2)
+| PR | Phase | 상태 | 비고 |
+|----|-------|------|------|
+| PR A | Phase 1 (타입 힌트) | ✅ 완료 | PR #52 |
+| PR B | Phase 3-4 (독스트링+주석) | ✅ 완료 | PR #61 |
+| PR C | Phase 5-7 (dead code+폴더) | ⏳ 미착수 | Phase 6(에러처리)만 PR #60 완료 |
+| PR D | Phase 8-9 (문서 정리) | ⏳ 미착수 | — |
 
-**예상 변경 파일**: 
-- script_generator.py, knowledge.py, intent_classifier.py, script_personalizer.py, schemas.py
-- podcasts.py, callbacks.py (로깅)
-
-**예상 커밋 수**: 2-3개 (각 Phase별)
-
-**자동화 가능**: 95% (도구 사용)
-
-**검증**: `ruff check`, `mypy`
-
----
-
-### PR B: 독스트링 + 주석 (Phase 3-4)
-
-**예상 변경 파일**: 모든 에이전트 (11개)
-
-**예상 커밋 수**: 5-6개 (에이전트 그룹별)
-
-**자동화 불가**: 수동 작성 (LLM 보조 가능)
-
-**검증**: 문서 생성 + 링크 테스트
-
----
-
-### PR C: 에러 처리 + 폴더 (Phase 5-7)
-
-**예상 변경 파일**: 전체 (40+ 파일)
-
-**예상 커밋 수**: 4-5개 (도메인별)
-
-**자동화 가능**: 50% (코드 스캔 후 수동)
-
-**검증**: `pytest`, E2E 테스트
-
----
-
-### PR D: Dead Code + 문서 정리 (Phase 8-9)
-
-**예상 변경 파일**: docs/ + settings.yaml + prompts/
-
-**예상 커밋 수**: 2-3개 (문서/설정)
-
-**자동화 가능**: 80% (검색 + 정리)
-
-**검증**: 링크 체크, 빌드 확인
+> Phase 2 (로깅 통일)는 PR A/C에 포함 가능.  
+> external_schemas.py docstring 경로 오류 — ✅ PR #61에서 수정 완료 (`c114a55`)
 
 ---
 
 ## 권장 사항
 
-**이 계획 구현 시기:**
-1. ✅ 완료: Plan#1 (refactor-cleanup)
-2. ✅ 완료: Plan#5-remaining-issues (D-2, C-2, D-3)
-3. ✅ 완료: Plan#7-comprehensive-execution (Phase 1-2)
-4. → **여기서 시작**: Plan#2 (이 체크리스트) **병렬 진행 가능**
+**현재 상태 (2026-04-07 v4):**
+1. ✅ 완료: Phase 1 (타입 힌트 — PR #52)
+2. ✅ 완료: Phase 3 (독스트링 — PR #61)
+3. ✅ 완료: Phase 4 (주석 보완 — 4-에이전트 검증)
+4. ✅ 완료: Phase 6 (에러 처리 — PR #60)
+5. ✅ 완료: Circuit Breaker 상태 전환 테스트 9개 + SSE 엔드포인트 테스트 11개
 
-**동시 진행 권장:**
-- Plan#3 (conversation-removal) 병렬
-- Plan#4 (bedrock-optimization-v2 로컬) 병렬
+**미완료 Phase:**
+- Phase 2: 로깅 포맷 통일 (f-string→%-포맷, module logger 정의 등)
+- Phase 5: 불필요한 코드 제거 (settings.yaml features/databases, start_time 등)
+- Phase 7: 폴더 구조 정리 (src/models/, prompts/ 아카이브 등)
+- Phase 8: 문서 통일성 (README, API 문서, 아키텍처 문서)
+- Phase 9: 불필요한 문서 정리
 
-**이유:** 코드 품질은 기능 블로킹이 없으므로 다른 작업과 병렬 진행 가능.
+**처리 브랜치**: `feature/reasoning-docs-quality` (PR #61 OPEN)  
+**테스트 결과**: 479 passed, 14 skipped  
+**상세 계획**: `IMPLEMENTATION_ROADMAP.md` v5 참조
 
 ---
 
-*체크리스트 v1 — 2026-04-07*
+*체크리스트 v4 — 2026-04-07 (CB/SSE 테스트 완료 반영, 미완료 Phase 정리)*

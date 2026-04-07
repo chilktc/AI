@@ -681,8 +681,7 @@ class StreamEvent(BaseModel):
     프론트엔드 소비 가능한 형태로 정규화한 것.
 
     사용법:
-        SSE: GET /api/v1/conversations/stream?session_id=...
-        WS:  ws://api/v1/ws/conversations?session_id=...
+        SSE: POST /api/v1/podcasts/episodes/stream (Content-Type: application/json)
     """
 
     event_type: StreamEventType = Field(description="이벤트 유형")

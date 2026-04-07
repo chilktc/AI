@@ -22,6 +22,7 @@ Mind-Log 프로젝트 문서 마스터 네비게이션입니다.
 | [API_ENDPOINTS_INTERNAL.md](architecture/API_ENDPOINTS_INTERNAL.md) | 발신 API (AI→Backend) 5개 + Load API |
 | [API_COMMON.md](architecture/API_COMMON.md) | 스트리밍 이벤트, 에러 코드, 재시도 정책 |
 | [DATA_SCHEMA.md](architecture/DATA_SCHEMA.md) | 데이터 스키마 명세 (MySQL 7테이블 + Pinecone 2인덱스 + Neo4j 5노드 + S3) |
+| [NEO4J_INTEGRATION.md](architecture/NEO4J_INTEGRATION.md) | Neo4j 통합 명세 — 구현 현황, 워크플로우, 팀별 역할, 협업 작업 순서, 차후 계획 |
 
 ## 가이드 (Guides)
 
@@ -100,4 +101,4 @@ Mind-Log 프로젝트 문서 마스터 네비게이션입니다.
 
 ---
 
-*마지막 업데이트: 2026-03-30*
+*마지막 업데이트: 2026-04-07*
