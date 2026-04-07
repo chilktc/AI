@@ -396,4 +396,4 @@ python3 -m dev.live_tests.run_live --pipeline
 
 ---
 
-*마지막 업데이트: 2026-03-13*
+*마지막 업데이트: 2026-04-07*
