@@ -330,7 +330,8 @@ Peak State Size: 19~37 KB
 | Podcast Reasoning | count만 확인 | episodes, segments 상세 |
 
 - **데이터 효율**: 3~7% (count만 사용, 상세 에피소드 데이터 미사용)
-- **네임스페이스**: `mem_podcast_episode` (대화 기억과 분리)
+- **인덱스명**: `mem-podcast-episode` (하이픈, Pinecone 인덱스 식별자)
+- **네임스페이스**: `mem_podcast_episode` (언더스코어, 인덱스 내 데이터 분리)
 
 ---
 

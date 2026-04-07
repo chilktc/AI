@@ -83,6 +83,10 @@ class LLMClient:
 | 12 | LLM 멀티 프로바이더 | Anthropic SDK + AWS Bedrock + OpenAI + 커스텀(Ollama) 플러그인으로 유연성 확보 |
 | 13 | json.loads strict=False | 로컬 LLM(Ollama 등)의 제어 문자 포함 JSON 응답 허용 |
 | 14 | dev/ 폴더 격리 | 개발 전용 코드를 .gitignore로 분리, 운영 영향 0 |
+| 15 | Neo4j GoT 저장 | 추론 이력 원본을 Neo4j에 저장, RDB는 누적 요약만 담당 (PR #50, #51, #53, #69) |
+| 16 | Pinecone RAG 파이프라인 | 벡터 DB 공통 인프라 구축, 인덱스명 하이픈 통일 (PR #64~#68) |
+| 17 | 입력/출력 정제 (PII) | 프롬프트 인젝션 방어(InputSanitizer) + PII 마스킹(OutputSanitizer) 이중 방어 (PR #58, #59) |
+| 18 | Graph Mode B 단일화 | AI 서버 EMA 계산 제거, Backend UPSERT 단일 흐름으로 확정 (PR #69) |
 
 ---
 
