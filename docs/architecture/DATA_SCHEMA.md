@@ -198,7 +198,7 @@ Pinecone은 원본 텍스트를 저장하지 않는다. MySQL PK를 참조하며
 | `mode` | String | |
 | `created_at` | String | ISO 8601 (Pinecone은 datetime 미지원) |
 
-### 3-1. mind-log-podcasts
+### 3-1. mem-podcast-episode
 
 에피소드 시맨틱 검색용. Episode Memory Agent가 유사 에피소드 탐색에 사용.
 
@@ -215,7 +215,7 @@ Pinecone은 원본 텍스트를 저장하지 않는다. MySQL PK를 참조하며
 | `themes` | Array | 테마 태그 (필터링용) |
 | `primary_emotion` | String (nullable) | 주요 감정 |
 
-### 3-2. mind-log-knowledge
+### 3-2. expert-knowledge
 
 전문 지식 검색용. Knowledge Agent가 관련 지식 탐색에 사용.
 
