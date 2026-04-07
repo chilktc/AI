@@ -1,8 +1,8 @@
 # 최종 구현 로드맵
 
 **목적**: 실제 미완료 작업만 포함한 최종 구현 계획  
-**버전**: v3  
-**마지막 업데이트**: 2026-04-07 11:10
+**버전**: v4  
+**마지막 업데이트**: 2026-04-07 15:00
 
 > **v2 → v3 변경 이유:**  
 > 4-에이전트 2차 병렬 점검 결과,  
@@ -24,43 +24,26 @@
 
 ---
 
-## 실제 미완료 작업 (v3 기준)
+## 완료된 작업 (v4 — PR #61)
 
-### 작업 1: 독스트링 보강 — 소규모 2개 파일 (우선순위: 🔴 높음)
+### ✅ 작업 1: 독스트링 보강 — 소규모 2개 파일
 
-**출처**: PLAN_INDEX.md 그룹 1, Plan#4 `2026-03-31-project-quality-review.md`
+| 항목 | 파일 | 완료 |
+|------|------|------|
+| process() 독스트링 | `src/agents/podcast/safety.py` | ✅ Google-style Args/Returns/Raises 추가 |
+| process() 독스트링 | `src/agents/podcast/batch_validator.py` | ✅ Google-style 통일, next_step 오류 수정, iteration_count 추가 |
 
-| 항목 | 파일 | 현재 상태 | 변경 내용 |
-|------|------|----------|----------|
-| process() 독스트링 | `src/agents/podcast/safety.py` | 한 줄 요약만 | Args/Returns/Raises 추가 |
-| process() 독스트링 | `src/agents/podcast/batch_validator.py` | 커스텀 `입력:/출력:` 형식 | Google-style로 통일 |
+### ✅ 작업 2: docstring 내용 오류 수정
 
-**복잡도**: 낮음 (2개 파일, 각 1개 메서드)  
-**PR**: `feature/reasoning-docs-quality`
+| 항목 | 파일 | 완료 |
+|------|------|------|
+| 엔드포인트 경로 오류 | `src/api/external_schemas.py` | ✅ GET conversations → POST podcasts/episodes, WS 줄 제거 |
 
----
+### ✅ 작업 3: 빈 디렉토리 제거
 
-### 작업 2: docstring 내용 오류 수정 (우선순위: 🔴 높음)
-
-**출처**: PLAN_INDEX.md 그룹 1, 4-에이전트 검증 신규 발견
-
-| 항목 | 파일 | 라인 | 현재 (잘못됨) | 수정 |
-|------|------|------|------------|------|
-| 엔드포인트 경로 오류 | `src/api/external_schemas.py` | 684-685 | `/conversations/stream`, `ws/conversations` | `/episodes/stream` |
-
-**복잡도**: 낮음 (2줄 텍스트 수정)
-
----
-
-### 작업 3: 빈 디렉토리 제거 (우선순위: 🟡 중간)
-
-**출처**: PLAN_INDEX.md 그룹 1, 대화모드 제거(PR #45) 잔재
-
-| 항목 | 경로 | 현재 상태 |
-|------|------|----------|
-| 빈 껍데기 디렉토리 | `src/agents/conversation/` | 대화모드 코드 제거 후 남은 빈 디렉토리 |
-
-**복잡도**: 낮음 (디렉토리만 삭제)
+| 항목 | 경로 | 완료 |
+|------|------|------|
+| 빈 껍데기 디렉토리 | `src/agents/conversation/` | ✅ __pycache__만 있던 디렉토리 삭제 (Git 미추적) |
 
 ---
 
@@ -260,5 +243,5 @@ docs: 독스트링 보강 + docstring 오류 수정 + 빈 디렉토리 제거
 
 ---
 
-*구현 로드맵 v3 — 2026-04-07 11:10*  
-*v1: 기완료 항목 다수 포함 → v2: 주요 정리 → v3: 4-에이전트 2차 검증으로 Phase 1/2 제거, 경로 오류 수정, 신규 발견 항목 추가*
+*구현 로드맵 v4 — 2026-04-07 15:00*  
+*v1~v3: 기획/점검 → v4: 작업 1-3 구현 완료 (PR #61), 작업 4~6 외부 의존성 미변경*

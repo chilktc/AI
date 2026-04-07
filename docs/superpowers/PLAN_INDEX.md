@@ -1,8 +1,8 @@
 # 마스터 계획 인덱스 (Master Plan Index)
 
 **목적**: 모든 기획 문서의 현황 추적 및 상태 관리  
-**버전**: v5  
-**마지막 업데이트**: 2026-04-07 14:00  
+**버전**: v6  
+**마지막 업데이트**: 2026-04-07 15:00  
 **관리 원칙**:
 - 완료된 계획 → PR 링크 + 간단한 변경 사항 기록
 - 미완료 계획 → 상태 및 다음 액션 기록
@@ -18,8 +18,8 @@
 | 2 | 팟캐스트 동시 요청 격리 | `2026-03-30-podcast-concurrency-isolation.md` | ✅ 완료 | #38 | 298 테스트 통과 |
 | 3 | 동시성 격리 리팩토링 정리 | `2026-03-30-refactor-commit-and-cleanup.md` | ✅ 완료 | #38 | v27 커밋(ffe5290) 포함 |
 | 4 | Bedrock 모델 최적화 v2 | `2026-03-31-bedrock-model-optimization-v2.md` | 🔶 대부분 완료 | #39, #46 | EC2 벤치마크(Task 6)만 미완료 |
-| 5 | 대화모드 잔재 제거 | `2026-03-31-conversation-removal.md` | 🔶 대부분 완료 | #45, #48, #49 | 코드/기능 완료, 소규모 잔재 2건 확인 |
-| 6 | 프로젝트 종합 점검 (품질) | `2026-03-31-project-quality-review.md` | 🔶 대부분 완료 | #48, #52, #58, #60 | safety.py·batch_validator.py 독스트링 미통일 |
+| 5 | 대화모드 잔재 제거 | `2026-03-31-conversation-removal.md` | ✅ 완료 | #45, #48, #49, #61 | 빈 디렉토리 제거 완료 |
+| 6 | 프로젝트 종합 점검 (품질) | `2026-03-31-project-quality-review.md` | ✅ 완료 | #48, #52, #58, #60, #61 | safety.py·batch_validator.py 독스트링 통일 완료 |
 | 7 | 잔여 테스트 현황 확인 | `2026-03-31-remaining-issues-investigation.md` | 🔶 대부분 완료 | #46, #48 | EC2 Bedrock 벤치마크만 미완료 |
 | 8 | 종합 점검 (미완료/미해결) | `2026-04-01-comprehensive-review.md` | 🔶 대부분 완료 | #52, #48, #49 | Phase 3/4 의도적 보류, E-2/G-1,2/H-1~5 미완료 |
 | 9 | Neo4j 배포 + 프론트엔드 그래프 | `2026-04-02-neo4j-deployment-frontend-graph.md` | ✅ 완료 | #50, #51 | GoT→Neo4j→Backend 완료 |
@@ -30,7 +30,7 @@
 | 14 | 파이프라인 견고성 강화 마스터 | `pipeline-robustness-index.md` | ✅ 완료 | #60 | 13개 취약점 수정 |
 | 15 | 파이프라인 견고성 - Phase 1 | `pipeline-robustness-part1.md` | ✅ 완료 | #60 | Changes 1-9 완료 |
 | 16 | 파이프라인 견고성 - Phase 2 | `pipeline-robustness-part2.md` | ✅ 완료 | #60 | get_fallback_output() 추가 |
-| 17 | 독스트링 품질 개선 구현 | `plans/2026-04-07-docs-quality-implementation.md` | 🔲 구현 대기 | — | Phase 1-4, 4개 항목, v2(3차 점검 반영) |
+| 17 | 독스트링 품질 개선 구현 | `plans/2026-04-07-docs-quality-implementation.md` | ✅ 완료 | #61 | Phase 1-4 구현 완료 (459 passed, 14 skipped) |
 | 18 | Neo4j 통합 구현 계획 | `plans/2026-04-07-neo4j-integration-plan.md` | 🔶 대부분 완료 | — | seed group 필드 수정 완료, E2E 검증은 인프라 선행 필요 |
 
 **범례:**
@@ -133,4 +133,4 @@
 
 ---
 
-*마스터 인덱스 v5 — 2026-04-07 14:00 (seed_data group 수정 완료, #18 상태 갱신)*
+*마스터 인덱스 v6 — 2026-04-07 15:00 (Plan #17 구현 완료, #5/#6 완료 전환)*
