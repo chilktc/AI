@@ -122,7 +122,7 @@ python3 -m dev.live_tests.test_e2e_multi_provider --ollama-only --input test_inp
 
 ## LangGraph 워크플로우 실행 흐름
 
-> TIER 기반 파이프라인 전체 구조는 [CLAUDE.md](../../CLAUDE.md#팟캐스트모드-실행-흐름)를 참조하세요.
+> TIER 기반 파이프라인 전체 구조는 [CLAUDE.md](../../CLAUDE.md#실행-흐름)를 참조하세요.
 
 `test_e2e_multi_provider.py`는 실제 LangGraph `ainvoke()`를 호출하여 `build_unified_graph() → compile() → ainvoke(state)` 전체 파이프라인을 실행한다.
 
