@@ -1,378 +1,250 @@
-# 최종 구현 로드맵 (2026-04-07)
+# 최종 구현 로드맵 (2026-04-07 v2 — 검증 완료)
 
-**목적**: 완료된 계획(PR #38~#60)과 미구현 계획 7개의 통합 실행 전략  
-**기반**: 마스터 인덱스 + 우선순위 재정리 + 품질 체크리스트  
-**기간**: 2-3주 (병렬 작업 시)
+**목적**: 실제 미완료 작업만 포함한 최종 구현 계획  
+**마지막 업데이트**: 2026-04-07 (3-에이전트 교차 검증 후 전면 수정)
+
+> **v1 → v2 변경 이유:**  
+> 3-에이전트 병렬 점검 결과, v1 로드맵의 작업 대부분이 PR #38~#60에서 이미 완료된 사실이 확인됨.  
+> 불필요한 작업 제거 후 실제 미완료 항목만 남김.
 
 ---
 
-## 종합 현황
+## 확인된 기완료 항목 (v1에서 잘못 포함)
 
-| 구분 | 수량 | 상태 |
+| v1 항목 | 실제 상태 | 근거 |
+|---------|-----------|------|
+| Phase A-1: refactor-cleanup | ✅ PR #38 완료 | 커밋 `ffe5290` 확인 |
+| Phase A-2: SSM/환경변수 안정화 | ✅ PR #46 완료 | D-2/C-2/D-3 커밋 확인 |
+| Phase A-3: mypy/Python 호환성 | ✅ PR #52 완료 | mypy 63→0, 타입힌트 완료 |
+| Phase B-1: 타입 힌트 (Dict→dict) | ✅ PR #52 완료 | 전체 에이전트 적용 확인 |
+| Phase B-2: 대화모드 제거 | ✅ PR #45/#48/#49 완료 | Phase 1-6 모두 완료 |
+| Phase B-3: Bedrock 로컬 코드 | ✅ PR #39/#46 완료 | Task 1-5, 7 완료 |
+| Phase C: Circuit Breaker | ✅ 기존 구현 존재 | llm_client.py:42 확인 |
+| Phase C: 인젝션 방어 | ✅ PR #58 완료 | input_sanitizer.py 확인 |
+| Phase C: SSE 스트리밍 | ✅ PR #48 완료 | /episodes/stream 엔드포인트 |
+| Phase C: PII 정제 | ✅ PR #58 완료 | output_sanitizer.py 확인 |
+
+---
+
+## 실제 미완료 작업 (v2 기준)
+
+**3가지만 남아있습니다.**
+
+### 작업 1: 독스트링 보강 (우선순위: 🔴 높음)
+
+**출처**: Plan#4 `2026-03-31-project-quality-review.md` Phase 2
+
+| 항목 | 대상 | 영향 |
 |------|------|------|
-| 완료 PR | 5개 | ✅ 머지 완료 (PR #38~#60) |
-| 미구현 계획 | 7개 | 우선순위별 실행 전략 수립 |
-| **합계 작업 규모** | **49개 파일** | **9개 Phase, 8개 PR로 분리** |
+| Args/Returns 섹션 추가 | 11개 에이전트 파일 | 50+ 메서드 |
+| Google-style 통일 | base_agent.py 기준 적용 | 전체 |
+| Raises 섹션 추가 | exception 던지는 함수 | 20+ 함수 |
+
+**복잡도**: 낮음 (반복 작업, LLM 보조 가능)  
+**PR**: PR-1 (`feature/reasoning-docs-quality`)
 
 ---
 
-## Phase별 구현 계획
+### 작업 2: 주석 보완 + 깨진 링크 수정 (우선순위: 🟡 중간)
 
-### 🔴 Phase A: 기초 준비 (순차, 블로킹 작업)
+**출처**: Plan#4 Phase 4
 
-3개 계획 순차 실행 → CI 녹색 + 테스트 안정화 달성
+**주석 보완 (Plan#4 Phase 4):**
 
-#### A-1. 코드베이스 정리 (Plan #1)
-
-**대상**: `2026-03-30-refactor-commit-and-cleanup.md`
-
-| 항목 | 내용 |
-|------|------|
-| 목표 | 미커밋된 v27 동시성 격리 리팩토링 정리 + 로컬/원격 동기화 |
-| 작업 | 8개 Task (git 명령 조합) |
-| 난이도 | 낮음 |
-| 기간 | 1시간 |
-| PR | (git 정리만, PR 없음) |
-
-**체크리스트:**
-- [ ] 미커밋 v27 변경사항 새 브랜치에 커밋
-- [ ] 원격 푸시
-- [ ] 로컬/원격 동기화
-- [ ] 불필요한 브랜치/워크트리 정리
-
----
-
-#### A-2. 배포 및 테스트 안정성 (Plan #5 일부)
-
-**대상**: `2026-03-31-remaining-issues-investigation.md`
-
-| 항목 | 내용 |
-|------|------|
-| 목표 | D-2(SSM 배포) + C-2(환경변수) + D-3 수정 |
-| 작업 | 3개 Task (코드 수정) |
-| 난이도 | 낮음 |
-| 기간 | 2시간 |
-| PR | PR-A (1개) |
-
-**체크리스트:**
-- [ ] deploy.yml SSM 대기 로직 안정화
-- [ ] 환경변수 분기 로직 추가
-- [ ] 테스트 정확성 개선
-
----
-
-#### A-3. CI 정상화 (Plan #7 Phase 1-2)
-
-**대상**: `2026-04-06-comprehensive-execution-plan.md`
-
-| 항목 | 내용 |
-|------|------|
-| 목표 | Python 호환성 + mypy 에러 + 테스트 안정화 |
-| 작업 | Phase 1-2 (5개 파일) |
-| 난이도 | 중간 |
-| 기간 | 2시간 |
-| PR | PR-B (1개) |
-
-**체크리스트:**
-- [ ] Python 3.9+ 호환성 (Dict→dict 등)
-- [ ] mypy 63개 에러 해결
-- [ ] 테스트 격리 (sys.modules 오염 제거)
-
-**Phase A 완료 조건:**
-```
-✅ git 상태 클린 (unmerged 브랜치 없음)
-✅ CI 파이프라인 녹색 (모든 Actions 통과)
-✅ 444 테스트 통과
-```
-
----
-
-### 🟡 Phase B: 병렬 개선 (독립 실행 가능)
-
-Phase A 완료 후, 다음 3개 계획 **병렬로 진행** 가능
-
-#### B-1. 코드 품질 (Plan #2: project-quality-review)
-
-**대상**: `2026-03-31-project-quality-review.md` Phase 1-5
-
-| 항목 | 내용 |
-|------|------|
-| 목표 | 타입 힌트, 로깅, 독스트링, 주석, 미사용 코드 정리 |
-| 작업 | Phase 1-5 (10개 파일, 75+ 곳) |
-| 난이도 | 낮음~중간 |
-| 기간 | 4-5시간 |
-| PR | PR-C, PR-D (2개) |
-
-**PR 분리:**
-
-**PR-C: 코드 형식 + 기초 정리**
-- Phase 1-2: 타입 힌트 + 로깅 통일
-- Phase 3: 미사용 코드 제거
-- 파일: 15개
-- 위험도: 낮음
-
-**PR-D: 문서화**
-- Phase 4: 주석 + 독스트링 보완
-- Phase 5: 폴더 구조 + 파일 이동
-- 파일: 10개
-- 위험도: 낮음
-
----
-
-#### B-2. 대화모드 제거 (Plan #3: conversation-removal)
-
-**대상**: `2026-03-31-conversation-removal.md`
-
-| 항목 | 내용 |
-|------|------|
-| 목표 | 대화모드 관련 코드 제거 → 팟캐스트 전용 전환 |
-| 작업 | 7개 Phase (파일 이동, import 수정, 프롬프트 삭제) |
-| 난이도 | 높음 |
-| 기간 | 6-8시간 |
-| PR | PR-E (1개) |
-
-**체크리스트:**
-- [ ] Phase 1: conversation 모드 폴더 이동
-- [ ] Phase 2: workflow.py 정리
-- [ ] Phase 3-7: 순차 의존성 해결
-- [ ] 188곳 import 경로 변경
-
-**주의**: Phase별 순차 의존성 강함 → 순차 커밋 필요
-
----
-
-#### B-3. Bedrock 모델 최적화 (Plan #4: bedrock-optimization-v2)
-
-**대상**: `2026-03-31-bedrock-model-optimization-v2.md`
-
-| 항목 | 내용 |
-|------|------|
-| 목표 | 6종 모델 재편성 + Visualization 버그 수정 |
-| 작업 | Task 1-5 (5개 파일, 7개 Task) |
-| 난이도 | 중간 |
-| 기간 | 3-4시간 |
-| PR | PR-F (1개) |
-
-**분할:**
-- **Task 1-5** (로컬): 코드 수정 → Phase B에서 병렬 진행
-- **Task 6-7** (EC2): 벤치마크 실행 → Phase C로 이관
-
----
-
-### 🟢 Phase C: 최종 검증 (순차)
-
-Phase B 완료 후, 순차 실행
-
-#### C-1. 보안 강화 (Phase 6-9)
-
-**대상**: `2026-03-31-project-quality-review.md` Phase 6-9
-
-| 항목 | 내용 |
-|------|------|
-| 목표 | 인젝션 방어, Circuit Breaker, SSE, PII 정제 |
-| 작업 | 4개 Phase (6개 신규 파일 + 4개 기존 파일) |
-| 난이도 | 중간~높음 |
-| 기간 | 8-10시간 |
-| PR | PR-G (4개로 분리) |
-
-**PR 분리:**
-
-**PR-G1: 프롬프트 인젝션 방어 (Phase 6)**
-- 신규: `input_sanitizer.py`
-- 위험도: 중간
-- 테스트: 패턴 감지 단위 테스트
-
-**PR-G2: Circuit Breaker (Phase 7)**
-- 신규: `_CircuitBreaker` 클래스 (llm_client.py 내부)
-- 위험도: 중간
-- 테스트: 상태 전이 검증
-
-**PR-G3: SSE 스트리밍 (Phase 8)**
-- 신규: `POST /episodes/stream` 엔드포인트
-- 위험도: 중간
-- 테스트: 이벤트 포맷 검증
-
-**PR-G4: PII 정제 (Phase 9) — 보안 검토 필수**
-- 신규: `output_sanitizer.py`
-- 위험도: 높음
-- **요구**: 보안 담당자 최종 승인
-
----
-
-#### C-2. EC2 배포 검증 (Plan #5 Task 6-7)
-
-**대상**: `2026-03-31-remaining-issues-investigation.md`
-
-| 항목 | 내용 |
-|------|------|
-| 목표 | 모델별 성능 벤치마크 + 배포 검증 |
-| 작업 | 2개 Task (EC2 실행) |
-| 난이도 | 중간 |
-| 기간 | 1-2시간 (EC2 시간 제외) |
-| PR | (PR 없음, 리포트만) |
-
-**체크리스트:**
-- [ ] Bedrock 모델 6종 벤치마크
-- [ ] 성능 비교 리포트 작성
-- [ ] 배포 검증 (HTTP 200, success:true)
-
----
-
-#### C-3. 최종 정리 (Plan #7 Phase 3-5)
-
-**대상**: `2026-04-06-comprehensive-execution-plan.md`
-
-| 항목 | 내용 |
-|------|------|
-| 목표 | dead code 제거, 문서 정리, 아키텍처 확정 |
-| 작업 | Phase 3-5 (설정, 문서) |
-| 난이도 | 낮음 |
-| 기간 | 1-2시간 |
-| PR | (문서 PR에 포함 또는 별도) |
-
----
-
-## 최종 PR 구성 (총 8개)
-
-| PR | 계획 | Phase | 파일 | 위험도 | 기간 | 검토 |
-|----|------|-------|------|--------|------|------|
-| **PR-A** | Plan#5 | D-2, C-2 | 5개 | 낮음 | 2h | 1인 |
-| **PR-B** | Plan#7 | Phase 1-2 | 5개 | 낮음 | 2h | 1인 |
-| **PR-C** | Plan#2 | Phase 1-3 | 15개 | 낮음 | 2h | 1인 |
-| **PR-D** | Plan#2 | Phase 4-5 | 10개 | 낮음 | 2h | 1인 |
-| **PR-E** | Plan#3 | Phase 1-7 | 20개 | 중간 | 4h | 2인 |
-| **PR-F** | Plan#4 | Task 1-5 | 5개 | 중간 | 2h | 1인 |
-| **PR-G1** | Plan#2 | Phase 6 | 5개 | 중간 | 2h | 보안팀 |
-| **PR-G2,3,4** | Plan#2 | Phase 7-9 | 12개 | 중간~높음 | 6h | 보안팀 |
-| **합계** | — | — | **77개** | — | **26h** | — |
-
----
-
-## 실행 타임라인
-
-```
-Day 1:
-  ├─ 09:00-10:00: Plan#1 실행 (git 정리)
-  ├─ 10:00-12:00: Plan#5 (D-2, C-2) → PR-A 생성
-  └─ 12:00-14:00: Plan#7 Phase 1-2 → PR-B 생성
-
-[ 병렬 진행 ]
-Day 2-3:
-  ├─ PR-C (코드 형식) 검토 + 머지
-  ├─ PR-D (문서화) 검토 + 머지
-  ├─ PR-E (conversation 제거) 순차 진행
-  ├─ PR-F (Bedrock v2) 로컬 Task 완료
-  └─ (EC2 벤치마크는 야간에 배경 작업)
-
-Day 4:
-  ├─ PR-G1 (인젝션) 검토 + 머지
-  ├─ PR-G2 (Circuit Breaker) 검토 + 머지
-  ├─ PR-G3 (SSE) 검토 + 머지
-  └─ PR-G4 (PII) 보안팀 검토 (별도 일정)
-
-Day 5:
-  ├─ EC2 벤치마크 결과 정리
-  ├─ Plan#7 Phase 3-5 최종 정리
-  └─ 마스터 인덱스 업데이트
-```
-
----
-
-## 모델별 역할 (권장)
-
-| 모델 | 역할 | 작업 |
+| 항목 | 대상 | 영향 |
 |------|------|------|
-| **Haiku** | 탐색 + 목록화 | 코드 스캔, 패턴 매칭, 체크리스트 작성 |
-| **Sonnet** | 계획 + 설계 | 컨벤션 통일, 구조 변경, 문서 작성 |
-| **Opus** | 구현 + 검증 | Protected File 수정, 보안 로직, 최종 검증 |
+| MD5 해시 A/B 배정 알고리즘 설명 | base_agent.py:192 (`_resolve_ab_variant`) | 1곳 |
+| Retry + Semaphore + 캐싱 로직 설명 | llm_client.py:389 (`_generate_bedrock`) | 1곳 |
+| asyncio.Event 취소 메커니즘 설명 | workflow.py:211 (`run_with_cancel`) | 1곳 (Protected File) |
+| `_MODEL_COSTS` 가격 기준일 | callbacks.py:52 | 1곳 |
+| `WORDS_PER_MINUTE = 150` 한국어 근거 | script_generator.py:22 | 1곳 |
 
-**우선순위:** 
-1. Haiku → 현황 분석 완료 ✅
-2. Sonnet → 계획 수립 완료 ✅  
-3. Opus → 구현 준비 중 (다음 단계)
+**깨진 링크 수정 (Plan#4 Phase 4-1):**
 
----
+| 파일 | 깨진 링크 | 처리 |
+|------|----------|------|
+| README.md:99-100 | PROJECT_STRUCTURE.md, GIT_WORKFLOW.md 링크 없음 | 제거 또는 내용 직접 포함 |
+| CONTRIBUTING.md:86, 120 | GIT_WORKFLOW.md 참조 | 내부 앵커로 변경 |
+| docs/INDEX.md | 깨진 링크 항목 | 제거 |
 
-## 다음 액션
-
-### 즉시 (이번 주)
-
-1. **Plan #1 실행** (refactor-cleanup)
-   - 소요: 1시간
-   - 담당: 개발자
-   - 산출: 정리된 git 상태
-
-2. **Plan #5 (D-2, C-2) 실행** → PR-A
-   - 소요: 2시간
-   - 담당: Sonnet
-   - 산출: PR-A
-
-3. **Plan #7 Phase 1-2 실행** → PR-B
-   - 소요: 2시간
-   - 담당: Opus
-   - 산출: PR-B
-
-### 본격 (2주차부터)
-
-4. **Phase B 병렬 진행** (PR-C, PR-D, PR-E, PR-F)
-   - 기간: 4일
-   - 담당: 팀 병렬 작업
-
-5. **Phase C 순차 진행** (PR-G1~4, EC2, 정리)
-   - 기간: 3일
-   - 담당: Opus + 보안팀
+**복잡도**: 낮음 (파일 수 적음)  
+**PR**: PR-1과 통합 가능 (`feature/reasoning-docs-quality`)
 
 ---
 
-## 위험 요소 및 완화 전략
+### 작업 3: Bedrock EC2 벤치마크 (우선순위: 🟢 낮음, 인프라 별도)
 
-| 위험 | 영향 | 완화 |
-|------|------|------|
-| PR-E (conversation 제거) 순차 의존성 | 병렬 진행 불가 | Phase별 커밋으로 테스트 가능성 확보 |
-| PR-G4 (PII) 보안 검토 대기 | 일정 지연 | 사전 보안팀 협의 + 검수 기준 문서화 |
-| protected file 변경 (PR-E) | 3인 합의 필요 | Phase A 완료 후 병렬 진행 (충분한 CI 기반) |
-| EC2 인프라 점유 | 벤치마크 실행 지연 | 야간/휴시간 배경 작업 일정 조율 |
+**출처**: Plan#2 Task 6 = Plan#5 Step 2 (중복 통합)
 
----
-
-## 성공 기준
-
-### Phase A 완료
-```
-✅ CI 파이프라인 100% 녹색
-✅ 444 테스트 통과
-✅ develop 브랜치 클린 (unmerged 없음)
-```
-
-### Phase B 완료
-```
-✅ 타입 힌트 Dict→dict 100% 변환
-✅ 로깅 포맷 f-string 제거
-✅ 독스트링 Google-style 통일
-✅ 대화모드 코드 0% 남음
-✅ Bedrock 6종 모델 벤치마크 완료
-```
-
-### Phase C 완료
-```
-✅ 인젝션 감지 패턴 테스트 통과
-✅ Circuit Breaker 상태 전이 검증
-✅ SSE `/episodes/stream` 이벤트 정상 수신
-✅ PII 정제 정탐/오탐 테스트 통과 (보안팀 검증)
-✅ 배포 환경 안정성 검증 완료
-```
-
----
-
-## 참고 문서
-
-| 문서 | 용도 |
+| 항목 | 내용 |
 |------|------|
-| `PLAN_INDEX.md` | 완료/미완료 계획 현황 (마스터) |
-| `PLAN_PRIORITY_REVISED.md` | 우선순위 + 실행 흐름 |
-| `explorations/QUALITY_REVIEW_CHECKLIST.md` | 코드 품질 Phase별 상세 |
+| 목표 | 6종 Bedrock 모델 성능 비교 |
+| 방법 | EC2에서 Phase 0-3 실행 (`run_bedrock_model_test.py`) |
+| 코드 변경 | **없음** (실행만 필요) |
+| 산출물 | 성능 비교 리포트, settings.yaml 최적 모델 재확인 |
+| 의존성 | EC2 인스턴스 접근 권한 필요 |
+
+**이 작업은 코드 PR 없이 인프라팀 협력으로 진행.**
 
 ---
 
-*최종 구현 로드맵 v1 — 2026-04-07*
-*다음 업데이트: Phase A 완료 후 (예상 2026-04-08)*
+## 구현 계획 (작업 1+2)
+
+### 브랜치 전략
+
+```bash
+# origin/develop 최신에서 분기
+git fetch origin
+git checkout -b feature/reasoning-docs-quality origin/develop
+```
+
+### Phase 1: 깨진 링크 수정 (30분)
+
+**파일**: `README.md`, `CONTRIBUTING.md`, `docs/INDEX.md`
+
+- [ ] README.md:99-100 깨진 링크 제거 또는 대체 텍스트로 수정
+- [ ] CONTRIBUTING.md:86, 120 GIT_WORKFLOW.md 참조 → 내부 앵커 또는 CLAUDE.md 참조로 변경
+- [ ] docs/INDEX.md 깨진 링크 제거
+
+**검증**: 링크 클릭 가능 여부 확인 (마크다운 렌더링)
+
+**커밋**: `docs: 깨진 링크 수정 (README, CONTRIBUTING, docs/INDEX)`  
+**푸시**: `git push origin feature/reasoning-docs-quality`
+
+---
+
+### Phase 2: 주석 보완 (2시간)
+
+**파일**: `base_agent.py`, `llm_client.py`, `workflow.py`, `callbacks.py`, `script_generator.py`
+
+- [ ] `base_agent.py:192` — `_resolve_ab_variant()` MD5 해시 A/B 배정 알고리즘 설명
+- [ ] `llm_client.py:389` — `_generate_bedrock()` Retry + Semaphore + 캐싱 로직 설명
+- [ ] `workflow.py:211` — `run_with_cancel()` asyncio.Event 취소 메커니즘 설명 (Protected File)
+- [ ] `callbacks.py:52` — `_MODEL_COSTS` 가격 기준일(2026-02) 및 갱신 주기
+- [ ] `script_generator.py:22` — `WORDS_PER_MINUTE = 150` 한국어 기준 근거
+
+**검증**: `pytest tests/ -v` 통과 확인
+
+**커밋**: `docs: 복잡 로직 설명 주석 추가 (5개 파일)`  
+**푸시**: `git push origin feature/reasoning-docs-quality`
+
+---
+
+### Phase 3: 독스트링 보강 (4-5시간)
+
+**대상**: 11개 에이전트 파일 + shared 2개
+
+**에이전트별 작업 그룹:**
+
+| 그룹 | 파일 | 우선순위 |
+|------|------|---------|
+| A | base_agent.py, llm_client.py | 🔴 높음 (공용) |
+| B | safety.py, emotion.py, content_analyzer.py | 🔴 높음 (TIER 1) |
+| C | script_generator.py, visualization.py, batch_validator.py | 🟡 중간 (TIER 2-3) |
+| D | intent_classifier.py, podcast_reasoning.py, script_personalizer.py | 🟡 중간 (TIER 0/1/4) |
+
+**Google-style 기준 (base_agent.py 준수):**
+```python
+def example_method(self, param: str) -> dict[str, Any]:
+    """메서드의 한 줄 요약.
+
+    더 상세한 설명이 필요한 경우 여기에 작성한다.
+
+    Args:
+        param: 파라미터 설명.
+
+    Returns:
+        반환값 설명.
+
+    Raises:
+        ValueError: 예외 조건 설명.
+    """
+```
+
+**검증**: `pytest tests/ -v` 통과 확인
+
+**그룹별 커밋:**
+- 커밋 A: `docs: base_agent, llm_client 독스트링 Google-style 통일`
+- 커밋 B: `docs: TIER 1 에이전트 독스트링 보강 (safety, emotion, content_analyzer)`
+- 커밋 C: `docs: TIER 2-3 에이전트 독스트링 보강 (script_generator, visualization, batch_validator)`
+- 커밋 D: `docs: TIER 0/1/4 에이전트 독스트링 보강 (intent_classifier, podcast_reasoning, script_personalizer)`
+
+**마지막 푸시**: `git push origin feature/reasoning-docs-quality`
+
+---
+
+## 최종 검증
+
+모든 Phase 완료 후:
+
+```bash
+pytest tests/ -v
+```
+
+**성공 조건:**
+```
+444 passed, 14 skipped
+```
+
+---
+
+## PR 양식 (완성 후 복사 사용)
+
+**PR 제목:**
+```
+docs: 독스트링 보강 + 주석 추가 + 깨진 링크 수정
+```
+
+**Base**: `develop` | **Compare**: `feature/reasoning-docs-quality`
+
+**PR Body 양식 (완료 후 실제 수치 채울 것):**
+
+```markdown
+## 개요
+
+3-에이전트 교차 검증 결과 확인된 실제 미완료 작업 수행:
+- 깨진 링크 수정 (README.md, CONTRIBUTING.md, docs/INDEX.md)
+- 복잡 로직 설명 주석 추가 (5개 파일)
+- 독스트링 Google-style 통일 (11개 에이전트 + 2개 shared)
+
+## 변경 내역
+
+| Phase | 파일 수 | 내용 |
+|-------|---------|------|
+| Phase 1 | 3개 | 깨진 링크 제거/수정 |
+| Phase 2 | 5개 | 복잡 로직 설명 주석 |
+| Phase 3 (그룹 A) | 2개 | base_agent, llm_client 독스트링 |
+| Phase 3 (그룹 B) | 3개 | TIER 1 에이전트 독스트링 |
+| Phase 3 (그룹 C) | 3개 | TIER 2-3 에이전트 독스트링 |
+| Phase 3 (그룹 D) | 3개 | TIER 0/1/4 에이전트 독스트링 |
+
+## 테스트 결과
+
+```
+444 passed, 14 skipped
+```
+
+## 코드 변경 없음 확인
+
+이 PR은 독스트링/주석/문서만 변경합니다. 로직 변경 없음.
+
+## 참고
+
+- 교차 검증 결과: `docs/superpowers/PLAN_INDEX.md` v2
+- 독스트링 기준: `src/agents/shared/base_agent.py` Google-style
+```
+
+---
+
+## Bedrock EC2 벤치마크 (별도 진행)
+
+코드 PR 없음. 인프라팀 협력 필요:
+
+1. EC2 인스턴스에서 `python -m dev.live_tests.run_bedrock_model_test` 실행
+2. 6종 모델 비교 결과 리포트 저장 (`dev/live_tests/results/bedrock_phase3_*.json`)
+3. 결과 바탕으로 `config/settings.yaml` 모델 최적값 재확인
+
+---
+
+*구현 로드맵 v2 — 2026-04-07*  
+*이전 v1 삭제 (내용이 크게 변경됨)*
