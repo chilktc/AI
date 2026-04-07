@@ -1,5 +1,9 @@
 # Ollama 로컬 LLM 설정 가이드
 
+> **⚠️ DEPRECATED**: Round 4(2026-03-06) 이후 프로덕션 LLM은 Bedrock/OpenAI로 전환되었습니다.
+> 이 가이드는 초기 로컬 개발용 참고 자료로만 보존됩니다.
+> 최신 테스트 결과는 `docs/reports/OLLAMA_MODEL_TEST_REPORT.md`를 참조하세요.
+
 ## 1. 개요
 
 ### Ollama란?

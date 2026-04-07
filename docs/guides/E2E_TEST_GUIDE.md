@@ -170,7 +170,7 @@ IntentClassifier에 전달하는 초기 상태는 **최소한의 필드만** 포
 | 필드 | 필수 | 기본값 | 설명 |
 |------|------|--------|------|
 | `user_input` | ✅ | — | IntentClassifier에 전달할 사용자 입력 텍스트 |
-| `mode` | ❌ | `"podcast"` | 실행 모드 (`"podcast"` 또는 `"conversation"`) |
+| `mode` | ❌ | `"podcast"` | 실행 모드 (`"podcast"`) |
 | `user_id` | ❌ | `"user_e2e_graph_001"` | 사용자 ID |
 | `session_id` | ❌ | `"sess_e2e_graph_001"` | 세션 ID |
 

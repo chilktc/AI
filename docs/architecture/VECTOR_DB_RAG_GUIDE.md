@@ -16,7 +16,7 @@
 | **부모 클래스** | `BaseMemoryAgent` → `BaseAgent` |
 | **역할** | 사용자의 과거 팟캐스트 에피소드 기억을 검색하여 개인화된 연속성 제공 |
 | **호출 조건** | Podcast Reasoning Agent가 `complexity_score ≥ 0.6` 또는 `execution_plan.needs_memory = True`일 때 조건부 호출 |
-| **Pinecone 인덱스** | `mem_podcast_episode` |
+| **Pinecone 인덱스** | `mem-podcast-episode` |
 | **출력 필드** | `AgentState.memory_results` |
 
 **핵심 기능:**
@@ -37,7 +37,7 @@
 | **부모 클래스** | `BaseAgent` |
 | **역할** | CBT, DBT 등 전문 심리상담 지식을 벡터 검색하여 근거 기반(Evidence-Based) 응답 제공 |
 | **호출 조건** | Podcast Reasoning Agent가 `complexity_score ≥ 0.5` 또는 `execution_plan.needs_knowledge = True`일 때 조건부 호출 |
-| **Pinecone 인덱스** | `expert_knowledge` |
+| **Pinecone 인덱스** | `expert-knowledge` |
 | **출력 필드** | `AgentState.knowledge_results` |
 
 **핵심 기능 (5단계 RAG 파이프라인):**
@@ -78,7 +78,7 @@
     │
     ├─ 2. _retrieve_from_store(query)
     │     ├─ Embedding API로 query → 벡터 변환
-    │     ├─ Pinecone query: index="mem_podcast_episode"
+    │     ├─ Pinecone query: index="mem-podcast-episode"
     │     │   filter={"user_id": user_id}
     │     │   top_k=5
     │     └─ 유사 에피소드 목록 반환
@@ -88,7 +88,7 @@
             "items": [...],           // 과거 에피소드 목록
             "summary": "...",         // 검색 결과 요약
             "suggested_personalization": {...},
-            "_meta": {"namespace": "mem_podcast_episode", ...}
+            "_meta": {"namespace": "mem-podcast-episode", ...}
           }
 ```
 
@@ -111,7 +111,7 @@
     ├─ ② _search_knowledge_base(professional_query, domains)
     │     ├─ embedding_client.get_embedding(query) → [0.12, -0.34, ...]
     │     └─ pinecone_client.query(
-    │          index="expert_knowledge",
+    │          index="expert-knowledge",
     │          vector=embedding,
     │          filter={"domain": {"$in": ["CBT", "DBT"]}},
     │          top_k=5
@@ -147,10 +147,10 @@
 
 | 인덱스 이름 | 용도 | 사용 에이전트 | 데이터 특성 |
 |------------|------|-------------|------------|
-| `expert_knowledge` | 전문 심리상담 지식 | Knowledge Agent | 정적 데이터 (사전 적재) |
-| `mem_podcast_episode` | 사용자별 에피소드 기억 | Episode Memory Agent | 동적 데이터 (실시간 누적) |
+| `expert-knowledge` | 전문 심리상담 지식 | Knowledge Agent | 정적 데이터 (사전 적재) |
+| `mem-podcast-episode` | 사용자별 에피소드 기억 | Episode Memory Agent | 동적 데이터 (실시간 누적) |
 
-### 3.2 `expert_knowledge` 인덱스 (Knowledge Agent)
+### 3.2 `expert-knowledge` 인덱스 (Knowledge Agent)
 
 **목적:** CBT, DBT, 정신역동, 위기개입 등 전문 심리치료 지식 문서의 임베딩 저장
 
@@ -177,7 +177,7 @@
 ```python
 # Knowledge Agent의 _search_knowledge_base()에서 사용
 results = await pinecone_client.query(
-    index="expert_knowledge",
+    index="expert-knowledge",
     vector=embedding,                          # 쿼리 임베딩
     filter={"domain": {"$in": ["CBT", "DBT"]}},  # 도메인 필터
     top_k=5,
@@ -190,7 +190,7 @@ results = await pinecone_client.query(
 - 업데이트 주기: 새로운 연구/가이드라인 발표 시 수동 배치
 - 청킹 권장: 500~1000 토큰 단위, 문단/섹션 경계 기준
 
-### 3.3 `mem_podcast_episode` 인덱스 (Episode Memory Agent)
+### 3.3 `mem-podcast-episode` 인덱스 (Episode Memory Agent)
 
 **목적:** 사용자별 팟캐스트 에피소드 기억의 임베딩 저장
 
@@ -217,7 +217,7 @@ results = await pinecone_client.query(
 ```python
 # 네임스페이스로 사용자 데이터 격리 (선택적)
 results = await pinecone_client.query(
-    index="mem_podcast_episode",
+    index="mem-podcast-episode",
     vector=embedding,
     filter={"user_id": {"$eq": user_id}},   # 사용자 필터 (필수)
     top_k=5,
@@ -290,9 +290,9 @@ from pinecone import Pinecone, ServerlessSpec
 
 pc = Pinecone(api_key="YOUR_API_KEY")
 
-# 1. expert_knowledge 인덱스 생성
+# 1. expert-knowledge 인덱스 생성
 pc.create_index(
-    name="expert_knowledge",
+    name="expert-knowledge",
     dimension=1024,                    # Amazon Titan v2 기준
     metric="cosine",
     spec=ServerlessSpec(
@@ -301,9 +301,9 @@ pc.create_index(
     )
 )
 
-# 2. mem_podcast_episode 인덱스 생성
+# 2. mem-podcast-episode 인덱스 생성
 pc.create_index(
-    name="mem_podcast_episode",
+    name="mem-podcast-episode",
     dimension=1024,
     metric="cosine",
     spec=ServerlessSpec(
@@ -454,7 +454,7 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
         super().__init__(
             name="episode_memory",
             output_key="memory_results",
-            namespace="mem_podcast_episode",
+            namespace="mem-podcast-episode",
             tier=None,
         )
         self.pinecone_client = pinecone_client
@@ -470,7 +470,7 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
 
         # 2. Pinecone 검색
         results = await self.pinecone_client.query(
-            index="mem_podcast_episode",
+            index="mem-podcast-episode",
             vector=embedding,
             filter={"user_id": {"$eq": self._current_user_id}},
             top_k=5,
@@ -498,7 +498,7 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
         # 2. Pinecone upsert
         vector_id = f"mem_{metadata.get('user_id', 'unknown')}_{metadata.get('date', '')}"
         await self.pinecone_client.upsert(
-            index="mem_podcast_episode",
+            index="mem-podcast-episode",
             vectors=[{
                 "id": vector_id,
                 "values": embedding,
@@ -558,7 +558,7 @@ podcast_reasoning = PodcastReasoningAgent(
 ### 6.1 전문 지식 데이터 적재 스크립트 예시
 
 ```python
-"""expert_knowledge 인덱스에 심리상담 지식을 배치 적재하는 스크립트."""
+"""expert-knowledge 인덱스에 심리상담 지식을 배치 적재하는 스크립트."""
 
 import json
 from pathlib import Path
@@ -599,7 +599,7 @@ async def ingest_knowledge_base(
 
             if len(batch) >= batch_size:
                 await pinecone_client.upsert(
-                    index="expert_knowledge",
+                    index="expert-knowledge",
                     vectors=batch,
                 )
                 batch = []
@@ -607,7 +607,7 @@ async def ingest_knowledge_base(
     # 잔여 배치 처리
     if batch:
         await pinecone_client.upsert(
-            index="expert_knowledge",
+            index="expert-knowledge",
             vectors=batch,
         )
 ```
@@ -649,7 +649,7 @@ async def ingest_knowledge_base(
 
 | 항목 | 단가 | 예상 사용량 (월) | 예상 비용 |
 |------|------|----------------|----------|
-| 저장 | $0.33/GB | expert_knowledge: ~0.5GB, memory: ~2GB | ~$0.8 |
+| 저장 | $0.33/GB | expert-knowledge: ~0.5GB, memory: ~2GB | ~$0.8 |
 | 읽기 유닛 | $8.25/1M RU | 10만 쿼리 × 5 top_k | ~$4.1 |
 | 쓰기 유닛 | $2/1M WU | 1만 upsert (에피소드 저장) | ~$0.02 |
 | **소계** | | | **~$5/월** |
@@ -698,8 +698,8 @@ async def ingest_knowledge_base(
   임베딩           → KT Cloud (Episode Memory만), 미통합
 
 목표 (to-be):
-  Episode Memory  → Bedrock 임베딩 + Pinecone (mem_podcast_episode)
-  Knowledge Agent → Bedrock 임베딩 + Pinecone (expert_knowledge) + RDS 원문
+  Episode Memory  → Bedrock 임베딩 + Pinecone (mem-podcast-episode)
+  Knowledge Agent → Bedrock 임베딩 + Pinecone (expert-knowledge) + RDS 원문
   Pinecone Client → factory.py로 환경별 자동 생성
   임베딩           → BedrockEmbeddingClient 통합 (DI)
 ```
@@ -707,7 +707,7 @@ async def ingest_knowledge_base(
 **전환 작업 우선순위:**
 1. `BedrockEmbeddingClient` 구현 (공통 임베딩 클라이언트)
 2. Pinecone Serverless 인덱스 2개 생성 (AWS us-east-1)
-3. `expert_knowledge` 지식 데이터 초기 적재
+3. `expert-knowledge` 지식 데이터 초기 적재
 4. Episode Memory의 `_retrieve_from_store()` / `_save_to_store()` Pinecone 전환
 5. Knowledge Agent에 실제 클라이언트 DI 주입 (stub 교체)
 6. `domain_hints` 필드 추가 및 Intent Classifier 연동 ([S-3], [B-7] 해결)

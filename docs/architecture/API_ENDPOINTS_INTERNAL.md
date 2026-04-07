@@ -334,7 +334,7 @@ GET /api/v1/{resource}?user_id={uuid}&type={type}&limit={n}&page={p}
 }
 ```
 
-> **NOTE**: 현재 AI 서버 코드에서 `backend_client.load()`를 호출하는 곳이 **없습니다**. 대화모드 구현 시 Memory Agent, Context Agent 등에서 사용 예정입니다.
+> **NOTE**: 현재 AI 서버 코드에서 `backend_client.load()`를 호출하는 곳이 **없습니다**. 향후 필요 시 활성화 예정입니다.
 
 ---
 
