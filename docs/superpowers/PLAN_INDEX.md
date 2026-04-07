@@ -18,7 +18,7 @@
 | 2 | 팟캐스트 동시 요청 격리 | `2026-03-30-podcast-concurrency-isolation.md` | ✅ 완료 | #38 | 298 테스트 통과 |
 | 3 | 동시성 격리 리팩토링 정리 | `2026-03-30-refactor-commit-and-cleanup.md` | ✅ 완료 | #38 | v27 커밋(ffe5290) 포함 |
 | 4 | Bedrock 모델 최적화 v2 | `2026-03-31-bedrock-model-optimization-v2.md` | ✅ 완료 | #39, #46 | Task 1-7 완료 — 에이전트별 최적 모델 settings.yaml 반영 (Phase 3 결과) |
-| 5 | 대화모드 잔재 제거 | `2026-03-31-conversation-removal.md` | ✅ 완료 | #45, #48, #49, #61 | 빈 디렉토리 제거 완료 |
+| 5 | 대화모드 잔재 제거 | `2026-03-31-conversation-removal.md` | ✅ 완료 | #45, #48, #49, #61 | 7개 Phase 완료 (파일 이동, 프롬프트/설정 삭제, API 스키마 수정, 테스트 수정) |
 | 6 | 프로젝트 종합 점검 (품질) | `2026-03-31-project-quality-review.md` | ✅ 완료 | #48, #52, #58, #60, #61, #62 | 9개 Phase 전체 완료 (Phase 8-9 문서 정리 포함) |
 | 7 | 잔여 테스트 현황 확인 | `2026-03-31-remaining-issues-investigation.md` | ✅ 완료 | #46, #48, #59 | D-2 SSM wait, C-2 프로바이더 분기, D-3 printf 모두 해결 |
 | 8 | 종합 점검 (미완료/미해결) | `2026-04-01-comprehensive-review.md` | ✅ 완료 | #48, #49, #52, #58 | 코드 항목 전부 해결 (A-1~D-3, mypy, 3.9 호환). 잔여: 외부 의존성(E-2)/장기 로드맵(H-*) |
@@ -30,10 +30,10 @@
 | 14 | 파이프라인 견고성 강화 마스터 | `pipeline-robustness-index.md` | ✅ 완료 | #60 | 13개 취약점 수정 |
 | 15 | 파이프라인 견고성 - Phase 1 | `pipeline-robustness-part1.md` | ✅ 완료 | #60 | Changes 1-9 완료 |
 | 16 | 파이프라인 견고성 - Phase 2 | `pipeline-robustness-part2.md` | ✅ 완료 | #60 | get_fallback_output() 추가 |
-| 17 | 독스트링 품질 개선 구현 | `plans/2026-04-07-docs-quality-implementation.md` | ✅ 완료 | #61 (MERGED) | Phase 1-4 구현 + CB/SSE 테스트 추가 (479 passed, 14 skipped) |
-| 18 | Neo4j 통합 구현 계획 | `plans/2026-04-07-neo4j-integration-plan.md` | 🔶 대부분 완료 | — | seed group 필드 수정 완료, E2E 검증은 인프라 선행 필요 |
-| 19 | Pinecone 벡터 DB 공통 인프라 | `plans/2026-04-07-pinecone-vector-db-integration.md` | 🔶 대부분 완료 | #64~#68 | CLI 스크립트+pinecone_client+테스트 59개 구현, EC2 연결 검증, 인덱스명 하이픈 통일. 미완: BedrockEmbeddingClient, 팩토리 연동, 가이드 문서 |
-| 20 | Graph Mode B 단일화 리팩터 | `plans/2026-04-07-graph-mode-b-refactor.md` | ✅ 완료 | — | Mode A 삭제, publish_graph_to_rdb 단일 경로 확정, EMA를 Backend 책임으로 이관 (516 passed) |
+| 17 | 독스트링 품질 개선 구현 | `2026-04-07-docs-quality-implementation.md` | ✅ 완료 | #61 (MERGED) | Phase 1-4 구현 + CB/SSE 테스트 추가 (479 passed, 14 skipped) |
+| 18 | Neo4j 통합 구현 계획 | `2026-04-07-neo4j-integration-plan.md` | 🔶 대부분 완료 | — | seed group 필드 수정 완료, E2E 검증은 인프라 선행 필요 |
+| 19 | Pinecone 벡터 DB 공통 인프라 | `2026-04-07-pinecone-vector-db-integration.md` | 🔶 대부분 완료 | #64~#68 | CLI 스크립트+pinecone_client+테스트 59개 구현, EC2 연결 검증, 인덱스명 하이픈 통일. 미완: BedrockEmbeddingClient, 팩토리 연동, 가이드 문서 |
+| 20 | Graph Mode B 단일화 리팩터 | `2026-04-07-graph-mode-b-refactor.md` | ✅ 완료 | — | Mode A 삭제, publish_graph_to_rdb 단일 경로 확정, EMA를 Backend 책임으로 이관 (516 passed) |
 
 **범례:**
 - ✅ 완료 — 코드 구현 완료, PR 머지됨
