@@ -41,19 +41,32 @@ class BatchValidatorAgent(BaseAgent):
         self.max_retries: int = cfg.get("max_retries", 2)
 
     async def process(self, state: AgentState) -> dict[str, Any]:
-        """
-        스크립트 품질을 검증하고 통과 여부를 결정한다.
+        """스크립트 품질을 검증하고 통과 여부를 결정한다.
 
-        입력 (모두 TIER 1/2 결과 — TIER 3이므로 참조 정당):
-            - script_draft: Script Generator(TIER 2)가 생성한 스크립트
-            - content_analysis: Content Analyzer(TIER 1) 분석 결과
-            - reasoning_result: Podcast Reasoning(TIER 1) 추론 결과
-            - safety_flags: Safety Agent(TIER 1) 안전 플래그
-            - emotion_vectors: Emotion Agent(TIER 1) 감정 벡터 — 톤 적합성 판단용
+        TIER 1/2 결과를 조합해 LLM에 스크립트 품질 검증을 요청하고,
+        approve/revise/escalate 판정에 따라 verdict를 설정한다.
+        라우팅 결정은 workflow.py의 route_after_tier3_podcast()가 verdict를 읽어 처리한다.
 
-        출력:
-            - validation_result: 검증 결과 상세
-            - next_step: 다음 단계 라우팅 ("script_personalizer" 또는 "retry_script")
+        Args:
+            state: 현재 AgentState. 참조 필드 (모두 TIER 1/2 결과):
+                - script_draft (dict): Script Generator(TIER 2)가 생성한 스크립트.
+                - content_analysis (dict): Content Analyzer(TIER 1) 분석 결과.
+                - reasoning_result (dict): Podcast Reasoning(TIER 1) 추론 결과.
+                - safety_flags (dict): Safety Agent(TIER 1) 안전 플래그.
+                - emotion_vectors (dict): Emotion Agent(TIER 1) 감정 벡터.
+                - iteration_count (int): 현재 재시도 횟수 (기본값 0).
+                  max_retries 초과 시 강제 통과(forced_pass) 처리에 사용.
+
+        Returns:
+            변경된 필드만 포함한 dict:
+                - validation_result (dict): 검증 결과 상세.
+                  - verdict (str): "PASS" | "FAIL" | "CRITICAL_FAIL".
+                  - overall_score (float): 종합 품질 점수.
+                  - action (dict): LLM 판정 결과 (decision: approve|revise|escalate).
+                  - forced_pass (bool): iteration_count 초과 시만 포함.
+
+        Raises:
+            없음. LLM 호출 실패 시 verdict="FAIL" 결과를 반환한다.
         """
         script_draft = state.get("script_draft", {})
         content_analysis = state.get("content_analysis", {})
