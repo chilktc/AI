@@ -1,8 +1,8 @@
 # 마스터 계획 인덱스 (Master Plan Index)
 
 **목적**: 모든 기획 문서의 현황 추적 및 상태 관리  
-**버전**: v6  
-**마지막 업데이트**: 2026-04-07 15:00  
+**버전**: v7  
+**마지막 업데이트**: 2026-04-07  
 **관리 원칙**:
 - 완료된 계획 → PR 링크 + 간단한 변경 사항 기록
 - 미완료 계획 → 상태 및 다음 액션 기록
@@ -30,7 +30,7 @@
 | 14 | 파이프라인 견고성 강화 마스터 | `pipeline-robustness-index.md` | ✅ 완료 | #60 | 13개 취약점 수정 |
 | 15 | 파이프라인 견고성 - Phase 1 | `pipeline-robustness-part1.md` | ✅ 완료 | #60 | Changes 1-9 완료 |
 | 16 | 파이프라인 견고성 - Phase 2 | `pipeline-robustness-part2.md` | ✅ 완료 | #60 | get_fallback_output() 추가 |
-| 17 | 독스트링 품질 개선 구현 | `plans/2026-04-07-docs-quality-implementation.md` | ✅ 완료 | #61 | Phase 1-4 구현 완료 (459 passed, 14 skipped) |
+| 17 | 독스트링 품질 개선 구현 | `plans/2026-04-07-docs-quality-implementation.md` | ✅ 완료 | #61 | Phase 1-4 구현 + CB/SSE 테스트 추가 (479 passed, 14 skipped) |
 | 18 | Neo4j 통합 구현 계획 | `plans/2026-04-07-neo4j-integration-plan.md` | 🔶 대부분 완료 | — | seed group 필드 수정 완료, E2E 검증은 인프라 선행 필요 |
 
 **범례:**
@@ -43,14 +43,14 @@
 
 ## 실제 미완료 항목 전체 (2차 교차 검증 기준)
 
-### 그룹 1: 소규모 코드 정리 (이번 브랜치에서 처리 가능)
+### 그룹 1: 소규모 코드 정리 ✅ 완료 — PR #61
 
-| # | 작업 | 파일 | 라인 | 성격 |
-|---|------|------|------|------|
-| 1 | safety.py 독스트링 Google-style 통일 | `src/agents/podcast/safety.py` | `process()` | 한 줄 설명 → Args/Returns 추가 |
-| 2 | batch_validator.py 독스트링 Google-style 통일 | `src/agents/podcast/batch_validator.py` | `process()` | 커스텀 형식 → Args/Returns 통일 |
-| 3 | external_schemas.py docstring 불일치 수정 | `src/api/external_schemas.py` | 684-685 | `/conversations/stream` → `/episodes/stream` |
-| 4 | src/agents/conversation/ 빈 디렉토리 제거 | `src/agents/conversation/` | — | 빈 껍데기 디렉토리 |
+| # | 작업 | 파일 | 상태 |
+|---|------|------|------|
+| 1 | safety.py 독스트링 Google-style 통일 | `src/agents/podcast/safety.py` | ✅ `7c80efd` |
+| 2 | batch_validator.py 독스트링 Google-style 통일 | `src/agents/podcast/batch_validator.py` | ✅ `228faf4` |
+| 3 | external_schemas.py docstring 불일치 수정 | `src/api/external_schemas.py` | ✅ `c114a55` |
+| 4 | src/agents/conversation/ 빈 디렉토리 제거 | `src/agents/conversation/` | ✅ Git 미추적 디렉토리 삭제 |
 
 ### 그룹 2: 테스트 보완 ✅ 완료
 
@@ -98,7 +98,9 @@
 | 기능 | 위치 | 완료 PR |
 |------|------|--------|
 | Circuit Breaker (구현체) | `src/agents/shared/llm_client.py:42` | 기존 구현 |
+| Circuit Breaker 상태 전환 테스트 (9개) | `tests/agents/shared/test_llm_client.py` | `eaa6c28` |
 | SSE 스트리밍 엔드포인트 | `src/api/routes/podcasts.py:381` | PR #48 |
+| SSE 스트리밍 엔드포인트 테스트 (11개) | `tests/api/test_sse_streaming.py` | `eaa6c28` |
 | 프롬프트 인젝션 방어 | `src/agents/shared/input_sanitizer.py` | PR #58 |
 | PII 정제 | `src/agents/shared/output_sanitizer.py` | PR #58 |
 | 타입 힌트 현대화 (Dict→dict) | 전체 에이전트 | PR #52 |
@@ -130,6 +132,7 @@
 | #58 | feature/reasoning-security-remediation | 보안 강화 |
 | #59 | feature/reasoning-aws-env-remediation | 환경변수 보안 |
 | #60 | feature/reasoning-pipeline-robustness | 파이프라인 취약점 13개 |
+| #61 | feature/reasoning-docs-quality | 독스트링 품질 + CB/SSE 테스트 (OPEN) |
 
 ---
 

@@ -3,8 +3,8 @@
 **출처**: `2026-03-31-project-quality-review.md` 상세 분석  
 **탐색 에이전트**: Haiku (자동화 목록화)  
 **목적**: 코드 품질 개선 계획의 구현 항목 세분화  
-**버전**: v3  
-**마지막 업데이트**: 2026-04-07 15:00
+**버전**: v4  
+**마지막 업데이트**: 2026-04-07
 
 ---
 
@@ -144,83 +144,38 @@
 
 ## 실행 전략
 
-### PR A: 타입 힌트 + 로깅 (Phase 1-2)
+| PR | Phase | 상태 | 비고 |
+|----|-------|------|------|
+| PR A | Phase 1 (타입 힌트) | ✅ 완료 | PR #52 |
+| PR B | Phase 3-4 (독스트링+주석) | ✅ 완료 | PR #61 |
+| PR C | Phase 5-7 (dead code+폴더) | ⏳ 미착수 | Phase 6(에러처리)만 PR #60 완료 |
+| PR D | Phase 8-9 (문서 정리) | ⏳ 미착수 | — |
 
-**예상 변경 파일**: 
-- script_generator.py, knowledge.py, intent_classifier.py, script_personalizer.py, schemas.py
-- podcasts.py, callbacks.py (로깅)
-
-**예상 커밋 수**: 2-3개 (각 Phase별)
-
-**자동화 가능**: 95% (도구 사용)
-
-**검증**: `ruff check`, `mypy`
-
----
-
-### PR B: 독스트링 + 주석 (Phase 3-4)
-
-**예상 변경 파일**: 모든 에이전트 (11개)
-
-**예상 커밋 수**: 5-6개 (에이전트 그룹별)
-
-**자동화 불가**: 수동 작성 (LLM 보조 가능)
-
-**검증**: 문서 생성 + 링크 테스트
-
----
-
-### PR C: 에러 처리 + 폴더 (Phase 5-7)
-
-**예상 변경 파일**: 전체 (40+ 파일)
-
-**예상 커밋 수**: 4-5개 (도메인별)
-
-**자동화 가능**: 50% (코드 스캔 후 수동)
-
-**검증**: `pytest`, E2E 테스트
-
----
-
-### PR D: Dead Code + 문서 정리 (Phase 8-9)
-
-**예상 변경 파일**: docs/ + settings.yaml + prompts/
-
-**예상 커밋 수**: 2-3개 (문서/설정)
-
-**자동화 가능**: 80% (검색 + 정리)
-
-**검증**: 링크 체크, 빌드 확인
-
----
-
-## 4-에이전트 2차 검증에서 신규 발견된 항목
-
-### external_schemas.py docstring 경로 오류
-
-| 항목 | 파일 | 라인 | 현재 (오류) | 수정값 |
-|------|------|------|-----------|--------|
-| 엔드포인트 경로 | `src/api/external_schemas.py` | 684-685 | `/conversations/stream`, `ws/conversations` | `/episodes/stream` |
-
-**성격**: docstring 텍스트 오류 (기능 영향 없음), 이 체크리스트 범위에는 없던 항목  
-**처리**: `feature/reasoning-docs-quality` 브랜치에서 작업 1+2+3과 함께 처리
+> Phase 2 (로깅 통일)는 PR A/C에 포함 가능.  
+> external_schemas.py docstring 경로 오류 — ✅ PR #61에서 수정 완료 (`c114a55`)
 
 ---
 
 ## 권장 사항
 
-**현재 상태 (2026-04-07 v2 — 4-에이전트 2차 검증 기준):**
-1. ✅ 완료: Plan#1 (refactor-cleanup)
-2. ✅ 완료: Plan#5-remaining-issues (D-2, C-2, D-3)
-3. ✅ 완료: Plan#7-comprehensive-execution (Phase 1-2)
-4. ✅ 완료: Phase 1 (타입 힌트 — PR #52)
-5. ✅ 완료: Phase 4 (주석 보완 — 4-에이전트 검증으로 모두 확인)
-6. ✅ 완료: Phase 6 (에러 처리 — PR #60)
-7. ✅ 완료: Phase 3 (safety.py + batch_validator.py 독스트링 — PR #61)
+**현재 상태 (2026-04-07 v4):**
+1. ✅ 완료: Phase 1 (타입 힌트 — PR #52)
+2. ✅ 완료: Phase 3 (독스트링 — PR #61)
+3. ✅ 완료: Phase 4 (주석 보완 — 4-에이전트 검증)
+4. ✅ 완료: Phase 6 (에러 처리 — PR #60)
+5. ✅ 완료: Circuit Breaker 상태 전환 테스트 9개 + SSE 엔드포인트 테스트 11개
 
-**처리 브랜치**: `feature/reasoning-docs-quality`  
-**상세 계획**: `IMPLEMENTATION_ROADMAP.md` v3 참조
+**미완료 Phase:**
+- Phase 2: 로깅 포맷 통일 (f-string→%-포맷, module logger 정의 등)
+- Phase 5: 불필요한 코드 제거 (settings.yaml features/databases, start_time 등)
+- Phase 7: 폴더 구조 정리 (src/models/, prompts/ 아카이브 등)
+- Phase 8: 문서 통일성 (README, API 문서, 아키텍처 문서)
+- Phase 9: 불필요한 문서 정리
+
+**처리 브랜치**: `feature/reasoning-docs-quality` (PR #61 OPEN)  
+**테스트 결과**: 479 passed, 14 skipped  
+**상세 계획**: `IMPLEMENTATION_ROADMAP.md` v5 참조
 
 ---
 
-*체크리스트 v3 — 2026-04-07 15:00 (Phase 3 독스트링 구현 완료 반영)*
+*체크리스트 v4 — 2026-04-07 (CB/SSE 테스트 완료 반영, 미완료 Phase 정리)*

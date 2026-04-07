@@ -1,8 +1,8 @@
 # 최종 구현 로드맵
 
 **목적**: 실제 미완료 작업만 포함한 최종 구현 계획  
-**버전**: v4  
-**마지막 업데이트**: 2026-04-07 15:00
+**버전**: v5  
+**마지막 업데이트**: 2026-04-07
 
 > **v2 → v3 변경 이유:**  
 > 4-에이전트 2차 병렬 점검 결과,  
@@ -107,123 +107,30 @@
 
 ---
 
-## 구현 계획 (작업 1+2+3)
+## 구현 이력 (PR #61 브랜치: feature/reasoning-docs-quality)
 
-### 브랜치 전략
+### ✅ Phase 1: docstring 내용 오류 수정 — `c114a55`
 
-```bash
-# origin/develop 최신에서 분기 (이미 생성됨)
-# feature/reasoning-docs-quality
-```
+- [x] `src/api/external_schemas.py:684-685` — GET conversations → POST podcasts/episodes, WS 줄 제거
 
-### Phase 1: docstring 내용 오류 수정 (15분)
+### ✅ Phase 2: 독스트링 보강 — `7c80efd`, `228faf4`
 
-**파일**: `src/api/external_schemas.py:684-685`
+- [x] `safety.py:process()` — Google-style Args/Returns/Raises 추가
+- [x] `batch_validator.py:process()` — 커스텀 형식 → Google-style 통일, next_step 오류 수정
 
-- [ ] `/conversations/stream` → `/episodes/stream` 수정
-- [ ] `ws/conversations` → 올바른 WebSocket 경로로 수정 (또는 제거)
+### ✅ Phase 3: 빈 디렉토리 제거
 
-**검증**: 파일 정상 확인  
-**커밋**: `docs: external_schemas.py 엔드포인트 경로 오류 수정 (conversations→episodes)`
+- [x] `src/agents/conversation/` — __pycache__만 있던 디렉토리 삭제 (Git 미추적)
 
----
+### ✅ Phase 4: 테스트 보완 — `eaa6c28`
 
-### Phase 2: 독스트링 보강 (1시간)
+- [x] Circuit Breaker 상태 전환 테스트 9개 (`tests/agents/shared/test_llm_client.py`)
+- [x] SSE `/episodes/stream` 엔드포인트 테스트 11개 (`tests/api/test_sse_streaming.py`)
 
-**파일**: `src/agents/podcast/safety.py`, `src/agents/podcast/batch_validator.py`
-
-- [ ] `safety.py:process()` — Google-style Args/Returns/Raises 추가
-- [ ] `batch_validator.py:process()` — 커스텀 형식 → Google-style 통일
-
-**Google-style 기준 (base_agent.py 준수):**
-```python
-def process(self, state: AgentState) -> dict[str, Any]:
-    """메서드의 한 줄 요약.
-
-    Args:
-        state: 현재 AgentState.
-
-    Returns:
-        변경된 필드만 담긴 dict.
-
-    Raises:
-        ValueError: 상태에 필수 필드가 없을 때.
-    """
-```
-
-**검증**: `pytest tests/ -v` 통과 확인  
-**커밋**: `docs: safety, batch_validator process() 독스트링 Google-style 통일`
-
----
-
-### Phase 3: 빈 디렉토리 제거 (5분)
-
-**경로**: `src/agents/conversation/`
-
-- [ ] 빈 디렉토리 확인 후 삭제
-
-**검증**: `pytest tests/ -v` 통과 확인  
-**커밋**: `chore: src/agents/conversation/ 빈 디렉토리 제거 (대화모드 제거 잔재)`
-
----
-
-## 최종 검증
-
-모든 Phase 완료 후:
-
-```bash
-pytest tests/ -v
-```
-
-**성공 조건:**
-```
-444 passed, 14 skipped
-```
-
----
-
-## PR 양식 (완성 후 복사 사용)
-
-**PR 제목:**
-```
-docs: 독스트링 보강 + docstring 오류 수정 + 빈 디렉토리 제거
-```
-
-**Base**: `develop` | **Compare**: `feature/reasoning-docs-quality`
-
-**PR Body 양식:**
-
-```markdown
-## 개요
-
-4-에이전트 2차 교차 검증 결과 확인된 실제 미완료 작업 수행:
-- external_schemas.py 엔드포인트 경로 오류 수정 (conversations → episodes)
-- safety.py + batch_validator.py process() 독스트링 Google-style 통일
-- src/agents/conversation/ 빈 디렉토리 제거 (대화모드 제거 잔재)
-
-## 변경 내역
-
-| Phase | 파일 수 | 내용 |
-|-------|---------|------|
-| Phase 1 | 1개 | external_schemas.py 경로 오류 수정 |
-| Phase 2 | 2개 | safety, batch_validator 독스트링 보강 |
-| Phase 3 | 1개 | 빈 디렉토리 제거 |
-
-## 테스트 결과
+### 최종 검증
 
 ```
-444 passed, 14 skipped
-```
-
-## 코드 변경 없음 확인
-
-이 PR은 독스트링/주석/문서만 변경합니다. 로직 변경 없음.
-(external_schemas.py는 docstring 텍스트만 수정, 기능 변경 없음)
-
-## 참고
-
-- 교차 검증 결과: `docs/superpowers/PLAN_INDEX.md` v3
-- 독스트링 기준: `src/agents/shared/base_agent.py` Google-style
+479 passed, 14 skipped (2 pre-existing failures in test_retry_loop.py)
 ```
 
 ---
