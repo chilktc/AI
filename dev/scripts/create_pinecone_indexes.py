@@ -3,8 +3,8 @@
 Pinecone 인덱스 생성 스크립트 (1회성 실행).
 
 인덱스:
-  expert_knowledge    : Knowledge Agent — 심리상담 전문 지식 (1024차원)
-  mem_podcast_episode : Episode Memory  — 사용자 에피소드 기억 (1024차원)
+  expert-knowledge    : Knowledge Agent — 심리상담 전문 지식 (1024차원)
+  mem-podcast-episode : Episode Memory  — 사용자 에피소드 기억 (1024차원)
 
 실행 (호스트):
     PINECONE_API_KEY=<key> python dev/scripts/create_pinecone_indexes.py
@@ -28,13 +28,13 @@ REGION = "us-east-1"
 
 INDEXES = [
     {
-        "name": "expert_knowledge",
+        "name": "expert-knowledge",
         "dimension": 1024,
         "metric": "cosine",
         "description": "Knowledge Agent — 심리상담 전문 지식 벡터",
     },
     {
-        "name": "mem_podcast_episode",
+        "name": "mem-podcast-episode",
         "dimension": 1024,
         "metric": "cosine",
         "description": "Episode Memory — 팟캐스트 에피소드 기억 벡터",
