@@ -6,7 +6,28 @@
 
 **Architecture:** 환경 검증 → 공통 클라이언트(Bedrock 임베딩) → 팩토리 함수 → 인덱스 생성 → 개발자 CLI 스크립트 → 가이드 문서 순으로 진행한다.
 
-**Tech Stack:** Pinecone Serverless (AWS `us-east-1`), Amazon Bedrock Titan Embeddings v2 (`amazon.titan-embed-text-v2:0`, 1024차원, 리전 `ap-northeast-2`), boto3>=1.34.0, pinecone-client>=3.0.0
+**Tech Stack:** Pinecone Serverless (AWS `us-east-1`), Amazon Bedrock Titan Embeddings v2 (`amazon.titan-embed-text-v2:0`, 1024차원, 리전 `ap-northeast-2`), boto3>=1.34.0, pinecone>=3.0.0
+
+---
+
+## 현재 완료 현황 (2026-04-07 기준)
+
+| Task | 상태 | PR | 비고 |
+|------|------|-----|------|
+| Task 1: 환경변수 검증 스크립트 | ✅ 완료 | #64 | `validate_pinecone_env.py` 작성, 테스트 5개 통과 |
+| Task 2: BedrockEmbeddingClient | ❌ 미완료 | — | 미구현 — 팩토리 연동 포함 |
+| Task 3: Pinecone 인덱스 생성 스크립트 | ✅ 완료 | #64, #67 | `create_pinecone_indexes.py`, EC2 인덱스 생성 확인 |
+| Task 4: Pinecone 연결 상태 테스트 스크립트 | ✅ 완료 | #64, #67 | `test_pinecone_connection.py`, EC2 헬스체크 통과 |
+| Task 5: 임베딩 생성 테스트 스크립트 | ❌ 미완료 | — | `test_embedding.py` 미작성 |
+| Task 6: 벡터 저장 → 검색 E2E 테스트 | ❌ 미완료 | — | `test_vector_roundtrip.py` 미작성 |
+| Task 7: 지식 데이터 초기 적재 스크립트 | ❌ 미완료 | — | `ingest_knowledge_base.py` 미작성 |
+| Task 8: 전체 회귀 테스트 | 🔶 일부 완료 | #67 | tests/db/ 59개 통과, 전체 479 passed 유지 |
+| Task 9: 개발자 가이드 | ❌ 미완료 | — | `PINECONE_DEVELOPER_GUIDE.md` 미작성 |
+
+**추가 완료:**
+- EC2 Docker 환경 Pinecone 연결 검증 완료 (PR #65, #66 선행 필요 수정 포함)
+- 인덱스명 하이픈 규칙 적용: `expert-knowledge`, `mem-podcast-episode`
+- `knowledge.py:135` 인덱스명 하드코딩 수정 (`expert_knowledge` → `expert-knowledge`)
 
 ---
 
@@ -1510,14 +1531,14 @@ git commit -m "docs: Pinecone 개발자 가이드 (CLI 명령어, Docker, DI 패
 
 ## 완료 기준 — 다른 개발자에게 전달 전 체크리스트
 
-- [ ] `python dev/scripts/validate_pinecone_env.py` 통과
-- [ ] `PINECONE_API_KEY=<key> python dev/scripts/create_pinecone_indexes.py` — 인덱스 2개 생성
-- [ ] `PINECONE_API_KEY=<key> python dev/scripts/test_pinecone_connection.py` — 전체 통과
+- [x] `python dev/scripts/validate_pinecone_env.py` 통과 (PR #64)
+- [x] `PINECONE_API_KEY=<key> python dev/scripts/create_pinecone_indexes.py` — 인덱스 2개 생성 (PR #64, #67 — EC2 확인 완료)
+- [x] `PINECONE_API_KEY=<key> python dev/scripts/test_pinecone_connection.py` — 전체 통과 (PR #64, #67 — EC2 확인 완료)
 - [ ] `python dev/scripts/test_embedding.py` — 1024차원 벡터 반환 확인
-- [ ] `python dev/scripts/test_vector_roundtrip.py --index expert_knowledge` — E2E 통과
+- [ ] `python dev/scripts/test_vector_roundtrip.py --index expert-knowledge` — E2E 통과
 - [ ] `python dev/scripts/ingest_knowledge_base.py --dry-run` — 4개 문서 출력
-- [ ] `python -m pytest tests/db/ -v` — 6개 통과
-- [ ] `python -m pytest tests/ --ignore=tests/integration -x -q` — 기존 테스트 전체 통과
+- [x] `python -m pytest tests/db/ -v` — 59개 통과 (PR #67)
+- [x] `python -m pytest tests/ --ignore=tests/integration -x -q` — 기존 테스트 전체 통과 (479 passed 유지)
 - [ ] `docs/guides/PINECONE_DEVELOPER_GUIDE.md` 작성 완료
 
 ---

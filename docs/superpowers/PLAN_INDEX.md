@@ -32,7 +32,7 @@
 | 16 | 파이프라인 견고성 - Phase 2 | `pipeline-robustness-part2.md` | ✅ 완료 | #60 | get_fallback_output() 추가 |
 | 17 | 독스트링 품질 개선 구현 | `plans/2026-04-07-docs-quality-implementation.md` | ✅ 완료 | #61 (MERGED) | Phase 1-4 구현 + CB/SSE 테스트 추가 (479 passed, 14 skipped) |
 | 18 | Neo4j 통합 구현 계획 | `plans/2026-04-07-neo4j-integration-plan.md` | 🔶 대부분 완료 | — | seed group 필드 수정 완료, E2E 검증은 인프라 선행 필요 |
-| 19 | Pinecone 벡터 DB 공통 인프라 | `plans/2026-04-07-pinecone-vector-db-integration.md` | 🔶 일부 완료 | — | CLI 스크립트+pinecone_client 구현. 미완: BedrockEmbeddingClient, 팩토리 연동, 테스트 |
+| 19 | Pinecone 벡터 DB 공통 인프라 | `plans/2026-04-07-pinecone-vector-db-integration.md` | 🔶 일부 완료 | #64, #65, #66, #67 | CLI 스크립트+pinecone_client+테스트 구현, EC2 연결 검증 완료. 미완: BedrockEmbeddingClient, 팩토리 연동, 가이드 문서 |
 
 **범례:**
 - ✅ 완료 — 코드 구현 완료, PR 머지됨
@@ -87,6 +87,7 @@
 | 17 | EpisodeMemoryStub → 실제 에이전트 DI 연결 | `podcast_reasoning.py` | 58-59 | Pinecone 연동 |
 | 18 | base_memory._save_to_store() stub 구현 | `base_memory.py` | 88-89 | KT Cloud API |
 | 19 | episode_memory mock_db.json → Pinecone 전환 | `episode_memory.py` | 15 | Pinecone 연동 |
+| ~~24~~ | ~~knowledge.py 인덱스명 하드코딩~~ (`expert_knowledge`) | ~~`knowledge.py`~~ | ~~135~~ | ✅ `expert-knowledge` 수정 완료 (PR #67) |
 | 20 | script_personalizer empathetic/rational 구현 | `script_personalizer.py` | 402, 405 | 비즈니스 규칙 정의 |
 | 21 | script_personalizer hearing_impairment 구현 | `script_personalizer.py` | 450 | 비즈니스 규칙 정의 |
 | 22 | _query_user_profile() MySQL 구현 | `script_personalizer.py` | 275 | DB 연결 |
@@ -138,8 +139,12 @@
 | #59 | feature/reasoning-aws-env-remediation | 환경변수 보안 |
 | #60 | feature/reasoning-pipeline-robustness | 파이프라인 취약점 13개 |
 | #61 | feature/reasoning-docs-quality | 독스트링 품질 + CB/SSE 테스트 (MERGED) |
-| #62 | feature/reasoning-code-quality-cleanup | 코드 품질 정리 — dead code 제거 + Phase 8-9 문서 (OPEN) |
+| #62 | feature/reasoning-code-quality-cleanup | 코드 품질 정리 — dead code 제거 + Phase 8-9 문서 (MERGED) |
+| #64 | feature/reasoning-pinecone-infra | Pinecone CLI 스크립트 3종 + pinecone_client 구현 (MERGED) |
+| #65 | feature/reasoning-code-quality-cleanup | deploy.yml PINECONE_API_KEY/NEO4J_USER 누락 추가 (MERGED) |
+| #66 | feature/reasoning-code-quality-cleanup | requirements.txt pinecone-client → pinecone 패키지명 수정 (MERGED) |
+| #67 | feature/reasoning-code-quality-cleanup | Pinecone 인덱스명 언더스코어→하이픈 (config, dev/scripts, tests) (OPEN) |
 
 ---
 
-*마스터 인덱스 v9 — 2026-04-07 (Plan #4/#7/#8 완료 확인, #12 mypy/테스트 해결, #19 일부 구현)*
+*마스터 인덱스 v10 — 2026-04-07 (Plan #19 EC2 Pinecone 연결 검증 완료, PR #65~#67, knowledge.py 인덱스명 수정)*
