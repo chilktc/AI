@@ -97,7 +97,7 @@ mind-log/
 | 문서 | 설명 |
 |------|------|
 | [CLAUDE.md](CLAUDE.md) | 아키텍처 + 협업 규칙 + API 규약 통합 가이드 |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | 브랜치 전략, 커밋 컨벤션, PR 가이드, 기여 규칙 |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | 브랜치 전략, 커밋 컨벤션, PR 가이드, 담당 에이전트 배분, Protected Files |
 | [docs/getting-started/QUICK_START.md](docs/getting-started/QUICK_START.md) | 환경 설정 및 첫 에이전트 개발 가이드 |
 | [docs/architecture/AGENT_ROLES.md](docs/architecture/AGENT_ROLES.md) | 에이전트별 역할·입출력·이슈 정의서 |
 | [docs/architecture/API_SPEC.md](docs/architecture/API_SPEC.md) | REST API 명세 인덱스 |
