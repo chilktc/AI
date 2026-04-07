@@ -1,8 +1,8 @@
 # 마스터 계획 인덱스 (Master Plan Index)
 
 **목적**: 모든 기획 문서의 현황 추적 및 상태 관리  
-**버전**: v4  
-**마지막 업데이트**: 2026-04-07 13:30  
+**버전**: v5  
+**마지막 업데이트**: 2026-04-07 14:00  
 **관리 원칙**:
 - 완료된 계획 → PR 링크 + 간단한 변경 사항 기록
 - 미완료 계획 → 상태 및 다음 액션 기록
@@ -31,7 +31,7 @@
 | 15 | 파이프라인 견고성 - Phase 1 | `pipeline-robustness-part1.md` | ✅ 완료 | #60 | Changes 1-9 완료 |
 | 16 | 파이프라인 견고성 - Phase 2 | `pipeline-robustness-part2.md` | ✅ 완료 | #60 | get_fallback_output() 추가 |
 | 17 | 독스트링 품질 개선 구현 | `plans/2026-04-07-docs-quality-implementation.md` | 🔲 구현 대기 | — | Phase 1-4, 4개 항목, v2(3차 점검 반영) |
-| 18 | Neo4j 통합 구현 계획 | `plans/2026-04-07-neo4j-integration-plan.md` | 🔲 구현 대기 | — | 작업 1(seed group 필드) + 인프라/Backend 협업 항목 |
+| 18 | Neo4j 통합 구현 계획 | `plans/2026-04-07-neo4j-integration-plan.md` | 🔶 대부분 완료 | — | seed group 필드 수정 완료, E2E 검증은 인프라 선행 필요 |
 
 **범례:**
 - ✅ 완료 — 코드 구현 완료, PR 머지됨
@@ -133,4 +133,4 @@
 
 ---
 
-*마스터 인덱스 v4 — 2026-04-07 13:30 (Neo4j 통합 계획 #18 추가)*
+*마스터 인덱스 v5 — 2026-04-07 14:00 (seed_data group 수정 완료, #18 상태 갱신)*

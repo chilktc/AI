@@ -2,7 +2,7 @@
 
 > **작성일**: 2026-04-07
 > **대상**: AI팀 · Backend팀 · 인프라팀
-> **버전**: v1.2
+> **버전**: v1.3
 > **담당**: 개발자3 (AI팀)
 
 ---
@@ -332,7 +332,8 @@ async with create_graph_client() as client:
 |------|---------|---------|------|
 | **프로덕션 Neo4j** | 주석 처리 (docker-compose.yml) | 인스턴스 배포 + 주석 해제 | 인프라팀 |
 | **Knowledge Agent** | Stub (항상 빈 결과) | 실제 Neo4j 쿼리 구현 | 개발자3 (Pinecone 연동과 함께 차후) |
-| **Emotion/Topic 초기 데이터** | 없음 | 시드 데이터 적재 | 개발자3 |
+| **Emotion/Topic 초기 데이터** | ✅ seed_data.json에 포함 (Emotion 4개, Topic 3개) | 프로덕션 적재 시 실행 | 개발자3 |
+| **GoTNode 시드 데이터 group 필드** | ✅ seed_data.json 3개 노드에 추가 완료 | — | — |
 | **Backend 누적 데이터 조회 API** | 미구현 | 프론트엔드 그래프 시각화용 | Backend팀 |
 | **MySQL ↔ Neo4j 동기화** | 미구현 | mysql_id 기반 MERGE 로직 | 개발자3 + Backend팀 |
 

@@ -1,20 +1,30 @@
 # Neo4j 통합 구현 계획서
 
-**버전**: v1  
-**작성일**: 2026-04-07 13:30  
-**기준 문서**: `docs/architecture/NEO4J_INTEGRATION.md` v1.2  
+**버전**: v2  
+**작성일**: 2026-04-07 14:00  
+**기준 문서**: `docs/architecture/NEO4J_INTEGRATION.md` v1.3  
 **작성 브랜치**: `feature/reasoning-docs-quality` (계획서 커밋용)  
 **구현 브랜치**: `feature/validation-*` (개발자3 담당 코드 변경)
 
 ---
 
+## v1 → v2 변경 이유
+
+2차 다수 서브에이전트 점검으로 오류 발견 후 반영:
+- NEO4J_INTEGRATION.md 5-2의 "Emotion/Topic 초기 데이터 없음" → 실제로 seed_data.json에 존재 (오류 수정)
+- seed_data.json GoTNode 3개 group 필드 누락 → **즉시 수정 완료** (이번 세션에서 처리)
+- NEO4J_INTEGRATION.md v1.3으로 갱신 (5-2 수정, GoTNode group 수정 완료 반영)
+- 작업 1을 "완료"로 재분류, 작업 번호 재정렬
+
+---
+
 ## 개요
 
-Neo4j 통합 명세서(`NEO4J_INTEGRATION.md` v1.2)를 기반으로 다수의 서브에이전트 검증을 통해 확인된  
+Neo4j 통합 명세서(`NEO4J_INTEGRATION.md` v1.3)를 기반으로 다수의 서브에이전트 검증을 통해 확인된  
 **실제 미완료 작업**만을 정리한 구현 계획서이다.
 
-AI팀의 코드 구현은 대부분 완료 상태이며, 남은 것은 소규모 시드 데이터 수정 1건,  
-인프라 배포 후 실행할 E2E 검증 2건, 그리고 Backend팀 협업 항목이 핵심이다.
+AI팀의 코드 및 시드 데이터 구현은 완료 상태이며, 남은 것은  
+인프라 배포 후 실행할 E2E 검증 2건과 Backend팀 협업 항목이 핵심이다.
 
 ---
 
@@ -30,56 +40,22 @@ AI팀의 코드 구현은 대부분 완료 상태이며, 남은 것은 소규모
 | 그래프 변환 | `src/api/graph_transformer.py` — `validate_group()` | 코드 확인 |
 | DDL | `dev/local_db/neo4j/init.cypher` — 제약 5개 + 인덱스 7개 | 파일 확인 |
 | 시드 스크립트 | `dev/local_db/seed.py` — Neo4j MERGE 로직 완성 | 코드 확인 |
-| 시드 데이터 | `seed_data.json` — User(2), Session(2), Emotion(4), Topic(3), GoTNode(3) 존재 | 파일 직접 확인 |
+| 시드 데이터 | `seed_data.json` — User(2), Session(2), Emotion(4), Topic(3), GoTNode(3, group 포함) | 파일 직접 확인 + v2 수정 |
 | 통합 테스트 | `dev/local_db/test_neo4j_integration.py` | 파일 확인 |
 | 로컬 Docker | `dev/local_db/docker-compose.db.yml` | 파일 확인 |
 
-> `NEO4J_INTEGRATION.md` 섹션 5-2에 "Emotion/Topic 초기 데이터 없음"으로 표기되었으나,  
-> 실제로는 `seed_data.json`에 이미 포함되어 있다. 계획서 상 이 항목은 **완료로 재분류**한다.
+> **v2 수정**: `NEO4J_INTEGRATION.md` v1.2의 5-2에 "Emotion/Topic 초기 데이터 없음"으로 표기되어 있었으나,  
+> 실제로는 `seed_data.json`에 이미 포함되어 있음을 2차 검증에서 확인.  
+> GoTNode 3개의 `group` 필드 누락(DDL 인덱스와 불일치)은 이번 세션에서 즉시 수정 완료.  
+> `NEO4J_INTEGRATION.md` v1.3에 반영 완료.
 
 ---
 
 ## 실제 미완료 작업 (AI팀 코드)
 
-### 작업 1: GoTNode 시드 데이터에 `group` 필드 추가 (우선순위: 🔴 높음)
+> **v1 작업 1 (GoTNode group 필드 추가)은 이 세션에서 완료됨** — 아래 구현 순서에서 제외.
 
-**브랜치**: `feature/validation-*` (개발자3)  
-**파일**: `dev/local_db/fixtures/seed_data.json`  
-**위치**: `neo4j.nodes.GoTNode` 배열 — 3개 항목
-
-**발견 근거**:
-- DDL에 `CREATE INDEX got_group FOR (g:GoTNode) ON (g.group)` 존재
-- NEO4J_INTEGRATION.md 섹션 3-1: GoTNode 주요 속성에 `group` 명시
-- 현재 seed_data.json의 GoTNode 3개에는 `group` 필드가 없음
-
-**현재 상태** (got-test-001 예시):
-```json
-{
-  "got_node_id": "got-test-001",
-  "episode_id": "ep-test-001",
-  "node_type": "root",
-  "label": "직장 스트레스 분석",
-  "weight": 1.0,
-  "mysql_id": "got-test-001",
-  "created_at": "2026-03-10T09:35:00Z"
-}
-```
-
-**수정 내용** — 각 GoTNode에 `group` 필드 추가:
-```
-got-test-001: "group": "work_structure"    (직장 스트레스 분석)
-got-test-002: "group": "emotional_exhaustion"  (이완 기법 탐색)
-got-test-003: "group": "emotional_exhaustion"  (점진적 근육 이완법)
-```
-
-**허용 group 값** (6개): `work_structure`, `leadership`, `peer_relations`, `career_growth`, `culture_system`, `emotional_exhaustion`
-
-**검증**: `python -m dev.local_db.seed --neo4j` 오류 없이 완료  
-**커밋**: `fix: seed_data.json GoTNode group 필드 추가 (6-category schema)`
-
----
-
-### 작업 2: E2E 검증 — GoT → Neo4j 저장 (우선순위: 🟡 중간, 인프라 선행 필요)
+### 작업 1: E2E 검증 — GoT → Neo4j 저장 (우선순위: 🟡 중간, 인프라 선행 필요)
 
 **브랜치**: `feature/validation-*` (개발자3)  
 **선행 조건**: Phase 2 인프라 완료 (Neo4j 배포, 환경변수 등록)
@@ -94,7 +70,7 @@ got-test-003: "group": "emotional_exhaustion"  (점진적 근육 이완법)
 
 ---
 
-### 작업 3: E2E 검증 — RDB 누적 저장 Mode A (우선순위: 🟡 중간, Backend 선행 필요)
+### 작업 2: E2E 검증 — RDB 누적 저장 Mode A (우선순위: 🟡 중간, Backend 선행 필요)
 
 **브랜치**: `feature/validation-*` (개발자3)  
 **선행 조건**: Phase 3-B Backend API 완료 (`GET/PUT /api/v1/graph_nodes`)
@@ -167,9 +143,9 @@ Phase 2 ─── 인프라 준비 (인프라팀, ~2일)
     작업: Neo4j 배포, DDL 실행, 환경변수 등록
 
 Phase 3 ─── 병렬 구현
-    3-A: 개발자3 — 작업 1 (seed_data group 필드) → 작업 2 E2E 검증
+    3-A: 개발자3 — 작업 1 E2E 검증 (Phase 2 선행 필요)
     3-B: Backend팀 — DDL + API 4개 구현 (3-A와 병렬 진행 가능)
-    선행: Phase 2 완료 (3-A-2/3-A-3), Phase 3-B 완료 (작업 3)
+    선행: Phase 2 완료 (작업 1), Phase 3-B 완료 (작업 2)
 
 Phase 4 ─── 통합 검증 (전체 팀, ~2일)
     pytest tests/api/ -v
@@ -182,12 +158,12 @@ Phase 5 ─── 프로덕션 배포 (인프라팀 주도)
 
 ## 전체 테스트 기준
 
-작업 1 완료 후 (코드 변경 없음, seed 데이터만):
+**[완료됨] seed_data.json group 필드 수정 후**:
 ```
 python -m dev.local_db.seed --neo4j  # 오류 없이 완료
 ```
 
-작업 2, 3 완료 후 (인프라 + Backend 준비 필요):
+**작업 1, 2 완료 후** (인프라 + Backend 준비 필요):
 ```
 pytest dev/local_db/test_neo4j_integration.py -v
 pytest tests/api/test_graph_cumulative.py -v
@@ -196,40 +172,46 @@ pytest tests/api/test_graph_routes.py -v
 
 ---
 
-## PR 양식 (작업 1용)
+## PR 양식 (seed_data group 필드 수정용 — 이번 세션에서 처리됨)
+
+> 이 변경사항은 `feature/reasoning-docs-quality` 브랜치에서 문서 수정과 함께 커밋됨.
 
 **PR 제목:**
 ```
-fix: GoTNode 시드 데이터 group 필드 추가 (Neo4j schema 정합성)
+fix: seed_data.json GoTNode group 필드 추가 + NEO4J_INTEGRATION.md 오류 수정
 ```
 
-**Base**: `develop` | **Compare**: `feature/validation-*`
+**Base**: `develop` | **Compare**: `feature/reasoning-docs-quality`
 
 **PR Body 요약:**
 ```markdown
 ## 개요
 
-seed_data.json GoTNode 3개에 `group` 필드 누락 발견 (NEO4J_INTEGRATION.md 검토 중).
-DDL의 `got_group` 인덱스 및 6-category spec과 불일치를 수정한다.
+2차 다수 서브에이전트 점검에서 발견된 2가지 오류 수정:
+
+1. seed_data.json GoTNode 3개에 group 필드 누락 (DDL got_group 인덱스와 불일치)
+2. NEO4J_INTEGRATION.md 5-2의 "Emotion/Topic 초기 데이터 없음" 오류 (실제로는 존재)
 
 ## 변경 내역
 
 | 파일 | 변경 내용 |
 |------|----------|
 | `dev/local_db/fixtures/seed_data.json` | GoTNode 3개에 group 필드 추가 |
+| `docs/architecture/NEO4J_INTEGRATION.md` | 5-2 수정, v1.3 갱신 |
+| `docs/superpowers/plans/2026-04-07-neo4j-integration-plan.md` | v2 갱신, 완료 항목 반영 |
 
 ## 테스트
 
 - `python -m dev.local_db.seed --neo4j` 오류 없이 완료
-- GoTNode `group` 인덱스 정합성 확인
+- GoTNode group 인덱스 정합성 확인
 
 ## 비고
 
-- 로직 변경 없음 (시드 데이터 fix)
+- 로직 변경 없음 (시드 데이터 + 문서 수정)
 - E2E 검증은 인프라 배포 후 별도 진행
 ```
 
 ---
 
-*Neo4j 통합 구현 계획서 v1 — 2026-04-07 13:30*  
-*다수 서브에이전트 교차 검증 + seed_data.json 직접 확인 반영*
+*Neo4j 통합 구현 계획서 v2 — 2026-04-07 14:00*  
+*v1: 초안 / v2: 2차 다수 서브에이전트 점검 — seed_data.json group 필드 수정 완료, 문서 오류 정정*
