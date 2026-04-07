@@ -82,7 +82,7 @@ AI 서버 (podcasts.py::create_podcast_episode)
     │
     ├── PodcastRequest 수신 (user_id, session_id, topic, description, preferences, tracing)
     ├── AgentState 초기화: { user_input, user_id, session_id, mode: "podcast" }
-    └── TelemetryCallback 생성 (메트릭 수집용)
+    └── MindLogTelemetryCallback 생성 (메트릭 수집용)
 ```
 
 #### LangGraph 파이프라인 실행

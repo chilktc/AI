@@ -298,8 +298,8 @@ def databases_config(self) -> dict[str, Any]:
 
 **선택 A** (권장): 링크를 기존 문서로 리다이렉트
 ```markdown
-| [CLAUDE.md](CLAUDE.md) | 프로젝트 구조, 아키텍처, 협업 규칙 상세 |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | 브랜치 전략, 커밋 컨벤션, PR 가이드 |
+| [CLAUDE.md](../../../CLAUDE.md) | 프로젝트 구조, 아키텍처, 협업 규칙 상세 |
+| [CONTRIBUTING.md](../../../CONTRIBUTING.md) | 브랜치 전략, 커밋 컨벤션, PR 가이드 |
 ```
 
 **선택 B**: `PROJECT_STRUCTURE.md`, `GIT_WORKFLOW.md` 신규 생성

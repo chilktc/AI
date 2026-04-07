@@ -23,7 +23,7 @@ v2.0에서 단일 문서(1,865행)를 5개 문서로 분할했습니다. 내용 
 
 ## 서버 구분
 
-> 서버 아키텍처 및 통신 흐름은 [CLAUDE.md](../CLAUDE.md#백엔드-api-규약), 상세는 [API_ARCHITECTURE.md](API_ARCHITECTURE.md)를 참조하세요.
+> 서버 아키텍처 및 통신 흐름은 [CLAUDE.md](../../CLAUDE.md#백엔드-api-규약), 상세는 [API_ARCHITECTURE.md](API_ARCHITECTURE.md)를 참조하세요.
 
 ---
 

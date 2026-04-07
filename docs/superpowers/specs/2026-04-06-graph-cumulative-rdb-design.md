@@ -64,12 +64,7 @@ GoT 생성 (Podcast Reasoning)
     │
     └─ [신규] RDB 누적 저장 ─────────────────────────────────────────
         │
-        ├─ Mode A: AI 서버가 UPSERT
-        │   1. Backend에서 기존 누적 노드 조회 (GET)
-        │   2. EMA 계산 (α=0.3)
-        │   3. 갱신된 누적 데이터 전송 (PUT)
-        │
-        └─ Mode B: Backend가 UPSERT
+        └─ Mode B: Backend가 UPSERT (PR #69에서 Mode A 삭제, Mode B 단일화 확정)
             1. 에피소드별 raw 데이터만 전송 (POST)
             2. Backend가 수신 시 EMA 계산 + UPSERT
 ```

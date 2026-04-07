@@ -387,7 +387,7 @@ prompts/shared/emotion.yaml    ← 공용 Emotion Agent
 
 ## 6. workflow.py 노드 등록 방법
 
-> 워크플로우 노드 등록 규칙과 인터페이스는 [CLAUDE.md](../CLAUDE.md#langgraph-워크플로우)를 참조하세요.
+> 워크플로우 노드 등록 규칙과 인터페이스는 [CLAUDE.md](../../CLAUDE.md#langgraph-워크플로우)를 참조하세요.
 > `workflow.py`는 Protected File이므로 수정 시 3인 합의가 필요합니다.
 
 ---
