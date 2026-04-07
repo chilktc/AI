@@ -221,8 +221,3 @@ monitoring:
   alerting:
     crisis_alert_enabled: true
     latency_threshold_ms: 10000
-
-# 그래프 누적 저장 설정
-graph:
-  upsert_mode: "ai_server"   # "ai_server" | "backend"
-  ema_alpha: 0.3              # EMA 최근 반영 비율 (0.0~1.0)

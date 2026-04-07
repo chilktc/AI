@@ -44,7 +44,6 @@ TYPE_LEARNING = "learning"
 TYPE_CONTENT_ANALYSIS = "content_analysis"
 TYPE_GRAPH_ANALYSIS = "graph_analysis"  # GoT 그래프 분석 결과
 
-# --- 누적 그래프 리소스 (신규) ---
-RESOURCE_GRAPH_NODES = "graph_nodes"
+# --- 누적 그래프 리소스 ---
 RESOURCE_GRAPH_EPISODES = "graph_nodes/episodes"
 TYPE_GRAPH_EPISODE = "graph_episode"
