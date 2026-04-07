@@ -1,7 +1,7 @@
 # 최종 구현 로드맵
 
 **목적**: 실제 미완료 작업만 포함한 최종 구현 계획  
-**버전**: v6  
+**버전**: v7  
 **마지막 업데이트**: 2026-04-07
 
 > **v2 → v3 변경 이유:**  
@@ -149,11 +149,67 @@
 - [x] INFRA_*.md 3개 이미 아카이브 표시 확인
 - [x] QUALITY_REVIEW_CHECKLIST v6: 전체 9개 Phase 완료 반영
 
-### 최종 검증
+### 최종 검증 (PR #62)
 
 ```
 479 passed, 14 skipped (2 pre-existing failures in test_retry_loop.py)
 ```
+
+---
+
+## 완료된 작업 (v7 — PR #64~#68 브랜치: feature/reasoning-code-quality-cleanup)
+
+### ✅ 작업 10: Pinecone 공통 인프라 구축 (PR #64)
+
+- [x] `dev/scripts/validate_pinecone_env.py` — 환경변수 검증 스크립트
+- [x] `dev/scripts/create_pinecone_indexes.py` — 인덱스 생성 스크립트 (expert-knowledge, mem-podcast-episode)
+- [x] `dev/scripts/test_pinecone_connection.py` — 연결 헬스체크 3단계
+- [x] `src/db/pinecone_client.py` — PineconeClient (BaseVectorClient 구현, asyncio.to_thread 래핑)
+- [x] `dev/local_db/pinecone_mock.py` — 인메모리 Mock (코사인 유사도, $eq/$in/$ne 필터)
+
+### ✅ 작업 11: Pinecone 인프라 보강 (PR #65~#68)
+
+- [x] `deploy.yml` — EC2 .env에 PINECONE_API_KEY, NEO4J_USER 누락 추가 (PR #65)
+- [x] `requirements.txt` — pinecone-client → pinecone 패키지명 수정 (PR #66)
+- [x] 인덱스명 언더스코어 → 하이픈 통일 (config, dev/scripts, tests, knowledge.py) (PR #67/#68)
+
+### ✅ 작업 12: Pinecone 테스트 59개 작성 (PR #67/#68)
+
+| 파일 | 테스트 수 | 대상 |
+|------|----------|------|
+| `tests/db/test_pinecone_client.py` | 13 | PineconeClient: 초기화, 캐싱, query, upsert, close, 인터페이스 |
+| `tests/db/test_pinecone_mock.py` | 27 | _cosine_similarity(7), _match_filter(10), MockClient 엣지케이스(10) |
+| `tests/db/test_factory_vector.py` | 4 | create_vector_client: local/hybrid/proxy 모드별 반환 타입 |
+| `tests/db/test_pinecone_scripts.py` | 15 | validate_env(5), connection helpers(7), index config(2), missing key(1) |
+
+### 최종 검증 (PR #68)
+
+```
+538 passed, 14 skipped (2 pre-existing failures in test_retry_loop.py)
+```
+
+---
+
+## 대기 중인 작업
+
+### ✅ 작업 13: Graph Mode B 단일화 리팩터 (Plan #20) — `8c31fc6`
+
+계획서: `plans/2026-04-07-graph-mode-b-refactor.md`
+
+- [x] `src/api/graph_cumulative.py` — Mode A 7함수→1함수 (`publish_graph_to_rdb`)
+- [x] `tests/api/test_graph_cumulative.py` — 29개→6개 테스트 (group 검증, 에러 핸들링)
+- [x] `config/loader.py` — `graph_upsert_mode`, `graph_ema_alpha` 프로퍼티 삭제
+- [x] `config/settings.yaml` — `graph:` 블록 삭제
+- [x] `src/api/backend_resources.py` — `RESOURCE_GRAPH_NODES` 삭제
+- [x] `docs/architecture/NEO4J_INTEGRATION.md` — Mode A 내용 제거, 단일 흐름 기술
+
+### 🔲 Pinecone 잔여 작업 (Plan #19 미완료)
+
+| 항목 | 내용 | 의존성 |
+|------|------|--------|
+| BedrockEmbeddingClient | Amazon Titan Embeddings v2 클라이언트 구현 | boto3, Bedrock 접근 권한 |
+| create_embedding_client() | 팩토리 함수에 임베딩 클라이언트 통합 | BedrockEmbeddingClient |
+| 개발자 가이드 문서 | Pinecone 인프라 사용법 문서 작성 | 전체 구현 완료 후 |
 
 ---
 
@@ -187,5 +243,5 @@
 
 ---
 
-*구현 로드맵 v6 — 2026-04-07*  
-*v1~v3: 기획/점검 → v4: 작업 1-3 구현 완료 (PR #61) → v5: 작업 5-6 테스트 (CB 9개 + SSE 11개) → v6: 작업 7-9 코드 품질 Phase 5/8/9 (PR #62)*
+*구현 로드맵 v7 — 2026-04-07*  
+*v1~v3: 기획/점검 → v4: 작업 1-3 (PR #61) → v5: 작업 5-6 테스트 (PR #61) → v6: 작업 7-9 코드 품질 (PR #62) → v7: 작업 10-12 Pinecone 인프라+테스트 59개 (PR #64~#68)*

@@ -317,7 +317,7 @@ async with create_graph_client() as client:
 | **스키마** | DDL 스크립트 | `dev/local_db/neo4j/init.cypher` | 제약 5개 + 인덱스 7개 |
 | **저장** | GoT → Neo4j 저장 | `podcast_reasoning.py` | GoTNode MERGE + LEADS_TO 관계 생성 |
 | **저장** | GoT → Backend 전송 | `podcast_reasoning.py` | 변환된 JSON을 Backend에 POST |
-| **저장** | RDB 누적 저장 (Mode A/B) | `src/api/graph_cumulative.py` | EMA 기반 가중치 갱신 |
+| **저장** | GoT → Backend 에피소드 전송 | `src/api/graph_cumulative.py` | group 검증 후 POST (EMA는 Backend가 수행) |
 | **변환** | GoT → 프론트엔드 JSON | `src/api/graph_transformer.py` | group 검증 + intensity → val 변환 |
 | **조회** | 사용자 그래프 조회 API | `src/api/routes/graph.py` | Cypher 쿼리 3개 실행 **(이관 후 삭제 예정)** |
 | **테스트** | 통합 테스트 | `dev/local_db/test_neo4j_integration.py` | Neo4j 연결 + 쿼리 검증 |
@@ -408,43 +408,22 @@ EMA는 **최근 값에 더 큰 비중**을 주는 계산 방식이다.
     과거와 현재를 적절히 섞어서 급격한 변화를 방지함.
 ```
 
-### 6-3. RDB 누적 저장 모드 — Mode A vs Mode B
+### 6-3. RDB 누적 저장 흐름
 
-누적 데이터를 **어디서 계산하느냐**에 따라 두 가지 모드가 있다.
-현재 기본값은 **Mode A (AI서버에서 계산)** 이다.
+AI 서버는 GoT 결과를 group 검증 후 Backend에 POST한다.
+EMA 계산과 UPSERT는 Backend가 수행한다.
 
 ```
-Mode A (ai_server) — 현재 기본값
-──────────────────────────────────
-
 AI 서버 (app-2)                            Backend (app-3)
-┌──────────────────────────────────┐       ┌─────────────────┐
-│ 1. Backend에서 기존 누적 데이터 조회│──GET─▶│ MySQL에서 조회   │
-│    (이전 에피소드들의 합산 결과)    │◀─────│ → 반환          │
-│                                  │       │                 │
-│ 2. EMA 계산                      │       │                 │
-│    기존값 + 새 GoT 결과 = 갱신값  │       │                 │
-│                                  │       │                 │
-│ 3. 갱신된 데이터를 Backend에 전송  │──PUT─▶│ MySQL에 저장     │
-└──────────────────────────────────┘       └─────────────────┘
-
-장점: Backend 변경 최소화 (단순 저장/조회만 하면 됨)
-단점: AI서버에 계산 부담
-
-
-Mode B (backend) — 대안
-──────────────────────────────────
-
-AI 서버 (app-2)                            Backend (app-3)
-┌──────────────────────────────────┐       ┌─────────────────┐
-│ 1. GoT 결과를 그대로 Backend에 전송│──POST─▶│ 1. 기존 데이터 조회│
-│    (EMA 계산 없이 원본 데이터)     │       │ 2. EMA 계산     │
-│                                  │       │ 3. MySQL에 저장  │
-└──────────────────────────────────┘       └─────────────────┘
-
-장점: AI서버 부담 감소
-단점: Backend에 EMA 계산 로직 구현 필요
+┌──────────────────────────────────┐       ┌──────────────────────┐
+│ 1. group 검증                    │       │ 1. 기존 누적 데이터 조회 │
+│    (VALID_GROUPS 6개 체크)        │──POST─▶│ 2. EMA 계산           │
+│ 2. GoT 결과를 그대로 전송         │       │    α=0.3 (설정 가능)  │
+│    (계산 없음)                    │       │ 3. MySQL UPSERT       │
+└──────────────────────────────────┘       └──────────────────────┘
 ```
+
+AI서버 참조 코드: `src/api/graph_cumulative.py` — `publish_graph_to_rdb()`
 
 ### 6-4. RDB 테이블 스키마 (Backend팀 구현 대상)
 
@@ -521,81 +500,11 @@ CREATE TABLE user_graph_edges (
 ```
 
 > **self-loop 방지**: "번아웃 → 번아웃" 같은 자기 자신 연결은 CHECK 제약으로 차단한다.
-> AI서버의 `merge_edges_from_got()`에서도 self-loop를 필터링하지만, DB에서도 이중 방어한다.
+> AI서버에서도 group 검증 시 self-loop를 필터링하지만, DB에서도 이중 방어한다.
 
-#### Mode A — Backend 구현 가이드
+#### Backend 구현 가이드
 
-Mode A에서는 AI서버가 EMA 계산을 **이미 완료**한 데이터를 보낸다.
-Backend는 **단순 UPSERT만** 하면 된다.
-
-**엔드포인트**: `PUT /api/v1/graph_nodes`
-
-**AI서버가 보내는 요청 body:**
-
-```json
-{
-  "user_id": "u_001",
-  "type": "graph_cumulative",
-  "data": {
-    "nodes": [
-      {
-        "label": "업무과부하",
-        "grp": "work_structure",
-        "weight": 0.81,
-        "mention_count": 3,
-        "trend": "increasing",
-        "first_seen": "2026-03-20T12:00:00Z",
-        "last_seen": "2026-04-05T14:30:00Z"
-      }
-    ],
-    "edges": [
-      {
-        "source_label": "업무과부하",
-        "source_grp": "work_structure",
-        "target_label": "번아웃",
-        "target_grp": "emotional_exhaustion",
-        "weight": 3,
-        "relationship": "causes"
-      }
-    ]
-  }
-}
-```
-
-**노드 UPSERT 쿼리:**
-
-```sql
--- data.nodes 배열의 각 항목에 대해 실행
-INSERT INTO user_graph_nodes (user_id, label, grp, weight, mention_count, trend, first_seen, last_seen)
-VALUES (:user_id, :label, :grp, :weight, :mention_count, :trend, :first_seen, :last_seen)
-AS new
-ON DUPLICATE KEY UPDATE
-    weight        = new.weight,
-    mention_count = new.mention_count,
-    trend         = new.trend,
-    last_seen     = new.last_seen;
-```
-
-**엣지 UPSERT 쿼리:**
-
-```sql
--- data.edges 배열의 각 항목에 대해 실행
-INSERT INTO user_graph_edges (user_id, source_label, source_grp, target_label, target_grp, weight, relationship, first_seen, last_seen)
-VALUES (:user_id, :source_label, :source_grp, :target_label, :target_grp, :weight, :relationship, :first_seen, :last_seen)
-AS new
-ON DUPLICATE KEY UPDATE
-    weight       = new.weight,
-    relationship = new.relationship,
-    last_seen    = new.last_seen;
-```
-
-> Mode A에서 Backend가 하는 일은 **단순 저장**뿐이다. EMA 계산은 AI서버가 이미 했다.
-
----
-
-#### Mode B — Backend 구현 가이드
-
-Mode B에서는 AI서버가 GoT 결과를 **원본 그대로** 보낸다.
+AI서버가 GoT 결과를 **원본 그대로** 보낸다.
 Backend가 **EMA 계산 + UPSERT를 모두 수행**해야 한다.
 
 **엔드포인트**: `POST /api/v1/graph_nodes/episodes`
@@ -635,9 +544,7 @@ Backend가 **EMA 계산 + UPSERT를 모두 수행**해야 한다.
 }
 ```
 
-> **Mode A와 Mode B의 데이터 차이:**
-> - Mode A의 노드: `grp`, `weight` (EMA 계산 완료된 값), `mention_count`, `trend`
-> - Mode B의 노드: `group`, `intensity` (이번 에피소드의 원본 값). EMA 계산을 Backend가 해야 함.
+> AI서버의 노드: `group`, `intensity` (이번 에피소드의 원본 값). EMA 계산은 Backend가 수행한다.
 
 ---
 
@@ -782,23 +689,18 @@ POST /api/v1/graph_nodes/episodes 수신
     └─ 응답: { "success": true, "id": "<generated_id>" }
 ```
 
-> 현재 기본값은 Mode A이며, `config/settings.yaml`의 `graph.upsert_mode`로 전환 가능하다.
-> AI서버 참조 코드: `src/api/graph_cumulative.py`
+> AI서버 참조 코드: `src/api/graph_cumulative.py` — `publish_graph_to_rdb()`
 
 ---
 
 ### 6-5. Backend팀에 필요한 API 엔드포인트
 
-**우선순위순** (①②③이 현재 필수, ④는 프론트엔드 연동 시):
-
-| 우선 | 엔드포인트 | 메서드 | 용도 |
+| 순서 | 엔드포인트 | 메서드 | 용도 |
 |------|-----------|--------|------|
-| **①** | `/api/v1/graph_nodes?user_id={id}` | GET | 기존 누적 데이터 조회 (AI서버의 EMA 계산용) |
-| **②** | `/api/v1/graph_nodes` | PUT | EMA 갱신된 누적 데이터 저장 |
-| **③** | `/api/v1/graph_analyses` | POST | GoT 분석 결과 저장 |
-| **④** | `/api/v1/graph/users/{id}/data` | GET | **프론트엔드용 누적 그래프 조회 (RDB에서 직접 서빙)** |
+| **①** | `/api/v1/graph_nodes/episodes` | POST | AI서버 → GoT 에피소드 원본 수신 + EMA 계산 + UPSERT |
+| **②** | `/api/v1/graph/users/{id}/data` | GET | **프론트엔드용** — MySQL 누적 데이터 직접 서빙 |
 
-> **④번은 프론트엔드가 호출하는 엔드포인트**다.
+> **②번은 프론트엔드가 호출하는 엔드포인트**다.
 > Backend가 MySQL의 `user_graph_nodes`, `user_graph_edges` 테이블에서 직접 조회하여 반환한다.
 > AI서버(Neo4j)를 거치지 않는다.
 
@@ -896,7 +798,7 @@ LIMIT 10;
 **이미 완료한 것:**
 - Neo4j DB 접속 레이어 (`src/db/` 전체)
 - GoT → Neo4j 저장 로직 (`podcast_reasoning.py`)
-- 누적 그래프 EMA 계산 + RDB 전송 (`graph_cumulative.py`)
+- GoT → Backend 전송 (`graph_cumulative.py` — `publish_graph_to_rdb()`)
 - GoT → 프론트엔드 JSON 변환 (`graph_transformer.py`)
 - 사용자 그래프 조회 API (`routes/graph.py`, 이관 후 삭제 예정)
 - 스키마 DDL, 로컬 Docker, 통합 테스트
@@ -915,13 +817,11 @@ LIMIT 10;
 
 | 순서 | 엔드포인트 | 용도 |
 |------|----------|------|
-| 1 | `GET /api/v1/graph_nodes?user_id=X` | AI서버의 EMA 계산용 기존 누적 데이터 조회 |
-| 2 | `PUT /api/v1/graph_nodes` | EMA 갱신된 누적 데이터 저장 |
-| 3 | `POST /api/v1/graph_analyses` | GoT 분석 결과 저장 |
-| 4 | `GET /api/v1/graph/users/{id}/data` | **프론트엔드용 — RDB에서 직접 조회** (AI서버 불필요) |
+| 1 | `POST /api/v1/graph_nodes/episodes` | GoT 에피소드 수신 + EMA 계산 + UPSERT |
+| 2 | `GET /api/v1/graph/users/{id}/data` | **프론트엔드용 — MySQL에서 직접 서빙** |
 
 > `user_graph_nodes`, `user_graph_edges` 테이블이 필요하다.
-> DDL은 섹션 6-4, 쿼리 예시는 섹션 6-6을 참고.
+> DDL은 섹션 6-4, EMA 계산 로직은 섹션 6-3, 쿼리 예시는 섹션 6-6을 참고.
 
 ---
 
@@ -1007,16 +907,15 @@ Phase 5 ─── 프로덕션 배포 (인프라팀 주도)
 |---|------|------|
 | 3-A-1 | Emotion / Topic 마스터 데이터 시드 스크립트 작성 + 실행 | `dev/local_db/seed.py` 확장 |
 | 3-A-2 | 프로덕션 환경에서 GoT → Neo4j 저장 E2E 검증 | `podcast_reasoning.py` |
-| 3-A-3 | Neo4j → RDB 누적 저장 E2E 검증 (Mode A) | `graph_cumulative.py` |
+| 3-A-3 | Neo4j → RDB 누적 저장 E2E 검증 | `graph_cumulative.py` |
 
 ### Phase 3-B — Backend팀 작업 (Phase 3-A와 병렬 진행 가능)
 
 | # | 작업 | 엔드포인트 |
 |---|------|----------|
 | 3-B-1 | `user_graph_nodes`, `user_graph_edges` 테이블 생성 (섹션 6-4 DDL 참고) | MySQL DDL |
-| 3-B-2 | 기존 누적 데이터 조회 API | `GET /api/v1/graph_nodes?user_id=X` |
-| 3-B-3 | 갱신된 누적 데이터 저장 API | `PUT /api/v1/graph_nodes` |
-| 3-B-4 | GoT 분석 결과 저장 API | `POST /api/v1/graph_analyses` |
+| 3-B-2 | GoT 에피소드 수신 + EMA 계산 + UPSERT API | `POST /api/v1/graph_nodes/episodes` |
+| 3-B-3 | 프론트엔드용 누적 그래프 조회 API | `GET /api/v1/graph/users/{id}/data` |
 
 ---
 
@@ -1154,12 +1053,6 @@ LIMIT 5
 databases:
   neo4j:
     uri: "bolt://localhost:7687"   # NEO4J_URI 환경변수로 오버라이드 가능
-
-# 그래프 누적 저장 설정
-graph:
-  upsert_mode: "ai_server"   # "ai_server" (Mode A) | "backend" (Mode B)
-  ema_alpha: 0.3              # EMA 최근 반영 비율 (0.0~1.0)
-                               # 0.3 = 최근값 30% + 과거값 70%
 ```
 
 ### 10-2. 환경변수
@@ -1174,7 +1067,7 @@ graph:
 
 ```bash
 # 1. 단위 테스트 (Neo4j 없이 실행 가능)
-pytest tests/api/test_graph_cumulative.py -v   # EMA 계산, 노드 병합 로직
+pytest tests/api/test_graph_cumulative.py -v   # GoT → Backend 전송 로직
 pytest tests/api/test_graph_routes.py -v       # 그래프 조회 API 응답 형식
 
 # 2. 통합 테스트 (로컬 Neo4j 필요)
@@ -1195,8 +1088,7 @@ pytest dev/local_db/test_neo4j_integration.py -v
 | 클라이언트 생성 | `src/db/factory.py` | `create_graph_client()` |
 | GoT → Neo4j 저장 | `src/agents/podcast/podcast_reasoning.py` | `_save_got_to_neo4j()` |
 | GoT → Backend 전송 | `src/agents/podcast/podcast_reasoning.py` | `_publish_graph_to_backend()` |
-| EMA 계산 | `src/api/graph_cumulative.py` | `calc_ema()` |
-| RDB 누적 저장 | `src/api/graph_cumulative.py` | `publish_graph_to_rdb()` |
+| GoT 에피소드 전송 | `src/api/graph_cumulative.py` | `publish_graph_to_rdb()` |
 | group 검증 | `src/api/graph_transformer.py` | `validate_group()` |
 | 카테고리 분포 계산 | `src/api/graph_transformer.py` | `calc_category_distribution()` |
 | GoT → 프론트엔드 JSON | `src/api/graph_transformer.py` | `transform_got_to_graph_data()` |

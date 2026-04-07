@@ -1,7 +1,7 @@
 # 마스터 계획 인덱스 (Master Plan Index)
 
 **목적**: 모든 기획 문서의 현황 추적 및 상태 관리  
-**버전**: v9  
+**버전**: v11  
 **마지막 업데이트**: 2026-04-07  
 **관리 원칙**:
 - 완료된 계획 → PR 링크 + 간단한 변경 사항 기록
@@ -32,7 +32,8 @@
 | 16 | 파이프라인 견고성 - Phase 2 | `pipeline-robustness-part2.md` | ✅ 완료 | #60 | get_fallback_output() 추가 |
 | 17 | 독스트링 품질 개선 구현 | `plans/2026-04-07-docs-quality-implementation.md` | ✅ 완료 | #61 (MERGED) | Phase 1-4 구현 + CB/SSE 테스트 추가 (479 passed, 14 skipped) |
 | 18 | Neo4j 통합 구현 계획 | `plans/2026-04-07-neo4j-integration-plan.md` | 🔶 대부분 완료 | — | seed group 필드 수정 완료, E2E 검증은 인프라 선행 필요 |
-| 19 | Pinecone 벡터 DB 공통 인프라 | `plans/2026-04-07-pinecone-vector-db-integration.md` | 🔶 일부 완료 | #64, #65, #66, #67 | CLI 스크립트+pinecone_client+테스트 구현, EC2 연결 검증 완료. 미완: BedrockEmbeddingClient, 팩토리 연동, 가이드 문서 |
+| 19 | Pinecone 벡터 DB 공통 인프라 | `plans/2026-04-07-pinecone-vector-db-integration.md` | 🔶 대부분 완료 | #64~#68 | CLI 스크립트+pinecone_client+테스트 59개 구현, EC2 연결 검증, 인덱스명 하이픈 통일. 미완: BedrockEmbeddingClient, 팩토리 연동, 가이드 문서 |
+| 20 | Graph Mode B 단일화 리팩터 | `plans/2026-04-07-graph-mode-b-refactor.md` | ✅ 완료 | — | Mode A 삭제, publish_graph_to_rdb 단일 경로 확정, EMA를 Backend 책임으로 이관 (516 passed) |
 
 **범례:**
 - ✅ 완료 — 코드 구현 완료, PR 머지됨
@@ -118,6 +119,9 @@
 | 코드 품질 9개 Phase 전체 완료 | `QUALITY_REVIEW_CHECKLIST.md` v6 | PR #52~#62 |
 | 루트 테스트 파일 이동 | — | 파일 자체 없음 |
 | deploy.yml printf 전환 | `.github/workflows/deploy.yml` | PR #59 |
+| Pinecone 클라이언트 + CLI 스크립트 3종 | `src/db/pinecone_client.py`, `dev/scripts/` | PR #64 |
+| Pinecone 테스트 59개 (client, mock, factory, scripts) | `tests/db/test_pinecone_*.py`, `tests/db/test_factory_vector.py` | PR #67/#68 |
+| Pinecone 인덱스명 하이픈 통일 | `config/settings.yaml`, `dev/scripts/`, `src/agents/podcast/knowledge.py` | PR #67/#68 |
 
 ---
 
@@ -143,8 +147,9 @@
 | #64 | feature/reasoning-pinecone-infra | Pinecone CLI 스크립트 3종 + pinecone_client 구현 (MERGED) |
 | #65 | feature/reasoning-code-quality-cleanup | deploy.yml PINECONE_API_KEY/NEO4J_USER 누락 추가 (MERGED) |
 | #66 | feature/reasoning-code-quality-cleanup | requirements.txt pinecone-client → pinecone 패키지명 수정 (MERGED) |
-| #67 | feature/reasoning-code-quality-cleanup | Pinecone 인덱스명 언더스코어→하이픈 (config, dev/scripts, tests) (OPEN) |
+| #67 | feature/reasoning-code-quality-cleanup | Pinecone 인덱스명 언더스코어→하이픈 (config, dev/scripts, tests) (MERGED) |
+| #68 | feature/reasoning-code-quality-cleanup | knowledge.py 인덱스명 수정 + PLAN_INDEX v10 + Pinecone 완료 현황 (MERGED) |
 
 ---
 
-*마스터 인덱스 v10 — 2026-04-07 (Plan #19 EC2 Pinecone 연결 검증 완료, PR #65~#67, knowledge.py 인덱스명 수정)*
+*마스터 인덱스 v11 — 2026-04-07 (Plan #19 테스트 59개 완료+인덱스명 통일, PR #62~#68 전체 MERGED, Plan #20 Graph Mode B 등록)*
