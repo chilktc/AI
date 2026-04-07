@@ -26,16 +26,16 @@
 
 ## Phase별 체크리스트
 
-### Phase 1: 타입 힌트 현대화 (Dict → dict)
+### Phase 1: 타입 힌트 현대화 (Dict → dict) ✅ 완료 — PR #52
 
-| 항목 | 대상 | 우선순위 | 복잡도 | 영향 |
-|------|------|---------|--------|------|
-| [ ] Dict → dict | script_generator, knowledge, intent_classifier, script_personalizer, schemas.py | 🔴 높음 | 낮음 | 5개 파일 |
-| [ ] List → list | 동일 파일 | 🔴 높음 | 낮음 | 동일 |
-| [ ] Optional[T] → T \| None | 동일 파일 | 🟡 중간 | 낮음 | 동일 |
-| [ ] Union[A, B] → A \| B | 동일 파일 | 🟡 중간 | 낮음 | 동일 |
+| 항목 | 대상 | 상태 |
+|------|------|------|
+| ~~Dict → dict~~ | script_generator, knowledge, intent_classifier, script_personalizer, schemas.py | ✅ PR #52 완료 |
+| ~~List → list~~ | 동일 파일 | ✅ PR #52 완료 |
+| ~~Optional[T] → T \| None~~ | 동일 파일 | ✅ PR #52 완료 |
+| ~~Union[A, B] → A \| B~~ | 동일 파일 | ✅ PR #52 완료 |
 
-**자동화 가능**: ruff + isort 자동 수정 (`ruff check --fix`)
+**검증**: mypy 63개 에러 → 0 (PR #52 커밋 `678a8fb` 확인)
 
 ---
 
@@ -52,27 +52,35 @@
 
 ---
 
-### Phase 3: 독스트링 통일 (Google-style)
+### Phase 3: 독스트링 통일 (Google-style) 🔶 대부분 완료
 
-| 항목 | 대상 | 우선순위 | 복잡도 | 영향 |
-|------|------|---------|--------|------|
-| [ ] BaseAgent 스타일 적용 | 모든 에이전트 | 🔴 높음 | 중간 | 11개 파일 |
-| [ ] Args/Returns 섹션 추가 | 에이전트 메서드 | 🔴 높음 | 중간 | 50+ 메서드 |
-| [ ] Raises 섹션 추가 | exception 던지는 함수 | 🟡 중간 | 중간 | 20+ 함수 |
-| [ ] 예제 코드 추가 | public 메서드 | 🟡 중간 | 높음 | 30+ 메서드 |
+| 항목 | 대상 | 상태 |
+|------|------|------|
+| BaseAgent 스타일 적용 | 모든 에이전트 (11개) | 🔶 2개 미완료 (`safety.py`, `batch_validator.py`) |
+| Args/Returns 섹션 추가 | 에이전트 메서드 | 🔶 safety.py + batch_validator.py process() 미완료 |
+| Raises 섹션 추가 | exception 던지는 함수 | 🔶 safety.py + batch_validator.py 미완료 |
+| 예제 코드 추가 | public 메서드 | ⏸ 보류 (필수 아님) |
+
+**미완료 파일**:
+- `src/agents/podcast/safety.py:process()` — 한 줄 요약만, Args/Returns/Raises 없음
+- `src/agents/podcast/batch_validator.py:process()` — 커스텀 `입력:/출력:` 형식, Google-style 변환 필요
 
 **표준**: Google 스타일 (base_agent.py 참조)
 
 ---
 
-### Phase 4: 주석 보완
+### Phase 4: 주석 보완 ✅ 완료 — 4-에이전트 검증 확인
 
-| 항목 | 대상 | 우선순위 | 복잡도 | 영향 |
-|------|------|---------|--------|------|
-| [ ] 기능 설명 주석 | 복잡 함수 (15+ 줄) | 🔴 높음 | 낮음 | 40+ 위치 |
-| [ ] 로직 설명 주석 | 조건부 로직 | 🟡 중간 | 중간 | 30+ 위치 |
-| [ ] 상수 설명 | 임의 수치 상수 | 🟡 중간 | 낮음 | 15+ 위치 |
-| [ ] 주의사항 주석 | subtle logic | 🟡 중간 | 중간 | 10+ 위치 |
+| 항목 | 대상 | 상태 |
+|------|------|------|
+| ~~기능 설명 주석~~ | `base_agent.py:192` `_resolve_ab_variant()` | ✅ 주석 이미 존재 |
+| ~~로직 설명 주석~~ | `src/agents/shared/llm_client.py:389` `_generate_bedrock()` | ✅ 주석 이미 존재 |
+| ~~취소 메커니즘 주석~~ | `src/graph/workflow.py:211` `run_with_cancel()` | ✅ 주석 이미 존재 |
+| ~~상수 설명~~ | `src/monitoring/callbacks.py:52` `_MODEL_COSTS` | ✅ 주석 이미 존재 |
+| ~~상수 설명~~ | `src/agents/podcast/script_generator.py:22` `WORDS_PER_MINUTE` | ✅ 주석 이미 존재 |
+
+> 경로 수정: ~~`src/utils/callbacks.py`~~ → 실제 경로: `src/monitoring/callbacks.py`  
+> 경로 수정: ~~`src/api/routers/podcasts.py`~~ → 실제 경로: `src/api/routes/podcasts.py`
 
 **원칙**: "왜(why)"를 설명, 코드 리딩만으로 이해 불가능한 부분만
 
@@ -90,16 +98,16 @@
 
 ---
 
-### Phase 6: 에러 처리 보완
+### Phase 6: 에러 처리 보완 ✅ 완료 — PR #60
 
-| 항목 | 대상 | 우선순위 | 복잡도 | 영향 |
-|------|------|---------|--------|------|
-| [ ] try-except 추가 | 외부 API 호출 | 🔴 높음 | 중간 | 15+ 위치 |
-| [ ] 타입 검증 추가 | 상태 접근 | 🔴 높음 | 중간 | 20+ 위치 |
-| [ ] 타임아웃 처리 | LLM 호출 | 🔴 높음 | 중간 | 5+ 위치 |
-| [ ] 로깅 + 폴백 | 에러 핸들링 | 🟡 중간 | 중간 | 25+ 위치 |
+| 항목 | 대상 | 상태 |
+|------|------|------|
+| ~~try-except 추가~~ | 외부 API 호출 | ✅ PR #60 파이프라인 견고성 강화 (13개 취약점 수정) |
+| ~~타입 검증 추가~~ | 상태 접근 | ✅ PR #60 완료 |
+| ~~타임아웃 처리~~ | LLM 호출 | ✅ PR #60 완료 (TIER 0~4 타임아웃 래퍼 추가) |
+| ~~로깅 + 폴백~~ | 에러 핸들링 | ✅ PR #60 `get_fallback_output()` 추가 |
 
-**참고**: Phase 1 (파이프라인 견고성)과 중복 가능 — 조율 필요
+**검증**: `pipeline-robustness-index.md` — 13개 취약점 수정 확인 (PR #60)
 
 ---
 
@@ -188,20 +196,33 @@
 
 ---
 
-## 권장 사항
+## 4-에이전트 2차 검증에서 신규 발견된 항목
 
-**이 계획 구현 시기:**
-1. ✅ 완료: Plan#1 (refactor-cleanup)
-2. ✅ 완료: Plan#5-remaining-issues (D-2, C-2, D-3)
-3. ✅ 완료: Plan#7-comprehensive-execution (Phase 1-2)
-4. → **여기서 시작**: Plan#2 (이 체크리스트) **병렬 진행 가능**
+### external_schemas.py docstring 경로 오류
 
-**동시 진행 권장:**
-- Plan#3 (conversation-removal) 병렬
-- Plan#4 (bedrock-optimization-v2 로컬) 병렬
+| 항목 | 파일 | 라인 | 현재 (오류) | 수정값 |
+|------|------|------|-----------|--------|
+| 엔드포인트 경로 | `src/api/external_schemas.py` | 684-685 | `/conversations/stream`, `ws/conversations` | `/episodes/stream` |
 
-**이유:** 코드 품질은 기능 블로킹이 없으므로 다른 작업과 병렬 진행 가능.
+**성격**: docstring 텍스트 오류 (기능 영향 없음), 이 체크리스트 범위에는 없던 항목  
+**처리**: `feature/reasoning-docs-quality` 브랜치에서 작업 1+2+3과 함께 처리
 
 ---
 
-*체크리스트 v1 — 2026-04-07*
+## 권장 사항
+
+**현재 상태 (2026-04-07 v2 — 4-에이전트 2차 검증 기준):**
+1. ✅ 완료: Plan#1 (refactor-cleanup)
+2. ✅ 완료: Plan#5-remaining-issues (D-2, C-2, D-3)
+3. ✅ 완료: Plan#7-comprehensive-execution (Phase 1-2)
+4. ✅ 완료: Phase 1 (타입 힌트 — PR #52)
+5. ✅ 완료: Phase 4 (주석 보완 — 4-에이전트 검증으로 모두 확인)
+6. ✅ 완료: Phase 6 (에러 처리 — PR #60)
+7. → **미완료**: Phase 3 일부 (safety.py + batch_validator.py 독스트링)
+
+**처리 브랜치**: `feature/reasoning-docs-quality`  
+**상세 계획**: `IMPLEMENTATION_ROADMAP.md` v3 참조
+
+---
+
+*체크리스트 v2 — 2026-04-07 (4-에이전트 2차 검증 반영)*
