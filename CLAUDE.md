@@ -78,7 +78,7 @@ TIER 4: Script Personalizer
     ↓
 팟캐스트 에피소드 출력
     ↓
-비동기: Telemetry + Learning
+비동기: Learning
 ```
 
 ### Safety CRISIS 선점 메커니즘
@@ -87,16 +87,16 @@ Safety의 CRISIS 판정은 **병렬 실행을 중단시키는 선점(preemption)
 
 ```
 1. Intent Classifier → risk_flag = true (1차 감지)
-2. TIER 1 병렬 시작: Safety, Emotion, Context, Reasoning 동시 실행
+2. TIER 1 병렬 시작: Safety, Emotion, Content Analyzer, Podcast Reasoning 동시 실행
 
 3. Safety Agent 판정:
    ├── safe/warning → 정상 흐름 계속
    └── CRISIS →
        ■ CANCEL SIGNAL 발행
-       ■ Emotion, Context, Reasoning 실행 취소
+       ■ Emotion, Content Analyzer, Podcast Reasoning 실행 취소
        ■ Safety 심화 모드 진입
        ■ Safety이 직접 위기 응답 생성
-       ■ Synthesis/Validator/Personalization 건너뜀
+       ■ Script Generator/Batch Validator/Script Personalizer 건너뜀
        ■ 위기 응답 즉시 출력
 
 Safety 상태별 흐름:
@@ -235,7 +235,7 @@ class AgentState(TypedDict, total=False):
     "correlation_id": "corr_{uuid}",
     "trace_id": "trace_{uuid}",
     "mode": "podcast",
-    "interaction_unit": "turn | episode",
+    "interaction_unit": "episode",
     "tier": 0,
     "priority": 1,
     "retry_count": 0

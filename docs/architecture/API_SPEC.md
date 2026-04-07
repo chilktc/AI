@@ -130,7 +130,7 @@ v2.0에서 단일 문서(1,865행)를 5개 문서로 분할했습니다. 내용 
 - [ ] 그래프 쿼리 엔드포인트 존재 여부 (`graph/query`)
 - [ ] 이미지 업로드 엔드포인트 (`storage/upload`)
 - [ ] S3 객체 조회 엔드포인트 (`storage/object`)
-- [ ] 대화모드 전용 리소스 경로 (`conversations`, `memories`, `sessions`)
+- [x] ~~대화모드 전용 리소스 경로~~ — 대화모드 제거 (PR #45), 해당 리소스 불필요
 
 ---
 
@@ -143,9 +143,9 @@ v2.0에서 단일 문서(1,865행)를 5개 문서로 분할했습니다. 내용 
 | `visualizations` | **활성** | `visualization` | 커버 이미지 메타 |
 | `learning` | **활성** | `learning` | 학습 패턴 데이터 |
 | `content_analyses` | **활성** | `content_analysis` | 콘텐츠 분석 결과 |
-| `conversations` | 미확정 | — | 대화 기록 (대화모드) |
-| `memories` | 미확정 | — | 개인 기억 데이터 |
-| `sessions` | 미확정 | — | 세션 메타데이터 |
+| ~~`conversations`~~ | 제거됨 | — | ~~대화 기록~~ (대화모드 제거, PR #45) |
+| ~~`memories`~~ | 제거됨 | — | ~~개인 기억 데이터~~ (대화모드 제거) |
+| `sessions` | TODO(backend) | — | 세션 메타데이터 (백엔드 팀 협의 필요) |
 
 **상수 정의**: `src/api/backend_resources.py`
 

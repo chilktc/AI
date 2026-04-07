@@ -133,7 +133,7 @@ python3 -m dev.live_tests.test_e2e_multi_provider --ollama-only --input test_inp
 | 모든 에이전트 | **REAL** | 팟캐스트 경로 전부 구현 완료 |
 | `BackendClient.save()` | **Mock** | 백엔드 서버 미실행 (Learning Agent + AgentDataPublisher 경유: Emotion·Content Analyzer) |
 | LLM 호출 | **REAL** | Ollama/OpenAI 실제 API 사용 |
-| Telemetry | **STUB** | 유일한 스텁 노드 (대화모드 전용) |
+| Telemetry | **콜백** | LangGraph 콜백으로 동작 (`MindLogTelemetryCallback`), 독립 노드 아님 |
 
 ### 초기 상태 (최소 입력)
 

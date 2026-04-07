@@ -55,8 +55,6 @@ Peak State Size: 19~37 KB
 | `risk_level` | int (0-4) | - |
 | `risk_score` | float (0.0-1.0) | - |
 | `safety_flags` | dict | - |
-| `next_step` | str | - |
-
 **출력 스키마 (IntentClassifierOutput)**
 
 ```python
@@ -457,7 +455,6 @@ Peak State Size: 19~37 KB
 | 필드 | 타입 | 크기 |
 |------|------|------|
 | `validation_result` | dict | 0.2~0.6 KB |
-| `next_step` | str | - |
 | `iteration_count` | int (조건부) | - |
 
 **검증 기준**: completeness, quality, safety compliance, emotional tone fit, coherence
@@ -632,7 +629,7 @@ agents:
 
 | # | 심각도 | 이슈 | 파일 | 담당 |
 |---|--------|------|------|------|
-| B-1 | CRITICAL | Conversation/Podcast 그래프 TIER 0 건너뜀 | workflow.py:609,659 | 3인합의 |
+| B-1 | ~~CRITICAL~~ RESOLVED | Conversation/Podcast 그래프 TIER 0 건너뜀 — 대화모드 제거 완료 (PR #45) | workflow.py | 3인합의 |
 | B-2 | ~~CRITICAL~~ RESOLVED | Crisis Deep Response — `required_in_script` 활용으로 법적 고지/상담 번호 전달 (v26) | workflow.py:278~301 | 개발자2 |
 | B-3 | HIGH | 이중 위험평가 (Intent + Safety 중복) | intent_classifier.py, safety.py | 개발자1+2 |
 | B-4 | HIGH | Safety/Emotion이 전체 intent dict를 LLM에 전달 (200~400토큰 낭비) | safety.py:54, emotion.py:36 | 개발자2 |
@@ -658,7 +655,7 @@ agents:
 |---|--------|------|------|
 | C-1 | ~~CRITICAL~~ RESOLVED | Podcast Reasoning 임계값 — settings.yaml 0.0/0.0 (항상 full), 코드 기본값 0.8/0.5 폴백 | settings.yaml |
 | C-2 | HIGH → MEDIUM | 토큰 예산: podcast_reasoning 6000으로 상향, script_generator 4096 유지 | settings.yaml |
-| C-3 | MEDIUM | TIER 타임아웃 settings.yaml 정의 but workflow.py 미적용 | workflow.py |
+| C-3 | ~~MEDIUM~~ RESOLVED | TIER 타임아웃 — settings.yaml에서 로드, workflow.py asyncio.wait_for() 적용 완료 (PR #60) | workflow.py |
 | C-4 | ~~MEDIUM~~ RESOLVED | batch_validator max_retries — settings.yaml에서 로드 (`cfg.get("max_retries", 2)`) | batch_validator.py |
 | C-5 | ~~MEDIUM~~ RESOLVED | deep_personalization 플래그 settings.yaml 등록 완료 | settings.yaml |
 
@@ -666,7 +663,7 @@ agents:
 
 | # | 심각도 | 이슈 |
 |---|--------|------|
-| P-1 | HIGH | shared/ + conversation/ 15개 YAML이 [TODO] 스텁 (대화모드 구현 시 작성 필요) |
+| P-1 | ~~HIGH~~ RESOLVED | shared/ + conversation/ YAML 전체 삭제됨 (PR #45, 대화모드 제거) |
 | P-2 | PASS | 팟캐스트 모드 7개 YAML -- 출력스키마, 역할, 변수주입 모두 일치 |
 
 ---

@@ -323,7 +323,7 @@ async with create_graph_client() as client:
 | **테스트** | 통합 테스트 | `dev/local_db/test_neo4j_integration.py` | Neo4j 연결 + 쿼리 검증 |
 | **테스트** | 누적 그래프 단위 테스트 | `tests/api/test_graph_cumulative.py` | EMA 계산, 노드 병합 로직 |
 | **테스트** | 조회 API 테스트 | `tests/api/test_graph_routes.py` | 응답 형식 검증 |
-| **설정** | Neo4j 설정 | `config/settings.yaml` | URI, upsert_mode, ema_alpha |
+| **설정** | Neo4j 설정 | `config/settings.yaml` | URI |
 | **로컬** | 개발용 Docker | `dev/local_db/docker-compose.db.yml` | Neo4j 5 Community 컨테이너 |
 
 ### 5-2. 미완료 / 차후 작업
