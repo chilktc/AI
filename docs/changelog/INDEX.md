@@ -19,6 +19,7 @@
 | v10-v13 | [CHANGELOG_v10-v13.md](CHANGELOG_v10-v13.md) | |
 | v6-v9 | [v6](CHANGELOG_v6.md) · [v7](CHANGELOG_v7.md) · [v8](CHANGELOG_v8.md) · [v9](CHANGELOG_v9.md) | 개별 파일 |
 | v1-v5 | [CHANGELOG_v1-v5.md](CHANGELOG_v1-v5.md) | 초기 개발 |
+| 특수 | [CODE_AUDIT_CHANGELOG.md](CODE_AUDIT_CHANGELOG.md) | 보안 감사 + 코드 품질 개선 (2026-03-24) |
 
 ---
 

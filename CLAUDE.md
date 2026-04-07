@@ -148,9 +148,11 @@ main ← PR 머지 (3명 전원 승인 필수)
 **기존 public 메서드의 시그니처(파라미터, 반환 타입)와 동작을 변경하지 마시오.**
 신규 메서드/함수 추가만 허용한다. 수정 후 반드시 전체 테스트(`pytest tests/ -v`) 통과를 확인한다.
 
-- `src/agents/shared/base_agent.py` — 에이전트 공통 부모 클래스 (BaseAgent ABC)
+- `src/agents/shared/base_agent.py` — 에이전트 공통 부모 클래스 (BaseAgent ABC, `get_fallback_output()` 선택적 메서드 포함)
 - `src/agents/shared/llm_client.py` — LLM 멀티 프로바이더 클라이언트
 - `src/agents/shared/prompt_loader.py` — YAML 프롬프트 로더
+- `src/agents/shared/input_sanitizer.py` — 프롬프트 인젝션 방어 (입력 정제)
+- `src/agents/shared/output_sanitizer.py` — PII 정제 (출력 마스킹)
 - `config/loader.py` — 설정 로더 (Settings 싱글톤)
 
 ---
@@ -477,7 +479,7 @@ class ReasoningAgent:
 > 현재 독립 에이전트 호출은 DI 패턴(직접 메서드 호출)으로 구현되어 엔벨로프가 미사용 상태이다.
 > 백엔드 통신 확장 시 활성화를 검토한다.
 
-### 인프라 강화 (PR #52~#61)
+### 인프라 강화 (PR #52~#69)
 
 | 구분 | 내용 | PR |
 |------|------|-----|
@@ -487,6 +489,7 @@ class ReasoningAgent:
 | 독스트링 품질 | Google-style 통일, docstring 오류 수정 | #61 |
 | 테스트 보강 | Circuit Breaker 9개 + SSE 스트리밍 11개 테스트 | #61 |
 | Neo4j 통합 | GoT→Neo4j 저장, 그래프 API, 누적 그래프, Mode B 단일화 | #50, #51, #53, #69 |
+| Pinecone 인프라 | PineconeClient, CLI 스크립트 3종, 테스트 59개 | #64~#68 |
 
 ### 테스트 현황
 
@@ -503,7 +506,9 @@ class ReasoningAgent:
 - `docs/getting-started/QUICK_START.md` — 환경 설정 및 빠른 시작
 - `docs/architecture/AGENT_ROLES.md` — 에이전트별 역할·입출력·이슈 정의서
 - `docs/architecture/NEO4J_INTEGRATION.md` — Neo4j 그래프 DB 통합 명세 (v1.3)
+- `docs/architecture/VECTOR_DB_RAG_GUIDE.md` — Pinecone 벡터 DB + RAG 가이드
 - `docs/guides/PROMPT_VERSIONING.md` — 프롬프트 멀티버전 관리 가이드
+- `docs/SECURITY_REMEDIATION_TRACKER.md` — 보안 후속조치 추적 (키 로테이션, Secrets)
 
 ### 설계 원본 (저장소 외부 — 임의 수정 금지)
 
