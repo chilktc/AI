@@ -486,12 +486,12 @@ class ReasoningAgent:
 | 파이프라인 견고성 | 13개 취약점 수정, TIER 0~4 타임아웃, fallback 추가 | #60 |
 | 독스트링 품질 | Google-style 통일, docstring 오류 수정 | #61 |
 | 테스트 보강 | Circuit Breaker 9개 + SSE 스트리밍 11개 테스트 | #61 |
-| Neo4j 통합 | GoT→Neo4j 저장, 그래프 API, 누적 그래프 | #50, #51, #53 |
+| Neo4j 통합 | GoT→Neo4j 저장, 그래프 API, 누적 그래프, Mode B 단일화 | #50, #51, #53, #69 |
 
 ### 테스트 현황
 
 ```
-479 passed, 14 skipped
+532 passed
 ```
 
 ---

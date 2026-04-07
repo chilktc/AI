@@ -85,7 +85,7 @@ mind-log/
 │   └── utils/            # 공통 유틸리티
 ├── config/               # 환경 설정 파일 (settings.yaml)
 ├── prompts/              # 에이전트 프롬프트 YAML (멀티버전)
-├── tests/                # 테스트 코드 (479 passed)
+├── tests/                # 테스트 코드 (532 passed)
 ├── docs/                 # 프로젝트 문서
 └── CLAUDE.md             # AI 개발 가이드 (아키텍처 + 협업 규칙)
 ```

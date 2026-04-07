@@ -11,7 +11,7 @@
 | 에이전트 | 핀닝 버전 | 설정 위치 |
 |---------|---------|----------|
 | Content Analyzer | v2.1.0 | `config/settings.yaml` → `prompts.versions.content_analyzer` |
-| Podcast Reasoning | v3.0.0 | `config/settings.yaml` → `prompts.versions.podcast_reasoning` |
+| Podcast Reasoning | v3.1.0 | `config/settings.yaml` → `prompts.versions.podcast_reasoning` |
 | Batch Validator | v2.3.0 | `config/settings.yaml` → `prompts.versions.batch_validator` |
 | 기타 에이전트 | v1.0.0 | `prompts.versions.default` 기본값 |
 
@@ -24,7 +24,7 @@ prompts:
   versions:
     default: "1.0.0"              # 글로벌 기본
     content_analyzer: "2.1.0"     # 에이전트별 오버라이드
-    podcast_reasoning: "3.0.0"
+    podcast_reasoning: "3.1.0"    # v3.0.0 + GoT group 필드
     batch_validator: "2.3.0"
 ```
 
