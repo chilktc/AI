@@ -154,6 +154,8 @@ async def _save_core_data(
         logger.warning("BackendClient가 초기화되지 않아 저장을 건너뜁니다.")
         return
 
+    visual_data_raw = final_state.get("visual_data")
+
     # (1) 에피소드 메타 + 세그먼트
     try:
         segments_data = []
@@ -175,7 +177,6 @@ async def _save_core_data(
                 }
             )
 
-        visual_data_raw = final_state.get("visual_data")
         cover_image_url = None
         if visual_data_raw:
             cover_image_url = visual_data_raw.get("image_url") or visual_data_raw.get("cdn_url")
@@ -222,7 +223,6 @@ async def _save_core_data(
     # (2) 시각화 메타 (visual_data가 있을 때만)
     # Visualization Agent 출력 키: image_url, interpretation, style_type,
     # original_prompt, resolution, status (flat 구조)
-    visual_data_raw = final_state.get("visual_data")
     if visual_data_raw:
         try:
             vis_request = SaveRequest(

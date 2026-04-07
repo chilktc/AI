@@ -465,7 +465,7 @@ class ReasoningAgent:
 
 ---
 
-## 구현 현황 (2026-04-02 기준)
+## 구현 현황 (2026-04-07 기준)
 
 | 구분 | 구현 에이전트 | 진행률 |
 |------|------------|--------|
@@ -477,6 +477,23 @@ class ReasoningAgent:
 > 현재 독립 에이전트 호출은 DI 패턴(직접 메서드 호출)으로 구현되어 엔벨로프가 미사용 상태이다.
 > 백엔드 통신 확장 시 활성화를 검토한다.
 
+### 인프라 강화 (PR #52~#61)
+
+| 구분 | 내용 | PR |
+|------|------|-----|
+| 타입 힌트 현대화 | Dict→dict, Optional→\|None, mypy 63→0 에러 | #52 |
+| 보안 강화 | 프롬프트 인젝션 방어, PII 정제, 민감정보 제거 | #58, #59 |
+| 파이프라인 견고성 | 13개 취약점 수정, TIER 0~4 타임아웃, fallback 추가 | #60 |
+| 독스트링 품질 | Google-style 통일, docstring 오류 수정 | #61 |
+| 테스트 보강 | Circuit Breaker 9개 + SSE 스트리밍 11개 테스트 | #61 |
+| Neo4j 통합 | GoT→Neo4j 저장, 그래프 API, 누적 그래프 | #50, #51, #53 |
+
+### 테스트 현황
+
+```
+479 passed, 14 skipped
+```
+
 ---
 
 ## 참고 문서
@@ -485,6 +502,7 @@ class ReasoningAgent:
 
 - `docs/getting-started/QUICK_START.md` — 환경 설정 및 빠른 시작
 - `docs/architecture/AGENT_ROLES.md` — 에이전트별 역할·입출력·이슈 정의서
+- `docs/architecture/NEO4J_INTEGRATION.md` — Neo4j 그래프 DB 통합 명세 (v1.3)
 - `docs/guides/PROMPT_VERSIONING.md` — 프롬프트 멀티버전 관리 가이드
 
 ### 설계 원본 (저장소 외부 — 임의 수정 금지)
@@ -499,4 +517,4 @@ class ReasoningAgent:
 
 ---
 
-*마지막 업데이트: 2026-03-30*
+*마지막 업데이트: 2026-04-07*
