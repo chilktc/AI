@@ -390,11 +390,7 @@ agents:
 
 **파일**: `src/models/agent_state.py`
 
-`response_draft` 필드: Synthesis Agent 미구현으로 현재 미사용.
-```python
-# TODO: Synthesis Agent 구현 후 활성화 (대화모드 TIER 2)
-# response_draft: str
-```
+`response_draft` 필드: 대화모드 제거로 영구 미사용. AgentState에서 삭제 예정.
 
 `script_personalizer.py` 83번 줄 `emotional_journey = None` 하드코딩 → 설정화 또는 명시적 TODO 추가.
 

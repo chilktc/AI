@@ -26,10 +26,10 @@ Mind-Log 에이전트를 구현할 때 참고하는 실무 가이드입니다.
 
 ```python
 """
-Context Agent — 대화 맥락 분석.
+Emotion Agent — 감정 벡터 분석.
 
 TIER 1 (병렬) | 모델: Haiku
-담당: 개발자3
+담당: 개발자2
 """
 from __future__ import annotations
 
@@ -39,11 +39,11 @@ from src.agents.shared.base_agent import BaseAgent
 from src.models.agent_state import AgentState
 
 
-class ContextAgent(BaseAgent):
-    """대화 맥락을 분석하여 주제, 흐름, 참여도를 판단한다."""
+class EmotionAgent(BaseAgent):
+    """사용자 발화에서 감정 벡터(강도, 복잡도, 유형)를 분석한다."""
 
     def __init__(self) -> None:
-        super().__init__(name="context", tier=1)
+        super().__init__(name="emotion", tier=1)
         # BaseAgent.__init__이 자동으로 수행:
         #   - LLMClient 초기화 (settings.yaml 기반 모델/프로바이더 자동 결정)
         #   - PromptLoader로 prompts/{mode}/{name}.yaml 프롬프트 자동 로딩
@@ -60,15 +60,15 @@ class ContextAgent(BaseAgent):
             user_message=user_input,
         )
 
-        return {"context": result}
+        return {"emotion_vectors": result}
 
 
 # --- 노드 함수 (요청별 인스턴스 생성) ---
-async def context_node(state: AgentState) -> dict[str, Any]:
-    """LangGraph 노드 — Context Agent.
+async def emotion_node(state: AgentState) -> dict[str, Any]:
+    """LangGraph 노드 — Emotion Agent.
     요청마다 새 인스턴스를 생성하여 동시 요청 간 상태를 격리한다.
     """
-    agent = ContextAgent()
+    agent = EmotionAgent()
     return await agent(state)
 ```
 
@@ -298,11 +298,11 @@ from unittest.mock import AsyncMock, patch
 
 @pytest.mark.asyncio
 async def test_process_returns_expected_field(
-    agent: ContextAgent,
+    agent: EmotionAgent,
     base_state: AgentState,
 ) -> None:
-    """process()가 context 필드를 반환하는지 확인."""
-    mock_response = {"current_topic": "직장 스트레스", "user_engagement": "high"}
+    """process()가 emotion_vectors 필드를 반환하는지 확인."""
+    mock_response = {"primary_emotion": "anxiety", "intensity": 0.7}
 
     with patch.object(
         agent, "call_llm_json",
@@ -311,8 +311,8 @@ async def test_process_returns_expected_field(
     ):
         result = await agent.process(base_state)
 
-    assert "context" in result
-    assert result["context"]["current_topic"] == "직장 스트레스"
+    assert "emotion_vectors" in result
+    assert result["emotion_vectors"]["primary_emotion"] == "anxiety"
 ```
 
 ### AgentState Fixture
@@ -339,7 +339,7 @@ async def test_only_returns_own_field(agent, base_state):
     with patch.object(agent, "call_llm_json", new_callable=AsyncMock, return_value={}):
         result = await agent.process(base_state)
 
-    assert list(result.keys()) == ["context"]  # 자기 필드만
+    assert list(result.keys()) == ["emotion_vectors"]  # 자기 필드만
 ```
 
 ### 엣지케이스 체크리스트
