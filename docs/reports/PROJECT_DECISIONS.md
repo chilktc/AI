@@ -1,7 +1,7 @@
 # 프로젝트 설계 결정 및 변경 이력
 
 > PROJECT_SUMMARY.md에서 추출한 고유 콘텐츠. 프로젝트 설계 결정과 초반 계획 대비 변경 사항을 기록한다.
-> 최종 업데이트: 2026-03-13
+> 최종 업데이트: 2026-04-07
 
 ---
 
@@ -96,12 +96,12 @@ class LLMClient:
 4. ~~Knowledge Agent 실제 구현 (개발자1)~~ ✅
 5. ~~LangGraph Workflow 통합 (3인 합의)~~ ✅
 
-### 중기 (대화모드 착수) — 진행 중
+### 중기 (팟캐스트모드 완성 + 대화모드 삭제) — 완료
 
 6. ~~Intent Classifier~~ ✅, ~~Safety~~ ✅, ~~Emotion~~ ✅ — 구현 완료 (팟캐스트 공용)
 7. ~~Content Analyzer~~ ✅, ~~Podcast Reasoning~~ ✅, ~~Episode Memory~~ ✅, ~~Knowledge~~ ✅ — 팟캐스트 모드 구현 완료
 8. ~~Batch Validator~~ ✅, ~~Script Personalizer~~ ✅ — 팟캐스트 모드 구현 완료
-9. 대화모드 에이전트 (Context, Synthesis 등) + 워크플로우 통합 — ⏳ 미구현 (대화모드 재설계 필요)
+9. ~~대화모드 에이전트 (Context, Synthesis 등)~~ ✅ 삭제 완료 (PR #45, #48, #49, #61) — 팟캐스트모드 단일 집중으로 결정
 
 ### 장기 (플랫폼 완성)
 

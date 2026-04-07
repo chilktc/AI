@@ -10,7 +10,7 @@
 | 메서드 | HTTP | 용도 | 사용처 |
 |--------|------|------|--------|
 | `save(resource, data)` | POST /api/v1/{resource} | 데이터 저장 | _save_episode_bundle, AgentDataPublisher, LearningAgent |
-| `load(resource, user_id, **params)` | GET /api/v1/{resource} | 데이터 조회 | 현재 미사용 (대화모드 구현 시 사용 예정) |
+| `load(resource, user_id, **params)` | GET /api/v1/{resource} | 데이터 조회 | 미구현 (향후 확장용) |
 
 ### 통신 설정
 
