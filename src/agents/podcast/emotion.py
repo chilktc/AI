@@ -98,12 +98,17 @@ class EmotionAgent(BaseAgent):
             self.logger.warning("[EmotionAgent] LLM 응답 파싱 실패 — 폴백 적용", exc_info=True)
             detected_emotions = (
                 intent.get("detected_entities", {}).get("emotions", [])
-                if isinstance(intent.get("detected_entities"), dict) else []
+                if isinstance(intent.get("detected_entities"), dict)
+                else []
             )
             detected_emotions = detected_emotions if isinstance(detected_emotions, list) else []
             primary = detected_emotions[0] if detected_emotions else None
             if not primary:
-                primary = "anxiety" if "불안" in user_input else ("sadness" if "우울" in user_input else "neutral")
+                primary = (
+                    "anxiety"
+                    if "불안" in user_input
+                    else ("sadness" if "우울" in user_input else "neutral")
+                )
             secondary = detected_emotions[1:] if len(detected_emotions) > 1 else []
             vec = {
                 "primary_emotion": primary,

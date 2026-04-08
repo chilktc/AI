@@ -2,6 +2,7 @@
 
 STORAGE_MODE에 따라 PineconeClient 또는 VectorProxyClient를 반환하는지 검증한다.
 """
+
 from __future__ import annotations
 
 import importlib

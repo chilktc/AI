@@ -3,12 +3,12 @@
 validate_pinecone_env.py, create_pinecone_indexes.py,
 test_pinecone_connection.py의 핵심 로직을 검증한다.
 """
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock
 
 import pytest
-
 
 # ── validate_pinecone_env ───────────────────────────────────────────
 

@@ -448,7 +448,8 @@ def route_after_tier3_podcast(state: AgentState) -> str:
         iteration_count = state.get("iteration_count", 0)
         logger.warning(
             "[BatchValidator] verdict 없음 (타임아웃/실패) — FAIL 처리 (iteration=%d/%d)",
-            iteration_count, _MAX_RETRIES,
+            iteration_count,
+            _MAX_RETRIES,
         )
         if iteration_count < _MAX_RETRIES:
             return "tier2_podcast"
@@ -587,6 +588,7 @@ def build_unified_graph() -> StateGraph:
     # --- TIER 0: Intent Classifier ---
     async def _intent_classifier_with_timeout(s: AgentState) -> dict[str, Any]:
         return await _with_timeout(intent_classifier_node, s, _TIER0_TIMEOUT, "intent_classifier")
+
     graph.add_node("intent_classifier", _intent_classifier_with_timeout)
 
     # --- 팟캐스트 노드 ---

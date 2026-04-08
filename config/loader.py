@@ -399,7 +399,6 @@ class Settings:
         )
 
 
-
 # 싱글톤 인스턴스 (모듈 레벨에서 한 번만 로드)
 _settings_instance: Settings | None = None
 

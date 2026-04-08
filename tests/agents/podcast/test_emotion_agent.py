@@ -108,11 +108,7 @@ async def test_llm_failure_fallback_uses_intent_emotions(agent: EmotionAgent) ->
         user_id="u",
         session_id="s",
         mode="podcast",
-        intent={
-            "detected_entities": {
-                "emotions": ["sadness", "fatigue"]
-            }
-        },
+        intent={"detected_entities": {"emotions": ["sadness", "fatigue"]}},
     )
     mock = AsyncMock(side_effect=Exception("LLM error"))
     with patch.object(agent, "call_llm_json", mock):

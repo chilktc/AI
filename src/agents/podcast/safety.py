@@ -73,8 +73,12 @@ class SafetyAgent(BaseAgent):
         except Exception as e:
             self.logger.error("[SafetyAgent] LLM 호출 실패 — safe fallback: %s", e)
             result = {
-                "risk_level": 0, "risk_score": 0.0, "status": "safe",
-                "flags": {}, "required_in_script": [], "error": "llm_call_failed",
+                "risk_level": 0,
+                "risk_score": 0.0,
+                "status": "safe",
+                "flags": {},
+                "required_in_script": [],
+                "error": "llm_call_failed",
             }
 
         # 2. 판정 결과 및 상태 추출

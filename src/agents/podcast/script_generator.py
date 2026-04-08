@@ -45,9 +45,7 @@ class ScriptGeneratorAgent(BaseAgent):
         required_in_script: list[Any] = list(safety_flags.get("required_in_script", []))
 
         # 입력 데이터 추출 (content_analysis 등 이전 단계 결과 반영)
-        content_analysis: dict[str, Any] = cast(
-            dict[str, Any], state.get("content_analysis", {})
-        )
+        content_analysis: dict[str, Any] = cast(dict[str, Any], state.get("content_analysis", {}))
         if not content_analysis:
             self.logger.warning("[ScriptGenerator] content_analysis 없음 — 기본값으로 생성")
         main_theme: str = str(
@@ -128,7 +126,8 @@ class ScriptGeneratorAgent(BaseAgent):
                 )
                 self.logger.info(
                     "[ScriptGenerator] 재시도 피드백 주입 (iteration=%d, fixes=%d개)",
-                    iteration_count, len(priority_fixes),
+                    iteration_count,
+                    len(priority_fixes),
                 )
 
         try:
@@ -151,7 +150,7 @@ class ScriptGeneratorAgent(BaseAgent):
                     emotional_journey=emotional_journey,
                     previous_context=prev_context,
                     knowledge_context=knowledge_context,
-                    revision_feedback=revision_feedback,   # [Change 7]
+                    revision_feedback=revision_feedback,  # [Change 7]
                 )
                 generated_segments.append(segment_script)
 
@@ -255,7 +254,7 @@ class ScriptGeneratorAgent(BaseAgent):
         emotional_journey: dict,
         previous_context: str,
         knowledge_context: dict,
-        revision_feedback: str = "",   # [Change 7]
+        revision_feedback: str = "",  # [Change 7]
     ) -> dict:
         """개별 세그먼트의 스크립트 텍스트를 LLM으로 생성한다.
 
