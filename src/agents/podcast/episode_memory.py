@@ -1,150 +1,281 @@
-from __future__ import annotations
-
-import datetime
-import json
 import os
-from pathlib import Path
-from typing import Any
-
 import httpx
+import hashlib
+import datetime
+from typing import Any
 
 from src.agents.shared.base_memory import BaseMemoryAgent
 from src.models.agent_state import AgentState
 
-# mock_db.json 경로 — 프로젝트 루트 기준 data/cache/ 하위
-_MOCK_DB_PATH = Path(__file__).resolve().parents[3] / "data" / "cache" / "mock_db.json"
+_CHUNK_SIZE = 400
+_CHUNK_OVERLAP = 50
+_TOP_K = 5
+_SCORE_THRESHOLD = 0.7
 
 
 class EpisodeMemoryAgent(BaseMemoryAgent):
-    """
-    KT Cloud RAG Suite 연동 팟캐스트 메모리 에이전트.
-
-    - 인출(Retrieve): KT Cloud 임베딩 확인 후 mock_db.json에서 읽기
-    - 저장(Save): KT Cloud 임베딩 후 mock_db.json에 추가
-    """
 
     def __init__(self) -> None:
         super().__init__(
             name="episode_memory",
             output_key="memory_results",
-            namespace="mem_podcast_episode",
-            tier=None,
+            namespace="mem_podcast_episode",  # base namespace (prefix 개념)
         )
-        # KT Cloud 설정 — 환경변수에서 로드
-        self.endpoint = os.getenv("KT_CLOUD_ENDPOINT", "")
-        self.api_token = os.getenv("KT_CLOUD_API_TOKEN", "")
-        if not self.endpoint or not self.api_token:
-            self.logger.warning(
-                "KT Cloud 자격증명 미설정 (KT_CLOUD_ENDPOINT, KT_CLOUD_API_TOKEN). "
-                "임베딩 연결 테스트가 건너뛰어집니다."
-            )
 
+        self.query_endpoint = os.getenv("KT_CLOUD_QUERY_ENDPOINT", "")
+        self.query_token = os.getenv("KT_CLOUD_QUERY_TOKEN", "")
+
+        self.passage_endpoint = os.getenv("KT_CLOUD_PASSAGE_ENDPOINT", "")
+        self.passage_token = os.getenv("KT_CLOUD_PASSAGE_TOKEN", "")
+
+        self.textgen_endpoint = os.getenv("KT_CLOUD_TEXTGEN_ENDPOINT", "")
+        self.textgen_token = os.getenv("KT_CLOUD_TEXTGEN_TOKEN", "")
+
+        self.pinecone_api_key = os.getenv("PINECONE_API_KEY", "")
+        self.pinecone_index_name = os.getenv("PINECONE_INDEX_NAME", "")
+
+        self.pinecone_host = ""
+
+    # ============================================================
+    # namespace 생성 (핵심 추가)
+    # ============================================================
+    def _build_namespace(self, user_id: str) -> str:
+        return f"{self._namespace}_{user_id}"
+
+    # ============================================================
+    # MAIN PROCESS
+    # ============================================================
     async def process(self, state: AgentState) -> dict[str, Any]:
-        """
-        BaseMemoryAgent의 흐름을 따르되,
-        우리가 정의한 인출(_retrieve_from_store) 로직을 사용하여 결과를 반환합니다.
-        """
-        query = state.get("memory_query")
-        if not query:
-            query = str(state.get("user_input", ""))
+        user_id = str(state.get("user_id", "anonymous"))
+        query = state.get("memory_query") or str(state.get("user_input", ""))
 
-        # 1. 기억 인출 (Mock DB에서 가져오기)
-        items = await self._retrieve_from_store(str(query))
+        namespace = self._build_namespace(user_id)
 
-        # 2. 결과 구조화 (스크립트 에이전트가 읽을 수 있는 규격)
-        payload = {
-            "items": items,
-            "summary": f"'{query}'와 관련된 과거 기록을 {len(items)}건 찾았습니다.",
-            "suggested_personalization": {"topic": "Restoration of Color"},
-            "_meta": {"namespace": "mem_podcast_episode", "engine": "mock_db", "status": "success"},
+        items = await self._retrieve_from_store(query, namespace)
+
+        if not items:
+            return await super().process(state)
+
+        summary = await self._generate_summary(query, items)
+
+        return {
+            "memory_results": {
+                "items": items,
+                "summary": summary,
+            }
         }
 
-        return {"memory_results": payload}
-
-    async def _retrieve_from_store(self, query: str) -> list[dict]:
-        """[인출] KT Cloud 연결 확인 후 로컬 mock_db.json에서 데이터를 읽는다."""
-        # KT Cloud 임베딩 연결 확인 (자격증명이 설정된 경우에만)
-        if self.endpoint and self.api_token:
-            async with httpx.AsyncClient() as client:
-                try:
-                    headers = {
-                        "Authorization": f"Bearer {self.api_token}",
-                        "Content-Type": "application/json",
-                    }
-                    payload = {"model": "upstage/embedding-query", "input": query}
-                    await client.post(self.endpoint, headers=headers, json=payload, timeout=5.0)
-                except Exception as e:
-                    self.logger.debug("KT Cloud 연결 확인 실패: %s", e)
-
-        # 로컬 파일에서 데이터 읽기
-        if not _MOCK_DB_PATH.exists():
-            return []
-
-        with open(_MOCK_DB_PATH, "r", encoding="utf-8") as f:
-            result: list[dict] = json.load(f)
-            return result
-
+    # ============================================================
+    # SAVE
+    # ============================================================
     async def _save_to_store(self, text: str, metadata: dict | None = None) -> bool:
-        """[저장] 텍스트를 임베딩하여 mock_db.json에 추가한다."""
-        self.logger.debug("새로운 기억 저장 시작: %s...", text[:20])
-
-        # 1. KT Cloud 임베딩 API 호출 (자격증명이 설정된 경우에만)
-        vector: list = []
-        if self.endpoint and self.api_token:
-            async with httpx.AsyncClient() as client:
-                try:
-                    headers = {
-                        "Authorization": f"Bearer {self.api_token}",
-                        "Content-Type": "application/json",
-                    }
-                    payload = {"model": "upstage/embedding-query", "input": text}
-                    response = await client.post(
-                        self.endpoint, headers=headers, json=payload, timeout=10.0
-                    )
-
-                    if response.status_code == 200:
-                        vector = response.json()["data"][0]["embedding"]
-                        self.logger.info("임베딩 성공 (차원: %d)", len(vector))
-                except Exception as e:
-                    self.logger.warning("임베딩 실패 (벡터 없이 저장): %s", e)
-
-        # 2. 로컬 mock_db.json 읽기 및 업데이트
-        db_data: list = []
-
-        if _MOCK_DB_PATH.exists():
-            with open(_MOCK_DB_PATH, "r", encoding="utf-8") as f:
-                db_data = json.load(f)
-
-        # 3. 새로운 데이터 구조 생성
-        new_entry = {
-            "text": text,
-            "vector": vector,
-            "score": 1.0,
-            "metadata": metadata
-            or {
-                "date": datetime.datetime.now().strftime("%Y-%m-%d"),
-                "type": "user_log",
-            },
-        }
-
-        db_data.append(new_entry)
-
-        # 4. 파일 쓰기
-        try:
-            _MOCK_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-            with open(_MOCK_DB_PATH, "w", encoding="utf-8") as f:
-                json.dump(db_data, f, ensure_ascii=False, indent=2)
-            self.logger.info("mock_db.json 업데이트 완료 (현재 총 %d건)", len(db_data))
-            return True
-        except Exception as e:
-            self.logger.error("파일 쓰기 실패: %s", e)
+        if not text.strip():
             return False
 
+        user_id = str((metadata or {}).get("user_id", "anonymous"))
+        namespace = self._build_namespace(user_id)
 
-async def episode_memory_node(state: AgentState) -> dict[str, Any]:
-    """LangGraph 노드 — Episode Memory.
+        chunks = self._split(text)
 
-    요청마다 새 인스턴스를 생성하여 동시 요청 간 상태를 격리한다.
-    """
-    agent = EpisodeMemoryAgent()
-    return await agent(state)
+        for i, chunk in enumerate(chunks):
+            vec = await self._embed(chunk, "embedding-passage")
+            if not vec:
+                continue
+
+            await self._upsert(
+                id=self._make_id(text, i),
+                vector=vec,
+                metadata={
+                    "text": chunk,
+                    "date": datetime.datetime.now().isoformat(),
+                    "user_id": user_id,  # 핵심 추가
+                    **(metadata or {})
+                },
+                namespace=namespace
+            )
+        return True
+
+    # ============================================================
+    # RETRIEVE
+    # ============================================================
+    async def _retrieve_from_store(self, query: str, namespace: str) -> list[dict]:
+        if not query.strip():
+            return []
+
+        vec = await self._embed(query, "embedding-query")
+        if not vec:
+            return []
+
+        return await self._query(vec, namespace)
+
+    # ============================================================
+    # EMBEDDING
+    # ============================================================
+    async def _embed(self, text: str, mode: str) -> list[float]:
+        if mode == "embedding-query":
+            endpoint = self.query_endpoint
+            token = self.query_token
+        else:
+            endpoint = self.passage_endpoint
+            token = self.passage_token
+
+        if not endpoint or not token:
+            return []
+
+        async with httpx.AsyncClient() as client:
+            try:
+                r = await client.post(
+                    endpoint,
+                    headers={"Authorization": f"Bearer {token}"},
+                    json={"input": text},
+                    timeout=10.0,
+                )
+                r.raise_for_status()
+
+                data = r.json().get("data", [])
+                if not data:
+                    return []
+
+                return data[0].get("embedding", [])
+
+            except Exception as e:
+                print(f"[Embedding error] {e}")
+                return []
+
+    # ============================================================
+    # PINECONE HOST
+    # ============================================================
+    async def _get_host(self):
+        if self.pinecone_host:
+            return self.pinecone_host
+
+        try:
+            async with httpx.AsyncClient() as client:
+                r = await client.get(
+                    f"https://api.pinecone.io/indexes/{self.pinecone_index_name}",
+                    headers={"Api-Key": self.pinecone_api_key},
+                    timeout=10.0,
+                )
+                r.raise_for_status()
+                self.pinecone_host = r.json()["host"]
+                return self.pinecone_host
+        except Exception as e:
+            print(f"[Pinecone host error] {e}")
+            return ""
+
+    # ============================================================
+    # UPSERT (namespace 추가)
+    # ============================================================
+    async def _upsert(self, id: str, vector: list[float], metadata: dict, namespace: str):
+        host = await self._get_host()
+        if not host:
+            return
+
+        try:
+            async with httpx.AsyncClient() as client:
+                r = await client.post(
+                    f"https://{host}/vectors/upsert",
+                    headers={"Api-Key": self.pinecone_api_key},
+                    json={
+                        "vectors": [{
+                            "id": id,
+                            "values": vector,
+                            "metadata": metadata
+                        }],
+                        "namespace": namespace  # 핵심 추가
+                    },
+                    timeout=15.0,
+                )
+                r.raise_for_status()
+        except Exception as e:
+            print(f"[Upsert error] {e}")
+
+    # ============================================================
+    # QUERY (namespace + 가공)
+    # ============================================================
+    async def _query(self, vector: list[float], namespace: str) -> list[dict]:
+        host = await self._get_host()
+        if not host:
+            return []
+
+        try:
+            async with httpx.AsyncClient() as client:
+                r = await client.post(
+                    f"https://{host}/query",
+                    headers={"Api-Key": self.pinecone_api_key},
+                    json={
+                        "vector": vector,
+                        "topK": _TOP_K,
+                        "includeMetadata": True,
+                        "namespace": namespace  # 핵심 추가
+                    },
+                    timeout=10.0,
+                )
+                r.raise_for_status()
+
+                matches = r.json().get("matches", [])
+
+                results = []
+                for m in matches:
+                    score = m.get("score", 0.0)
+                    metadata = m.get("metadata", {})
+                    text = metadata.get("text", "")
+
+                    if score < _SCORE_THRESHOLD:
+                        continue
+                    if not text.strip():
+                        continue
+
+                    results.append({
+                        "text": text,
+                        "score": score,
+                        "metadata": metadata,
+                    })
+
+                return results
+
+        except Exception as e:
+            print(f"[Pinecone query error] {e}")
+            return []
+
+    # ============================================================
+    # TEXT GENERATION
+    # ============================================================
+    async def _generate_summary(self, query: str, items: list[dict]) -> str:
+        if not self.textgen_endpoint:
+            return f"{len(items)}개의 기억 발견"
+
+        context = "\n".join(f"- {i['text'][:150]}" for i in items)
+
+        try:
+            async with httpx.AsyncClient() as client:
+                r = await client.post(
+                    self.textgen_endpoint,
+                    headers={"Authorization": f"Bearer {self.textgen_token}"},
+                    json={
+                        "model": "solar-mini",
+                        "messages": [{"role": "user", "content": context}],
+                    },
+                    timeout=15.0,
+                )
+                r.raise_for_status()
+                return r.json()["choices"][0]["message"]["content"]
+
+        except Exception as e:
+            print(f"[TextGen error] {e}")
+            return f"{len(items)}개의 기억 발견"
+
+    # ============================================================
+    # UTILS
+    # ============================================================
+    def _split(self, text: str):
+        chunks = []
+        i = 0
+        while i < len(text):
+            chunks.append(text[i:i + _CHUNK_SIZE])
+            i += _CHUNK_SIZE - _CHUNK_OVERLAP
+        return chunks
+
+    def _make_id(self, text: str, idx: int):
+        base = hashlib.md5(text.encode()).hexdigest()[:8]
+        return f"{base}_{idx}"
