@@ -75,3 +75,14 @@ async def test_script_personalizer_sets_memory_metadata():
     assert meta.get("session_id") == "sess_test_01"
     assert "episode_id" in meta
     assert "episode_title" in meta
+
+
+@pytest.mark.asyncio
+async def test_script_personalizer_fallback_memory_write_false():
+    """script_draft 없을 때 fallback 경로에서 memory_write=False가 반환된다."""
+    agent = ScriptPersonalizerAgent()
+    state = {"user_id": "u1", "session_id": "s1"}  # script_draft 없음
+    result = await agent(state)
+    assert result.get("memory_write") is False
+    assert "memory_text" in result
+    assert "memory_metadata" in result
