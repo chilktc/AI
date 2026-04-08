@@ -1,7 +1,7 @@
 # 마스터 계획 인덱스 (Master Plan Index)
 
 **목적**: 모든 기획 문서의 현황 추적 및 상태 관리  
-**버전**: v14  
+**버전**: v15  
 **마지막 업데이트**: 2026-04-09  
 **관리 원칙**:
 - 완료된 계획 → PR 링크 + 간단한 변경 사항 기록
@@ -37,7 +37,7 @@
 | 21 | 문서 전수 점검 및 정합성 수정 | *(인라인 — 별도 계획서 없음)* | ✅ 완료 | #70~#80 | 4차 사이클 점검: 대화모드 잔재·링크·날짜·버전 일관성·설계 결정 갱신 전체 완료 |
 | 22 | 에이전트 출력 감사 수정 | `2026-04-08-agent-output-audit-fix.md` | 🔲 구현 대기 | — | IC-1 완료 제외 13건 미수정 |
 | 23 | 에피소드 메모리 저장 트리거 | `2026-04-08-episode-memory-save-trigger.md` | ✅ 완료 | #86, #87 | AgentState memory_write 필드 추가, Script Personalizer 반환, async_post 트리거 전부 develop에 머지 확인 (6b61763~ea06bd9) |
-| 24 | Mode A 부활 — 누적 그래프 EMA | `2026-04-09-mode-a-revival-graph-cumulative.md` | ✅ 완료 | — | contracts.py GraphCumulativeData, settings.yaml/loader.py EMA alpha, backend_resources.py Mode A 상수, client.py GET/PUT 메서드, graph_cumulative.py Mode B→A 전환, 테스트 27개 (549 passed) |
+| 24 | Mode A 부활 — 누적 그래프 EMA | `2026-04-09-mode-a-revival-graph-cumulative.md` | ✅ 완료 | #88 | contracts.py GraphCumulativeData, settings.yaml/loader.py EMA alpha, backend_resources.py Mode A 상수, client.py GET/PUT 메서드, graph_cumulative.py Mode B→A 전환, 테스트 27개 (549 passed) |
 
 **범례:**
 - ✅ 완료 — 코드 구현 완료, PR 머지됨
@@ -164,7 +164,8 @@
 | #78 | feature/reasoning-docs-stage9-medium | 앵커 오류 + PLAN_INDEX PR/테스트수 + graph-design 이력 주석 (MERGED) |
 | #79 | feature/reasoning-docs-stage10-low | 날짜 갱신 3건 + README CONTRIBUTING 설명 보완 (MERGED) |
 | #80 | feature/reasoning-docs-stage11 | PR 버전 불일치 + 대화모드 잔재 + 설계 결정 #15~#18 추가 (MERGED) |
+| #88 | feature/reasoning-plan-sync-0409 | Plan #24 Mode A 부활: contracts/settings/resources/client/graph_cumulative + 테스트 27개 (549 passed) |
 
 ---
 
-*마스터 인덱스 v14 — 2026-04-09 (Plan #23/#24 추가: 에피소드 메모리 저장 트리거 / Mode A 부활. Pinecone 4096 차원 확정. Neo4j Backend API 완료 확인.)*
+*마스터 인덱스 v15 — 2026-04-09 (Plan #23/#24 완료: 에피소드 메모리 저장 트리거(#86/#87) / Mode A 부활 EMA(#88). 549 passed, 14 skipped.)*
