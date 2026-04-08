@@ -207,9 +207,7 @@ async def test_intent_field_has_no_internal_pydantic_fields() -> None:
         },
         "reasoning": "test",
     }
-    state = AgentState(
-        user_input="스트레스 받아요", user_id="u", session_id="s", mode="podcast"
-    )
+    state = AgentState(user_input="스트레스 받아요", user_id="u", session_id="s", mode="podcast")
 
     with patch.object(agent, "call_llm_json", new_callable=AsyncMock, return_value=mock_output):
         result = await agent.process(state)

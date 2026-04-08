@@ -1,7 +1,8 @@
 """tests/graph/test_workflow.py — async_post_processing_node 단위 테스트."""
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 
 from src.graph.workflow import async_post_processing_node
 
