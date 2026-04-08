@@ -59,7 +59,7 @@ for _mod, _orig in _saved.items():
 # src.api.routes 패키지의 attribute 캐시도 정리
 #   __init__.py가 "from src.api.routes import podcasts as podcasts" 등을 실행하여
 #   routes 패키지 객체에 mock attribute가 남을 수 있다.
-import src.api.routes as _routes_pkg
+import src.api.routes as _routes_pkg  # noqa: E402
 
 for _attr in ("podcasts", "sessions", "health"):
     if hasattr(_routes_pkg, _attr) and isinstance(getattr(_routes_pkg, _attr), MagicMock):
