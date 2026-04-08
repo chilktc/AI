@@ -589,7 +589,7 @@ def build_unified_graph() -> StateGraph:
     async def _intent_classifier_with_timeout(s: AgentState) -> dict[str, Any]:
         return await _with_timeout(intent_classifier_node, s, _TIER0_TIMEOUT, "intent_classifier")
 
-    graph.add_node("intent_classifier", _intent_classifier_with_timeout)
+    graph.add_node("intent_classifier", _intent_classifier_with_timeout)  # type: ignore[arg-type]
 
     # --- 팟캐스트 노드 ---
     graph.add_node("tier1_podcast", tier1_podcast_fan_out)
