@@ -377,7 +377,7 @@ async def tier1_podcast_fan_out(state: AgentState) -> dict[str, Any]:
 # ===================================================================
 async def async_post_processing_node(state: AgentState) -> dict[str, Any]:
     """
-    비동기 후처리: Learning Agent.
+    비동기 후처리: Learning Agent + Episode Memory 저장.
 
     최종 응답 출력 후 백그라운드에서 실행.
     실패해도 파이프라인에 영향 없음.
