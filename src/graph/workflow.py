@@ -101,6 +101,7 @@ from src.agents.podcast.emotion import emotion_node  # noqa: E402
 # ---------------------------------------------------------------------------
 # 구현된 에이전트 노드 — 실제 import
 # ---------------------------------------------------------------------------
+from src.agents.podcast.episode_memory import EpisodeMemoryAgent  # noqa: E402
 from src.agents.podcast.intent_classifier import IntentClassifierAgent  # noqa: E402
 from src.agents.podcast.learning import learning_node  # noqa: E402
 from src.agents.podcast.podcast_reasoning import podcast_reasoning_node  # noqa: E402
@@ -387,6 +388,21 @@ async def async_post_processing_node(state: AgentState) -> dict[str, Any]:
     tasks = [
         asyncio.create_task(learning_node(state)),
     ]
+
+    # memory_write 플래그가 설정된 경우 에피소드 메모리 저장
+    if state.get("memory_write"):
+        memory_text = state.get("memory_text", "")
+        memory_metadata = state.get("memory_metadata", {})
+        if memory_text:
+            async def _save_episode_memory() -> dict[str, Any]:
+                try:
+                    agent = EpisodeMemoryAgent()
+                    await agent._save_to_store(memory_text, memory_metadata)
+                except Exception:
+                    logger.exception("[ASYNC] 에피소드 메모리 저장 실패 — 무시")
+                return {}
+
+            tasks.append(asyncio.create_task(_save_episode_memory()))
 
     async def _run_async_tasks() -> dict[str, Any]:
         results: dict[str, Any] = {}
