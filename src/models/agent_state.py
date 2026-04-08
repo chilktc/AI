@@ -54,8 +54,8 @@ class AgentState(TypedDict, total=False):
     visual_data: dict[str, Any]  # Visualization Agent → 시각화 메타데이터
 
     # === 메모리 저장 트리거 (Script Personalizer → async_post) ===
-    memory_write: bool          # True이면 async_post에서 에피소드 메모리 저장 실행
-    memory_text: str            # 저장할 에피소드 텍스트 (segments 연결)
+    memory_write: bool  # True이면 async_post에서 에피소드 메모리 저장 실행
+    memory_text: str  # 저장할 에피소드 텍스트 (segments 연결)
     memory_metadata: dict[str, Any]  # 저장 메타데이터 (user_id, session_id, episode_id)
 
     # === 제어 필드 ===

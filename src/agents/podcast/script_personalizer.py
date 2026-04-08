@@ -196,9 +196,7 @@ class ScriptPersonalizerAgent(BaseAgent):
 
             # 메모리 저장용 에피소드 텍스트 추출 (세그먼트 텍스트 연결)
             memory_text = "\n\n".join(
-                seg.script_text
-                for seg in personalized_script.segments
-                if seg.script_text
+                seg.script_text for seg in personalized_script.segments if seg.script_text
             )
 
             return {
@@ -230,9 +228,7 @@ class ScriptPersonalizerAgent(BaseAgent):
                 fallback = fallback_script.model_dump_json()
                 try:
                     fallback_memory_text = "\n\n".join(
-                        seg.script_text
-                        for seg in validated_script.segments
-                        if seg.script_text
+                        seg.script_text for seg in validated_script.segments if seg.script_text
                     )
                     fallback_metadata["episode_id"] = fallback_script.episode_id
                     fallback_metadata["episode_title"] = fallback_script.episode_title

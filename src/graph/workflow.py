@@ -394,6 +394,7 @@ async def async_post_processing_node(state: AgentState) -> dict[str, Any]:
         memory_text = state.get("memory_text", "")
         memory_metadata = state.get("memory_metadata", {})
         if memory_text:
+
             async def _save_episode_memory() -> dict[str, Any]:
                 try:
                     agent = EpisodeMemoryAgent()

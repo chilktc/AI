@@ -1,8 +1,9 @@
-import os
-import httpx
-import hashlib
 import datetime
+import hashlib
+import os
 from typing import Any
+
+import httpx
 
 from src.agents.shared.base_memory import BaseMemoryAgent
 from src.models.agent_state import AgentState
@@ -47,7 +48,7 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
     # ============================================================
     async def process(self, state: AgentState) -> dict[str, Any]:
         user_id = str(state.get("user_id", "anonymous"))
-        query = state.get("memory_query") or str(state.get("user_input", ""))
+        query = str(state.get("memory_query") or state.get("user_input", ""))
 
         namespace = self._build_namespace(user_id)
 
@@ -89,16 +90,16 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
                     "text": chunk,
                     "date": datetime.datetime.now().isoformat(),
                     "user_id": user_id,  # 핵심 추가
-                    **(metadata or {})
+                    **(metadata or {}),
                 },
-                namespace=namespace
+                namespace=namespace,
             )
         return True
 
     # ============================================================
     # RETRIEVE
     # ============================================================
-    async def _retrieve_from_store(self, query: str, namespace: str) -> list[dict]:
+    async def _retrieve_from_store(self, query: str, namespace: str = "") -> list[dict]:  # type: ignore[override]
         if not query.strip():
             return []
 
@@ -136,7 +137,7 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
                 if not data:
                     return []
 
-                return data[0].get("embedding", [])
+                return data[0].get("embedding", [])  # type: ignore[no-any-return]
 
             except Exception as e:
                 print(f"[Embedding error] {e}")
@@ -145,7 +146,7 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
     # ============================================================
     # PINECONE HOST
     # ============================================================
-    async def _get_host(self):
+    async def _get_host(self) -> str:
         if self.pinecone_host:
             return self.pinecone_host
 
@@ -166,7 +167,7 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
     # ============================================================
     # UPSERT (namespace 추가)
     # ============================================================
-    async def _upsert(self, id: str, vector: list[float], metadata: dict, namespace: str):
+    async def _upsert(self, id: str, vector: list[float], metadata: dict, namespace: str) -> None:
         host = await self._get_host()
         if not host:
             return
@@ -177,12 +178,8 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
                     f"https://{host}/vectors/upsert",
                     headers={"Api-Key": self.pinecone_api_key},
                     json={
-                        "vectors": [{
-                            "id": id,
-                            "values": vector,
-                            "metadata": metadata
-                        }],
-                        "namespace": namespace  # 핵심 추가
+                        "vectors": [{"id": id, "values": vector, "metadata": metadata}],
+                        "namespace": namespace,  # 핵심 추가
                     },
                     timeout=15.0,
                 )
@@ -207,7 +204,7 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
                         "vector": vector,
                         "topK": _TOP_K,
                         "includeMetadata": True,
-                        "namespace": namespace  # 핵심 추가
+                        "namespace": namespace,  # 핵심 추가
                     },
                     timeout=10.0,
                 )
@@ -226,11 +223,13 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
                     if not text.strip():
                         continue
 
-                    results.append({
-                        "text": text,
-                        "score": score,
-                        "metadata": metadata,
-                    })
+                    results.append(
+                        {
+                            "text": text,
+                            "score": score,
+                            "metadata": metadata,
+                        }
+                    )
 
                 return results
 
@@ -259,7 +258,7 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
                     timeout=15.0,
                 )
                 r.raise_for_status()
-                return r.json()["choices"][0]["message"]["content"]
+                return str(r.json()["choices"][0]["message"]["content"])
 
         except Exception as e:
             print(f"[TextGen error] {e}")
@@ -268,14 +267,20 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
     # ============================================================
     # UTILS
     # ============================================================
-    def _split(self, text: str):
+    def _split(self, text: str) -> list[str]:
         chunks = []
         i = 0
         while i < len(text):
-            chunks.append(text[i:i + _CHUNK_SIZE])
+            chunks.append(text[i : i + _CHUNK_SIZE])
             i += _CHUNK_SIZE - _CHUNK_OVERLAP
         return chunks
 
-    def _make_id(self, text: str, idx: int):
+    def _make_id(self, text: str, idx: int) -> str:
         base = hashlib.md5(text.encode()).hexdigest()[:8]
         return f"{base}_{idx}"
+
+
+async def episode_memory_node(state: AgentState) -> dict[str, Any]:
+    """LangGraph 노드 함수. 요청마다 새 인스턴스를 생성하여 동시 요청 간 상태를 격리한다."""
+    agent = EpisodeMemoryAgent()
+    return await agent(state)
