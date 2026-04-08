@@ -32,7 +32,7 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
         self.textgen_token = os.getenv("KT_CLOUD_TEXTGEN_TOKEN", "")
 
         self.pinecone_api_key = os.getenv("PINECONE_API_KEY", "")
-        self.pinecone_index_name = os.getenv("PINECONE_INDEX_NAME", "")
+        self.pinecone_index_name = os.getenv("PINECONE_INDEX_EPISODE", "")
 
         self.pinecone_host = ""
 
