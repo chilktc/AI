@@ -88,10 +88,9 @@ class TestEpisodeMemoryAgent:
         mock_db_data: list[dict[str, Any]],
     ) -> None:
         """_retrieve_from_store가 데이터를 반환할 때 정상 처리."""
-        with patch.object(
-            agent, "_retrieve_from_store", return_value=mock_db_data
-        ), patch.object(
-            agent, "_generate_summary", return_value="2건의 기억 발견"
+        with (
+            patch.object(agent, "_retrieve_from_store", return_value=mock_db_data),
+            patch.object(agent, "_generate_summary", return_value="2건의 기억 발견"),
         ):
             result = await agent.process(minimal_state)
 
