@@ -1,8 +1,8 @@
 # 마스터 계획 인덱스 (Master Plan Index)
 
 **목적**: 모든 기획 문서의 현황 추적 및 상태 관리  
-**버전**: v12  
-**마지막 업데이트**: 2026-04-08  
+**버전**: v14  
+**마지막 업데이트**: 2026-04-09  
 **관리 원칙**:
 - 완료된 계획 → PR 링크 + 간단한 변경 사항 기록
 - 미완료 계획 → 상태 및 다음 액션 기록
@@ -31,10 +31,13 @@
 | 15 | 파이프라인 견고성 - Phase 1 | `pipeline-robustness-part1.md` | ✅ 완료 | #60 | Changes 1-9 완료 |
 | 16 | 파이프라인 견고성 - Phase 2 | `pipeline-robustness-part2.md` | ✅ 완료 | #60 | get_fallback_output() 추가 |
 | 17 | 독스트링 품질 개선 구현 | `2026-04-07-docs-quality-implementation.md` | ✅ 완료 | #61 (MERGED) | Phase 1-4 구현 + CB/SSE 테스트 추가 (538 passed, 14 skipped — PR #67/#68 Pinecone 테스트 59개 추가 후) |
-| 18 | Neo4j 통합 구현 계획 | `2026-04-07-neo4j-integration-plan.md` | 🔶 대부분 완료 | — | seed group 필드 수정 완료, E2E 검증은 인프라 선행 필요 |
-| 19 | Pinecone 벡터 DB 공통 인프라 | `2026-04-07-pinecone-vector-db-integration.md` | 🔶 대부분 완료 | #64~#68 | CLI 스크립트+pinecone_client+테스트 59개 구현, EC2 연결 검증, 인덱스명 하이픈 통일. 미완: BedrockEmbeddingClient, 팩토리 연동, 가이드 문서 |
+| 18 | Neo4j 통합 구현 계획 | `2026-04-07-neo4j-integration-plan.md` | 🔶 대부분 완료 | — | seed group 필드 수정 완료, E2E 검증은 인프라 선행 필요. Backend GET/PUT /graph_nodes 완료(2026-04-08 테스트 확인) → Mode A 구현은 Plan #24 |
+| 19 | Pinecone 벡터 DB 공통 인프라 | `2026-04-07-pinecone-vector-db-integration.md` | 🔶 대부분 완료 | #64~#68 | 인덱스 차원 4096 확정, EC2 연결 완료. 미완: BedrockEmbeddingClient, 팩토리 연동, 가이드 문서 |
 | 20 | Graph Mode B 단일화 리팩터 | `2026-04-07-graph-mode-b-refactor.md` | ✅ 완료 | #69 | Mode A 삭제, publish_graph_to_rdb 단일 경로 확정, EMA를 Backend 책임으로 이관 (538 passed) |
 | 21 | 문서 전수 점검 및 정합성 수정 | *(인라인 — 별도 계획서 없음)* | ✅ 완료 | #70~#80 | 4차 사이클 점검: 대화모드 잔재·링크·날짜·버전 일관성·설계 결정 갱신 전체 완료 |
+| 22 | 에이전트 출력 감사 수정 | `2026-04-08-agent-output-audit-fix.md` | 🔲 구현 대기 | — | IC-1 완료 제외 13건 미수정 |
+| 23 | 에피소드 메모리 저장 트리거 | `2026-04-08-episode-memory-save-trigger.md` | 🔲 구현 대기 | — | PR #85(feature/agents-gaeun) 머지 선행 필수. AgentState memory_write 필드 + async_post 트리거 |
+| 24 | Mode A 부활 — 누적 그래프 EMA | `2026-04-09-mode-a-revival-graph-cumulative.md` | 🔲 구현 대기 | — | graph_cumulative.py Mode B→A 전환, Backend GET/PUT /graph_nodes 완료 확인(2026-04-08) |
 
 **범례:**
 - ✅ 완료 — 코드 구현 완료, PR 머지됨
@@ -86,9 +89,9 @@
 
 | # | 작업 | 파일 | 라인 | 의존성 |
 |---|------|------|------|--------|
-| 17 | EpisodeMemoryStub → 실제 에이전트 DI 연결 | `podcast_reasoning.py` | 58-59 | Pinecone 연동 |
-| 18 | base_memory._save_to_store() stub 구현 | `base_memory.py` | 88-89 | KT Cloud API |
-| 19 | episode_memory mock_db.json → Pinecone 전환 | `episode_memory.py` | 15 | Pinecone 연동 |
+| 17 | EpisodeMemoryStub → 실제 에이전트 DI 연결 | `podcast_reasoning.py` | 58-59 | Pinecone 연동 (연결 완료, PR #85 선행 필요) |
+| 18 | base_memory._save_to_store() stub 구현 | `base_memory.py` | 88-89 | KT Cloud API (PR #85 메모리 에이전트 사전작업 완료로 선행 조건 충족) |
+| 19 | episode_memory mock_db.json → Pinecone 전환 | `episode_memory.py` | 15 | Pinecone 연결 완료 — Plan #23 참조 |
 | ~~24~~ | ~~knowledge.py 인덱스명 하드코딩~~ (`expert_knowledge`) | ~~`knowledge.py`~~ | ~~135~~ | ✅ `expert-knowledge` 수정 완료 (PR #67) |
 | 20 | script_personalizer empathetic/rational 구현 | `script_personalizer.py` | 402, 405 | 비즈니스 규칙 정의 |
 | 21 | script_personalizer hearing_impairment 구현 | `script_personalizer.py` | 450 | 비즈니스 규칙 정의 |
@@ -164,4 +167,4 @@
 
 ---
 
-*마스터 인덱스 v12 — 2026-04-08 (Plan #21 문서 전수 점검 완료, PR #70~#80 전체 MERGED)*
+*마스터 인덱스 v14 — 2026-04-09 (Plan #23/#24 추가: 에피소드 메모리 저장 트리거 / Mode A 부활. Pinecone 4096 차원 확정. Neo4j Backend API 완료 확인.)*

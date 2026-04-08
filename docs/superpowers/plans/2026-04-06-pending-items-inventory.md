@@ -40,6 +40,8 @@
 
 > `src/db/factory.py`의 `create_vector_client()`, `create_graph_client()` 등은 구현 완료.
 > `podcast_reasoning_node()`에서 factory를 통해 클라이언트를 생성하고 실제 에이전트에 주입하면 전환 가능.
+>
+> **2026-04-09 업데이트**: Pinecone EC2 연결 완료(인덱스 차원 4096 확정). 메모리 에이전트 사전작업(PR #85 feature/agents-gaeun) 완료로 간주. EpisodeMemory 저장 트리거 구현은 **Plan #23** 참조.
 
 ### B. script_personalizer 미구현 분기
 
@@ -57,8 +59,8 @@
 
 | 컴포넌트 | 상태 | 설명 |
 |---------|------|------|
-| `base_memory._save_to_store()` | stub (`return True`) | 부모 클래스 기본 구현. TODO: KT Cloud Ingestion API |
-| `episode_memory` 저장소 | `mock_db.json` (로컬 파일) | Pinecone/KT Cloud 미연결. KT Cloud 임베딩 호출은 선택적으로 시도 |
+| `base_memory._save_to_store()` | stub (`return True`) | 부모 클래스 기본 구현. TODO: KT Cloud Ingestion API (PR #85 선행 완료) |
+| `episode_memory` 저장소 | `mock_db.json` (로컬 파일) | **Pinecone EC2 연결 완료**(2026-04-09). KT Cloud 임베딩 호출은 선택적으로 시도. → Plan #23으로 전환 |
 | `data/cache/` 디렉토리 | 미생성 | mock_db.json 경로의 디렉토리 자체가 없음 |
 | DB 클라이언트 (Neo4j, Pinecone, MySQL, S3) | ✅ 실제 구현 | factory.py 통해 접근 가능 |
 | API Proxy 클라이언트 | stub (12개 TODO) | 백엔드 엔드포인트 미확정 |
@@ -118,8 +120,8 @@
 
 | 항목 | 구현 수준 | 설명 |
 |------|----------|------|
-| **대화모드 에이전트** | 미착수 | workflow에서 완전 제거됨. 재설계 필요. stub 없음 |
-| **Telemetry 실시간 모니터링** | 부분 구현 | `MindLogTelemetryCallback` + 메트릭 모델 구현 완료. Prometheus/Grafana 대시보드 미연동. 담당자 미정 |
+| ~~**대화모드 에이전트**~~ | ~~미착수~~ | ~~workflow에서 완전 제거됨~~ — **영구 제외 (2026-04-08)** |
+| ~~**Telemetry 실시간 모니터링**~~ | ~~부분 구현~~ | ~~Prometheus/Grafana 대시보드 미연동~~ — **영구 제외 (2026-04-08)** |
 | **WebSocket 실시간 스트리밍** | 부분 구현 | `StreamEvent` 스키마 정의 + SSE 스트리밍 엔드포인트(`/episodes/stream`) 구현 완료. WebSocket 전용 핸들러 미구현 |
 | **A/B 테스트** | 프레임워크 완성 | `base_agent.py`에 세션 기반 변이 할당, ContextVar 격리 등 전체 코드 구현됨. `settings.yaml`에 `ab_tests` 설정 미등록 |
 | **프로덕션 운영** | 미착수 | 실전 배포 + 사용자 피드백 루프 |
@@ -137,8 +139,8 @@
 | CI/린팅 | 1건 (mypy 63에러) |
 | 테스트 실패/에러 | 24건 (5 fail + 19 error) |
 | 인프라·배포 | 4건 (Bedrock, 수동 설정, Neo4j 이관) |
-| 장기 로드맵 | 5건 (대화모드, Telemetry, WebSocket, A/B, 프로덕션) |
-| **합계** | **약 49건** (세부 TODO 포함) |
+| 장기 로드맵 | 3건 (WebSocket, A/B, 프로덕션) — 대화모드·Telemetry 영구 제외 |
+| **합계** | **약 47건** (대화모드·Telemetry 2건 영구 제외 후) |
 
 ### 즉시 작업 가능 항목
 
