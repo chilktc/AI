@@ -83,8 +83,11 @@ class PodcastReasoningAgent(BaseAgent):
             self.logger.error("[PodcastReasoning] user_input 없음")
             return {
                 "reasoning_result": {
-                    "episode_structure": [], "key_themes": [], "emotional_arc": {},
-                    "confidence": 0.0, "reasoning_depth": "minimal",
+                    "episode_structure": [],
+                    "key_themes": [],
+                    "emotional_arc": {},
+                    "confidence": 0.0,
+                    "reasoning_depth": "minimal",
                     "error": "user_input_missing",
                 }
             }

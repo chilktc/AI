@@ -119,7 +119,9 @@ class ScriptPersonalizerAgent(BaseAgent):
                                 validated_script = ValidatedScript(
                                     episode_title=raw_title,
                                     total_duration=script_data.get("total_duration", 5),
-                                    segments=min_segments, key_insights=[], themes=[],
+                                    segments=min_segments,
+                                    key_insights=[],
+                                    themes=[],
                                 )
                         except Exception:
                             pass

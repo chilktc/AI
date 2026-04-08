@@ -83,8 +83,11 @@ class ContentAnalyzerAgent(BaseAgent):
             self.logger.error("[ContentAnalyzer] user_input 없음")
             return {
                 "content_analysis": {
-                    "main_theme": "", "sub_themes": [], "emotional_journey": {},
-                    "depth_level": "light", "error": "user_input_missing",
+                    "main_theme": "",
+                    "sub_themes": [],
+                    "emotional_journey": {},
+                    "depth_level": "light",
+                    "error": "user_input_missing",
                 }
             }
         intent = state.get("intent", {})

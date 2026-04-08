@@ -10,7 +10,6 @@ import pytest
 
 from src.api.graph_cumulative import publish_graph_to_rdb
 
-
 # ═══════════════════════════════════════════════════════════════════════
 # Fixture: src.api.main mock 모듈 주입 (Python 3.9 호환)
 # ═══════════════════════════════════════════════════════════════════════

@@ -62,6 +62,7 @@ class TestRouteAfterTier3Podcast:
     def test_missing_validation_triggers_pass_when_retries_exhausted(self):
         """재시도 소진 시 validation_result 없어도 강제 통과."""
         import src.graph.workflow as wf
+
         state = {"iteration_count": wf._MAX_RETRIES}
         assert route_after_tier3_podcast(state) == "tier4_podcast"
 
@@ -75,6 +76,7 @@ class TestBuildUnifiedGraphNodes:
     def test_build_unified_graph_has_intent_classifier_node(self):
         """build_unified_graph()에 intent_classifier 노드가 등록된다."""
         from src.graph.workflow import build_unified_graph
+
         graph = build_unified_graph()
         assert "intent_classifier" in graph.nodes
 

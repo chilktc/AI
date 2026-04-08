@@ -4,6 +4,7 @@ Pinecone SDK를 sys.modules 레벨에서 mock하여
 외부 패키지 설치 여부에 관계없이 PineconeClient의
 query, upsert, close, 인덱스 캐싱 동작을 검증한다.
 """
+
 from __future__ import annotations
 
 import importlib

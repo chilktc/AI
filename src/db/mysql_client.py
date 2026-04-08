@@ -52,11 +52,7 @@ class MySQLClient(BaseRDBClient):
     """
 
     def __init__(self, url: str | None = None) -> None:
-        self._url = (
-            url
-            if url is not None
-            else os.getenv("MYSQL_URL", "")
-        )
+        self._url = url if url is not None else os.getenv("MYSQL_URL", "")
         assert isinstance(self._url, str)
         self._conn_params = _parse_mysql_url(self._url)
         self._connection: pymysql.Connection | None = None
