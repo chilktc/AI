@@ -56,7 +56,7 @@ class TestPineconeClientInit:
 
     def test_init_with_env_var(self, monkeypatch):
         monkeypatch.setenv("PINECONE_API_KEY", "env-key-456")
-        client = _get_fresh_client(api_key="")
+        _get_fresh_client(api_key="")
         # api_key=""이면 os.getenv fallback이 아니라 빈 문자열 사용
         # 명시적으로 None을 전달해야 env var 폴백
         mod = importlib.import_module("src.db.pinecone_client")
