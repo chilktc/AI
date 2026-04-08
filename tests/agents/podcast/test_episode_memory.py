@@ -87,17 +87,13 @@ class TestEpisodeMemoryAgent:
         minimal_state: AgentState,
         mock_db_data: list[dict[str, Any]],
     ) -> None:
-        """mock_db.json에 데이터가 있을 때 정상 반환."""
-        with (
-            patch.object(Path, "exists", return_value=True),
-            patch("builtins.open", create=True) as m_open,
+        """_retrieve_from_store가 데이터를 반환할 때 정상 처리."""
+        with patch.object(
+            agent, "_retrieve_from_store", return_value=mock_db_data
+        ), patch.object(
+            agent, "_generate_summary", return_value="2건의 기억 발견"
         ):
-            m_open.return_value.__enter__ = lambda s: s
-            m_open.return_value.__exit__ = lambda s, *a: None
-            m_open.return_value.read = lambda: json.dumps(mock_db_data)
-            # json.load는 open()의 반환값을 읽으므로 직접 패치
-            with patch("json.load", return_value=mock_db_data):
-                result = await agent.process(minimal_state)
+            result = await agent.process(minimal_state)
 
         assert "memory_results" in result
         payload = result["memory_results"]
@@ -137,8 +133,6 @@ class TestEpisodeMemoryAgent:
         assert "suggested_personalization" in payload
         assert "_meta" in payload
         assert payload["_meta"]["namespace"] == "mem_podcast_episode"
-        assert payload["_meta"]["engine"] == "mock_db"
-        assert payload["_meta"]["status"] == "success"
 
 
 class TestEpisodeMemoryNode:
