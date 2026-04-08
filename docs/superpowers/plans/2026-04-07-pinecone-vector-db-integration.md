@@ -30,7 +30,7 @@
 - `knowledge.py:135` 인덱스명 하드코딩 수정 (`expert_knowledge` → `expert-knowledge`)
 - **인덱스 차원 1024 → 4096 변경**: `create_pinecone_indexes.py`, `test_pinecone_connection.py`, `tests/db/test_pinecone_*.py` 일괄 수정 완료
 - **Pinecone DB 연결 완료**: EC2 환경에서 실제 인덱스 생성 및 연결 확인
-- **메모리 에이전트 사전작업 완료**: PR #85(feature/agents-gaeun) 기준 — EpisodeMemoryAgent 저장 트리거 구현은 Plan #23 참조
+- **PR #85(feature/agents-gaeun) 머지 완료** (2026-04-08 07:54): EpisodeMemoryAgent._save_to_store() 실제 구현 반영. EpisodeMemory 저장 트리거 구현은 Plan #23 즉시 실행 가능
 
 ---
 

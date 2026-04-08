@@ -12,11 +12,10 @@
 
 ## 전제조건
 
-> **PR #85 (feature/agents-gaeun) 머지 필수**
+> ✅ **PR #85 (feature/agents-gaeun) 머지 완료** (2026-04-08 07:54 KST)
 >
-> 이 계획의 모든 Task는 PR #85가 `develop`에 머지된 후에 시작한다.
-> PR #85는 `EpisodeMemoryAgent._save_to_store()`와 `BaseMemoryAgent`의 `memory_write` 트리거 구조를 구현한다.
-> 머지 전에 이 계획을 실행하면 `_save_to_store()` 구현이 없어 저장이 동작하지 않는다.
+> `EpisodeMemoryAgent._save_to_store()`와 `BaseMemoryAgent`의 `memory_write` 트리거 구조가 `develop`에 반영됐다.
+> 이 계획은 즉시 구현 가능하다.
 
 ---
 

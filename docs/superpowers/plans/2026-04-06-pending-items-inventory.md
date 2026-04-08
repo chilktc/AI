@@ -59,8 +59,8 @@
 
 | 컴포넌트 | 상태 | 설명 |
 |---------|------|------|
-| `base_memory._save_to_store()` | stub (`return True`) | 부모 클래스 기본 구현. TODO: KT Cloud Ingestion API (PR #85 선행 완료) |
-| `episode_memory` 저장소 | `mock_db.json` (로컬 파일) | **Pinecone EC2 연결 완료**(2026-04-09). KT Cloud 임베딩 호출은 선택적으로 시도. → Plan #23으로 전환 |
+| `base_memory._save_to_store()` | stub (`return True`) | 부모 클래스 기본 구현. PR #85 머지(2026-04-08) 완료 → `_save_to_store()` 실제 구현 반영됨 |
+| `episode_memory` 저장소 | `mock_db.json` (로컬 파일) | **Pinecone EC2 연결 완료**(2026-04-09). PR #85 머지 완료. → Plan #23 즉시 구현 가능 |
 | `data/cache/` 디렉토리 | 미생성 | mock_db.json 경로의 디렉토리 자체가 없음 |
 | DB 클라이언트 (Neo4j, Pinecone, MySQL, S3) | ✅ 실제 구현 | factory.py 통해 접근 가능 |
 | API Proxy 클라이언트 | stub (12개 TODO) | 백엔드 엔드포인트 미확정 |
