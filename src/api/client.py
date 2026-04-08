@@ -62,7 +62,7 @@ class BackendClient:
             json=data.model_dump(mode="json"),
         )
         response.raise_for_status()
-        return SaveResponse.model_validate(response.json())
+        return SaveResponse.model_validate(response.json())  # type: ignore[no-any-return]
 
     @with_retry(max_retries=3, base_delay=1.0)
     async def load(
@@ -90,7 +90,7 @@ class BackendClient:
             params={"user_id": user_id, **params},
         )
         response.raise_for_status()
-        return LoadResponse.model_validate(response.json())
+        return LoadResponse.model_validate(response.json())  # type: ignore[no-any-return]
 
     @with_retry(max_retries=3, base_delay=1.0)
     async def update(self, resource: str, data: SaveRequest) -> SaveResponse:
@@ -112,4 +112,4 @@ class BackendClient:
             json=data.model_dump(mode="json"),
         )
         response.raise_for_status()
-        return SaveResponse.model_validate(response.json())
+        return SaveResponse.model_validate(response.json())  # type: ignore[no-any-return]

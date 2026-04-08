@@ -480,7 +480,7 @@ class LLMClient:
         # 첫 번째 content block에서 텍스트 추출 (TextBlock 가정)
         if not response.content:
             raise ValueError("Anthropic API returned empty content")
-        return response.content[0].text  # type: ignore[union-attr]
+        return response.content[0].text  # type: ignore[union-attr, no-any-return]
 
     async def _generate_bedrock(
         self,

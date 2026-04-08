@@ -59,7 +59,7 @@ class Neo4jClient(BaseGraphClient):
         async with self._driver.session() as session:
             result = await session.run(query, parameters=params or {})
             records = await result.data()
-            return records
+            return records  # type: ignore[no-any-return]
 
     async def close(self) -> None:
         """드라이버 연결을 정리한다."""
