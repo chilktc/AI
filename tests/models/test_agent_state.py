@@ -1,4 +1,5 @@
 import typing
+from typing import Any
 
 from src.models.agent_state import AgentState
 
@@ -12,7 +13,8 @@ def test_agent_state_has_memory_write_fields():
 
 
 def test_agent_state_memory_write_types():
-    """memory_write는 bool, memory_text는 str."""
+    """memory_write는 bool, memory_text는 str, memory_metadata는 dict[str, Any]."""
     hints = typing.get_type_hints(AgentState)
     assert hints["memory_write"] is bool
     assert hints["memory_text"] is str
+    assert hints["memory_metadata"] == dict[str, Any]
