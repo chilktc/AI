@@ -36,8 +36,8 @@
 | 20 | Graph Mode B 단일화 리팩터 | `2026-04-07-graph-mode-b-refactor.md` | ✅ 완료 | #69 | Mode A 삭제, publish_graph_to_rdb 단일 경로 확정, EMA를 Backend 책임으로 이관 (538 passed) |
 | 21 | 문서 전수 점검 및 정합성 수정 | *(인라인 — 별도 계획서 없음)* | ✅ 완료 | #70~#80 | 4차 사이클 점검: 대화모드 잔재·링크·날짜·버전 일관성·설계 결정 갱신 전체 완료 |
 | 22 | 에이전트 출력 감사 수정 | `2026-04-08-agent-output-audit-fix.md` | 🔲 구현 대기 | — | IC-1 완료 제외 13건 미수정 |
-| 23 | 에피소드 메모리 저장 트리거 | `2026-04-08-episode-memory-save-trigger.md` | 🔲 구현 대기 | — | ~~PR #85 선행 필수~~ → ✅ 2026-04-08 머지 완료. 즉시 구현 가능. AgentState memory_write 필드 + async_post 트리거 |
-| 24 | Mode A 부활 — 누적 그래프 EMA | `2026-04-09-mode-a-revival-graph-cumulative.md` | 🔲 구현 대기 | — | graph_cumulative.py Mode B→A 전환, Backend GET/PUT /graph_nodes 완료 확인(2026-04-08) |
+| 23 | 에피소드 메모리 저장 트리거 | `2026-04-08-episode-memory-save-trigger.md` | ✅ 완료 | #86, #87 | AgentState memory_write 필드 추가, Script Personalizer 반환, async_post 트리거 전부 develop에 머지 확인 (6b61763~ea06bd9) |
+| 24 | Mode A 부활 — 누적 그래프 EMA | `2026-04-09-mode-a-revival-graph-cumulative.md` | ✅ 완료 | — | contracts.py GraphCumulativeData, settings.yaml/loader.py EMA alpha, backend_resources.py Mode A 상수, client.py GET/PUT 메서드, graph_cumulative.py Mode B→A 전환, 테스트 27개 (549 passed) |
 
 **범례:**
 - ✅ 완료 — 코드 구현 완료, PR 머지됨
