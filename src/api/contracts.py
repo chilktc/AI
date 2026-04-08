@@ -64,3 +64,16 @@ class ErrorResponse(BaseModel):
 
     success: Literal[False] = False  # 항상 False
     error: ErrorDetail  # 에러 상세
+
+
+class GraphCumulativeData(BaseModel):
+    """GET /api/v1/graph_nodes 응답의 누적 그래프 데이터.
+
+    Backend 응답 구조: {"code": "ok", "data": {"data": <이 모델>}}
+
+    신규 사용자(404): BackendClient.load_graph_cumulative()가 GraphCumulativeData()를 반환.
+    에러(5xx 등): BackendClient가 None을 반환하여 404와 완전히 구분.
+    """
+
+    nodes: list[dict[str, Any]] = Field(default_factory=list)
+    links: list[dict[str, Any]] = Field(default_factory=list)
