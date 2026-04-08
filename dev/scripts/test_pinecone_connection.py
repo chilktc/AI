@@ -49,7 +49,7 @@ def test_index_exists(pc: object, required: list[str]) -> bool:
     return all_ok
 
 
-def test_dummy_query(pc: object, index_name: str, dimension: int = 1024) -> bool:
+def test_dummy_query(pc: object, index_name: str, dimension: int = 4096) -> bool:
     """더미 영벡터로 쿼리하여 인덱스가 정상 응답하는지 확인한다."""
     existing = {idx["name"] for idx in pc.list_indexes()}  # type: ignore[attr-defined]
     if index_name not in existing:

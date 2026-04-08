@@ -113,7 +113,7 @@ class TestPineconeConnectionHelpers:
         mock_index = MagicMock()
         mock_index.describe_index_stats.return_value = {
             "total_vector_count": 100,
-            "dimension": 1024,
+            "dimension": 4096,
         }
         mock_pc.Index.return_value = mock_index
 
@@ -143,7 +143,7 @@ class TestPineconeConnectionHelpers:
         mock_index.query.return_value = {"matches": []}
         mock_pc.Index.return_value = mock_index
 
-        result = test_dummy_query(mock_pc, "expert-knowledge", dimension=1024)
+        result = test_dummy_query(mock_pc, "expert-knowledge", dimension=4096)
 
         assert result is True
         mock_index.query.assert_called_once()
@@ -193,7 +193,7 @@ class TestCreatePineconeIndexesConfig:
         assert names == {"expert-knowledge", "mem-podcast-episode"}
 
         for idx in INDEXES:
-            assert idx["dimension"] == 1024
+            assert idx["dimension"] == 4096
             assert idx["metric"] == "cosine"
 
     def test_missing_api_key_exits_1(self, monkeypatch):

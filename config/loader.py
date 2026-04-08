@@ -398,6 +398,15 @@ class Settings:
             self._config.get("security", {}).get("pii_sanitization", {}).get("enabled", True)
         )
 
+    @property
+    def graph_ema_alpha(self) -> float:
+        """누적 그래프 EMA 계수를 반환한다.
+
+        0.0~1.0 범위. 클수록 최신 에피소드의 반영 비율이 높아진다.
+        기본값 0.3 (settings.yaml graph.ema_alpha 미설정 시 폴백).
+        """
+        return float(self._config.get("graph", {}).get("ema_alpha", 0.3))
+
 
 # 싱글톤 인스턴스 (모듈 레벨에서 한 번만 로드)
 _settings_instance: Settings | None = None

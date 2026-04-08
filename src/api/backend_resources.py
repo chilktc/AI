@@ -44,6 +44,6 @@ TYPE_LEARNING = "learning"
 TYPE_CONTENT_ANALYSIS = "content_analysis"
 TYPE_GRAPH_ANALYSIS = "graph_analysis"  # GoT 그래프 분석 결과
 
-# --- 누적 그래프 리소스 ---
-RESOURCE_GRAPH_EPISODES = "graph_nodes/episodes"
-TYPE_GRAPH_EPISODE = "graph_episode"
+# --- 누적 그래프 리소스 (Mode A) ---
+RESOURCE_GRAPH_NODES = "graph_nodes"          # GET(조회)/PUT(갱신) 공통 엔드포인트
+TYPE_GRAPH_CUMULATIVE = "graph_cumulative"    # PUT 전송 시 SaveRequest.type 필드

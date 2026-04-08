@@ -122,7 +122,7 @@ class TestPineconeClientQuery:
 
         result = await client.query(
             index="expert-knowledge",
-            vector=[0.1] * 1024,
+            vector=[0.1] * 4096,
             filter={"domain": {"$in": ["psychology"]}},
             top_k=3,
         )
@@ -141,7 +141,7 @@ class TestPineconeClientQuery:
 
         result = await client.query(
             index="expert-knowledge",
-            vector=[0.1] * 1024,
+            vector=[0.1] * 4096,
             filter={},
         )
 

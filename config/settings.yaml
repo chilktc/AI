@@ -165,6 +165,10 @@ storage:
 
     index_memory_podcast: "mem-podcast-episode"
 
+# 누적 그래프 설정
+graph:
+  ema_alpha: 0.3    # EMA 지수이동평균 계수 (0.0~1.0, 클수록 최신 에피소드 반영 비율 높음)
+
 # 파이프라인 설정
 pipeline:
   max_retries: 1              # TIER 3 → TIER 2 재시도 상한 (FAIL용) — 최악 760s 상한

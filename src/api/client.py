@@ -12,7 +12,12 @@ from typing import Any
 import httpx
 
 from config.loader import get_settings
-from src.api.contracts import LoadResponse, SaveRequest, SaveResponse
+from src.api.contracts import (
+    GraphCumulativeData,
+    LoadResponse,
+    SaveRequest,
+    SaveResponse,
+)
 from src.utils.retry import with_retry
 
 
@@ -113,3 +118,54 @@ class BackendClient:
         )
         response.raise_for_status()
         return SaveResponse.model_validate(response.json())  # type: ignore[no-any-return]
+
+    async def load_graph_cumulative(self, user_id: str) -> GraphCumulativeData | None:
+        """사용자의 누적 그래프 데이터를 조회한다.
+
+        반환값:
+          - GraphCumulativeData(nodes=[], links=[]) : 신규 사용자 (HTTP 404 — 정상)
+          - GraphCumulativeData(nodes=[...], ...)  : 기존 사용자 (HTTP 200 — 정상)
+          - None                                   : GET 실패 (5xx, 네트워크 에러 등)
+
+        Args:
+            user_id: 사용자 고유 ID
+
+        Returns:
+            GraphCumulativeData (신규 또는 기존 사용자) | None (에러)
+        """
+        try:
+            response = await self._client.get(
+                f"{self._base_url}/graph_nodes",
+                params={"user_id": user_id},
+            )
+            if response.status_code == 404:
+                return GraphCumulativeData()
+            response.raise_for_status()
+            body: dict[str, Any] = response.json()
+            inner = body.get("data", {}).get("data") or {}
+            return GraphCumulativeData.model_validate(inner)
+        except Exception:
+            return None
+
+    async def put_graph_cumulative(self, data: SaveRequest) -> bool:
+        """누적 그래프 데이터를 백엔드에 저장(UPSERT)한다.
+
+        HTTP status_code AND 응답 body의 code 필드를 모두 검증한다.
+        Backend 실제 응답: {"code":"ok","message":"성공"}
+
+        Args:
+            data: SaveRequest 스키마 (type="graph_cumulative")
+
+        Returns:
+            HTTP 2xx + code=="ok" 시 True, 그 외 False
+        """
+        try:
+            response = await self._client.put(
+                f"{self._base_url}/graph_nodes",
+                json=data.model_dump(mode="json"),
+            )
+            response.raise_for_status()
+            body: dict[str, Any] = response.json()
+            return isinstance(body, dict) and body.get("code") == "ok"
+        except Exception:
+            return False
