@@ -73,6 +73,7 @@ def print_result(user_input: str, result: dict, elapsed_time: float = None):
 # =============================================================================
 
 
+@pytest.mark.live
 class TestWithLLM:
     """LLM을 직접 사용하는 테스트 (Ollama)"""
 

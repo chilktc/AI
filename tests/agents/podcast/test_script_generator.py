@@ -16,6 +16,7 @@ def agent(llm_client):
     return agent
 
 
+@pytest.mark.live
 @pytest.mark.asyncio
 async def test_script_generator_title_generation(agent):
     start_time = time.time()
@@ -26,6 +27,7 @@ async def test_script_generator_title_generation(agent):
     assert len(title) > 0
 
 
+@pytest.mark.live
 @pytest.mark.asyncio
 async def test_script_generator_insights_extraction(agent):
     segments = [{"script_text": "첫 번째로 번아웃은 누구에게나 올 수 있는 흔한 증상입니다."}]
@@ -37,6 +39,7 @@ async def test_script_generator_insights_extraction(agent):
     assert isinstance(insights, list)
 
 
+@pytest.mark.live
 @pytest.mark.asyncio
 async def test_script_generator_process(agent):
     state = {
@@ -67,6 +70,7 @@ async def test_script_generator_process(agent):
     assert isinstance(draft["key_insights"], list)
 
 
+@pytest.mark.live
 @pytest.mark.asyncio
 async def test_script_generator_includes_safety_context_when_warning(agent):
     """Safety warning 상태일 때 safety_context가 스크립트 메타데이터에 포함된다."""
@@ -103,6 +107,7 @@ async def test_script_generator_includes_safety_context_when_warning(agent):
     assert len(draft["metadata"]["safety_context"]["required_in_script"]) > 0
 
 
+@pytest.mark.live
 @pytest.mark.asyncio
 async def test_script_generator_no_safety_context_when_safe(agent):
     """Safety safe 상태일 때 safety_context.status가 'safe'이다."""
