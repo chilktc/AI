@@ -74,3 +74,4 @@ async def test_script_personalizer_sets_memory_metadata():
     assert meta.get("user_id") == "user_test_01"
     assert meta.get("session_id") == "sess_test_01"
     assert "episode_id" in meta
+    assert "episode_title" in meta
