@@ -28,8 +28,8 @@ from src.models.agent_state import AgentState
         ("FAIL", 0, "tier2_podcast"),
         ("FAIL", 2, "tier4_podcast"),  # 최대 재시도 초과 → 강제 통과
         ("CRITICAL_FAIL", 0, "tier2_podcast"),  # 재시도
-        ("CRITICAL_FAIL", 3, "tier2_podcast"),  # 재시도 (4회 미만)
-        ("CRITICAL_FAIL", 4, "tier4_podcast"),  # 4회 소진 → 강제 통과
+        ("CRITICAL_FAIL", 1, "tier2_podcast"),  # 재시도 (2회 미만)
+        ("CRITICAL_FAIL", 2, "tier4_podcast"),  # 2회 소진 → 강제 통과
     ],
     ids=[
         "pass",
@@ -74,7 +74,7 @@ async def test_increment_iteration(initial, expected: int) -> None:
 # === 엣지 케이스 테스트 ===
 
 
-def test_empty_validation_result_defaults_to_pass() -> None:
-    """validation_result가 비어있을 때 기본 통과 처리된다."""
+def test_empty_validation_result_defaults_to_fail() -> None:
+    """validation_result가 비어있을 때 FAIL 처리되어 재시도한다."""
     state = AgentState(validation_result={}, iteration_count=0)
-    assert route_after_tier3_podcast(state) == "tier4_podcast"
+    assert route_after_tier3_podcast(state) == "tier2_podcast"

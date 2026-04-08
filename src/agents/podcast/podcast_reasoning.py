@@ -21,7 +21,7 @@ Episode Memory(개발자2)와 Knowledge Agent(개발자1)를
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from src.agents.shared.base_agent import BaseAgent
 from src.agents.shared.stubs import EpisodeMemoryStub, KnowledgeAgentStub
@@ -504,7 +504,7 @@ class PodcastReasoningAgent(BaseAgent):
         # [신규] RDB 누적 그래프 — label+group 기준 통합 UPSERT
         from src.api.graph_cumulative import publish_graph_to_rdb
 
-        await publish_graph_to_rdb(got_result, state, episode_id)
+        await publish_graph_to_rdb(got_result, cast(dict[str, Any], state), episode_id)
 
     async def _save_got_to_neo4j(
         self,

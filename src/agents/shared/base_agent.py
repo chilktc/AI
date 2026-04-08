@@ -473,7 +473,7 @@ class BaseAgent(ABC):
         async def _run(s: AgentState) -> dict[str, Any]:
             return await self.process(s)
 
-        return await _run(state)
+        return await _run(state)  # type: ignore[no-any-return]
 
     async def _traced_llm_call(
         self,
