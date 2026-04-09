@@ -143,7 +143,7 @@ class BackendClient:
             response.raise_for_status()
             body: dict[str, Any] = response.json()
             inner = body.get("data", {}).get("data") or {}
-            return GraphCumulativeData.model_validate(inner)
+            return GraphCumulativeData.model_validate(inner)  # type: ignore[no-any-return]
         except Exception:
             return None
 
