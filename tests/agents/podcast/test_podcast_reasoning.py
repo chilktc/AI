@@ -731,50 +731,23 @@ class TestSaveGotToNeo4j:
             await agent._save_got_to_neo4j(_SAMPLE_GOT_RESULT, "sess_001", "ep_001")
 
 
-class TestPublishGraphToBackend:
-    @pytest.mark.asyncio
-    async def test_normal_publish(self, agent: PodcastReasoningAgent) -> None:
-        mock_publisher = AsyncMock()
-        state: AgentState = {"user_id": "user_001", "session_id": "sess_001"}
-
-        with patch(
-            "src.api.publisher.AgentDataPublisher",
-            return_value=mock_publisher,
-        ):
-            await agent._publish_graph_to_backend(_SAMPLE_GOT_RESULT, state)
-
-        mock_publisher.publish.assert_called_once()
-        call_kwargs = mock_publisher.publish.call_args
-        assert call_kwargs.kwargs.get("user_id") == "user_001"
-
-    @pytest.mark.asyncio
-    async def test_publish_failure_graceful(self, agent: PodcastReasoningAgent) -> None:
-        state: AgentState = {"user_id": "user_001", "session_id": "sess_001"}
-
-        with patch(
-            "src.api.publisher.AgentDataPublisher",
-            side_effect=Exception("Backend unreachable"),
-        ):
-            await agent._publish_graph_to_backend(_SAMPLE_GOT_RESULT, state)
-
-
 class TestSaveGraphData:
     @pytest.mark.asyncio
-    async def test_calls_both_methods(self, agent: PodcastReasoningAgent) -> None:
+    async def test_calls_neo4j_and_publish_graph(self, agent: PodcastReasoningAgent) -> None:
+        """_save_graph_data는 Neo4j 저장 + publish_graph_to_rdb 호출을 모두 수행한다."""
         state: AgentState = {"user_id": "user_001", "session_id": "sess_001"}
 
         with (
             patch.object(agent, "_save_got_to_neo4j", new_callable=AsyncMock) as mock_neo4j,
-            patch.object(
-                agent,
-                "_publish_graph_to_backend",
+            patch(
+                "src.api.graph_cumulative.publish_graph_to_rdb",
                 new_callable=AsyncMock,
             ) as mock_publish,
         ):
             await agent._save_graph_data(_SAMPLE_GOT_RESULT, "sess_001", "ep_001", state)
 
         mock_neo4j.assert_called_once_with(_SAMPLE_GOT_RESULT, "sess_001", "ep_001", "user_001")
-        mock_publish.assert_called_once_with(_SAMPLE_GOT_RESULT, state)
+        mock_publish.assert_called_once()
 
 
 # === Change 2 + 4-C: user_input 안전접근 + GoT/ToT/CoT try/except ===

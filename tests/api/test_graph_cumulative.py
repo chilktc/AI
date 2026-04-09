@@ -330,8 +330,8 @@ class TestPublishGraphToRdb:
                 sys.modules.pop("src.api.main", None)
 
     @pytest.mark.asyncio
-    async def test_new_user_404_returns_empty_data_not_error(self, mock_backend_client) -> None:
-        """신규 사용자(404): 빈 데이터로 PUT 정상 진행 (에러 아님)."""
+    async def test_new_user_empty_data_proceeds_normally(self, mock_backend_client) -> None:
+        """신규 사용자(200 + 빈 nodes/links): 빈 데이터로 PUT 정상 진행."""
         got = {
             "nodes": [
                 {"id": "1", "label": "번아웃", "group": "emotional_exhaustion", "intensity": 0.8}

@@ -551,11 +551,11 @@ class LoadResponse(BaseModel):
 |-----------|-------------------|---------|-----------------|-------------|
 | `RESOURCE_EMOTION_LOG` | `emotion_logs` | `TYPE_EMOTION_LOG` | `emotion_log` | Emotion Agent |
 | `RESOURCE_CONTENT_ANALYSIS` | `content_analyses` | `TYPE_CONTENT_ANALYSIS` | `content_analysis` | Content Analyzer |
-| `RESOURCE_GRAPH_ANALYSIS` | `graph_analyses` | `TYPE_GRAPH_ANALYSIS` | `graph_analysis` | Podcast Reasoning |
+| ~~`RESOURCE_GRAPH_ANALYSIS`~~ | ~~`graph_analyses`~~ | ~~`TYPE_GRAPH_ANALYSIS`~~ | ~~`graph_analysis`~~ | ~~Podcast Reasoning~~ — **제거됨 (2026-04-09)** |
 | `RESOURCE_PODCAST_EPISODE` | `podcast_episodes` | `TYPE_PODCAST_EPISODE` | `podcast_episode` | 파이프라인 완료 후 |
 | `RESOURCE_VISUALIZATION` | `visualizations` | `TYPE_VISUALIZATION` | `visualization` | 파이프라인 완료 후 |
 | `RESOURCE_LEARNING` | `learning` | `TYPE_LEARNING` | `learning` | Learning Agent |
-| `RESOURCE_GRAPH_EPISODES` | `graph_nodes/episodes` | `TYPE_GRAPH_EPISODE` | `graph_episode` | Neo4j 누적 그래프 |
+| `RESOURCE_GRAPH_NODES` | `graph_nodes` | `TYPE_GRAPH_CUMULATIVE` | `graph_cumulative` | Podcast Reasoning (EMA 누적 그래프, GET/PUT) |
 | `RESOURCE_SESSION` | `sessions` | — | — | TODO(backend): 경로명 확정 필요 |
 
 > **주의**: `resource`와 `type`은 별개 파라미터다. `resource`는 API 경로, `type`은 SaveRequest의 `type` 필드.
@@ -624,6 +624,46 @@ class LoadResponse(BaseModel):
     "tts_markers_json": str,     # JSON 직렬화
 }
 ```
+
+#### `TYPE_GRAPH_CUMULATIVE` → `GraphCumulativeData` (전용 PUT)
+
+> 주의: 범용 `SaveRequest` 대신 전용 형식 사용. `session_id`/`timestamp` 포함 금지.
+> `put_graph_cumulative()`가 `{user_id, type, data}` 만 전송한다.
+
+```python
+# PUT /api/v1/graph_nodes body
+{
+    "user_id": str,                # 사용자 UUID
+    "type": "graph_cumulative",
+    "data": {
+        "nodes": [
+            {
+                "label": str,          # 키워드 텍스트 (예: "업무과부하")
+                "grp": str,            # 6개 카테고리 중 하나
+                "weight": float,       # EMA 누적 가중치 (0.0~1.0)
+                "mention_count": int,  # 등장 횟수
+                "trend": str,          # "increasing" | "stable" | "decreasing"
+                "first_seen": str,     # ISO 8601 (최초 등장)
+                "last_seen": str,      # ISO 8601 (최근 등장)
+            }
+        ],
+        "links": [
+            {
+                "source_label": str,   # 출발 노드 label
+                "source_grp": str,     # 출발 노드 grp
+                "target_label": str,   # 도착 노드 label
+                "target_grp": str,     # 도착 노드 grp
+                "weight": int,         # 연결 강도/빈도
+                "relationship": str,   # 관계 유형 (causes 등)
+                "first_seen": str,     # ISO 8601
+                "last_seen": str,      # ISO 8601
+            }
+        ],
+    }
+}
+```
+
+**UPSERT 키**: 노드 `user_id + label + grp`, 링크 `user_id + source_label + source_grp + target_label + target_grp`
 
 #### `TYPE_VISUALIZATION` → `MySQLVisualizationMeta`
 
