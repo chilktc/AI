@@ -145,7 +145,7 @@ async def seed_neo4j(data: dict[str, Any]) -> None:
     try:
         neo4j_data = data["neo4j"]
 
-        # 제약조건/인덱스 먼저 실행
+        # 제약조건/인덱스 먼저 실행 (이미 존재하면 무시)
         cypher_path = Path(__file__).parent / "neo4j" / "init.cypher"
         if cypher_path.exists():
             cypher_text = cypher_path.read_text(encoding="utf-8")
@@ -158,7 +158,10 @@ async def seed_neo4j(data: dict[str, Any]) -> None:
                 ]
                 statement = "\n".join(lines).strip()
                 if statement:
-                    await client.execute_query(statement)
+                    try:
+                        await client.execute_query(statement)
+                    except Exception as e:
+                        logger.warning(f"  Neo4j: 제약조건/인덱스 스킵 — {e}")
             logger.info("  Neo4j: 제약조건/인덱스 적용 완료")
 
         # 노드 생성

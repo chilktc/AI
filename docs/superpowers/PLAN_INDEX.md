@@ -31,7 +31,7 @@
 | 15 | 파이프라인 견고성 - Phase 1 | `pipeline-robustness-part1.md` | ✅ 완료 | #60 | Changes 1-9 완료 |
 | 16 | 파이프라인 견고성 - Phase 2 | `pipeline-robustness-part2.md` | ✅ 완료 | #60 | get_fallback_output() 추가 |
 | 17 | 독스트링 품질 개선 구현 | `2026-04-07-docs-quality-implementation.md` | ✅ 완료 | #61 (MERGED) | Phase 1-4 구현 + CB/SSE 테스트 추가 (538 passed, 14 skipped — PR #67/#68 Pinecone 테스트 59개 추가 후) |
-| 18 | Neo4j 통합 구현 계획 | `2026-04-07-neo4j-integration-plan.md` | 🔶 대부분 완료 | — | 코드 구현 전부 완료(Neo4j저장, EMA Mode A, graph_analyses 제거). 잔여: 작업 1(GoT→Neo4j E2E, EC2 Neo4j 배포 선행 필요) — 인프라 준비 후 ✅ 전환 가능 |
+| 18 | Neo4j 통합 구현 계획 | `2026-04-07-neo4j-integration-plan.md` | ✅ 완료 | — | 작업 1(GoT→Neo4j E2E) ✅ 6 passed in 0.59s (AWS SSM 2026-04-09). 작업 2(Mode A) ✅ PR #88. 코드 전체 완료. 부수: seed.py 제약조건 에러 핸들링 개선 필요 |
 | 19 | Pinecone 벡터 DB 공통 인프라 | `2026-04-07-pinecone-vector-db-integration.md` | 🔶 대부분 완료 | #64~#68 | Task 1/3/4 완료. KnowledgeAgent 95% 구현됨. BedrockEmbeddingClient 불필요 — KT Cloud 어댑터(~30줄) 추출 후 주입하면 즉시 테스트 가능. 미완: KTCloudEmbeddingClient+factory+DI연결, test_knowledge 벡터검색 테스트, Task 5/6/7(CLI), Task 9(가이드) |
 | 20 | Graph Mode B 단일화 리팩터 | `2026-04-07-graph-mode-b-refactor.md` | ✅ 완료 | #69 | Mode A 삭제, publish_graph_to_rdb 단일 경로 확정, EMA를 Backend 책임으로 이관 (538 passed) |
 | 21 | 문서 전수 점검 및 정합성 수정 | *(인라인 — 별도 계획서 없음)* | ✅ 완료 | #70~#80 | 4차 사이클 점검: 대화모드 잔재·링크·날짜·버전 일관성·설계 결정 갱신 전체 완료 |
@@ -169,4 +169,4 @@
 
 ---
 
-*마스터 인덱스 v18 — 2026-04-09 (#19 재분석: BedrockEmbeddingClient 불필요 확인 — KT Cloud 어댑터 추출로 즉시 테스트 가능. KnowledgeAgent 95% 구현 완료. 핵심 블로커 재정의.)*
+*마스터 인덱스 v18 — 2026-04-09 (Plan #18 ✅ 완료: GoT→Neo4j E2E 6 passed AWS SSM 검증. #19 재분석: KT Cloud 어댑터 추출로 즉시 테스트 가능.)*

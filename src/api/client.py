@@ -123,7 +123,7 @@ class BackendClient:
         """사용자의 누적 그래프 데이터를 조회한다.
 
         반환값:
-          - GraphCumulativeData(nodes=[], links=[]) : 신규 사용자 (HTTP 404 — 정상)
+          - GraphCumulativeData(nodes=[], links=[]) : 신규 사용자 (HTTP 200 + 빈 nodes/links — 정상)
           - GraphCumulativeData(nodes=[...], ...)  : 기존 사용자 (HTTP 200 — 정상)
           - None                                   : GET 실패 (5xx, 네트워크 에러 등)
 
@@ -138,8 +138,6 @@ class BackendClient:
                 f"{self._base_url}/graph_nodes",
                 params={"user_id": user_id},
             )
-            if response.status_code == 404:
-                return GraphCumulativeData()
             response.raise_for_status()
             body: dict[str, Any] = response.json()
             inner = body.get("data", {}).get("data") or {}
@@ -153,6 +151,9 @@ class BackendClient:
         HTTP status_code AND 응답 body의 code 필드를 모두 검증한다.
         Backend 실제 응답: {"code":"ok","message":"성공"}
 
+        누적 그래프는 user_id + label + grp 기준 UPSERT이므로
+        session_id, timestamp는 전송하지 않는다.
+
         Args:
             data: SaveRequest 스키마 (type="graph_cumulative")
 
@@ -160,12 +161,17 @@ class BackendClient:
             HTTP 2xx + code=="ok" 시 True, 그 외 False
         """
         try:
+            body = {
+                "user_id": data.user_id,
+                "type": data.type,
+                "data": data.data,
+            }
             response = await self._client.put(
                 f"{self._base_url}/graph_nodes",
-                json=data.model_dump(mode="json"),
+                json=body,
             )
             response.raise_for_status()
-            body: dict[str, Any] = response.json()
-            return isinstance(body, dict) and body.get("code") == "ok"
+            resp_body: dict[str, Any] = response.json()
+            return isinstance(resp_body, dict) and resp_body.get("code") == "ok"
         except Exception:
             return False
