@@ -1,8 +1,8 @@
 # 마스터 계획 인덱스 (Master Plan Index)
 
 **목적**: 모든 기획 문서의 현황 추적 및 상태 관리  
-**버전**: v15  
-**마지막 업데이트**: 2026-04-09  
+**버전**: v17
+**마지막 업데이트**: 2026-04-09
 **관리 원칙**:
 - 완료된 계획 → PR 링크 + 간단한 변경 사항 기록
 - 미완료 계획 → 상태 및 다음 액션 기록
@@ -25,19 +25,19 @@
 | 9 | Neo4j 배포 + 프론트엔드 그래프 | `2026-04-02-neo4j-deployment-frontend-graph.md` | ✅ 완료 | #50, #51 | GoT→Neo4j→Backend 완료 |
 | 10 | AWS 환경변수 & 보안 | `2026-04-06-aws-env-remediation.md` | ✅ 완료 | #59 | STORAGE_MODE, BACKEND_API_URL 완료 |
 | 11 | 종합 실행 계획서 (2026-04-06) | `2026-04-06-comprehensive-execution-plan.md` | ✅ 완료 | #52, #57 | Phase 1-2 완료 (mypy, 테스트 격리) |
-| 12 | 미완료 항목 현황 (2026-04-06) | `2026-04-06-pending-items-inventory.md` | 🔶 대부분 완료 | #52 | mypy/테스트 해결. 잔여: stub 에이전트(Pinecone), personalizer 분기, 영속화 레이어 |
+| 12 | 미완료 항목 현황 (2026-04-06) | `2026-04-06-pending-items-inventory.md` | 🔶 대부분 완료 | #52 | mypy/테스트 해결. 잔여: ① podcast_reasoning Stub→실제 DI 미연결 ② personalizer empathetic/rational pass, _query_user_profile return None ③ data/cache/ 디렉토리 미생성 |
 | 13 | 파이프라인 견고성 (아카이브) | `2026-04-06-pipeline-robustness-remediation.md` | 📁 아카이브 | — | v1-v4 이력 보존 |
 | 14 | 파이프라인 견고성 강화 마스터 | `pipeline-robustness-index.md` | ✅ 완료 | #60 | 13개 취약점 수정 |
 | 15 | 파이프라인 견고성 - Phase 1 | `pipeline-robustness-part1.md` | ✅ 완료 | #60 | Changes 1-9 완료 |
 | 16 | 파이프라인 견고성 - Phase 2 | `pipeline-robustness-part2.md` | ✅ 완료 | #60 | get_fallback_output() 추가 |
 | 17 | 독스트링 품질 개선 구현 | `2026-04-07-docs-quality-implementation.md` | ✅ 완료 | #61 (MERGED) | Phase 1-4 구현 + CB/SSE 테스트 추가 (538 passed, 14 skipped — PR #67/#68 Pinecone 테스트 59개 추가 후) |
-| 18 | Neo4j 통합 구현 계획 | `2026-04-07-neo4j-integration-plan.md` | 🔶 대부분 완료 | — | seed group 필드 수정 완료, E2E 검증은 인프라 선행 필요. Backend GET/PUT /graph_nodes 완료(2026-04-08 테스트 확인) → Mode A 구현은 Plan #24 |
-| 19 | Pinecone 벡터 DB 공통 인프라 | `2026-04-07-pinecone-vector-db-integration.md` | 🔶 대부분 완료 | #64~#68 | 인덱스 차원 4096 확정, EC2 연결 완료. 미완: BedrockEmbeddingClient, 팩토리 연동, 가이드 문서 |
+| 18 | Neo4j 통합 구현 계획 | `2026-04-07-neo4j-integration-plan.md` | 🔶 대부분 완료 | — | 코드 구현 전부 완료(Neo4j저장, EMA Mode A, graph_analyses 제거). 잔여: 작업 1(GoT→Neo4j E2E, EC2 Neo4j 배포 선행 필요) — 인프라 준비 후 ✅ 전환 가능 |
+| 19 | Pinecone 벡터 DB 공통 인프라 | `2026-04-07-pinecone-vector-db-integration.md` | 🔶 대부분 완료 | #64~#68 | Task 1/3/4 완료(연결·스크립트·테스트 59개). 미완 5개: Task 2(BedrockEmbeddingClient+factory), Task 5(test_embedding.py), Task 6(vector_roundtrip), Task 7(ingest_knowledge_base), Task 9(가이드 문서) |
 | 20 | Graph Mode B 단일화 리팩터 | `2026-04-07-graph-mode-b-refactor.md` | ✅ 완료 | #69 | Mode A 삭제, publish_graph_to_rdb 단일 경로 확정, EMA를 Backend 책임으로 이관 (538 passed) |
 | 21 | 문서 전수 점검 및 정합성 수정 | *(인라인 — 별도 계획서 없음)* | ✅ 완료 | #70~#80 | 4차 사이클 점검: 대화모드 잔재·링크·날짜·버전 일관성·설계 결정 갱신 전체 완료 |
 | 22 | 에이전트 출력 감사 수정 | `2026-04-08-agent-output-audit-fix.md` | 🔲 구현 대기 | — | IC-1 완료 제외 13건 미수정 |
-| 23 | 에피소드 메모리 저장 트리거 | `2026-04-08-episode-memory-save-trigger.md` | ✅ 완료 | #86, #87 | AgentState memory_write 필드 추가, Script Personalizer 반환, async_post 트리거 전부 develop에 머지 확인 (6b61763~ea06bd9) |
-| 24 | Mode A 부활 — 누적 그래프 EMA | `2026-04-09-mode-a-revival-graph-cumulative.md` | ✅ 완료 | #88 | contracts.py GraphCumulativeData, settings.yaml/loader.py EMA alpha, backend_resources.py Mode A 상수, client.py GET/PUT 메서드, graph_cumulative.py Mode B→A 전환, 테스트 27개 (549 passed) |
+| 23 | 에피소드 메모리 저장 트리거 | `_archive/plans/2026-04-08-episode-memory-save-trigger.md` | ✅ 완료 | #86, #87 | AgentState memory_write 필드 추가, Script Personalizer 반환, async_post 트리거 전부 develop에 머지 확인 (6b61763~ea06bd9) |
+| 24 | Mode A 부활 — 누적 그래프 EMA | `_archive/plans/2026-04-09-mode-a-revival-graph-cumulative.md` | ✅ 완료 | #88 | contracts.py GraphCumulativeData, client.py GET/PUT 메서드, graph_cumulative.py Mode B→A 전환, 테스트 27개 (549 passed). BE 3차 테스트: session_id/timestamp 제거 후 PUT ✅ 200, Test 6~8 전체 PASS, E2E(GET→PUT→GET) 검증 완료 |
 
 **범례:**
 - ✅ 완료 — 코드 구현 완료, PR 머지됨
@@ -165,7 +165,8 @@
 | #79 | feature/reasoning-docs-stage10-low | 날짜 갱신 3건 + README CONTRIBUTING 설명 보완 (MERGED) |
 | #80 | feature/reasoning-docs-stage11 | PR 버전 불일치 + 대화모드 잔재 + 설계 결정 #15~#18 추가 (MERGED) |
 | #88 | feature/reasoning-plan-sync-0409 | Plan #24 Mode A 부활: contracts/settings/resources/client/graph_cumulative + 테스트 27개 (549 passed) |
+| — | feature/reasoning-lint-fix-0409 | TestPublishGraphToBackend 삭제 + TestSaveGraphData publish_graph_to_rdb 패치 수정 (Plan #18 테스트 정합성) |
 
 ---
 
-*마스터 인덱스 v15 — 2026-04-09 (Plan #23/#24 완료: 에피소드 메모리 저장 트리거(#86/#87) / Mode A 부활 EMA(#88). 549 passed, 14 skipped.)*
+*마스터 인덱스 v17 — 2026-04-09 (Plan #12/#18/#19 교차 검증. #18 테스트 정합성 수정(TestPublishGraphToBackend 삭제). #12/#18/#19 모두 🔶 유지 — 잔여 항목 상세 기재.)*
