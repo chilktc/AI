@@ -1,7 +1,7 @@
 # 마스터 계획 인덱스 (Master Plan Index)
 
 **목적**: 모든 기획 문서의 현황 추적 및 상태 관리  
-**버전**: v17
+**버전**: v18
 **마지막 업데이트**: 2026-04-09
 **관리 원칙**:
 - 완료된 계획 → PR 링크 + 간단한 변경 사항 기록
@@ -32,7 +32,7 @@
 | 16 | 파이프라인 견고성 - Phase 2 | `pipeline-robustness-part2.md` | ✅ 완료 | #60 | get_fallback_output() 추가 |
 | 17 | 독스트링 품질 개선 구현 | `2026-04-07-docs-quality-implementation.md` | ✅ 완료 | #61 (MERGED) | Phase 1-4 구현 + CB/SSE 테스트 추가 (538 passed, 14 skipped — PR #67/#68 Pinecone 테스트 59개 추가 후) |
 | 18 | Neo4j 통합 구현 계획 | `2026-04-07-neo4j-integration-plan.md` | 🔶 대부분 완료 | — | 코드 구현 전부 완료(Neo4j저장, EMA Mode A, graph_analyses 제거). 잔여: 작업 1(GoT→Neo4j E2E, EC2 Neo4j 배포 선행 필요) — 인프라 준비 후 ✅ 전환 가능 |
-| 19 | Pinecone 벡터 DB 공통 인프라 | `2026-04-07-pinecone-vector-db-integration.md` | 🔶 대부분 완료 | #64~#68 | Task 1/3/4 완료(연결·스크립트·테스트 59개). 미완 5개: Task 2(BedrockEmbeddingClient+factory), Task 5(test_embedding.py), Task 6(vector_roundtrip), Task 7(ingest_knowledge_base), Task 9(가이드 문서) |
+| 19 | Pinecone 벡터 DB 공통 인프라 | `2026-04-07-pinecone-vector-db-integration.md` | 🔶 대부분 완료 | #64~#68 | Task 1/3/4 완료. KnowledgeAgent 95% 구현됨. BedrockEmbeddingClient 불필요 — KT Cloud 어댑터(~30줄) 추출 후 주입하면 즉시 테스트 가능. 미완: KTCloudEmbeddingClient+factory+DI연결, test_knowledge 벡터검색 테스트, Task 5/6/7(CLI), Task 9(가이드) |
 | 20 | Graph Mode B 단일화 리팩터 | `2026-04-07-graph-mode-b-refactor.md` | ✅ 완료 | #69 | Mode A 삭제, publish_graph_to_rdb 단일 경로 확정, EMA를 Backend 책임으로 이관 (538 passed) |
 | 21 | 문서 전수 점검 및 정합성 수정 | *(인라인 — 별도 계획서 없음)* | ✅ 완료 | #70~#80 | 4차 사이클 점검: 대화모드 잔재·링크·날짜·버전 일관성·설계 결정 갱신 전체 완료 |
 | 22 | 에이전트 출력 감사 수정 | `2026-04-08-agent-output-audit-fix.md` | 🔲 구현 대기 | — | IC-1 완료 제외 13건 미수정 |
@@ -169,4 +169,4 @@
 
 ---
 
-*마스터 인덱스 v17 — 2026-04-09 (Plan #12/#18/#19 교차 검증. #18 테스트 정합성 수정(TestPublishGraphToBackend 삭제). #12/#18/#19 모두 🔶 유지 — 잔여 항목 상세 기재.)*
+*마스터 인덱스 v18 — 2026-04-09 (#19 재분석: BedrockEmbeddingClient 불필요 확인 — KT Cloud 어댑터 추출로 즉시 테스트 가능. KnowledgeAgent 95% 구현 완료. 핵심 블로커 재정의.)*
