@@ -50,7 +50,7 @@ Frontend ─────────────────────── B
 
 > ✅ `_save_core_data()` 자동 동기 저장 — **변경 없음** (확장만). 파이프라인 완료 후 자동 저장 유지.
 
-> ✅ `PodcastReprocessingAgent` — **TIER 4 완료 후 비동기 후처리에서 자동 실행**. `async_post_processing_node`에 통합하여 Learning/Memory와 함께 병렬 실행. 익명화 결과는 내부적으로 `AgentDataPublisher.publish()`로 Backend 저장.
+> ✅ `PodcastReprocessingAgent` — **메인 파이프라인과 별개**. Frontend 별도 화면에서 사용자 공유 동의 수신 후, Backend → AI서버 `POST /api/v1/episodes/{id}/reprocess` 요청 시에만 실행. `async_post_processing_node`에 **포함하지 않는다**.
 
 ### UX 로딩 플로우 (2단계 구조)
 
@@ -762,7 +762,7 @@ SaveRequest(
 | routes/podcasts.py | visualizations | RESOURCE_VISUALIZATION | TIER 4 완료 후 | **동기** | ✅ 화면 2 이미지 |
 | EpisodeSummaryAgent [신규] | episode_summaries | RESOURCE_EPISODE_SUMMARY | 비동기 후처리 | 비동기 | ✅ **화면 3** 요약 |
 | LearningAgent | learning | RESOURCE_LEARNING | 비동기 후처리 | 비동기 | ❌ 내부용 |
-| PodcastReprocessingAgent [신규] | podcast_episodes_anonymized | RESOURCE_PODCAST_EPISODE_ANONYMIZED | Backend 동의 이벤트 수신 시 (별도) | 비동기 | ❌ 내부용 |
+| PodcastReprocessingAgent [신규] | podcast_episodes_anonymized | RESOURCE_PODCAST_EPISODE_ANONYMIZED | **별도** — Backend `POST /episodes/{id}/reprocess` 요청 시 (사용자 공유 동의 후) | 비동기 | ❌ 내부용 |
 
 ### 1-5. 프론트엔드 화면별 데이터 컬럼 매핑
 
@@ -900,11 +900,12 @@ grep -n "final_output\|memory_write\|reprocess\|anonymiz" src/models/agent_state
 ```python
 def test_agent_state_has_reprocessing_fields():
     """AgentState에 재가공 에이전트 출력 필드가 정의되어야 한다."""
+    import typing
     from src.models.agent_state import AgentState
-    assert "reprocessed_output" in AgentState.__annotations__, \
-        "reprocessed_output 필드 미정의"
-    assert "anonymization_report" in AgentState.__annotations__, \
-        "anonymization_report 필드 미정의"
+    hints = typing.get_type_hints(AgentState)
+    assert "reprocessed_output" in hints, "reprocessed_output 필드 미정의"
+    assert "anonymization_report" in hints, "anonymization_report 필드 미정의"
+    assert "episode_summary" in hints, "episode_summary 필드 미정의"
 ```
 
 - [ ] **Step 3: 테스트 실행 (실패 확인)**
@@ -1048,13 +1049,13 @@ def detect_pii_types(text: str) -> list[str]:
     if not isinstance(text, str) or not text:
         return []
     detected: list[str] = []
-    for pattern_name, pattern in _PII_PATTERNS.items():
+    for pattern_name, pattern, _mask_text, _description in _PII_PATTERNS:
         if pattern.search(text):
             detected.append(pattern_name)
     return detected
 ```
 
-(`_PII_PATTERNS`는 기존 코드의 패턴 딕셔너리. 기존 구조에 맞게 변수명 조정.)
+(`_PII_PATTERNS`는 `list[tuple[str, re.Pattern, str, str]]` 구조. `.items()` 사용 불가 — tuple unpacking 필수.)
 
 - [ ] **Step 5: 테스트 통과 확인**
 
@@ -1422,52 +1423,62 @@ git commit -m "feat: PodcastReprocessingAgent 구현 — LLM + 정규식 기반 
 grep -n "async_post\|learning_node\|memory_write\|as_completed" src/graph/workflow.py | head -30
 ```
 
+> ℹ️ **PodcastReprocessingAgent는 포함하지 않는다** — 별도 엔드포인트(`POST /api/v1/episodes/{id}/reprocess`)로만 호출. 비동기 후처리에는 **EpisodeSummaryAgent만** 추가한다.
+
 - [ ] **Step 2: 실패 테스트 작성**
 
 `tests/graph/test_workflow.py`에 추가:
 
 ```python
-def test_workflow_registers_podcast_reprocessing_node():
-    """workflow에 podcast_reprocessing 노드가 등록되어야 한다."""
-    from src.graph.workflow import app
-    node_names = list(app.nodes.keys()) if hasattr(app, "nodes") else []
-    assert "podcast_reprocessing" in node_names, \
-        f"podcast_reprocessing 노드 미등록. 현재 등록 노드: {node_names}"
+@pytest.mark.asyncio
+async def test_async_post_processing_runs_episode_summary(mocker):
+    """async_post_processing_node가 episode_summary_node를 실행해야 한다."""
+    from src.graph.workflow import async_post_processing_node
+    mock_summary = mocker.patch(
+        "src.graph.workflow.episode_summary_node",
+        return_value={"episode_summary": "테스트 요약"},
+    )
+    mocker.patch("src.graph.workflow.learning_node", return_value={})
+    state = {
+        "final_output": '{"episode_id": "ep_1", "episode_title": "test", "segments": []}',
+        "user_id": "u1", "session_id": "s1", "memory_write": False,
+    }
+    await async_post_processing_node(state)
+    mock_summary.assert_called_once()
 ```
 
 - [ ] **Step 3: 테스트 실행 (실패 확인)**
 
 ```bash
-pytest tests/graph/test_workflow.py::test_workflow_registers_podcast_reprocessing_node -v
+pytest tests/graph/test_workflow.py::test_async_post_processing_runs_episode_summary -v
 ```
 
-Expected: FAIL
+Expected: FAIL — episode_summary_node 미정의
 
 - [ ] **Step 4: workflow.py 수정**
 
 ```python
-# 1. import 추가 (상단)
-from src.agents.podcast.podcast_reprocessing import PodcastReprocessingAgent
+# 1. import 추가 (상단, 기존 podcast 에이전트 import 근처)
+from src.agents.podcast.episode_summary import EpisodeSummaryAgent
 
-# 2. 노드 함수 추가 (기존 async_post_processing_node 근처)
-async def podcast_reprocessing_node(state: AgentState) -> dict[str, Any]:
+# 2. 노드 함수 추가 (기존 learning_node, async_post_processing_node 근처)
+async def episode_summary_node(state: AgentState) -> dict[str, Any]:
     """요청마다 새 인스턴스를 생성하여 동시 요청 간 상태를 격리한다."""
-    agent = PodcastReprocessingAgent()
+    agent = EpisodeSummaryAgent()
     return await agent.process(state)
 
-# 3. 노드 등록
-graph.add_node("podcast_reprocessing", podcast_reprocessing_node)
-
-# 4. 비동기 후처리에 통합 — 기존 as_completed 패턴 유지
-# 현재 async_post_processing_node의 tasks 리스트에 추가:
+# 3. async_post_processing_node의 tasks 리스트에 추가 — 기존 as_completed 패턴 유지
+# 현재 코드 (workflow.py:389):
+#   tasks = [asyncio.create_task(learning_node(state))]
+# 변경 후:
 tasks = [
     asyncio.create_task(learning_node(state)),
-    asyncio.create_task(podcast_reprocessing_node(state)),  # 신규 추가
+    asyncio.create_task(episode_summary_node(state)),  # 신규 추가
 ]
-# memory_write 플래그 분기 유지 (기존 코드 그대로)
+# memory_write 분기 유지 (기존 코드 그대로)
 ```
 
-> ⚠️ **주의: 비동기 패턴** — 이 프로젝트의 `async_post_processing_node`는 `asyncio.gather()` 대신 `asyncio.as_completed()` + `asyncio.wait_for()` 패턴을 사용한다. 반드시 기존 패턴을 따라야 한다.
+> ⚠️ **주의: 비동기 패턴** — `async_post_processing_node`는 `asyncio.gather()` 대신 `asyncio.as_completed()` + `asyncio.wait_for(timeout=_ASYNC_TIMEOUT)` 패턴을 사용한다. 기존 패턴을 반드시 따라야 하며, tasks 리스트에 `asyncio.create_task()` 형태로 추가한다.
 
 - [ ] **Step 5: 테스트 통과 확인**
 
@@ -1489,7 +1500,7 @@ Expected: PASS (535개 이상)
 
 ```bash
 git add src/graph/workflow.py tests/graph/test_workflow.py
-git commit -m "feat: workflow.py에 podcast_reprocessing 노드 등록 — 비동기 후처리 통합"
+git commit -m "feat: workflow.py에 episode_summary_node 비동기 후처리 통합"
 ```
 
 ---
@@ -1847,27 +1858,29 @@ Expected: `content_analyses` 테이블 포함
 - [ ] **A-3: 실패 테스트 작성**
 
 ```python
-@pytest.mark.asyncio
-async def test_content_analyzer_publishes_user_summary_only_option_a(mocker):
-    """[방안 A] ContentAnalyzerAgent가 user_id, session_id와 함께 user_summary만 publish해야 한다."""
-    mock_publish = mocker.AsyncMock(return_value=None)
-    mocker.patch("src.agents.podcast.content_analyzer.AgentDataPublisher.publish", mock_publish)
-    mocker.patch.object(
-        ContentAnalyzerAgent,
-        "call_llm_json",
-        return_value={
-            "main_theme": "직장 스트레스",
-            "sub_themes": ["번아웃"],
-            "user_summary": {"keywords": ["번아웃", "스트레스"], "summary": "많이 힘드셨군요."},
-            "target_duration": 4,
-            "narrative_structure": "reflection",
-        },
-    )
-    agent = ContentAnalyzerAgent()
-    await agent({"user_input": "직장 스트레스", "user_id": "u1", "session_id": "s1"})
+import pytest
+from unittest.mock import AsyncMock, patch
 
-    mock_publish.assert_called_once()
-    kwargs = mock_publish.call_args[1]
+@pytest.mark.asyncio
+async def test_content_analyzer_publishes_user_summary_only_option_a():
+    """[방안 A] ContentAnalyzerAgent가 user_id, session_id와 함께 user_summary만 publish해야 한다."""
+    from src.agents.podcast.content_analyzer import ContentAnalyzerAgent
+
+    mock_llm_return = {
+        "main_theme": "직장 스트레스",
+        "sub_themes": ["번아웃"],
+        "user_summary": {"keywords": ["번아웃", "스트레스"], "summary": "많이 힘드셨군요."},
+        "target_duration": 4,
+        "narrative_structure": "reflection",
+    }
+    agent = ContentAnalyzerAgent()
+    with patch.object(agent, "call_llm_json", new=AsyncMock(return_value=mock_llm_return)), \
+         patch("src.agents.podcast.content_analyzer.AgentDataPublisher") as mock_pub_cls:
+        mock_pub_cls.return_value.publish = AsyncMock(return_value=True)
+        await agent({"user_input": "직장 스트레스", "user_id": "u1", "session_id": "s1"})
+
+    mock_pub_cls.return_value.publish.assert_called_once()
+    kwargs = mock_pub_cls.return_value.publish.call_args.kwargs
     assert set(kwargs["data"].keys()) == {"keywords", "summary"}
     assert kwargs["user_id"] == "u1"
     assert kwargs["session_id"] == "s1"
@@ -1891,9 +1904,16 @@ await publisher.publish(
 )
 
 # 변경 후
+import uuid
+user_summary = validated_analysis.get("user_summary", {})
+content_id = f"ca_{uuid.uuid4().hex[:12]}"  # content_analyses PK 생성
 await publisher.publish(
     resource=RESOURCE_CONTENT_ANALYSIS,
-    data=validated_analysis.get("user_summary", {}),   # user_summary만
+    data={
+        "content_id": content_id,                          # PK — 테이블 PRIMARY KEY
+        "keywords": user_summary.get("keywords", []),
+        "summary": user_summary.get("summary", ""),
+    },
     user_id=state.get("user_id", ""),
     session_id=state.get("session_id", ""),
 )
@@ -1987,8 +2007,9 @@ async def test_episode_summary_returns_summary_text():
         "user_id": "user_1",
         "session_id": "sess_1",
     }
-    with patch.object(agent, "call_llm_json", new_callable=AsyncMock) as mock_llm:
-        mock_llm.return_value = {"summary_text": "직장 스트레스를 함께 풀어보는 에피소드입니다."}
+    with patch.object(agent, "call_llm_json", new=AsyncMock(return_value={"summary_text": "직장 스트레스를 함께 풀어보는 에피소드입니다."})), \
+         patch("src.agents.podcast.episode_summary.AgentDataPublisher") as mock_pub_cls:
+        mock_pub_cls.return_value.publish = AsyncMock(return_value=True)
         result = await agent.process(state)
     assert "episode_summary" in result
     assert isinstance(result["episode_summary"], str)
@@ -2058,11 +2079,15 @@ class EpisodeSummaryAgent(BaseAgent):
         )
         summary_text = llm_result.get("summary_text", "")
 
-        episode_id = state.get("script_draft", {}).get("episode_id", "")
+        # episode_id는 final_output JSON(PersonalizedScript)에 포함됨
+        # script_draft는 AgentState에 없으므로 script_data(이미 파싱)에서 꺼냄
+        episode_id = script_data.get("episode_id", "")
+        summary_id = f"summary_{episode_id}"  # episode_summaries PK
         publisher = AgentDataPublisher()
         await publisher.publish(
             resource=RESOURCE_EPISODE_SUMMARY,
             data={
+                "summary_id": summary_id,   # PK — 테이블 PRIMARY KEY
                 "summary_text": summary_text,
                 "episode_title": episode_title,
                 "episode_id": episode_id,
