@@ -21,9 +21,9 @@
 
 | 항목 | 변경 내용 | Task |
 |------|---------|------|
-| `podcast_episodes` 테이블 확장 | `primary_emotion`, `secondary_emotions`, `user_summary` 컬럼 추가 | Task 8 |
-| `_save_core_data()` 확장 | emotion_vectors + content_analysis.user_summary를 podcast_episodes에 함께 저장 | Task 8 |
-| ContentAnalyzerAgent `publisher.publish()` | **완전 삭제** — content_analyses 테이블 불필요. user_summary는 _save_core_data()로 통합 | Task 9 |
+| `podcast_episodes` 테이블 확장 | `primary_emotion`, `secondary_emotions` 컬럼 추가 | Task 8 |
+| `_save_core_data()` 확장 | emotion_vectors를 podcast_episodes에 함께 저장 | Task 8 |
+| ContentAnalyzerAgent `publisher.publish()` | **user_summary 필드만 전송** — content_analyses는 **1차 로딩 화면 전용 조기 저장** | Task 9 |
 | 비동기 후처리 | **EpisodeSummaryAgent 추가** — final_output 기반 요약 생성 후 episode_summaries 저장 | Task 11 |
 
 > ✅ EmotionAgent `publisher.publish()` — **변경 없음 (유지)**. emotion_logs는 상세 감정 기록용으로 유지. 화면용 감정 키워드는 Task 8에서 podcast_episodes로 별도 저장 경로 추가.
@@ -32,13 +32,33 @@
 
 > ✅ `PodcastReprocessingAgent` — **메인 파이프라인과 별개**. Backend 동의 이벤트 수신 시만 트리거.
 
-### 화면별 저장 구조 (분석 결과)
+### UX 로딩 플로우 (2단계 구조)
 
-| 화면 | 필요 데이터 | 저장 위치 | API |
-|:----:|-----------|---------|-----|
-| **화면 1** | `user_summary.keywords`, `user_summary.summary` | `podcast_episodes.user_summary` (JSON) | `GET /podcast_episodes/{id}` |
-| **화면 2** | 타이틀, 이미지, 에피소드 텍스트, 감정 키워드 2~3, summary | `podcast_episodes` + `podcast_segments` + `visualizations` | `GET /podcast_episodes/{id}` |
-| **화면 3** | 날짜, 감정 키워드 2~3, 타이틀, 에피소드 요약 | `podcast_episodes` JOIN `episode_summaries` | `GET /podcast_episodes?user_id=` |
+```
+사용자 입력 → SSE 연결
+    ↓
+[TIER 1 병렬 실행 중...]
+    ↓
+ContentAnalyzer 완료
+    → publisher.publish("content_analyses", {user_summary: {keywords, summary}})
+    → SSE: content_analyzer_complete 이벤트
+    → ✅ 1차 로딩 완료 → 프론트: 안내화면 표시 (화면 1)
+    ↓
+[TIER 2~4 계속 실행 중... 사용자는 화면 1을 보고 있음]
+    ↓
+사용자: "다음" 버튼 클릭 → 2차 로딩 시작
+    ↓
+TIER 4 완료 → _save_core_data() → SSE: result 이벤트
+    → ✅ 2차 로딩 완료 → 프론트: 에피소드 결과 화면 (화면 2)
+```
+
+### 화면별 저장 구조
+
+| 화면 | 필요 데이터 | 저장 위치 | 타이밍 |
+|:----:|-----------|---------|--------|
+| **화면 1 (1차 로딩 후)** | `user_summary.keywords`, `user_summary.summary` | `content_analyses` (TIER 1 완료 직후) | 빠름 ⚡ |
+| **화면 2 (2차 로딩 후)** | 타이틀, 이미지, 에피소드 텍스트, 감정 키워드 2~3 | `podcast_episodes` + `podcast_segments` + `visualizations` | TIER 4 완료 후 |
+| **화면 3 (에피소드 목록)** | 날짜, 감정 키워드 2~3, 타이틀, 에피소드 요약 | `podcast_episodes` JOIN `episode_summaries` | 비동기 후처리 완료 후 |
 
 ---
 
@@ -71,7 +91,7 @@
 |:-------:|------|------|:----:|
 | **Safety** | `user_input` · `intent.flags.risk_flag` | `safety_flags` · `risk_level` · `risk_score` · `next_step`? | — |
 | **Emotion** | `user_input` · `intent` | `emotion_vectors` | 💾 `emotion_logs` *(유지)* |
-| **Content Analyzer** | `user_input` · `intent` | `content_analysis` | ~~💾 content_analyses~~ → **삭제 (Task 9)** — user_summary는 _save_core_data()로 통합 |
+| **Content Analyzer** | `user_input` · `intent` | `content_analysis` | 💾 `content_analyses` (**user_summary only** — 1차 로딩 화면 전용, Task 9 변경) |
 | **Podcast Reasoning** | `user_input` · `user_id` · `intent` · `execution_plan` · `session_id` | `reasoning_result` · `memory_results`? · `knowledge_results`? | 💾 Neo4j + `graph_nodes` |
 
 > ⚡ **CRISIS 선점:** Safety가 `next_step="crisis_response"` 설정 → 🚨 Crisis Response 즉시 출력, 이하 TIER 전체 스킵
@@ -103,7 +123,7 @@
 
 ---
 
-💾 **`_save_core_data()`** (동기 — 응답 반환 전) → `podcast_episodes`(+감정컬럼+user_summary) + `podcast_segments` · `visualizations` *(Task 8 확장)*
+💾 **`_save_core_data()`** (동기 — 응답 반환 전) → `podcast_episodes`(+감정컬럼) + `podcast_segments` · `visualizations` *(Task 8 확장)*
 
 📤 **`SlimPodcastResponse`** → `episode_id` · `session_id` · `safety_alert`
 
@@ -138,22 +158,26 @@
 
 > `POST /api/v1/episodes/stream` SSE 연결 후 이벤트 순서
 
-| 순서 | SSE 이벤트 | 주요 데이터 | 비고 |
-|:----:|-----------|-----------|------|
-| 1 | `connected` | — | SSE 연결 성공 |
+| 순서 | SSE 이벤트 | 주요 데이터 | 프론트 동작 |
+|:----:|-----------|-----------|-----------|
+| 1 | `connected` | — | SSE 연결 성공, 로딩 스피너 시작 |
 | 2 | `tier_start` | `agents: ["safety","emotion","content_analyzer","podcast_reasoning"]` | TIER 1 Fan-out 시작 |
-| 3 | `agent_complete` × N | `{tier, agent, elapsed_ms}` | 각 에이전트 완료마다 발행 |
-| 4 | `tier_end` | — | TIER 1 전체 완료 |
-| 5 | *(TIER 2~4 진행 중)* | — | Script 생성 · 검증 · 개인화 |
-| 6 | **`result`** ⭐ | `{ episode_id, session_id, safety_alert }` | **SlimPodcastResponse — 로딩 완료 트리거 (이미 저장됨)** |
-| 7 | `done` | — | SSE 연결 종료 |
+| 3 | `agent_complete` × N | `{tier, agent, elapsed_ms}` | 각 에이전트 완료 알림 |
+| 4 | **`content_ready`** ⭐ | `{ session_id, content_analysis_id }` | **✅ 1차 로딩 완료** → `GET /content_analyses/{id}` 조회 → **화면 1 (안내화면) 표시** |
+| 5 | *(TIER 2~4 진행 중)* | — | 사용자가 화면 1 보는 동안 파이프라인 계속 실행 |
+| 6 | *(사용자 "다음" 클릭)* | — | **2차 로딩 시작** (result 이벤트 대기) |
+| 7 | **`result`** ⭐ | `{ episode_id, session_id, safety_alert }` | **✅ 2차 로딩 완료** → `GET /podcast_episodes/{id}` 조회 → **화면 2 표시** |
+| 8 | `done` | — | SSE 연결 종료 |
 
-**`result` 이벤트 수신 후 — Backend GET API 호출**
+> ℹ️ `content_ready` 이벤트는 ContentAnalyzer의 `publisher.publish()` 완료 직후 Backend가 SSE로 발행. ContentAnalyzer가 TIER 1 에이전트 중 가장 먼저 완료될 가능성 높음 (Haiku 모델, 단순 분석).
 
-| Backend API | 조회 데이터 | 사용 화면 |
-|------------|-----------|---------|
-| `GET /podcast_episodes/{episode_id}` | 타이틀 · 감정 타이틀 · 최종 내용 · 이미지 | **에피소드 결과 화면 (우선)** |
-| `GET /graph_nodes?user_id=` | 누적 EMA 그래프 | 그래프 화면 |
+**이벤트 수신 후 Backend GET API 호출**
+
+| 이벤트 | Backend API | 조회 데이터 | 화면 |
+|-------|------------|-----------|------|
+| `content_ready` | `GET /content_analyses/{id}` | `user_summary.keywords` · `user_summary.summary` | **화면 1 — 안내화면 (1차 로딩 완료)** |
+| `result` | `GET /podcast_episodes/{episode_id}` | 타이틀 · 감정 키워드 · 텍스트 · 이미지 | **화면 2 — 에피소드 결과 (2차 로딩 완료)** |
+| *(별도 조회)* | `GET /graph_nodes?user_id=` | 누적 EMA 그래프 | 그래프 화면 |
 
 ### 1-3. 에이전트별 입출력 데이터 상세 명세
 
@@ -306,17 +330,25 @@ publisher.publish(
 
 > ⚠️ **CA-1 이슈 (Plan #22 Task 4):** `user_summary`, `key_messages`는 LLM 출력 pass-through. `_validate_and_correct()`에서 타입·구조 검증 미적용 상태.
 
-**publisher.publish() 저장 (L114~121) — Task 9에서 완전 삭제 예정**
+**publisher.publish() 저장 (L114~121) — Task 9에서 user_summary만 전송으로 변경**
 ```python
-# [Task 9: 삭제 대상 — content_analyses 테이블 불필요]
-# publisher = AgentDataPublisher()
-# await publisher.publish(
-#   resource="content_analyses",
-#   data=validated_analysis,
-#   user_id=..., session_id=...
-# )
+# [현재 코드 — Task 9 변경 전]
+publisher = AgentDataPublisher()
+await publisher.publish(
+  resource="content_analyses",
+  data=validated_analysis,        # 전체 content_analysis 전송 (변경 필요)
+  user_id=..., session_id=...
+)
+
+# [Task 9 변경 후]
+publisher = AgentDataPublisher()
+await publisher.publish(
+  resource="content_analyses",
+  data=validated_analysis.get("user_summary", {}),  # user_summary 필드만
+  user_id=..., session_id=...
+)
 ```
-> ✏️ **삭제 이유:** content_analyses 테이블 자체가 불필요. `user_summary`는 `_save_core_data()`를 통해 `podcast_episodes.user_summary` 컬럼에 저장 (Task 8). 나머지 분석 필드(`main_theme`, `sub_themes` 등)는 내부 파이프라인 전용 — 별도 저장 불필요.
+> ✏️ **변경 이유:** `content_analyses` 테이블은 **화면 1(안내화면) 전용 조기 저장**으로 활용. TIER 1이 완료되는 시점에 `user_summary`를 즉시 저장하여 Backend가 `content_ready` SSE 이벤트를 발행할 수 있게 함. `main_theme`, `sub_themes` 등 나머지 분석 필드는 내부 파이프라인 전용 — 저장 불필요.
 
 **폴백 반환:**
 ```python
@@ -696,17 +728,27 @@ SaveRequest(
 | 저장 주체 | 리소스 | 상수 | 저장 시점 | 동기/비동기 | 프론트 사용 여부 |
 |----------|--------|------|---------|-----------|--------------|
 | EmotionAgent (L138) | emotion_logs | RESOURCE_EMOTION_LOG | TIER 1 병렬 중 | 비동기 | 상세 감정 로그 *(유지)* |
-| ~~ContentAnalyzerAgent (L114)~~ | ~~content_analyses~~ | ~~RESOURCE_CONTENT_ANALYSIS~~ | ~~TIER 1 병렬 중~~ | ~~비동기~~ | **Task 9 삭제** |
+| ContentAnalyzerAgent (L114) | content_analyses | RESOURCE_CONTENT_ANALYSIS | TIER 1 병렬 중 | 비동기 | ✅ **화면 1** — 1차 로딩 완료 즉시 (`user_summary` only, Task 9 변경) |
 | PodcastReasoningAgent | graph_nodes (PUT) | RESOURCE_GRAPH_NODES | TIER 1 완료 후 | 비동기 | ✅ 그래프 화면 |
-| routes/podcasts.py | podcast_episodes | RESOURCE_PODCAST_EPISODE | TIER 4 완료 후 | **동기** | ✅ 화면 1, 2 (Task 8 확장: +감정컬럼 +user_summary) |
+| routes/podcasts.py | podcast_episodes | RESOURCE_PODCAST_EPISODE | TIER 4 완료 후 | **동기** | ✅ **화면 2** (Task 8 확장: +감정컬럼) |
 | routes/podcasts.py | visualizations | RESOURCE_VISUALIZATION | TIER 4 완료 후 | **동기** | ✅ 화면 2 이미지 |
-| EpisodeSummaryAgent [신규] | episode_summaries | RESOURCE_EPISODE_SUMMARY | 비동기 후처리 | 비동기 | ✅ 화면 3 요약 |
+| EpisodeSummaryAgent [신규] | episode_summaries | RESOURCE_EPISODE_SUMMARY | 비동기 후처리 | 비동기 | ✅ **화면 3** 요약 |
 | LearningAgent | learning | RESOURCE_LEARNING | 비동기 후처리 | 비동기 | ❌ 내부용 |
 | PodcastReprocessingAgent [신규] | podcast_episodes_anonymized | RESOURCE_PODCAST_EPISODE_ANONYMIZED | Backend 동의 이벤트 수신 시 (별도) | 비동기 | ❌ 내부용 |
 
 ### 1-5. 프론트엔드 화면별 데이터 컬럼 매핑
 
-#### [우선 구현] 에피소드 결과 화면
+#### [화면 1] 안내화면 — 1차 로딩 완료 직후
+> ContentAnalyzer 완료 → `publisher.publish()` → `content_ready` SSE → `GET /content_analyses/{id}` 조회
+
+| 화면 요소 | DB 컬럼 | AgentState 출처 |
+|---------|--------|---------------|
+| **감정 키워드 태그** | `content_analyses.data.user_summary.keywords` | `content_analysis.user_summary.keywords` |
+| **공감 안내 메시지** | `content_analyses.data.user_summary.summary` | `content_analysis.user_summary.summary` |
+
+> ℹ️ 화면 1은 "지금 어떤 주제로 에피소드가 만들어지는지" 사용자에게 미리 알려주는 안내화면. 이 화면이 나오는 동안 TIER 2~4 파이프라인은 백그라운드에서 계속 실행 중.
+
+#### [화면 2] 에피소드 결과 화면 — 2차 로딩 완료 후
 > 파이프라인 완료 → `_save_core_data()` 자동 저장 → `result` SSE → `GET /podcast_episodes/{episode_id}` 조회
 
 | 화면 요소 | DB 컬럼 | AgentState 출처 |
@@ -717,7 +759,7 @@ SaveRequest(
 | **이미지** | `cover_image_url` | `visual_data.image_url` |
 | 경고 배너 | — | `safety_alert` (SlimPodcastResponse) |
 
-#### [차후 구현] 에피소드 목록 화면
+#### [화면 3] 에피소드 목록 화면 — 차후 구현
 > Backend DB — `podcast_episodes` JOIN `episode_summaries`
 
 | DB 컬럼 | 출처 | 화면 용도 |
@@ -787,9 +829,9 @@ SaveRequest(
 | **신규** | `src/agents/podcast/episode_summary.py` | EpisodeSummaryAgent 구현 | Task 11 |
 | **신규** | `prompts/podcast/episode_summary.yaml` | 요약 에이전트 프롬프트 | Task 11 |
 | **신규** | `tests/agents/test_episode_summary.py` | 요약 에이전트 테스트 | Task 11 |
-| **신규** | `dev/local_db/mysql/migrations/003_add_emotion_usersummary_to_episodes.sql` | `podcast_episodes`에 감정 컬럼 + user_summary 컬럼 추가 | Task 8 |
-| **수정** | `src/api/routes/podcasts.py` | `_save_core_data()`에 감정 데이터 + user_summary 저장 추가 | Task 8 |
-| **수정** | `src/agents/podcast/content_analyzer.py` | `publisher.publish()` 완전 삭제 | Task 9 |
+| **신규** | `dev/local_db/mysql/migrations/003_add_emotion_to_episodes.sql` | `podcast_episodes`에 감정 컬럼 추가 | Task 8 |
+| **수정** | `src/api/routes/podcasts.py` | `_save_core_data()`에 감정 데이터 저장 추가 | Task 8 |
+| **수정** | `src/agents/podcast/content_analyzer.py` | `publisher.publish()` — `user_summary` 필드만 전송하도록 변경 | Task 9 |
 | **신규** | `docs/architecture/AGENT_IO_DATAFLOW.md` | 이 계획서 내용을 별도 문서로 추출 | Task 7 |
 
 ---
@@ -1601,53 +1643,52 @@ git commit -m "docs: AGENT_IO_DATAFLOW.md 작성 + PLAN_INDEX #25 갱신"
 
 ---
 
-## Task 8: podcast_episodes 감정·user_summary 컬럼 추가 + _save_core_data() 확장
+## Task 8: podcast_episodes 감정 컬럼 추가 + _save_core_data() 확장
 
 **Files:**
-- Create: `dev/local_db/mysql/migrations/003_add_emotion_usersummary_to_episodes.sql`
+- Create: `dev/local_db/mysql/migrations/003_add_emotion_to_episodes.sql`
 - Modify: `src/api/routes/podcasts.py`
 
-**목적:** 화면 1, 2, 3에서 필요한 감정 키워드 + user_summary를 단일 podcast_episodes 조회로 제공.
+**목적:** 화면 2(에피소드 결과)와 화면 3(목록)에서 필요한 감정 키워드를 `podcast_episodes` 단일 조회로 제공.
+화면 1용 user_summary는 ContentAnalyzer publisher → content_analyses 테이블 (Task 9) 에서 별도 처리.
 
 - [ ] **Step 1: 현재 _save_core_data() 저장 필드 확인**
 
 ```bash
-grep -n "episode_title\|primary_emotion\|user_summary\|emotion_vectors" src/api/routes/podcasts.py | head -20
+grep -n "episode_title\|primary_emotion\|emotion_vectors" src/api/routes/podcasts.py | head -20
 ```
 
 - [ ] **Step 2: DB 마이그레이션 작성**
 
-`dev/local_db/mysql/migrations/003_add_emotion_usersummary_to_episodes.sql`:
+`dev/local_db/mysql/migrations/003_add_emotion_to_episodes.sql`:
 
 ```sql
--- Migration 003: podcast_episodes 감정·user_summary 컬럼 추가
+-- Migration 003: podcast_episodes 감정 컬럼 추가
 -- Date: 2026-04-13
+-- Purpose: 화면 2(에피소드 결과), 화면 3(목록)에서 감정 키워드 표시용
 ALTER TABLE podcast_episodes
-    ADD COLUMN primary_emotion  VARCHAR(100)  DEFAULT 'neutral'     COMMENT 'Emotion Agent primary_emotion',
-    ADD COLUMN secondary_emotions JSON        DEFAULT '[]'          COMMENT 'secondary_emotions[0:2]',
-    ADD COLUMN user_summary     JSON          DEFAULT '{}'          COMMENT 'ContentAnalyzer user_summary {keywords, summary}';
+    ADD COLUMN primary_emotion    VARCHAR(100)  DEFAULT 'neutral'  COMMENT 'Emotion Agent primary_emotion',
+    ADD COLUMN secondary_emotions JSON          DEFAULT '[]'       COMMENT 'secondary_emotions[0:2]';
 ```
 
 - [ ] **Step 3: 실패 테스트 작성**
 
 ```python
-def test_save_core_data_includes_emotion_and_user_summary(mocker):
-    """_save_core_data()가 podcast_episodes에 primary_emotion, secondary_emotions, user_summary를 포함해야 한다."""
+def test_save_core_data_includes_emotion_columns(mocker):
+    """_save_core_data()가 podcast_episodes에 primary_emotion, secondary_emotions를 포함해야 한다."""
     mock_client = mocker.AsyncMock()
     state = {
         "final_output": '{"episode_id":"ep_1","episode_title":"테스트","total_duration":5,"segments":[],"key_insights":[],"themes":[]}',
-        "emotion_vectors": {"primary_emotion": "anxiety", "secondary_emotions": ["sadness", "fatigue"]},
+        "emotion_vectors": {"primary_emotion": "anxiety", "secondary_emotions": ["sadness", "fatigue", "anger"]},
         "content_analysis": {"user_summary": {"keywords": ["번아웃"], "summary": "힘드셨군요."}},
         "visual_data": {},
         "validation_result": {"overall_score": 0.9},
         "intent": {},
         "iteration_count": 0,
     }
-    # _save_core_data 호출 시 저장 데이터에 신규 필드 포함 확인
     saved_data = await call_save_core_data(state, mock_client)
     assert saved_data["primary_emotion"] == "anxiety"
-    assert saved_data["secondary_emotions"] == ["sadness", "fatigue"]
-    assert saved_data["user_summary"]["keywords"] == ["번아웃"]
+    assert saved_data["secondary_emotions"] == ["sadness", "fatigue"]  # [0:2] 슬라이싱 확인
 ```
 
 - [ ] **Step 4: 테스트 실행 (실패 확인)**
@@ -1661,12 +1702,11 @@ pytest tests/api/test_save_core_data.py -v
 `src/api/routes/podcasts.py`의 `_save_core_data()` 내 podcast_episodes 저장 dict에 추가:
 
 ```python
-# 기존 저장 dict에 아래 3개 필드 추가
+# 기존 저장 dict에 아래 2개 필드 추가
 episode_data = {
     # ... 기존 필드 유지 ...
     "primary_emotion": final_state.get("emotion_vectors", {}).get("primary_emotion", "neutral"),
     "secondary_emotions": final_state.get("emotion_vectors", {}).get("secondary_emotions", [])[:2],
-    "user_summary": final_state.get("content_analysis", {}).get("user_summary", {}),
 }
 ```
 
@@ -1680,36 +1720,59 @@ pytest tests/api/ -v
 
 ```bash
 git add src/api/routes/podcasts.py \
-    dev/local_db/mysql/migrations/003_add_emotion_usersummary_to_episodes.sql \
+    dev/local_db/mysql/migrations/003_add_emotion_to_episodes.sql \
     tests/api/test_save_core_data.py
-git commit -m "feat: podcast_episodes에 감정 컬럼 + user_summary 추가, _save_core_data() 확장 (화면 1,2,3 단일 API 지원)"
+git commit -m "feat: podcast_episodes 감정 컬럼 추가, _save_core_data() 확장 (화면 2,3 감정 키워드 지원)"
 ```
 
 ---
 
-## Task 9: ContentAnalyzerAgent publisher.publish() 완전 삭제
+## Task 9: ContentAnalyzerAgent publisher.publish() — user_summary 필드만 전송으로 변경
 
 **Files:**
 - Modify: `src/agents/podcast/content_analyzer.py`
 
-**목적:** content_analyses 테이블 불필요 — user_summary는 Task 8에서 podcast_episodes로 통합됨.
+**목적:** 1차 로딩 화면(화면 1) 전용 조기 저장. TIER 1 완료 즉시 `user_summary`만 backend에 전송 → Backend가 `content_ready` SSE 이벤트 발행 → 프론트 화면 1 표시.
+전체 `content_analysis`(main_theme, sub_themes 등)는 내부 파이프라인 전용이므로 저장 불필요.
 
-- [ ] **Step 1: 삭제 대상 코드 확인**
+- [ ] **Step 1: 현재 publisher 코드 위치 확인**
 
 ```bash
-grep -n "publisher\|AgentDataPublisher\|RESOURCE_CONTENT" src/agents/podcast/content_analyzer.py
+grep -n "publisher\|RESOURCE_CONTENT\|validated_analysis" src/agents/podcast/content_analyzer.py
 ```
 
 - [ ] **Step 2: 실패 테스트 작성**
 
 ```python
-def test_content_analyzer_does_not_call_publisher(mocker):
-    """Task 9 이후: ContentAnalyzerAgent가 publisher.publish()를 호출하지 않아야 한다."""
-    mock_publish = mocker.patch("src.agents.podcast.content_analyzer.AgentDataPublisher")
+@pytest.mark.asyncio
+async def test_content_analyzer_publishes_user_summary_only(mocker):
+    """ContentAnalyzerAgent가 publisher.publish()에 user_summary 필드만 전달해야 한다."""
+    mock_publish = mocker.AsyncMock(return_value=None)
+    mocker.patch(
+        "src.agents.podcast.content_analyzer.AgentDataPublisher.publish",
+        mock_publish,
+    )
+    # LLM 호출 모킹 — user_summary 포함 응답 반환
+    mocker.patch.object(
+        ContentAnalyzerAgent,
+        "call_llm_json",
+        return_value={
+            "main_theme": "직장 스트레스",
+            "sub_themes": ["번아웃", "관계"],
+            "user_summary": {"keywords": ["번아웃", "스트레스"], "summary": "많이 힘드셨군요."},
+            "target_duration": 4,
+            "narrative_structure": "reflection",
+        },
+    )
     agent = ContentAnalyzerAgent()
-    state = {"user_input": "직장에서 스트레스를 받았습니다"}
-    # ... await agent(state)
-    mock_publish.assert_not_called()
+    state = {"user_input": "직장에서 스트레스를 받았습니다", "user_id": "u1", "session_id": "s1"}
+    await agent(state)
+
+    # publish 호출 확인 — data에 user_summary 필드만 포함
+    mock_publish.assert_called_once()
+    call_kwargs = mock_publish.call_args[1]  # keyword arguments
+    assert set(call_kwargs["data"].keys()) == {"keywords", "summary"}
+    assert call_kwargs["data"]["keywords"] == ["번아웃", "스트레스"]
 ```
 
 - [ ] **Step 3: 테스트 실행 (실패 확인)**
@@ -1718,12 +1781,12 @@ def test_content_analyzer_does_not_call_publisher(mocker):
 pytest tests/agents/podcast/test_content_analyzer_publisher.py -v
 ```
 
-- [ ] **Step 4: publisher 관련 코드 삭제 (L114~121)**
+- [ ] **Step 4: publisher data를 user_summary만 전송하도록 변경 (L114~121)**
 
-`src/agents/podcast/content_analyzer.py`에서 아래 블록 삭제:
+`src/agents/podcast/content_analyzer.py`에서 `publisher.publish()` 호출 수정:
 
 ```python
-# 삭제 대상 (L114~121)
+# 변경 전 (L114~121):
 publisher = AgentDataPublisher()
 await publisher.publish(
     resource=RESOURCE_CONTENT_ANALYSIS,
@@ -1731,14 +1794,18 @@ await publisher.publish(
     user_id=state.get("user_id", ""),
     session_id=state.get("session_id", ""),
 )
+
+# 변경 후:
+publisher = AgentDataPublisher()
+await publisher.publish(
+    resource=RESOURCE_CONTENT_ANALYSIS,
+    data=validated_analysis.get("user_summary", {}),  # user_summary 필드만
+    user_id=state.get("user_id", ""),
+    session_id=state.get("session_id", ""),
+)
 ```
 
-import도 정리:
-```python
-# 삭제 대상 import
-from src.api.backend_resources import RESOURCE_CONTENT_ANALYSIS
-from src.api.publisher import AgentDataPublisher
-```
+> ℹ️ `RESOURCE_CONTENT_ANALYSIS`, `AgentDataPublisher` import는 그대로 유지.
 
 - [ ] **Step 5: 테스트 통과 확인**
 
@@ -1750,7 +1817,7 @@ pytest tests/agents/podcast/ -v
 
 ```bash
 git add src/agents/podcast/content_analyzer.py tests/agents/podcast/test_content_analyzer_publisher.py
-git commit -m "feat: ContentAnalyzer publisher 완전 삭제 — content_analyses 테이블 불필요, user_summary는 podcast_episodes 통합"
+git commit -m "feat: ContentAnalyzer publisher — user_summary 필드만 전송 (1차 로딩 화면 전용 조기 저장)"
 ```
 
 ---
