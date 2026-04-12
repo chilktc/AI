@@ -10,6 +10,25 @@
 
 ---
 
+## ⚠️ 핵심 통신 원칙 (변경 불가)
+
+```
+Frontend ──────────────────────────────── Backend (app-3:8080)
+                SSE 연결 / REST 조회               ↕  HTTP
+                                          AI 서버 (app-2:8000)
+```
+
+- **AI 서버는 Frontend와 절대 직접 통신하지 않는다.**
+- AI 서버 → Backend: `BackendClient.save()` (HTTP POST) — 데이터 저장 요청
+- Backend → Frontend: SSE 이벤트 + REST GET — 데이터 전달
+- SSE 연결은 Frontend ↔ Backend 사이에만 존재한다.
+- **세션 격리**: 모든 저장/조회는 `user_id` + `session_id` 조합으로 라우팅. 다른 사용자 데이터 섞임 방지.
+
+> `content_ready` SSE 이벤트 발행 흐름:
+> AI 서버가 ContentAnalyzer 결과를 `BackendClient.save()`로 전달 → Backend가 저장 후 해당 `session_id`의 SSE 연결에 `content_ready` 이벤트 발행 → Frontend 수신
+
+---
+
 ## 중요: 변경하지 않는 범위
 
 | 항목 | 이유 |
@@ -21,9 +40,11 @@
 
 | 항목 | 변경 내용 | Task |
 |------|---------|------|
-| `podcast_episodes` 테이블 확장 | `primary_emotion`, `secondary_emotions` 컬럼 추가 | Task 8 |
+| `podcast_episodes` 테이블 | `primary_emotion`, `secondary_emotions` 컬럼 추가 — **init.sql 직접 수정** | Task 8 |
+| `podcast_segments` 테이블 | `user_id`, `session_id` 컬럼 추가 (유저 격리) — **init.sql 직접 수정** | Task 8 |
 | `_save_core_data()` 확장 | emotion_vectors를 podcast_episodes에 함께 저장 | Task 8 |
-| ContentAnalyzerAgent `publisher.publish()` | **user_summary 필드만 전송** — content_analyses는 **1차 로딩 화면 전용 조기 저장** | Task 9 |
+| ContentAnalyzerAgent `publisher.publish()` | **user_summary 필드만 전송** — 저장 방식 미결 (Task 9 방안 A/B 참고) | Task 9 |
+| `episode_summaries` 테이블 신규 추가 | **init.sql 직접 수정** (migrations 파일 미사용) | Task 11 |
 | 비동기 후처리 | **EpisodeSummaryAgent 추가** — final_output 기반 요약 생성 후 episode_summaries 저장 | Task 11 |
 
 > ✅ EmotionAgent `publisher.publish()` — **변경 없음 (유지)**. emotion_logs는 상세 감정 기록용으로 유지. 화면용 감정 키워드는 Task 8에서 podcast_episodes로 별도 저장 경로 추가.
@@ -158,25 +179,34 @@ TIER 4 완료 → _save_core_data() → SSE: result 이벤트
 
 > `POST /api/v1/episodes/stream` SSE 연결 후 이벤트 순서
 
-| 순서 | SSE 이벤트 | 주요 데이터 | 프론트 동작 |
-|:----:|-----------|-----------|-----------|
-| 1 | `connected` | — | SSE 연결 성공, 로딩 스피너 시작 |
-| 2 | `tier_start` | `agents: ["safety","emotion","content_analyzer","podcast_reasoning"]` | TIER 1 Fan-out 시작 |
-| 3 | `agent_complete` × N | `{tier, agent, elapsed_ms}` | 각 에이전트 완료 알림 |
-| 4 | **`content_ready`** ⭐ | `{ session_id, content_analysis_id }` | **✅ 1차 로딩 완료** → `GET /content_analyses/{id}` 조회 → **화면 1 (안내화면) 표시** |
-| 5 | *(TIER 2~4 진행 중)* | — | 사용자가 화면 1 보는 동안 파이프라인 계속 실행 |
-| 6 | *(사용자 "다음" 클릭)* | — | **2차 로딩 시작** (result 이벤트 대기) |
-| 7 | **`result`** ⭐ | `{ episode_id, session_id, safety_alert }` | **✅ 2차 로딩 완료** → `GET /podcast_episodes/{id}` 조회 → **화면 2 표시** |
-| 8 | `done` | — | SSE 연결 종료 |
+**SSE 발행 주체: Backend** — AI 서버가 아닌 Backend가 SSE 이벤트를 관리·발행한다.
+Backend는 `session_id` + `user_id`로 클라이언트 연결을 구분하여 다른 사용자 이벤트가 섞이지 않도록 라우팅한다.
 
-> ℹ️ `content_ready` 이벤트는 ContentAnalyzer의 `publisher.publish()` 완료 직후 Backend가 SSE로 발행. ContentAnalyzer가 TIER 1 에이전트 중 가장 먼저 완료될 가능성 높음 (Haiku 모델, 단순 분석).
+| 순서 | 발행 주체 | SSE 이벤트 | 주요 데이터 | 프론트 동작 |
+|:----:|---------|-----------|-----------|-----------|
+| 1 | Backend | `connected` | `{session_id, user_id}` | SSE 연결 성공, 로딩 스피너 시작 |
+| 2 | Backend | `tier_start` | `{agents: [...], session_id}` | TIER 1 Fan-out 시작 알림 |
+| 3 | Backend | `agent_complete` × N | `{tier, agent, elapsed_ms, session_id}` | 진행 표시 |
+| 4 | **Backend** | **`content_ready`** ⭐ | (Task 9 방안 A/B에 따라 상이 — 아래 참고) | **✅ 1차 로딩 완료** → **화면 1 (안내화면) 표시** |
+| 5 | — | *(TIER 2~4 진행 중)* | — | 사용자가 화면 1 보는 동안 파이프라인 계속 실행 |
+| 6 | — | *(사용자 "다음" 클릭)* | — | **2차 로딩 시작** (result 이벤트 대기) |
+| 7 | **Backend** | **`result`** ⭐ | `{episode_id, session_id, user_id, safety_alert}` | **✅ 2차 로딩 완료** → `GET /podcast_episodes/{id}` 조회 → **화면 2 표시** |
+| 8 | Backend | `done` | `{session_id}` | SSE 연결 종료 |
 
-**이벤트 수신 후 Backend GET API 호출**
+> ℹ️ `content_ready` 트리거: AI 서버가 ContentAnalyzer 결과를 `BackendClient.save()` 전송 → Backend 수신 후 해당 `session_id`의 SSE 커넥션에 `content_ready` 발행.
+
+**`content_ready` 이벤트 페이로드 — Task 9 방안에 따라 결정**
+
+| 방안 | `content_ready` 페이로드 | Frontend 동작 |
+|:----:|---------|---------|
+| **A. 테이블 저장** | `{session_id, user_id, content_id}` | `GET /content_analyses/{id}?user_id=` 조회 |
+| **B. SSE-only** | `{session_id, user_id, user_summary: {keywords, summary}}` | 페이로드 직접 렌더링, GET 불필요 |
+
+**`result` 이벤트 수신 후 — Backend GET API 호출**
 
 | 이벤트 | Backend API | 조회 데이터 | 화면 |
 |-------|------------|-----------|------|
-| `content_ready` | `GET /content_analyses/{id}` | `user_summary.keywords` · `user_summary.summary` | **화면 1 — 안내화면 (1차 로딩 완료)** |
-| `result` | `GET /podcast_episodes/{episode_id}` | 타이틀 · 감정 키워드 · 텍스트 · 이미지 | **화면 2 — 에피소드 결과 (2차 로딩 완료)** |
+| `result` | `GET /podcast_episodes/{episode_id}?user_id=` | 타이틀 · 감정 키워드 · 텍스트 · 이미지 | **화면 2 — 에피소드 결과 (2차 로딩 완료)** |
 | *(별도 조회)* | `GET /graph_nodes?user_id=` | 누적 EMA 그래프 | 그래프 화면 |
 
 ### 1-3. 에이전트별 입출력 데이터 상세 명세
@@ -801,14 +831,31 @@ SaveRequest(
 | risk_level, risk_score | Intent Classifier + Safety | 라우팅/검증 미활용 | 유지 (향후 활용 검토) |
 | execution_plan | Intent Classifier (불명확) | PodcastReasoning만 읽음 | 유지 |
 
-### 1-7. DB 스키마 불일치 현황
+### 1-7. DB 스키마 현황 및 수정 계획
 
-| 테이블 | 컬럼 | 문제 | 권장 조치 |
-|--------|------|------|---------|
-| sessions | turn_count | init.sql 정의, 코드 미사용 | 유지 (대화모드 미구현이므로 현재 불필요) |
-| emotion_logs | turn_id | init.sql 정의, 코드 미사용 | 유지 |
-| emotion_logs | arousal | DATA_SCHEMA.md "미포함"이나 실제 EmotionLogEntry에 포함 | DATA_SCHEMA.md 문서 수정 |
-| user_graph_nodes/edges | — | MySQL init.sql 없음 | Backend팀 구현 필요 |
+**현재 init.sql 테이블 목록:** `users`, `sessions`, `emotion_logs`, `podcast_episodes`, `podcast_segments`, `learning_patterns`, `visualization_meta`
+
+#### 불일치·누락 현황
+
+| 테이블 | 컬럼/이슈 | 문제 | 조치 |
+|--------|---------|------|------|
+| `podcast_episodes` | `primary_emotion`, `secondary_emotions` 누락 | 화면 2, 3 감정 키워드 표시 불가 | **Task 8: init.sql 직접 추가** |
+| `podcast_segments` | `user_id`, `session_id` 누락 | episode_id로만 추적 가능 → 유저별 세그먼트 직접 조회 불가, 혼선 위험 | **Task 8: init.sql 직접 추가** |
+| `visualization_meta` | 리소스명 불일치 | init.sql = `visualization_meta`, 코드 상수 = `visualizations` | Backend팀 확인 필요 |
+| `episode_summaries` | 테이블 없음 | EpisodeSummaryAgent 저장 불가 | **Task 11: init.sql 직접 추가** |
+| `sessions` | `turn_count` | 코드 미사용 | 유지 (대화모드 미구현) |
+| `emotion_logs` | `turn_id` | 코드 미사용 | 유지 |
+| `emotion_logs` | `arousal` | DATA_SCHEMA.md에 "미포함"으로 잘못 기재 | DATA_SCHEMA.md 문서 수정 |
+| `user_graph_nodes/edges` | MySQL init.sql 없음 | Backend팀 구현 대상 | Backend팀 구현 필요 |
+
+#### content_analyses 테이블 — Task 9 방안에 따라 결정
+
+| 방안 | 테이블 | init.sql 변경 |
+|:----:|--------|-------------|
+| **A. 테이블 저장** | `content_analyses` 신규 추가 | `user_id`, `session_id`, `episode_id` 포함 (격리 보장) |
+| **B. SSE-only** | 테이블 없음 | init.sql 변경 없음 |
+
+> **결정 후 Task 9 해당 방안만 실행.**
 
 ---
 
@@ -817,22 +864,22 @@ SaveRequest(
 | 상태 | 파일 | 변경 내용 | Task |
 |------|------|---------|------|
 | **수정** | `src/models/agent_state.py` | `reprocessed_output`, `anonymization_report`, `episode_summary` 필드 추가 | Task 1 |
-| **신규** | `dev/local_db/mysql/migrations/001_add_anonymized_table.sql` | `podcast_episodes_anonymized` 테이블 | Task 2 |
-| **신규** | `dev/local_db/mysql/migrations/002_add_episode_summaries_table.sql` | `episode_summaries` 테이블 | Task 11 |
+| **수정** | `dev/local_db/mysql/init.sql` | `podcast_episodes` 감정 컬럼, `podcast_segments` user_id/session_id, `episode_summaries` 테이블 추가 / *Option A 선택 시* `content_analyses` 테이블 추가 | Task 8, 9A, 11 |
 | **수정** | `src/agents/shared/output_sanitizer.py` | `detect_pii_types()` 함수 추가 | Task 3 |
 | **신규** | `src/agents/podcast/podcast_reprocessing.py` | PodcastReprocessingAgent 구현 | Task 4 |
 | **신규** | `prompts/podcast/podcast_reprocessing.yaml` | 재가공 에이전트 프롬프트 | Task 4 |
 | **신규** | `tests/agents/test_podcast_reprocessing.py` | 재가공 에이전트 테스트 | Task 4 |
 | **수정** | `src/graph/workflow.py` | reprocessing_node + summary_node 등록, 비동기 후처리 연결 | Task 5 |
-| **수정** | `src/api/routes/podcasts.py` | 비동기 후처리에 재가공 결과 저장 + reprocess 엔드포인트 추가 | Task 6 |
+| **수정** | `src/api/routes/podcasts.py` | `_save_core_data()` 감정 컬럼 저장 확장 + reprocess 엔드포인트 추가 | Task 6, 8 |
 | **수정** | `src/api/backend_resources.py` | `RESOURCE_PODCAST_EPISODE_ANONYMIZED`, `RESOURCE_EPISODE_SUMMARY` 상수 추가 | Task 6, 11 |
 | **신규** | `src/agents/podcast/episode_summary.py` | EpisodeSummaryAgent 구현 | Task 11 |
 | **신규** | `prompts/podcast/episode_summary.yaml` | 요약 에이전트 프롬프트 | Task 11 |
 | **신규** | `tests/agents/test_episode_summary.py` | 요약 에이전트 테스트 | Task 11 |
-| **신규** | `dev/local_db/mysql/migrations/003_add_emotion_to_episodes.sql` | `podcast_episodes`에 감정 컬럼 추가 | Task 8 |
-| **수정** | `src/api/routes/podcasts.py` | `_save_core_data()`에 감정 데이터 저장 추가 | Task 8 |
-| **수정** | `src/agents/podcast/content_analyzer.py` | `publisher.publish()` — `user_summary` 필드만 전송하도록 변경 | Task 9 |
+| **수정** | `src/agents/podcast/content_analyzer.py` | `publisher.publish()` — `user_summary` 필드만 전송 (방안 A/B 공통) | Task 9 |
 | **신규** | `docs/architecture/AGENT_IO_DATAFLOW.md` | 이 계획서 내용을 별도 문서로 추출 | Task 7 |
+
+> ℹ️ **migration 스크립트 파일 없음** — DB 구조 변경은 `dev/local_db/mysql/init.sql` 직접 수정. 개발 DB는 Docker 재초기화로 반영 (`docker compose down -v && docker compose up`).
+> `podcast_episodes_anonymized` 테이블은 PodcastReprocessingAgent 구현(Task 4) 시점에 init.sql에 추가.
 
 ---
 
@@ -1643,43 +1690,77 @@ git commit -m "docs: AGENT_IO_DATAFLOW.md 작성 + PLAN_INDEX #25 갱신"
 
 ---
 
-## Task 8: podcast_episodes 감정 컬럼 추가 + _save_core_data() 확장
+## Task 8: init.sql 스키마 수정 + _save_core_data() 확장
 
 **Files:**
-- Create: `dev/local_db/mysql/migrations/003_add_emotion_to_episodes.sql`
+- Modify: `dev/local_db/mysql/init.sql`
 - Modify: `src/api/routes/podcasts.py`
 
-**목적:** 화면 2(에피소드 결과)와 화면 3(목록)에서 필요한 감정 키워드를 `podcast_episodes` 단일 조회로 제공.
-화면 1용 user_summary는 ContentAnalyzer publisher → content_analyses 테이블 (Task 9) 에서 별도 처리.
+**목적:**
+1. `podcast_episodes`에 감정 컬럼 추가 — 화면 2, 3 감정 키워드 표시
+2. `podcast_segments`에 `user_id`, `session_id` 추가 — 유저 데이터 격리 보장
+3. `_save_core_data()`에서 감정 데이터를 podcast_episodes에 함께 저장
 
-- [ ] **Step 1: 현재 _save_core_data() 저장 필드 확인**
+> ℹ️ DB 스키마 변경은 migration 파일 대신 `init.sql` 직접 수정. Docker 재초기화로 반영.
+
+- [ ] **Step 1: 현재 init.sql + _save_core_data() 확인**
 
 ```bash
+grep -n "podcast_episodes\|podcast_segments\|primary_emotion" dev/local_db/mysql/init.sql
 grep -n "episode_title\|primary_emotion\|emotion_vectors" src/api/routes/podcasts.py | head -20
 ```
 
-- [ ] **Step 2: DB 마이그레이션 작성**
+- [ ] **Step 2: init.sql — podcast_episodes 감정 컬럼 추가**
 
-`dev/local_db/mysql/migrations/003_add_emotion_to_episodes.sql`:
+`dev/local_db/mysql/init.sql`의 `podcast_episodes` 테이블에 아래 컬럼 추가 (기존 컬럼들 사이에 삽입):
 
 ```sql
--- Migration 003: podcast_episodes 감정 컬럼 추가
--- Date: 2026-04-13
--- Purpose: 화면 2(에피소드 결과), 화면 3(목록)에서 감정 키워드 표시용
-ALTER TABLE podcast_episodes
-    ADD COLUMN primary_emotion    VARCHAR(100)  DEFAULT 'neutral'  COMMENT 'Emotion Agent primary_emotion',
-    ADD COLUMN secondary_emotions JSON          DEFAULT '[]'       COMMENT 'secondary_emotions[0:2]';
+-- trace_id 컬럼 다음에 추가
+primary_emotion     VARCHAR(100)  DEFAULT 'neutral'
+                                  COMMENT 'EmotionAgent primary_emotion — 화면 2,3 감정 키워드',
+secondary_emotions  JSON          DEFAULT (CAST('[]' AS JSON))
+                                  COMMENT 'secondary_emotions[0:2] — 화면 2,3 추가 감정 키워드',
 ```
 
-- [ ] **Step 3: 실패 테스트 작성**
+- [ ] **Step 3: init.sql — podcast_segments user_id/session_id 추가**
+
+`dev/local_db/mysql/init.sql`의 `podcast_segments` 테이블에 아래 추가:
+
+```sql
+-- 기존 컬럼 다음에 추가 (episode_id FK 전에)
+user_id          VARCHAR(64)   NOT NULL    COMMENT '유저 격리 — 직접 조회 가능',
+session_id       VARCHAR(64)   NOT NULL    COMMENT '세션 격리',
+```
+
+인덱스도 추가:
+```sql
+INDEX idx_segment_user (user_id),
+INDEX idx_segment_session (session_id),
+```
+
+- [ ] **Step 4: Docker 재초기화로 스키마 반영 확인**
+
+```bash
+cd dev/local_db && docker compose -f docker-compose.db.yml down -v && docker compose -f docker-compose.db.yml up -d
+# 컨테이너 기동 후 스키마 확인
+docker exec mindlog-mysql mysql -u mindlog -pmindlog mindlog -e "DESCRIBE podcast_episodes; DESCRIBE podcast_segments;"
+```
+
+Expected: `primary_emotion`, `secondary_emotions` in podcast_episodes / `user_id`, `session_id` in podcast_segments
+
+- [ ] **Step 5: 실패 테스트 작성**
 
 ```python
-def test_save_core_data_includes_emotion_columns(mocker):
+@pytest.mark.asyncio
+async def test_save_core_data_includes_emotion_columns(mocker):
     """_save_core_data()가 podcast_episodes에 primary_emotion, secondary_emotions를 포함해야 한다."""
     mock_client = mocker.AsyncMock()
     state = {
         "final_output": '{"episode_id":"ep_1","episode_title":"테스트","total_duration":5,"segments":[],"key_insights":[],"themes":[]}',
-        "emotion_vectors": {"primary_emotion": "anxiety", "secondary_emotions": ["sadness", "fatigue", "anger"]},
+        "emotion_vectors": {
+            "primary_emotion": "anxiety",
+            "secondary_emotions": ["sadness", "fatigue", "anger"],  # 3개 → [0:2] = 2개
+        },
         "content_analysis": {"user_summary": {"keywords": ["번아웃"], "summary": "힘드셨군요."}},
         "visual_data": {},
         "validation_result": {"overall_score": 0.9},
@@ -1688,16 +1769,19 @@ def test_save_core_data_includes_emotion_columns(mocker):
     }
     saved_data = await call_save_core_data(state, mock_client)
     assert saved_data["primary_emotion"] == "anxiety"
-    assert saved_data["secondary_emotions"] == ["sadness", "fatigue"]  # [0:2] 슬라이싱 확인
+    assert saved_data["secondary_emotions"] == ["sadness", "fatigue"]  # [0:2] 슬라이싱
+    assert len(saved_data["secondary_emotions"]) == 2
 ```
 
-- [ ] **Step 4: 테스트 실행 (실패 확인)**
+- [ ] **Step 6: 테스트 실행 (실패 확인)**
 
 ```bash
-pytest tests/api/test_save_core_data.py -v
+pytest tests/api/test_save_core_data.py::test_save_core_data_includes_emotion_columns -v
 ```
 
-- [ ] **Step 5: _save_core_data() 저장 데이터 확장**
+Expected: FAIL — `primary_emotion` 키 없음
+
+- [ ] **Step 7: _save_core_data() 저장 데이터 확장**
 
 `src/api/routes/podcasts.py`의 `_save_core_data()` 내 podcast_episodes 저장 dict에 추가:
 
@@ -1710,114 +1794,221 @@ episode_data = {
 }
 ```
 
-- [ ] **Step 6: 테스트 통과 확인**
+- [ ] **Step 8: 테스트 통과 확인**
 
 ```bash
 pytest tests/api/ -v
 ```
 
-- [ ] **Step 7: 커밋**
+- [ ] **Step 9: 커밋**
 
 ```bash
-git add src/api/routes/podcasts.py \
-    dev/local_db/mysql/migrations/003_add_emotion_to_episodes.sql \
+git add dev/local_db/mysql/init.sql \
+    src/api/routes/podcasts.py \
     tests/api/test_save_core_data.py
-git commit -m "feat: podcast_episodes 감정 컬럼 추가, _save_core_data() 확장 (화면 2,3 감정 키워드 지원)"
+git commit -m "feat: init.sql 스키마 수정 (감정 컬럼, segments 격리), _save_core_data() 감정 필드 확장"
 ```
 
 ---
 
-## Task 9: ContentAnalyzerAgent publisher.publish() — user_summary 필드만 전송으로 변경
+## Task 9: ContentAnalyzerAgent publisher — user_summary only 전송 + 저장 방식 결정
 
-**Files:**
+**Files (공통):**
 - Modify: `src/agents/podcast/content_analyzer.py`
 
-**목적:** 1차 로딩 화면(화면 1) 전용 조기 저장. TIER 1 완료 즉시 `user_summary`만 backend에 전송 → Backend가 `content_ready` SSE 이벤트 발행 → 프론트 화면 1 표시.
-전체 `content_analysis`(main_theme, sub_themes 등)는 내부 파이프라인 전용이므로 저장 불필요.
+**Files (방안 A 추가):**
+- Modify: `dev/local_db/mysql/init.sql` — `content_analyses` 테이블 추가
 
-- [ ] **Step 1: 현재 publisher 코드 위치 확인**
+---
 
-```bash
-grep -n "publisher\|RESOURCE_CONTENT\|validated_analysis" src/agents/podcast/content_analyzer.py
+### 배경: AI 서버 → Backend → Frontend SSE 흐름
+
+```
+ContentAnalyzerAgent.publisher.publish(user_summary)
+    → BackendClient POST /api/v1/content_analyses
+    → Backend 수신
+    → [방안 A] content_analyses 테이블 저장 후 content_ready SSE 발행 ({content_id})
+       [방안 B] 저장 없이 즉시 content_ready SSE 발행 ({user_summary 페이로드})
+    → Frontend 수신 → 화면 1 표시
 ```
 
-- [ ] **Step 2: 실패 테스트 작성**
+> ⚠️ AI 서버는 Frontend와 직접 통신하지 않는다. SSE는 Backend가 발행한다.
+
+---
+
+### 방안 A — content_analyses 테이블에 저장 (결정 시 이 섹션 실행)
+
+**장점:** Frontend가 이후 GET으로 재조회 가능. SSE 미수신 클라이언트 재연결 시 복구 가능.
+**단점:** 테이블 추가. 세션 종료 후 데이터 정리 필요.
+
+- [ ] **A-1: init.sql — content_analyses 테이블 추가**
+
+`dev/local_db/mysql/init.sql`에 추가:
+
+```sql
+-- ------------------------------------------------------------
+-- content_analyses (ContentAnalyzer 1차 로딩 화면 전용)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS content_analyses (
+    content_id       VARCHAR(64)   PRIMARY KEY,
+    session_id       VARCHAR(64)   NOT NULL,
+    user_id          VARCHAR(64)   NOT NULL,
+    episode_id       VARCHAR(64)   NULL        COMMENT 'TIER 4 완료 후 BackFill 가능',
+    keywords         JSON          NOT NULL    DEFAULT (CAST('[]' AS JSON)),
+    summary          TEXT          NOT NULL,
+    created_at       DATETIME      NOT NULL    DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id)    REFERENCES users(user_id)    ON DELETE CASCADE,
+    INDEX idx_content_user_session (user_id, session_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+- [ ] **A-2: Docker 재초기화**
+
+```bash
+cd dev/local_db && docker compose -f docker-compose.db.yml down -v && docker compose -f docker-compose.db.yml up -d
+docker exec mindlog-mysql mysql -u mindlog -pmindlog mindlog -e "SHOW TABLES;"
+```
+
+Expected: `content_analyses` 테이블 포함
+
+- [ ] **A-3: 실패 테스트 작성**
 
 ```python
 @pytest.mark.asyncio
-async def test_content_analyzer_publishes_user_summary_only(mocker):
-    """ContentAnalyzerAgent가 publisher.publish()에 user_summary 필드만 전달해야 한다."""
+async def test_content_analyzer_publishes_user_summary_only_option_a(mocker):
+    """[방안 A] ContentAnalyzerAgent가 user_id, session_id와 함께 user_summary만 publish해야 한다."""
     mock_publish = mocker.AsyncMock(return_value=None)
-    mocker.patch(
-        "src.agents.podcast.content_analyzer.AgentDataPublisher.publish",
-        mock_publish,
-    )
-    # LLM 호출 모킹 — user_summary 포함 응답 반환
+    mocker.patch("src.agents.podcast.content_analyzer.AgentDataPublisher.publish", mock_publish)
     mocker.patch.object(
         ContentAnalyzerAgent,
         "call_llm_json",
         return_value={
             "main_theme": "직장 스트레스",
-            "sub_themes": ["번아웃", "관계"],
+            "sub_themes": ["번아웃"],
             "user_summary": {"keywords": ["번아웃", "스트레스"], "summary": "많이 힘드셨군요."},
             "target_duration": 4,
             "narrative_structure": "reflection",
         },
     )
     agent = ContentAnalyzerAgent()
-    state = {"user_input": "직장에서 스트레스를 받았습니다", "user_id": "u1", "session_id": "s1"}
-    await agent(state)
+    await agent({"user_input": "직장 스트레스", "user_id": "u1", "session_id": "s1"})
 
-    # publish 호출 확인 — data에 user_summary 필드만 포함
     mock_publish.assert_called_once()
-    call_kwargs = mock_publish.call_args[1]  # keyword arguments
-    assert set(call_kwargs["data"].keys()) == {"keywords", "summary"}
-    assert call_kwargs["data"]["keywords"] == ["번아웃", "스트레스"]
+    kwargs = mock_publish.call_args[1]
+    assert set(kwargs["data"].keys()) == {"keywords", "summary"}
+    assert kwargs["user_id"] == "u1"
+    assert kwargs["session_id"] == "s1"
 ```
 
-- [ ] **Step 3: 테스트 실행 (실패 확인)**
+- [ ] **A-4: 테스트 실행 (실패 확인)**
 
 ```bash
 pytest tests/agents/podcast/test_content_analyzer_publisher.py -v
 ```
 
-- [ ] **Step 4: publisher data를 user_summary만 전송하도록 변경 (L114~121)**
-
-`src/agents/podcast/content_analyzer.py`에서 `publisher.publish()` 호출 수정:
+- [ ] **A-5: publisher data 수정 (content_analyzer.py L114~121)**
 
 ```python
-# 변경 전 (L114~121):
-publisher = AgentDataPublisher()
+# 변경 전
 await publisher.publish(
     resource=RESOURCE_CONTENT_ANALYSIS,
-    data=validated_analysis,
+    data=validated_analysis,               # 전체 전송
     user_id=state.get("user_id", ""),
     session_id=state.get("session_id", ""),
 )
 
-# 변경 후:
-publisher = AgentDataPublisher()
+# 변경 후
 await publisher.publish(
     resource=RESOURCE_CONTENT_ANALYSIS,
-    data=validated_analysis.get("user_summary", {}),  # user_summary 필드만
+    data=validated_analysis.get("user_summary", {}),   # user_summary만
     user_id=state.get("user_id", ""),
     session_id=state.get("session_id", ""),
 )
 ```
 
-> ℹ️ `RESOURCE_CONTENT_ANALYSIS`, `AgentDataPublisher` import는 그대로 유지.
-
-- [ ] **Step 5: 테스트 통과 확인**
+- [ ] **A-6: 테스트 통과 확인**
 
 ```bash
 pytest tests/agents/podcast/ -v
 ```
 
-- [ ] **Step 6: 커밋**
+- [ ] **A-7: 커밋**
 
 ```bash
-git add src/agents/podcast/content_analyzer.py tests/agents/podcast/test_content_analyzer_publisher.py
-git commit -m "feat: ContentAnalyzer publisher — user_summary 필드만 전송 (1차 로딩 화면 전용 조기 저장)"
+git add dev/local_db/mysql/init.sql \
+    src/agents/podcast/content_analyzer.py \
+    tests/agents/podcast/test_content_analyzer_publisher.py
+git commit -m "feat: [방안 A] ContentAnalyzer publisher user_summary only + content_analyses 테이블 추가 (1차 로딩 화면)"
+```
+
+---
+
+### 방안 B — SSE-only, 테이블 저장 없음 (결정 시 이 섹션 실행)
+
+**장점:** 테이블 불필요. Backend가 수신 즉시 SSE 페이로드에 포함시켜 발행 → Frontend 바로 렌더링.
+**단점:** SSE 재연결 시 복구 불가. Backend 측 SSE 발행 로직에 페이로드 포함 구현 필요.
+
+> ℹ️ 이 방안은 Backend 팀과 합의 후 구현. AI 서버 코드 변경 내용은 방안 A와 동일 (user_summary만 전송).
+> Backend가 content_analyses를 저장하지 않고 SSE에 user_summary를 포함시키는 것은 Backend 구현 사항.
+
+- [ ] **B-1: 실패 테스트 작성 (방안 A와 동일)**
+
+```python
+@pytest.mark.asyncio
+async def test_content_analyzer_publishes_user_summary_only_option_b(mocker):
+    """[방안 B] ContentAnalyzerAgent가 user_id, session_id와 함께 user_summary만 publish해야 한다."""
+    mock_publish = mocker.AsyncMock(return_value=None)
+    mocker.patch("src.agents.podcast.content_analyzer.AgentDataPublisher.publish", mock_publish)
+    mocker.patch.object(
+        ContentAnalyzerAgent,
+        "call_llm_json",
+        return_value={
+            "main_theme": "직장 스트레스",
+            "sub_themes": ["번아웃"],
+            "user_summary": {"keywords": ["번아웃", "스트레스"], "summary": "많이 힘드셨군요."},
+            "target_duration": 4,
+            "narrative_structure": "reflection",
+        },
+    )
+    agent = ContentAnalyzerAgent()
+    await agent({"user_input": "직장 스트레스", "user_id": "u1", "session_id": "s1"})
+
+    mock_publish.assert_called_once()
+    kwargs = mock_publish.call_args[1]
+    assert set(kwargs["data"].keys()) == {"keywords", "summary"}
+```
+
+- [ ] **B-2: 테스트 실행 (실패 확인)**
+
+```bash
+pytest tests/agents/podcast/test_content_analyzer_publisher.py -v
+```
+
+- [ ] **B-3: publisher data 수정 (content_analyzer.py L114~121)**
+
+```python
+# 방안 A와 동일 코드 변경
+await publisher.publish(
+    resource=RESOURCE_CONTENT_ANALYSIS,
+    data=validated_analysis.get("user_summary", {}),   # user_summary만
+    user_id=state.get("user_id", ""),
+    session_id=state.get("session_id", ""),
+)
+```
+
+- [ ] **B-4: 테스트 통과 확인**
+
+```bash
+pytest tests/agents/podcast/ -v
+```
+
+- [ ] **B-5: 커밋**
+
+```bash
+git add src/agents/podcast/content_analyzer.py \
+    tests/agents/podcast/test_content_analyzer_publisher.py
+git commit -m "feat: [방안 B] ContentAnalyzer publisher user_summary only (SSE-only, 테이블 저장 없음)"
 ```
 
 ---
@@ -1825,35 +2016,48 @@ git commit -m "feat: ContentAnalyzer publisher — user_summary 필드만 전송
 ## Task 11: EpisodeSummaryAgent 구현
 
 **Files:**
+- Modify: `dev/local_db/mysql/init.sql` — `episode_summaries` 테이블 추가
 - Create: `src/agents/podcast/episode_summary.py`
 - Create: `prompts/podcast/episode_summary.yaml`
 - Create: `tests/agents/test_episode_summary.py`
-- Create: `dev/local_db/mysql/migrations/002_add_episode_summaries_table.sql`
 - Modify: `src/api/backend_resources.py` — `RESOURCE_EPISODE_SUMMARY` 추가
 
 **역할:** TIER 4 완료 후 비동기로 `final_output`을 받아 에피소드 요약 텍스트 생성 → `episode_summaries` 테이블 저장.
+저장 시 `user_id` + `session_id` + `episode_id` 포함 — 유저별 조회 및 격리 보장.
 
-- [ ] **Step 1: DB 마이그레이션 작성**
+- [ ] **Step 1: init.sql — episode_summaries 테이블 추가**
 
-`dev/local_db/mysql/migrations/002_add_episode_summaries_table.sql`:
+`dev/local_db/mysql/init.sql`에 기존 테이블 아래에 추가:
 
 ```sql
--- Migration 002: 에피소드 요약 테이블
--- Date: 2026-04-13
--- Purpose: EpisodeSummaryAgent 결과 저장 (에피소드 목록 화면용)
-
+-- ------------------------------------------------------------
+-- episode_summaries (EpisodeSummaryAgent — 에피소드 목록 화면용)
+-- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS episode_summaries (
-    summary_id    VARCHAR(64)  NOT NULL PRIMARY KEY COMMENT 'summary_{episode_id}',
-    episode_id    VARCHAR(64)  NOT NULL COMMENT 'FK → podcast_episodes.episode_id',
-    user_id       VARCHAR(64)  NOT NULL,
-    summary_text  TEXT         NOT NULL COMMENT '2~3문장 에피소드 요약',
-    created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_user_id (user_id),
-    INDEX idx_episode_id (episode_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    summary_id    VARCHAR(64)   NOT NULL  PRIMARY KEY
+                                          COMMENT 'summary_{episode_id}',
+    episode_id    VARCHAR(64)   NOT NULL  COMMENT 'FK → podcast_episodes.episode_id',
+    session_id    VARCHAR(64)   NOT NULL,
+    user_id       VARCHAR(64)   NOT NULL,
+    summary_text  TEXT          NOT NULL  COMMENT '2~3문장 에피소드 요약 (화면 3 표시용)',
+    created_at    DATETIME      NOT NULL  DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (episode_id) REFERENCES podcast_episodes(episode_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id)    REFERENCES users(user_id)               ON DELETE CASCADE,
+    INDEX idx_summary_user_created (user_id, created_at),
+    INDEX idx_summary_episode (episode_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
-- [ ] **Step 2: RESOURCE 상수 추가**
+- [ ] **Step 2: Docker 재초기화 확인**
+
+```bash
+cd dev/local_db && docker compose -f docker-compose.db.yml down -v && docker compose -f docker-compose.db.yml up -d
+docker exec mindlog-mysql mysql -u mindlog -pmindlog mindlog -e "SHOW TABLES;"
+```
+
+Expected: `episode_summaries` 포함
+
+- [ ] **Step 3: RESOURCE 상수 추가**
 
 `src/api/backend_resources.py`:
 
