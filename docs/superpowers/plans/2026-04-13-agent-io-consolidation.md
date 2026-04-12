@@ -246,27 +246,35 @@ publisher.publish(
 
 | 필드 | 타입 | 구조 |
 |------|------|------|
-| content_analysis | dict | 8개 필드 |
+| content_analysis | dict | 10개 필드 |
 
 **content_analysis 상세:**
 ```python
 {
-  "main_theme": str,             # 최대 100자, 한국어
-  "sub_themes": list[str],       # 3~5개 범위 보정
-  "target_duration": int,        # 3~5분 범위 고정
+  "user_summary": {              # ⚠️ pass-through (코드 검증 없음, Plan #22 CA-1)
+    "keywords": list[str],       #   사용자 입력에서 추출한 3~5개 핵심 키워드 (2~4글자)
+    "summary": str               #   이 사용자만의 구체적 경험 공감 + 방향 1~2문장
+  },
+  "key_messages": list[str],     # ⚠️ pass-through (코드 검증 없음, Plan #22 CA-1)
+                                 #   이 사용자에게만 해당하는 구체적 행동 제안 3~5개
+  "main_theme": str,             # 최대 100자, 한국어 (_validate_and_correct 보정)
+  "sub_themes": list[str],       # 3~5개 범위 보정 (_validate_and_correct)
+  "target_duration": int,        # 3~5분 범위 고정 (_validate_and_correct)
   "narrative_structure": str,    # "personal_story"|"expert_qa"|"reflection"|"comparative"
-  "depth_level": str,            # "light"|"moderate"|"deep"
+  "depth_level": str,            # "light"|"moderate"|"deep" (코드가 complexity_score로 결정)
   "emotional_journey": dict,     # 4-key: opening/development/climax/closing (CA v2.2.0 이후)
   "confidence": float,           # 0.0~1.0 (CA v2.2.0 이후)
   "error": str                   # 에러 시만 포함
 }
 ```
 
+> ⚠️ **CA-1 이슈 (Plan #22 Task 4):** `user_summary`, `key_messages`는 LLM 출력 pass-through. `_validate_and_correct()`에서 타입·구조 검증 미적용 상태.
+
 **publisher.publish() 저장 (L114~121)**
 ```python
 publisher.publish(
   resource="content_analyses",   # RESOURCE_CONTENT_ANALYSIS
-  data=validated_analysis,       # content_analysis 전체
+  data=validated_analysis,       # content_analysis 전체 (user_summary 포함)
   user_id=user_id,
   session_id=session_id
 )
@@ -281,6 +289,7 @@ publisher.publish(
   "emotional_journey": {},
   "depth_level": "light",
   "error": "user_input_missing"
+  # user_summary, key_messages: LLM 미호출이므로 폴백에 미포함
 }
 ```
 
