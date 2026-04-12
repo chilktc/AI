@@ -14,10 +14,17 @@
 
 | 항목 | 이유 |
 |------|------|
-| EmotionAgent `publisher.publish()` | 프론트 1차 로딩 시 emotion_logs 데이터 필요. 기존 테스트 완료 (`tests/agents/podcast/test_emotion_publisher.py`) |
-| ContentAnalyzerAgent `publisher.publish()` | 프론트 1차 로딩 시 content_analyses 데이터 필요. 기존 테스트 완료 (`tests/agents/podcast/test_content_analyzer_publisher.py`) |
 | GoT→Neo4j 저장 (`_save_graph_data()`) | PR #50, #51 완료, 테스트 통과 |
 | graph_nodes 누적 저장 (`publish_graph_to_rdb()`) | PR #88, Mode A 완료, BE 3차 E2E 검증 완료 (`tests/api/test_graph_cumulative.py` 27개 통과) |
+
+## 이번 계획에서 변경하는 범위
+
+| 항목 | 변경 내용 | Task |
+|------|---------|------|
+| EmotionAgent `publisher.publish()` | **주석처리** — emotion_logs 즉시 저장 제거. 감정 데이터는 AgentState `emotion_vectors`에만 유지 | Task 8 |
+| ContentAnalyzerAgent `publisher.publish()` | **user_summary만 전송** — 전체 content_analysis 저장 대신 `user_summary` dict만 전달 | Task 9 |
+| `_save_core_data()` 자동 저장 | **사용자 최종 동의 후 저장으로 변경** — TIER 4 완료 시 자동 저장 제거, 별도 동의 API 트리거 | Task 10 |
+| 비동기 후처리 | **EpisodeSummaryAgent 추가** — final_output 기반 요약 생성 후 별도 저장 | Task 11 |
 
 ---
 
@@ -49,8 +56,8 @@
 | 에이전트 | 읽기 | 쓰기 | 저장 |
 |:-------:|------|------|:----:|
 | **Safety** | `user_input` · `intent.flags.risk_flag` | `safety_flags` · `risk_level` · `risk_score` · `next_step`? | — |
-| **Emotion** | `user_input` · `intent` | `emotion_vectors` | 💾 `emotion_logs` |
-| **Content Analyzer** | `user_input` · `intent` | `content_analysis` | 💾 `content_analyses` |
+| **Emotion** | `user_input` · `intent` | `emotion_vectors` | ~~💾 `emotion_logs`~~ *(주석처리 예정 — Task 8)* |
+| **Content Analyzer** | `user_input` · `intent` | `content_analysis` | 💾 `user_summary` only *(Task 9 — 전체→user_summary만으로 축소)* |
 | **Podcast Reasoning** | `user_input` · `user_id` · `intent` · `execution_plan` · `session_id` | `reasoning_result` · `memory_results`? · `knowledge_results`? | 💾 Neo4j + `graph_nodes` |
 
 > ⚡ **CRISIS 선점:** Safety가 `next_step="crisis_response"` 설정 → 🚨 Crisis Response 즉시 출력, 이하 TIER 전체 스킵
@@ -82,9 +89,31 @@
 
 ---
 
-💾 **`_save_core_data()`** (동기 — 응답 반환 전) → `podcast_episodes` + `podcast_segments` · `visualizations`
+~~💾 **`_save_core_data()`** (동기 자동 저장)~~ → **Task 10에서 제거** — 사용자 최종 동의 후 별도 API로 저장
 
-📤 **`SlimPodcastResponse`** → `episode_id` · `session_id` · `safety_alert`
+📤 **`SlimPodcastResponse`** → `episode_id`(임시) · `session_id` · `safety_alert` · `final_output_data`(미저장 상태)
+
+---
+
+### 프론트엔드 화면 표시 및 저장 Flow
+
+> TIER 4 완료 → SlimPodcastResponse 수신 후 프론트가 결과를 표시하고, 사용자 동의 흐름에 따라 저장
+
+| 단계 | 트리거 | 내용 |
+|:----:|--------|------|
+| 1 | SlimPodcastResponse 수신 | **[우선 표시]** 타이틀 · 감정 타이틀 2~3개 · 최종 내용(스크립트) · 이미지 |
+| 2 | 사용자가 "공유" 허락 | PodcastReprocessingAgent 실행 → 익명화된 재가공 결과 표시 |
+| 3 | 사용자 최종 동의 | `POST /api/v1/episodes/{id}/save` → `podcast_episodes` + `visualizations` DB 저장 |
+| 4 | (차후) 에피소드 목록 | 생성 일자 · 타이틀 · 감정 타이틀 · 에피소드 요약 내용 표시 |
+
+**[우선 표시 화면] 필요 데이터 매핑:**
+
+| 화면 요소 | 출처 | 필드 |
+|---------|------|------|
+| 타이틀 | `final_output` | `episode_title` |
+| 감정 타이틀 2~3개 | `emotion_vectors` | `primary_emotion` + `secondary_emotions[0:2]` |
+| 최종 내용 | `final_output` | `segments[].script_text` 전체 |
+| 이미지 | `visual_data` | `image_url` |
 
 ---
 
@@ -92,7 +121,8 @@
 
 | 에이전트 | 읽기 | 쓰기 | 저장 |
 |:-------:|------|------|:----:|
-| **PodcastReprocessing** ★신규 | `final_output` · `user_id` · `session_id` | `reprocessed_output` · `anonymization_report` | 💾 `podcast_episodes_anonymized` |
+| **EpisodeSummaryAgent** ★신규 | `final_output` · `user_id` · `session_id` | `episode_summary` | 💾 `episode_summaries` |
+| **PodcastReprocessing** ★신규 | `final_output` · `user_id` · `session_id` | `reprocessed_output` · `anonymization_report` | 💾 `podcast_episodes_anonymized` *(사용자 공유 동의 시)* |
 | **Learning Agent** | 전체 state | — | 💾 `learning_patterns` |
 | **Episode Memory** | (`memory_write=True` 시만) | — | 💾 Pinecone `mem-podcast-episode` |
 
@@ -104,20 +134,23 @@
 |:----:|-----------|-----------|------|
 | 1 | `connected` | — | SSE 연결 성공 |
 | 2 | `tier_start` | `agents: ["safety","emotion","content_analyzer","podcast_reasoning"]` | TIER 1 Fan-out 시작 |
-| 3 | `agent_complete` × N | `{tier, agent, elapsed_ms}` | 각 에이전트 완료마다 발행<br>🔵 Emotion 완료 → **emotion_logs 저장 완료**<br>🔵 ContentAnalyzer 완료 → **content_analyses 저장 완료** |
+| 3 | `agent_complete` × N | `{tier, agent, elapsed_ms}` | 각 에이전트 완료마다 발행 |
 | 4 | `tier_end` | — | TIER 1 전체 완료 |
 | 5 | *(TIER 2~4 진행 중)* | — | Script 생성 · 검증 · 개인화 |
-| 6 | **`result`** ⭐ | `{ episode_id, session_id, safety_alert }` | **SlimPodcastResponse — 1차 로딩 완료 트리거** |
+| 6 | **`result`** ⭐ | `{ episode_id, session_id, safety_alert, final_output_data }` | **SlimPodcastResponse — 프론트 즉시 표시 트리거 (미저장)** |
 | 7 | `done` | — | SSE 연결 종료 |
 
-**`result` 이벤트 수신 후 — Backend GET API 호출 (1차 로딩 완성)**
+> ⚠️ **저장 flow 변경 (Task 10):** `result` 이벤트 수신 시점에 `podcast_episodes`는 **아직 DB 저장 전**. 프론트가 응답 데이터를 직접 렌더링하고, 사용자 최종 동의 후 `POST /episodes/{id}/save` 호출 시 저장.
 
-| Backend API | 조회 데이터 | 사용 화면 |
-|------------|-----------|---------|
-| `GET /emotion_logs?user_id=&session_id=` | `emotion_vectors` 전체 | 감정 화면 |
-| `GET /content_analyses?user_id=` | `content_analysis` 전체 | 콘텐츠 분석 화면 |
-| `GET /podcast_episodes/{episode_id}` | `final_output` 파싱 결과 | 에피소드 상세 |
-| `GET /graph_nodes?user_id=` | 누적 EMA 그래프 | 그래프 화면 |
+**`result` 이벤트 수신 후 — 즉시 렌더링 (DB 조회 불필요)**
+
+| 화면 요소 | 응답 내 필드 | 화면 |
+|---------|-----------|------|
+| 타이틀 | `final_output_data.episode_title` | 에피소드 결과 화면 |
+| 감정 타이틀 2~3개 | `emotion_vectors.primary_emotion` + `secondary_emotions[0:2]` | 에피소드 결과 화면 |
+| 최종 내용 | `final_output_data.segments[].script_text` | 에피소드 결과 화면 |
+| 이미지 | `visual_data.image_url` | 에피소드 결과 화면 |
+| `user_summary` | `content_analysis.user_summary` | 에피소드 요약 카드 |
 
 ### 1-3. 에이전트별 입출력 데이터 상세 명세
 
@@ -207,16 +240,17 @@
 }
 ```
 
-**publisher.publish() 저장 (L138~143)**
+**publisher.publish() 저장 (L138~143) — Task 8에서 주석처리 예정**
 ```python
-publisher.publish(
-  resource="emotion_logs",       # RESOURCE_EMOTION_LOG
-  data=emotion_vectors,          # 7개 필드 전체
-  user_id=user_id,
-  session_id=session_id
-)
+# [Task 8: 주석처리 대상]
+# publisher.publish(
+#   resource="emotion_logs",       # RESOURCE_EMOTION_LOG
+#   data=emotion_vectors,          # 7개 필드 전체
+#   user_id=user_id,
+#   session_id=session_id
+# )
 ```
-> ⚠️ 저장 실패 시 에이전트 반환값에 영향 없음 (예외 미전파)
+> ✏️ **변경 이유:** 즉시 저장 제거. `emotion_vectors`는 AgentState에 유지되어 SlimPodcastResponse에 포함 → 프론트 직접 렌더링.
 
 **폴백 반환:**
 ```python
@@ -270,15 +304,17 @@ publisher.publish(
 
 > ⚠️ **CA-1 이슈 (Plan #22 Task 4):** `user_summary`, `key_messages`는 LLM 출력 pass-through. `_validate_and_correct()`에서 타입·구조 검증 미적용 상태.
 
-**publisher.publish() 저장 (L114~121)**
+**publisher.publish() 저장 (L114~121) — Task 9에서 user_summary만 전송으로 변경**
 ```python
+# [Task 9: 전체 content_analysis → user_summary만 전송으로 변경]
 publisher.publish(
   resource="content_analyses",   # RESOURCE_CONTENT_ANALYSIS
-  data=validated_analysis,       # content_analysis 전체 (user_summary 포함)
+  data=validated_analysis.get("user_summary", {}),  # user_summary 필드만
   user_id=user_id,
   session_id=session_id
 )
 ```
+> ✏️ **변경 이유:** 프론트엔드에 노출되는 건 `user_summary`(keywords + summary)만. 나머지 분석 데이터는 내부 파이프라인 전용.
 > ⚠️ 저장 실패 시 에이전트 반환값에 영향 없음 (예외 미전파)
 
 **폴백 반환:**
@@ -658,89 +694,62 @@ SaveRequest(
 
 | 저장 주체 | 리소스 | 상수 | 저장 시점 | 동기/비동기 | 프론트 사용 여부 |
 |----------|--------|------|---------|-----------|--------------|
-| EmotionAgent (L138) | emotion_logs | RESOURCE_EMOTION_LOG | TIER 1 병렬 중 | 비동기 | ✅ 감정 화면 |
-| ContentAnalyzerAgent (L114) | content_analyses | RESOURCE_CONTENT_ANALYSIS | TIER 1 병렬 중 | 비동기 | ✅ 1차 로딩 |
+| ~~EmotionAgent (L138)~~ | ~~emotion_logs~~ | ~~RESOURCE_EMOTION_LOG~~ | ~~TIER 1 병렬 중~~ | ~~비동기~~ | **Task 8 주석처리** |
+| ContentAnalyzerAgent (L114) | content_analyses | RESOURCE_CONTENT_ANALYSIS | TIER 1 병렬 중 | 비동기 | ✅ `user_summary`만 저장 *(Task 9)* |
 | PodcastReasoningAgent | graph_nodes (PUT) | RESOURCE_GRAPH_NODES | TIER 1 완료 후 | 비동기 | ✅ 그래프 화면 |
-| routes/podcasts.py | podcast_episodes | RESOURCE_PODCAST_EPISODE | TIER 4 완료 후 | **동기** | ✅ 에피소드 상세 |
-| routes/podcasts.py | visualizations | RESOURCE_VISUALIZATION | TIER 4 완료 후 | **동기** | ✅ 커버 이미지 |
+| routes/podcasts.py | podcast_episodes | RESOURCE_PODCAST_EPISODE | **사용자 최종 동의 후** | **비동기** | ✅ 에피소드 상세 *(Task 10 변경)* |
+| routes/podcasts.py | visualizations | RESOURCE_VISUALIZATION | **사용자 최종 동의 후** | **비동기** | ✅ 커버 이미지 *(Task 10 변경)* |
+| EpisodeSummaryAgent [신규] | episode_summaries | RESOURCE_EPISODE_SUMMARY | 비동기 후처리 | 비동기 | ✅ 에피소드 목록 화면 *(차후)* |
 | LearningAgent | learning | RESOURCE_LEARNING | 비동기 후처리 | 비동기 | ❌ 내부용 |
-| PodcastReprocessingAgent [신규] | podcast_episodes_anonymized | RESOURCE_PODCAST_EPISODE_ANONYMIZED | 비동기 후처리 | 비동기 | ❌ 내부용 |
+| PodcastReprocessingAgent [신규] | podcast_episodes_anonymized | RESOURCE_PODCAST_EPISODE_ANONYMIZED | 사용자 공유 동의 후 | 비동기 | ❌ 내부용 |
 
 ### 1-5. 프론트엔드 화면별 데이터 컬럼 매핑
 
-#### 에피소드 생성 응답 (POST /api/v1/episodes 또는 /stream)
-> `SlimPodcastResponse` — AI서버 직접 반환
+#### [우선 구현] 에피소드 결과 화면 — SlimPodcastResponse 직접 렌더링
+> DB 저장 전 AI 서버 응답 데이터 직접 사용 (사용자 동의 전)
 
-| 필드 | AgentState 출처 | 화면 용도 |
-|------|---------------|---------|
-| episode_id | final_output.episode_id | 에피소드 재생 링크 |
-| session_id | 요청 파라미터 | — |
-| safety_alert.status | safety_flags.status | 경고 배너 표시 |
-| safety_alert.alert_message | SAFETY_MESSAGES 상수 | 경고 메시지 텍스트 |
-| safety_alert.helpline_info | CRISIS_HELPLINES (crisis시만) | 도움 기관 목록 |
+| 화면 요소 | 응답 필드 | 출처 (AgentState) |
+|---------|---------|-----------------|
+| **타이틀** | `final_output_data.episode_title` | `final_output` |
+| **감정 타이틀 2~3개** | `emotion_vectors.primary_emotion` + `secondary_emotions[0:2]` | `emotion_vectors` |
+| **최종 내용** | `final_output_data.segments[].script_text` | `final_output` |
+| **이미지** | `visual_data.image_url` | `visual_data` |
+| 에피소드 요약 카드 | `content_analysis.user_summary` | `content_analysis` |
+| 경고 배너 | `safety_alert.status` / `alert_message` | `safety_flags` |
 
-#### 에피소드 상세 화면 (GET /api/v1/podcast_episodes/{id})
-> Backend DB에서 조회 — `podcast_episodes` + `podcast_segments`
+#### [우선 구현] 에피소드 생성 응답 (`SlimPodcastResponse` 확장)
+> 현재 `{episode_id, session_id, safety_alert}`에 아래 필드 추가 필요 (Task 10)
+
+| 추가 필드 | AgentState 출처 | 용도 |
+|---------|---------------|------|
+| `final_output_data` | `final_output` (JSON 파싱) | 타이틀·내용 직접 렌더링 |
+| `emotion_data` | `emotion_vectors` | 감정 타이틀 렌더링 |
+| `image_url` | `visual_data.image_url` | 이미지 렌더링 |
+| `user_summary` | `content_analysis.user_summary` | 요약 카드 |
+
+#### [차후 구현] 에피소드 목록 화면 (사용자 동의 후 DB 저장분)
+> Backend DB — `podcast_episodes` + `episode_summaries`
+
+| DB 컬럼 | 출처 | 화면 용도 |
+|--------|------|---------|
+| episode_title | final_output.episode_title | 제목 |
+| created_at | 저장 시각 | 생성 일자 |
+| primary_emotion | emotion_vectors.primary_emotion | 감정 타이틀 |
+| secondary_emotions[0:1] | emotion_vectors.secondary_emotions | 감정 타이틀 (2번째) |
+| summary_text | EpisodeSummaryAgent 생성 | 에피소드 요약 내용 |
+| cover_image_url | visual_data.image_url | 썸네일 |
+
+#### [차후 구현] 에피소드 상세 화면 (사용자 동의 후 DB 저장분)
+> Backend DB — `podcast_episodes` + `podcast_segments`
 
 | DB 컬럼 | AgentState 출처 | 화면 용도 |
 |--------|---------------|---------|
 | episode_title | final_output.episode_title | 제목 헤더 |
-| total_duration | final_output.total_duration | "약 5분" 표시 |
+| total_duration | final_output.total_duration | "약 5분" |
 | key_insights[] | final_output.key_insights | 핵심 정리 카드 |
-| themes[] | final_output.themes | 주제 태그 칩 |
+| themes[] | final_output.themes | 주제 태그 |
 | cover_image_url | visual_data.image_url | 커버 이미지 |
 | segments[].script_text | final_output.segments[].script_text | 자막/대본 |
-| segments[].emotional_tone | final_output.segments[].emotional_tone | 세그먼트 톤 |
-| segments[].duration_minutes | final_output.segments[].duration_minutes | 진행 시간 |
-| segments[].tts_markers | final_output.segments[].tts_markers | TTS 제어 |
-| validation_score | validation_result.overall_score | ❌ 프론트 미사용 (내부 분석용) |
-| intent_type | intent.intent_type | ❌ 프론트 미사용 |
-| complexity_score | intent.complexity_score | ❌ 프론트 미사용 |
-| retry_count | iteration_count | ❌ 프론트 미사용 |
-
-#### 감정 화면 (GET /api/v1/users/{id}/emotions)
-> Backend DB에서 조회 — `emotion_logs`
-
-| DB 컬럼 | AgentState 출처 | 화면 용도 |
-|--------|---------------|---------|
-| primary_emotion | emotion_vectors.primary_emotion | 감정 아이콘/라벨 |
-| intensity | emotion_vectors.intensity | 강도 바 차트 |
-| valence | emotion_vectors.valence | 긍정/부정 스펙트럼 |
-| arousal | emotion_vectors.arousal | 각성도 (DB 저장, API 포함) |
-| secondary_emotions[] | emotion_vectors.secondary_emotions | 부수 감정 라벨 |
-| created_at | 저장 시각 | 타임라인 X축 |
-| tone_recommendation | emotion_vectors.tone_recommendation | ❌ 프론트 미사용 |
-
-#### 에피소드 목록 화면 (GET /api/v1/users/{id}/podcasts/episodes)
-> Backend DB에서 조회 — `podcast_episodes`
-
-| DB 컬럼 | 화면 용도 |
-|--------|---------|
-| episode_title | 제목 |
-| total_duration | "약 X분" |
-| themes[] | 주제 태그 |
-| cover_image_url | 썸네일 |
-| primary_emotion (emotion_logs JOIN) | 감정 배지 |
-| created_at | 타임라인 |
-
-#### 시각화 화면
-> `visualization_meta` 테이블
-
-| DB 컬럼 | 화면 용도 |
-|--------|---------|
-| cdn_url | 커버 이미지 표시 |
-| interpretation_text | 카드 터치 시 팝업 설명 |
-| image_prompt | ❌ 프론트 미사용 (생성 기록용) |
-
-#### 학습 패턴 화면
-> `learning_patterns` 테이블
-
-| DB 컬럼 | 화면 용도 |
-|--------|---------|
-| preferred_topics[] | 관심사 태그 |
-| emotional_patterns[] | 감정 패턴 그래프 |
-| interaction_style | 스타일 설명 |
-| raw_learning_data | ❌ 프론트 미사용 (디버깅용) |
 
 #### 그래프 화면
 > `user_graph_nodes` + `user_graph_edges` (Backend 구현 대상)
@@ -774,18 +783,24 @@ SaveRequest(
 
 ## 파일 구조 (변경/신규 목록)
 
-| 상태 | 파일 | 변경 내용 |
-|------|------|---------|
-| **신규** | `src/agents/podcast/podcast_reprocessing.py` | PodcastReprocessingAgent 구현 |
-| **신규** | `prompts/podcast/podcast_reprocessing.yaml` | 재가공 에이전트 프롬프트 |
-| **수정** | `src/models/agent_state.py` | `reprocessed_output`, `anonymization_report` 필드 추가 |
-| **신규** | `dev/local_db/mysql/migrations/001_add_anonymized_table.sql` | `podcast_episodes_anonymized` 테이블 |
-| **수정** | `src/graph/workflow.py` | reprocessing_node 등록, 비동기 후처리 연결 |
-| **수정** | `src/api/routes/podcasts.py` | 비동기 후처리에 재가공 결과 저장 추가 |
-| **수정** | `src/api/backend_resources.py` | RESOURCE_PODCAST_EPISODE_ANONYMIZED 상수 추가 |
-| **수정** | `src/agents/shared/output_sanitizer.py` | `detect_pii_types()` 함수 추가 |
-| **신규** | `tests/agents/test_podcast_reprocessing.py` | 재가공 에이전트 테스트 |
-| **신규** | `docs/architecture/AGENT_IO_DATAFLOW.md` | 이 계획서 내용을 별도 문서로도 추출 |
+| 상태 | 파일 | 변경 내용 | Task |
+|------|------|---------|------|
+| **수정** | `src/models/agent_state.py` | `reprocessed_output`, `anonymization_report`, `episode_summary` 필드 추가 | Task 1 |
+| **신규** | `dev/local_db/mysql/migrations/001_add_anonymized_table.sql` | `podcast_episodes_anonymized` 테이블 | Task 2 |
+| **신규** | `dev/local_db/mysql/migrations/002_add_episode_summaries_table.sql` | `episode_summaries` 테이블 | Task 11 |
+| **수정** | `src/agents/shared/output_sanitizer.py` | `detect_pii_types()` 함수 추가 | Task 3 |
+| **신규** | `src/agents/podcast/podcast_reprocessing.py` | PodcastReprocessingAgent 구현 | Task 4 |
+| **신규** | `prompts/podcast/podcast_reprocessing.yaml` | 재가공 에이전트 프롬프트 | Task 4 |
+| **신규** | `tests/agents/test_podcast_reprocessing.py` | 재가공 에이전트 테스트 | Task 4 |
+| **수정** | `src/graph/workflow.py` | reprocessing_node + summary_node 등록, 비동기 후처리 연결 | Task 5 |
+| **수정** | `src/api/routes/podcasts.py` | `_save_core_data()` 제거 → 동의 API, SlimPodcastResponse 확장 | Task 6, 10 |
+| **수정** | `src/api/backend_resources.py` | `RESOURCE_PODCAST_EPISODE_ANONYMIZED`, `RESOURCE_EPISODE_SUMMARY` 상수 추가 | Task 6, 11 |
+| **신규** | `src/agents/podcast/episode_summary.py` | EpisodeSummaryAgent 구현 | Task 11 |
+| **신규** | `prompts/podcast/episode_summary.yaml` | 요약 에이전트 프롬프트 | Task 11 |
+| **신규** | `tests/agents/test_episode_summary.py` | 요약 에이전트 테스트 | Task 11 |
+| **수정** | `src/agents/podcast/emotion.py` | `publisher.publish()` 주석처리 (L138~143) | Task 8 |
+| **수정** | `src/agents/podcast/content_analyzer.py` | `publisher.publish()` data → `user_summary` only | Task 9 |
+| **신규** | `docs/architecture/AGENT_IO_DATAFLOW.md` | 이 계획서 내용을 별도 문서로 추출 | Task 7 |
 
 ---
 
@@ -829,9 +844,10 @@ Expected: FAIL
 `src/models/agent_state.py`에서 `final_output` 이후에:
 
 ```python
-    # === 재가공 에이전트 (비동기 후처리) ===
+    # === 재가공/요약 에이전트 (비동기 후처리) ===
     reprocessed_output: str      # PodcastReprocessingAgent → 익명화된 final_output JSON 문자열
     anonymization_report: dict   # PodcastReprocessingAgent → 익명화 보고서
+    episode_summary: str         # EpisodeSummaryAgent → 에피소드 요약 텍스트 (에피소드 목록 화면용)
 ```
 
 - [ ] **Step 5: 테스트 통과 확인**
@@ -1593,21 +1609,428 @@ git commit -m "docs: AGENT_IO_DATAFLOW.md 작성 + PLAN_INDEX #25 갱신"
 
 ---
 
+---
+
+## Task 8: EmotionAgent publisher.publish() 주석처리
+
+**Files:**
+- Modify: `src/agents/podcast/emotion.py`
+
+- [ ] **Step 1: 기존 publish 코드 위치 확인**
+
+```bash
+grep -n "publisher\|publish" src/agents/podcast/emotion.py
+```
+
+- [ ] **Step 2: 실패 테스트 작성**
+
+`tests/agents/podcast/test_emotion_publisher.py` 기존 테스트 확인 후:
+
+```python
+def test_emotion_agent_does_not_call_publisher(mocker):
+    """Task 8 이후: EmotionAgent가 publisher.publish()를 호출하지 않아야 한다."""
+    mock_publish = mocker.patch("src.agents.podcast.emotion.AgentDataPublisher.publish")
+    agent = EmotionAgent()
+    # ... call agent
+    mock_publish.assert_not_called()
+```
+
+- [ ] **Step 3: 테스트 실행 (실패 확인)**
+
+```bash
+pytest tests/agents/podcast/test_emotion_publisher.py -v
+```
+
+- [ ] **Step 4: publisher.publish() 주석처리 (L138~143)**
+
+`src/agents/podcast/emotion.py` L138~143:
+
+```python
+        # [주석처리] emotion_logs 즉시 저장 제거 — 감정 데이터는 SlimPodcastResponse에 포함
+        # publisher = AgentDataPublisher()
+        # await publisher.publish(
+        #     resource=RESOURCE_EMOTION_LOG,
+        #     data=emotion_vectors,
+        #     user_id=state.get("user_id", ""),
+        #     session_id=state.get("session_id", ""),
+        # )
+```
+
+- [ ] **Step 5: 테스트 통과 확인**
+
+```bash
+pytest tests/agents/podcast/ -v
+```
+
+- [ ] **Step 6: 커밋**
+
+```bash
+git add src/agents/podcast/emotion.py tests/agents/podcast/test_emotion_publisher.py
+git commit -m "feat: EmotionAgent publisher.publish() 주석처리 — 즉시 저장 제거"
+```
+
+---
+
+## Task 9: ContentAnalyzerAgent publisher user_summary만 전송
+
+**Files:**
+- Modify: `src/agents/podcast/content_analyzer.py`
+
+- [ ] **Step 1: 기존 publish 코드 확인**
+
+```bash
+grep -n "publisher\|publish\|validated_analysis" src/agents/podcast/content_analyzer.py
+```
+
+- [ ] **Step 2: 실패 테스트 작성**
+
+```python
+def test_content_analyzer_publishes_only_user_summary(mocker):
+    """publisher.publish()에 user_summary dict만 전달해야 한다."""
+    mock_publish = mocker.AsyncMock()
+    mocker.patch("src.agents.podcast.content_analyzer.AgentDataPublisher.publish", mock_publish)
+    agent = ContentAnalyzerAgent()
+    state = {"user_input": "직장에서 스트레스를 받았습니다"}
+    # ... call agent
+    call_args = mock_publish.call_args
+    assert "keywords" in call_args.kwargs["data"]
+    assert "summary" in call_args.kwargs["data"]
+    assert "main_theme" not in call_args.kwargs["data"]
+```
+
+- [ ] **Step 3: 테스트 실행 (실패 확인)**
+
+```bash
+pytest tests/agents/podcast/test_content_analyzer_publisher.py -v
+```
+
+- [ ] **Step 4: publisher data 변경 (L114~121)**
+
+`src/agents/podcast/content_analyzer.py` L114~121:
+
+```python
+        publisher = AgentDataPublisher()
+        await publisher.publish(
+            resource=RESOURCE_CONTENT_ANALYSIS,
+            data=validated_analysis.get("user_summary", {}),  # user_summary만 전송
+            user_id=state.get("user_id", ""),
+            session_id=state.get("session_id", ""),
+        )
+```
+
+- [ ] **Step 5: 테스트 통과 확인**
+
+```bash
+pytest tests/agents/podcast/ -v
+```
+
+- [ ] **Step 6: 커밋**
+
+```bash
+git add src/agents/podcast/content_analyzer.py tests/agents/podcast/test_content_analyzer_publisher.py
+git commit -m "feat: ContentAnalyzer publisher — user_summary만 전송으로 축소"
+```
+
+---
+
+## Task 10: 저장 flow 변경 — 동의 기반 저장 API
+
+**Files:**
+- Modify: `src/api/routes/podcasts.py`
+
+**주의:** `_save_core_data()` 자동 동기 저장 제거 + `SlimPodcastResponse` 확장 + 동의 저장 엔드포인트 추가.
+
+- [ ] **Step 1: 현재 저장 flow 확인**
+
+```bash
+grep -n "_save_core_data\|SlimPodcastResponse\|final_output" src/api/routes/podcasts.py | head -30
+```
+
+- [ ] **Step 2: 실패 테스트 작성**
+
+```python
+def test_stream_response_does_not_auto_save(mocker):
+    """SSE 응답 반환 시 podcast_episodes가 자동 저장되지 않아야 한다."""
+    mock_save = mocker.patch("src.api.routes.podcasts._save_core_data")
+    # ... trigger stream endpoint
+    mock_save.assert_not_called()
+
+def test_stream_response_contains_final_output_data():
+    """SlimPodcastResponse에 final_output_data, emotion_data, image_url 포함."""
+    # ... trigger stream endpoint, check response fields
+    assert "final_output_data" in response.json()
+    assert "emotion_data" in response.json()
+    assert "image_url" in response.json()
+
+def test_consent_save_endpoint_triggers_save(mocker):
+    """POST /episodes/{id}/save 호출 시 podcast_episodes 저장."""
+    mock_save = mocker.AsyncMock()
+    mocker.patch("src.api.routes.podcasts._save_core_data", mock_save)
+    # ... call consent endpoint
+    mock_save.assert_called_once()
+```
+
+- [ ] **Step 3: 테스트 실행 (실패 확인)**
+
+```bash
+pytest tests/api/test_podcast_routes.py -v -k "save"
+```
+
+- [ ] **Step 4: routes/podcasts.py 수정**
+
+```python
+# 1. _save_core_data() 호출 제거 (자동 저장 제거)
+#    기존: await _save_core_data(state, backend_client)
+#    변경: 제거
+
+# 2. SlimPodcastResponse 확장
+return SlimPodcastResponse(
+    episode_id=episode_id,
+    session_id=session_id,
+    safety_alert=safety_alert,
+    final_output_data=json.loads(state.get("final_output", "{}")),
+    emotion_data={
+        "primary_emotion": state.get("emotion_vectors", {}).get("primary_emotion"),
+        "secondary_emotions": state.get("emotion_vectors", {}).get("secondary_emotions", [])[:2],
+    },
+    image_url=state.get("visual_data", {}).get("image_url"),
+    user_summary=state.get("content_analysis", {}).get("user_summary", {}),
+)
+
+# 3. 동의 저장 엔드포인트 추가
+@router.post("/episodes/{episode_id}/save")
+async def save_episode_with_consent(episode_id: str, request: ConsentSaveRequest):
+    """사용자 최종 동의 후 에피소드 저장."""
+    await _save_core_data(request.state_data, backend_client)
+    return {"success": True, "episode_id": episode_id}
+```
+
+- [ ] **Step 5: 테스트 통과 확인**
+
+```bash
+pytest tests/api/test_podcast_routes.py -v
+```
+
+- [ ] **Step 6: 커밋**
+
+```bash
+git add src/api/routes/podcasts.py tests/api/test_podcast_routes.py
+git commit -m "feat: 에피소드 자동 저장 제거 → 사용자 동의 기반 저장 API + SlimPodcastResponse 확장"
+```
+
+---
+
+## Task 11: EpisodeSummaryAgent 구현
+
+**Files:**
+- Create: `src/agents/podcast/episode_summary.py`
+- Create: `prompts/podcast/episode_summary.yaml`
+- Create: `tests/agents/test_episode_summary.py`
+- Create: `dev/local_db/mysql/migrations/002_add_episode_summaries_table.sql`
+- Modify: `src/api/backend_resources.py` — `RESOURCE_EPISODE_SUMMARY` 추가
+
+**역할:** TIER 4 완료 후 비동기로 `final_output`을 받아 에피소드 요약 텍스트 생성 → `episode_summaries` 테이블 저장.
+
+- [ ] **Step 1: DB 마이그레이션 작성**
+
+`dev/local_db/mysql/migrations/002_add_episode_summaries_table.sql`:
+
+```sql
+-- Migration 002: 에피소드 요약 테이블
+-- Date: 2026-04-13
+-- Purpose: EpisodeSummaryAgent 결과 저장 (에피소드 목록 화면용)
+
+CREATE TABLE IF NOT EXISTS episode_summaries (
+    summary_id    VARCHAR(64)  NOT NULL PRIMARY KEY COMMENT 'summary_{episode_id}',
+    episode_id    VARCHAR(64)  NOT NULL COMMENT 'FK → podcast_episodes.episode_id',
+    user_id       VARCHAR(64)  NOT NULL,
+    summary_text  TEXT         NOT NULL COMMENT '2~3문장 에피소드 요약',
+    created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user_id (user_id),
+    INDEX idx_episode_id (episode_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+- [ ] **Step 2: RESOURCE 상수 추가**
+
+`src/api/backend_resources.py`:
+
+```python
+RESOURCE_EPISODE_SUMMARY = "episode_summaries"
+```
+
+- [ ] **Step 3: 실패 테스트 작성**
+
+`tests/agents/test_episode_summary.py`:
+
+```python
+import pytest
+from unittest.mock import AsyncMock, patch
+
+@pytest.mark.asyncio
+async def test_episode_summary_returns_summary_text():
+    """EpisodeSummaryAgent가 episode_summary 필드를 반환해야 한다."""
+    from src.agents.podcast.episode_summary import EpisodeSummaryAgent
+    agent = EpisodeSummaryAgent()
+    state = {
+        "final_output": '{"episode_title": "직장 스트레스 극복기", "segments": [{"script_text": "오늘 힘든 하루였죠?"}]}',
+        "user_id": "user_1",
+        "session_id": "sess_1",
+    }
+    with patch.object(agent, "call_llm_json", new_callable=AsyncMock) as mock_llm:
+        mock_llm.return_value = {"summary_text": "직장 스트레스를 함께 풀어보는 에피소드입니다."}
+        result = await agent.process(state)
+    assert "episode_summary" in result
+    assert isinstance(result["episode_summary"], str)
+    assert len(result["episode_summary"]) > 0
+
+@pytest.mark.asyncio
+async def test_episode_summary_fallback_on_empty_final_output():
+    """final_output이 없으면 빈 문자열을 반환해야 한다."""
+    from src.agents.podcast.episode_summary import EpisodeSummaryAgent
+    agent = EpisodeSummaryAgent()
+    result = await agent.process({"final_output": "", "user_id": "u1", "session_id": "s1"})
+    assert result["episode_summary"] == ""
+```
+
+- [ ] **Step 4: 테스트 실행 (실패 확인)**
+
+```bash
+pytest tests/agents/test_episode_summary.py -v
+```
+
+Expected: FAIL — EpisodeSummaryAgent 없음
+
+- [ ] **Step 5: EpisodeSummaryAgent 구현**
+
+`src/agents/podcast/episode_summary.py`:
+
+```python
+"""EpisodeSummaryAgent — 에피소드 최종 출력 기반 요약 생성 (비동기 후처리)."""
+from __future__ import annotations
+import json
+from typing import Any
+
+from src.agents.shared.base_agent import BaseAgent
+from src.api.backend_resources import RESOURCE_EPISODE_SUMMARY
+from src.api.publisher import AgentDataPublisher
+from src.models.agent_state import AgentState
+
+
+class EpisodeSummaryAgent(BaseAgent):
+    """비동기 후처리 — final_output을 2~3문장으로 요약하여 episode_summaries에 저장."""
+
+    def __init__(self) -> None:
+        super().__init__(name="episode_summary", tier=4)
+
+    async def process(self, state: AgentState) -> dict[str, Any]:
+        final_output = state.get("final_output", "")
+        if not final_output:
+            return {"episode_summary": ""}
+
+        try:
+            script_data = json.loads(final_output)
+        except json.JSONDecodeError:
+            return {"episode_summary": ""}
+
+        episode_title = script_data.get("episode_title", "")
+        segments_text = " ".join(
+            seg.get("script_text", "")[:200]
+            for seg in script_data.get("segments", [])[:3]
+        )
+
+        llm_result = await self.call_llm_json(
+            prompt_name="episode_summary",
+            variables={
+                "episode_title": episode_title,
+                "segments_preview": segments_text,
+            },
+            version=self._get_prompt_version("episode_summary"),
+        )
+        summary_text = llm_result.get("summary_text", "")
+
+        publisher = AgentDataPublisher()
+        await publisher.publish(
+            resource=RESOURCE_EPISODE_SUMMARY,
+            data={"summary_text": summary_text, "episode_title": episode_title},
+            user_id=state.get("user_id", ""),
+            session_id=state.get("session_id", ""),
+        )
+
+        return {"episode_summary": summary_text}
+
+
+async def episode_summary_node(state: AgentState) -> dict[str, Any]:
+    agent = EpisodeSummaryAgent()
+    return await agent(state)
+```
+
+- [ ] **Step 6: 프롬프트 YAML 작성**
+
+`prompts/podcast/episode_summary.yaml`:
+
+```yaml
+default_version: "1.0.0"
+
+versions:
+  "1.0.0":
+    system_prompt: |
+      당신은 멘탈케어 팟캐스트 에피소드를 2~3문장으로 요약하는 전문가입니다.
+      사용자가 이 에피소드를 보고 재청취 여부를 결정할 수 있도록
+      핵심 내용과 감정적 가치를 간결하게 전달하세요.
+
+      반드시 JSON으로만 응답하세요:
+      {"summary_text": "2~3문장 요약"}
+
+      조건:
+      - 총 100자 이내
+      - 에피소드 제목과 핵심 내용 포함
+      - 사용자 감정에 공감하는 톤
+      - 예시: "직장에서의 배신감을 함께 들여다보는 에피소드입니다. 감정을 정리하고 앞으로 나아갈 방향을 찾아볼게요."
+
+    user_template: |
+      에피소드 제목: {episode_title}
+      내용 미리보기: {segments_preview}
+```
+
+- [ ] **Step 7: 테스트 통과 확인**
+
+```bash
+pytest tests/agents/test_episode_summary.py -v
+```
+
+Expected: PASS
+
+- [ ] **Step 8: 커밋**
+
+```bash
+git add src/agents/podcast/episode_summary.py prompts/podcast/episode_summary.yaml \
+    tests/agents/test_episode_summary.py \
+    dev/local_db/mysql/migrations/002_add_episode_summaries_table.sql \
+    src/api/backend_resources.py
+git commit -m "feat: EpisodeSummaryAgent 구현 — 비동기 에피소드 요약 생성 + episode_summaries 저장"
+```
+
+---
+
 ## 연쇄 영향 체크리스트
 
 | 항목 | 영향 | 확인 |
 |------|------|------|
-| Emotion/ContentAnalyzer publish 유지 | 프론트 1차 로딩 정상 | ✅ 변경 없음 |
 | GoT→Neo4j/graph_nodes 유지 | PR #50,#51,#88 결과 유지 | ✅ 변경 없음 |
 | AgentState total=False | 신규 필드 LangGraph 안전 병합 | ✅ 안전 |
+| Emotion publisher 주석처리 | emotion_logs 즉시 저장 제거 | ⚠️ 기존 테스트 수정 필요 (Task 8) |
+| Content publisher user_summary only | content_analyses 저장 범위 축소 | ⚠️ 기존 테스트 수정 필요 (Task 9) |
+| _save_core_data() 제거 | 에피소드 자동 저장 중단 | ⚠️ 동의 API 없으면 데이터 유실 (Task 10 선행 필수) |
+| SlimPodcastResponse 확장 | final_output_data 등 신규 필드 | ⚠️ Backend와 응답 스펙 합의 필요 |
 | workflow.py 수정 | Protected File — 3인 합의 | ⚠️ 합의 필요 |
 | agent_state.py 수정 | Protected File — 3인 합의 | ⚠️ 합의 필요 |
 | output_sanitizer detect_pii_types | 신규 함수 추가 — 기존 테스트 회귀 없음 | 확인 필요 |
 
 ## 미구현 범위 (이 계획 외)
 
-- Emotion/ContentAnalyzer publisher.publish() 제거 — **프론트 1차 로딩 연계로 유지 결정**
-- GoT/Neo4j/graph_nodes 저장 변경 — **완료된 테스트 보호**
+- GoT/Neo4j/graph_nodes 저장 변경 — 완료된 테스트 보호
 - knowledge_results, risk_level, risk_score 미사용 필드 정리 — 향후 별도 검토
 - DB 불일치 컬럼(turn_count, turn_id) 제거 — 대화모드 미구현과 연계
 - NER 모델 통합 (Pororo/KoBERT) — Phase 2 (중기)
+- 에피소드 목록 화면 Backend API — Backend팀 구현 대상
