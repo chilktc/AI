@@ -27,75 +27,74 @@
 
 ### 1-1. 파이프라인 전체 데이터 흐름
 
-> **색상 범례:** 🟣 TIER 0 &nbsp;|&nbsp; 🔵 TIER 1 (병렬) &nbsp;|&nbsp; 🟢 TIER 2 (병렬) &nbsp;|&nbsp; 🟡 TIER 3 &nbsp;|&nbsp; 🟠 TIER 4 &nbsp;|&nbsp; ⬛ 비동기 후처리 &nbsp;|&nbsp; 💾 저장 이벤트
+> **색상 범례:** 🟣 TIER 0 &nbsp;|&nbsp; 🔵 TIER 1 병렬 &nbsp;|&nbsp; 🟢 TIER 2 병렬 &nbsp;|&nbsp; 🟡 TIER 3 &nbsp;|&nbsp; 🟠 TIER 4 &nbsp;|&nbsp; ⬛ 비동기 후처리 &nbsp;|&nbsp; 💾 저장
 
-```mermaid
-flowchart TD
-    classDef input  fill:#0369a1,stroke:#075985,color:#fff,font-weight:bold
-    classDef tier0  fill:#7c3aed,stroke:#5b21b6,color:#fff,font-weight:bold
-    classDef tier1  fill:#1e40af,stroke:#1e3a8a,color:#fff,font-weight:bold
-    classDef tier2  fill:#065f46,stroke:#064e3b,color:#fff,font-weight:bold
-    classDef tier3  fill:#92400e,stroke:#78350f,color:#fff,font-weight:bold
-    classDef tier4  fill:#9f1239,stroke:#881337,color:#fff,font-weight:bold
-    classDef async  fill:#374151,stroke:#1f2937,color:#fff,font-weight:bold
-    classDef save   fill:#be185d,stroke:#9d174d,color:#fff
-    classDef route  fill:#1f2937,stroke:#111827,color:#fbbf24,font-weight:bold
+---
 
-    INPUT["📥 사용자 입력\nsituation · thought · action · colleague_reaction"]:::input
-    INIT["⚙️ AgentState 초기화\nuser_input · user_id · session_id · mode=podcast"]:::input
+📥 **사용자 입력** (`PodcastRequest`) — `situation` · `thought` · `action` · `colleague_reaction`
 
-    T0["🟣 TIER 0: Intent Classifier\n읽기: user_input, user_id, session_id\n쓰기: intent, risk_level, risk_score, safety_flags(1차)"]:::tier0
+⚙️ **AgentState 초기화** — `user_input` · `user_id` · `session_id` · `mode="podcast"`
 
-    SA["🔵 Safety Agent\n쓰기: safety_flags, risk_level, risk_score, next_step?"]:::tier1
-    EA["🔵 Emotion Agent\n쓰기: emotion_vectors"]:::tier1
-    CA["🔵 Content Analyzer\n쓰기: content_analysis"]:::tier1
-    PR["🔵 Podcast Reasoning\n쓰기: reasoning_result, memory_results?, knowledge_results?"]:::tier1
+---
 
-    ES["💾 emotion_logs\n(publisher.publish — TIER 1 중 즉시)"]:::save
-    CS["💾 content_analyses\n(publisher.publish — TIER 1 중 즉시)"]:::save
-    GS["💾 Neo4j + graph_nodes\n(_save_graph_data + publish_graph_to_rdb)"]:::save
+### 🟣 TIER 0 — Intent Classifier
 
-    R1{{"⚡ CRISIS 선점 판정"}}:::route
-    CRISIS["🚨 Crisis Response\n(즉시 출력 — 이하 TIER 스킵)"]:::tier1
+- **읽기:** `user_input` · `user_id` · `session_id`
+- **쓰기:** `intent` · `risk_level` · `risk_score` · `safety_flags` (1차 초기값)
 
-    SG["🟢 TIER 2: Script Generator\n읽기: safety_flags, content_analysis, reasoning_result\n쓰기: script_draft"]:::tier2
-    VZ["🟢 TIER 2: Visualization\n읽기: emotion_vectors, content_analysis\n쓰기: visual_data"]:::tier2
+---
 
-    BV["🟡 TIER 3: Batch Validator\n읽기: script_draft, content_analysis, reasoning_result, ...\n쓰기: validation_result"]:::tier3
+### 🔵 TIER 1 — 병렬 Fan-out
 
-    R2{{"🔄 verdict 판정"}}:::route
+| 에이전트 | 읽기 | 쓰기 | 저장 |
+|:-------:|------|------|:----:|
+| **Safety** | `user_input` · `intent.flags.risk_flag` | `safety_flags` · `risk_level` · `risk_score` · `next_step`? | — |
+| **Emotion** | `user_input` · `intent` | `emotion_vectors` | 💾 `emotion_logs` |
+| **Content Analyzer** | `user_input` · `intent` | `content_analysis` | 💾 `content_analyses` |
+| **Podcast Reasoning** | `user_input` · `user_id` · `intent` · `execution_plan` · `session_id` | `reasoning_result` · `memory_results`? · `knowledge_results`? | 💾 Neo4j + `graph_nodes` |
 
-    SP["🟠 TIER 4: Script Personalizer\n읽기: user_id, script_draft, content_analysis, session_id\n쓰기: final_output, memory_write, memory_text, memory_metadata"]:::tier4
+> ⚡ **CRISIS 선점:** Safety가 `next_step="crisis_response"` 설정 → 🚨 Crisis Response 즉시 출력, 이하 TIER 전체 스킵
 
-    SAVE["💾 _save_core_data() — 동기, 응답 반환 전\npodcast_episodes + podcast_segments · visualizations"]:::save
-    RESP["📤 SlimPodcastResponse\nepisode_id · session_id · safety_alert"]:::input
+---
 
-    RP["⬛ PodcastReprocessing ★신규\n읽기: final_output\n쓰기: reprocessed_output, anonymization_report"]:::async
-    LA["⬛ Learning Agent\n읽기: 전체 state\n쓰기: 없음 (DB 저장만)"]:::async
-    EM["⬛ Episode Memory 저장\n(memory_write=True 시만)"]:::async
+### 🟢 TIER 2 — 병렬
 
-    RS["💾 podcast_episodes_anonymized"]:::save
-    LS["💾 learning_patterns"]:::save
-    MS["💾 Pinecone mem-podcast-episode"]:::save
+| 에이전트 | 읽기 | 쓰기 |
+|:-------:|------|------|
+| **Script Generator** | `safety_flags` · `content_analysis` · `reasoning_result` · `validation_result` (재시도 시) | `script_draft` |
+| **Visualization** | `emotion_vectors` · `content_analysis` · `user_id` · `mode` | `visual_data` |
 
-    INPUT --> INIT --> T0
-    T0 --> SA & EA & CA & PR
-    EA --> ES
-    CA --> CS
-    PR --> GS
-    SA & EA & CA & PR --> R1
-    R1 -- "next_step==crisis_response" --> CRISIS
-    R1 -- "정상" --> SG & VZ
-    SG & VZ --> BV
-    BV --> R2
-    R2 -- "FAIL + 재시도 가능" --> SG
-    R2 -- "PASS / 강제 통과" --> SP
-    SP --> SAVE --> RESP
-    RESP -.->|"비동기 후처리"| RP & LA & EM
-    RP --> RS
-    LA --> LS
-    EM --> MS
-```
+---
+
+### 🟡 TIER 3 — Batch Validator
+
+- **읽기:** `script_draft` · `content_analysis` · `reasoning_result` · `safety_flags` · `emotion_vectors` · `iteration_count`
+- **쓰기:** `validation_result`
+
+> 🔄 **verdict 판정:** `FAIL` + 재시도 가능 → TIER 2 재시도 (최대 2회) &nbsp;|&nbsp; `PASS` / 강제 통과 → TIER 4 진행
+
+---
+
+### 🟠 TIER 4 — Script Personalizer
+
+- **읽기:** `user_id` · `script_draft` · `content_analysis` (emotional_journey) · `session_id`
+- **쓰기:** `final_output` · `memory_write` · `memory_text` · `memory_metadata`
+
+---
+
+💾 **`_save_core_data()`** (동기 — 응답 반환 전) → `podcast_episodes` + `podcast_segments` · `visualizations`
+
+📤 **`SlimPodcastResponse`** → `episode_id` · `session_id` · `safety_alert`
+
+---
+
+### ⬛ 비동기 후처리
+
+| 에이전트 | 읽기 | 쓰기 | 저장 |
+|:-------:|------|------|:----:|
+| **PodcastReprocessing** ★신규 | `final_output` · `user_id` · `session_id` | `reprocessed_output` · `anonymization_report` | 💾 `podcast_episodes_anonymized` |
+| **Learning Agent** | 전체 state | — | 💾 `learning_patterns` |
+| **Episode Memory** | (`memory_write=True` 시만) | — | 💾 Pinecone `mem-podcast-episode` |
 
 ### 1-2. 프론트엔드 1차 로딩 플로우
 
