@@ -66,7 +66,7 @@ class BackendClient:
         """HTTP 클라이언트 리소스를 정리한다."""
         await self._client.aclose()
 
-    def _on_request(self, request: httpx.Request) -> None:
+    async def _on_request(self, request: httpx.Request) -> None:
         """HTTP 요청 로깅 이벤트 훅."""
         content_length = len(request.content) if request.content else 0
         _logger.debug(
@@ -78,7 +78,7 @@ class BackendClient:
             },
         )
 
-    def _on_response(self, response: httpx.Response) -> None:
+    async def _on_response(self, response: httpx.Response) -> None:
         """HTTP 응답 로깅 이벤트 훅 (에러 응답 상세 로깅)."""
         if response.status_code >= 400:
             try:
