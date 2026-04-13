@@ -63,7 +63,7 @@ def _merge_nodes(
     Returns:
         병합된 누적 노드 목록 (grp는 소문자)
     """
-    now_iso = now.strftime('%Y-%m-%dT%H:%M:%S')
+    now_iso = now.strftime("%Y-%m-%dT%H:%M:%S")
     # (label, grp소문자) → 노드 dict 매핑 (기존 데이터 grp 대소문자 정규화)
     result: dict[tuple[str, str], dict[str, Any]] = {
         (n["label"], n["grp"].lower()): dict(n) for n in existing_nodes
@@ -119,7 +119,7 @@ def _merge_links(
     Returns:
         병합된 누적 엣지 목록 (self-loop 제외)
     """
-    now_iso = now.strftime('%Y-%m-%dT%H:%M:%S')
+    now_iso = now.strftime("%Y-%m-%dT%H:%M:%S")
     # (src_label, src_grp소문자, tgt_label, tgt_grp소문자) → 엣지 dict
     result: dict[tuple[str, str, str, str], dict[str, Any]] = {
         (

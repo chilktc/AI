@@ -17,7 +17,9 @@ Backend API 계약서: docs/architecture/API_SPEC.md (v2.0)
 # --- 활성 리소스 (팟캐스트 파이프라인에서 사용 중) ---
 RESOURCE_LEARNING = "learning"  # LearningAgent 학습 결과 저장
 RESOURCE_PODCAST_METADATA = "podcast_metadata"  # 에피소드 메타 + 스크립트 전체 저장
-RESOURCE_PODCAST_EPISODES = "podcast_episodes"  # podcast_episodes 수집 API (session_id, image_url, text)
+RESOURCE_PODCAST_EPISODES = (
+    "podcast_episodes"  # podcast_episodes 수집 API (session_id, image_url, text)
+)
 RESOURCE_CONTENT_ANALYSIS = "content_analyses"  # ContentAnalyzer 분석 결과
 RESOURCE_EMOTION_LOG = "emotion_logs"  # 감정 벡터 데이터 저장
 RESOURCE_VISUALIZATION = "visualizations"  # 시각화(커버 이미지) 메타 저장

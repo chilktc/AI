@@ -192,7 +192,7 @@ class BatchValidatorAgent(BaseAgent):
         script_text = script_draft.get("script_text", "")
         if script_text:
             script_parts.append(f"[전체 스크립트]\n{script_text}")
-            
+
         markers = script_draft.get("tts_markers", [])
         if markers:
             script_parts.append(f"\n[TTS 마커]: {len(markers)}개 적용됨")

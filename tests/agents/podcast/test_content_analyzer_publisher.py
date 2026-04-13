@@ -214,9 +214,11 @@ async def test_content_analyzer_calls_mind_frequencies_only():
         "narrative_structure": "reflection",
     }
     agent = ContentAnalyzerAgent()
-    with patch.object(agent, "call_llm_json", new=AsyncMock(return_value=mock_llm_return)), \
-         patch("src.agents.podcast.content_analyzer.AgentDataPublisher") as mock_pub_cls, \
-         patch("src.agents.podcast.content_analyzer.BackendClient") as mock_bc_cls:
+    with (
+        patch.object(agent, "call_llm_json", new=AsyncMock(return_value=mock_llm_return)),
+        patch("src.agents.podcast.content_analyzer.AgentDataPublisher") as mock_pub_cls,
+        patch("src.agents.podcast.content_analyzer.BackendClient") as mock_bc_cls,
+    ):
         mock_pub_cls.return_value.publish = AsyncMock(return_value=True)
         mock_bc_cls.return_value.ingest_mind_frequencies = AsyncMock()
         mock_bc_cls.return_value.close = AsyncMock()
@@ -236,5 +238,7 @@ async def test_content_analyzer_calls_mind_frequencies_only():
     assert mf_kwargs["description"] == "직장 스트레스"
 
     # ingest_user_summary: 호출되지 않아야 함 (제거됨)
-    assert not hasattr(mock_bc_cls.return_value, "ingest_user_summary") or \
-        not mock_bc_cls.return_value.ingest_user_summary.called
+    assert (
+        not hasattr(mock_bc_cls.return_value, "ingest_user_summary")
+        or not mock_bc_cls.return_value.ingest_user_summary.called
+    )

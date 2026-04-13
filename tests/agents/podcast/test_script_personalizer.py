@@ -291,8 +291,9 @@ def test_personalizer_no_state_top_level_emotional_journey() -> None:
     from src.agents.podcast.script_personalizer import ScriptPersonalizerAgent
 
     source = inspect.getsource(ScriptPersonalizerAgent)
-    assert 'state.get("emotional_journey")' not in source, \
-        "SP-1: state 최상위 emotional_journey 참조 존재"
+    assert (
+        'state.get("emotional_journey")' not in source
+    ), "SP-1: state 최상위 emotional_journey 참조 존재"
 
 
 def test_personalizer_no_v1x_emotion_field_names() -> None:
@@ -309,7 +310,8 @@ def test_personalizer_no_v1x_emotion_field_names() -> None:
     assert '"start_emotion"' not in source, "SP-2: start_emotion 레거시 참조 존재"
     assert '"resolution_emotion"' not in source, "SP-2: resolution_emotion 레거시 참조 존재"
     # CA v2.2.0: resolution → closing으로 변경됨
-    assert '.get("resolution"' not in source, \
-        "SP-2: resolution v2.1.x 참조 잔존 — closing으로 변경 필요"
+    assert (
+        '.get("resolution"' not in source
+    ), "SP-2: resolution v2.1.x 참조 잔존 — closing으로 변경 필요"
     # 신규 키 참조 확인
     assert '"closing"' in source, "SP-2: closing 키 참조 없음 — v2.2.0 반영 필요"
