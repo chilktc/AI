@@ -10,6 +10,40 @@
 
 ---
 
+## ✅ 구현 완료 요약 (2026-04-13)
+
+> Task 8 + Task 9(A/B) 구현 완료. Task 7(AGENT_IO_DATAFLOW.md 추출) + Task 1~6, 11(보류) 미완.
+
+### 완료된 커밋
+
+| 커밋 | 내용 |
+|------|------|
+| `e016e15` | feat: ingest_podcast_episodes() 백엔드 podcasts 테이블 정합 + 감정 컬럼 추가 |
+| `0899c22` | feat: init.sql podcast_episodes 신규 컬럼 추가 + podcast_segments 테이블 제거 |
+| `34df842` | feat: init.sql content_analyses + user_summaries 테이블 추가 |
+| `ebef350` | feat: ContentAnalyzer user_summary 별도 저장 추가 + BackendClient.ingest_user_summary() |
+| `831f58f` | fix: ingest_mind_frequencies 로깅 수정 — 성공 INFO + 실패 ERROR + content_analyzer 중복 except 제거 |
+| `4ccfc4b` | fix: RESOURCE_MIND_FREQUENCIES 경로 수정 — tickets/mind-frequencies → mind-frequencies |
+| `bcf7509` | test: TestWithLLM 클래스에 @pytest.mark.live 마커 추가 |
+
+### 구현 중 발생한 수정사항 (이력)
+
+| 수정 | 원인 | 결과 |
+|------|------|------|
+| `ingest_podcast_episodes()` 파라미터 `user_id` 추가 → **취소** | 초기 계획에 user_id 포함. 백엔드 확인 결과 `id`, `user_id`, `created_at` 3개는 백엔드 자동 채움 — AI 서버 전송 불필요 | `user_id` 파라미터 제거, 3개 파라미터(`session_id`, `image_url`, `text`)로 확정 |
+| `BACKEND_API_URL /api/v1` 이슈 노트 추가 → **취소** | `/greenroom/ingest/ai`와 `/api/v1` 엔드포인트를 혼용 오인. 두 경로는 완전히 독립된 별개 엔드포인트 | 관련 노트 전부 제거 |
+| `RESOURCE_MIND_FREQUENCIES = "tickets/mind-frequencies"` → `"mind-frequencies"` | 백엔드 실제 경로 확인 결과 prefix `tickets/` 없음 | `backend_resources.py` + `client.py` docstring 수정 (커밋 `4ccfc4b`) |
+| `TestWithLLM` 클래스에 `@pytest.mark.live` 마커 누락 | 마커 없이 회귀 테스트 실행 시 실제 LLM 호출 발생 — Ollama 없는 환경에서 3개 에러 | `test_script_personalizer.py` 클래스에 마커 추가 (커밋 `bcf7509`) |
+| 회귀 테스트 명령 `--ignore=tests/live` → `-m "not live"` 로 변경 | `--ignore=tests/live`만으로는 다른 디렉토리의 `@pytest.mark.live` 테스트 필터 불가 | 모든 회귀 확인 명령에 `-m "not live"` 추가 |
+
+### 테스트 결과
+
+```
+512 passed, 0 errors  (live 테스트 제외: pytest tests/ -m "not live")
+```
+
+---
+
 ## ⚠️ 핵심 통신 원칙 (변경 불가)
 
 ```
@@ -1632,13 +1666,13 @@ git commit -m "docs: AGENT_IO_DATAFLOW.md 작성 + PLAN_INDEX #25 갱신"
 > - **미반영**: init.sql DDL에 `script_text`, `tts_markers_json`, 감정 컬럼 미추가
 > - ingest 호출부: `texts=key_insights` → `text=script_text`로 변경 필요
 
-- [ ] **Step 1: 현재 코드 확인**
+- [x] **Step 1: 현재 코드 확인**
 
 ```bash
 grep -n "ingest_podcast_episodes\|podcast_segments\|primary_emotion" src/api/client.py src/api/routes/podcasts.py dev/local_db/mysql/init.sql
 ```
 
-- [ ] **Step 2: 실패 테스트 작성 — ingest 시그니처 + 감정 컬럼**
+- [x] **Step 2: 실패 테스트 작성 — ingest 시그니처 + 감정 컬럼**
 
 > ⚠️ **`_save_core_data` 실제 시그니처**: 파라미터 8개(`user_id, session_id, episode_data, final_state, meta, trace_id, correlation_id, elapsed_ms`). `BackendClient`는 함수 내부에서 `from src.api.main import backend_client`로 참조. 테스트는 모듈 전역 변수를 패치한다.
 
@@ -1723,7 +1757,7 @@ async def test_save_core_data_stores_emotion_columns():
     assert data["secondary_emotions"] == ["sadness", "fatigue"], "[0:2] 슬라이싱 확인"
 ```
 
-- [ ] **Step 3: 테스트 실행 (실패 확인)**
+- [x] **Step 3: 테스트 실행 (실패 확인)**
 
 ```bash
 pytest tests/api/test_save_core_data.py -v
@@ -1731,7 +1765,7 @@ pytest tests/api/test_save_core_data.py -v
 
 Expected: FAIL — `ingest_podcast_episodes` 시그니처 불일치 (`texts` vs `text`) 또는 감정 컬럼 누락
 
-- [ ] **Step 4: client.py — ingest_podcast_episodes() 시그니처 수정**
+- [x] **Step 4: client.py — ingest_podcast_episodes() 시그니처 수정**
 
 `src/api/client.py:170-194` 전체 교체:
 
@@ -1772,7 +1806,7 @@ async def ingest_podcast_episodes(
     response.raise_for_status()
 ```
 
-- [ ] **Step 5: routes/podcasts.py — _save_core_data() 수정 (2곳)**
+- [x] **Step 5: routes/podcasts.py — _save_core_data() 수정 (2곳)**
 
 `src/api/routes/podcasts.py` 수정:
 
@@ -1804,7 +1838,7 @@ backend_client.ingest_podcast_episodes(
 "secondary_emotions": final_state.get("emotion_vectors", {}).get("secondary_emotions", [])[:2],
 ```
 
-- [ ] **Step 6: init.sql — podcast_episodes 신규 컬럼 추가**
+- [x] **Step 6: init.sql — podcast_episodes 신규 컬럼 추가**
 
 `dev/local_db/mysql/init.sql`의 `podcast_episodes` 테이블에서 `trace_id` 직전에 삽입:
 
@@ -1819,7 +1853,7 @@ backend_client.ingest_podcast_episodes(
                                       COMMENT 'secondary_emotions[0:2]',
 ```
 
-- [ ] **Step 7: init.sql — podcast_segments 테이블 정의 전체 제거**
+- [x] **Step 7: init.sql — podcast_segments 테이블 정의 전체 제거**
 
 `dev/local_db/mysql/init.sql`에서 아래 블록 전체 삭제:
 
@@ -1836,7 +1870,7 @@ CREATE TABLE IF NOT EXISTS podcast_segments (
 
 > ℹ️ **backend_resources.py 주석**: `RESOURCE_PODCAST_EPISODES` 상수 옆 주석이 구 파라미터(`texts, title, summary, keywords`)를 참조. 시그니처 변경에 맞춰 주석도 갱신할 것.
 
-- [ ] **Step 8: Docker 재초기화로 스키마 반영 확인**
+- [x] **Step 8: Docker 재초기화로 스키마 반영 확인**
 
 ```bash
 cd dev/local_db && docker compose -f docker-compose.db.yml down -v && docker compose -f docker-compose.db.yml up -d
@@ -1845,7 +1879,7 @@ docker exec mindlog-mysql mysql -u mindlog -pmindlog mindlog -e "SHOW TABLES; DE
 
 Expected: `podcast_segments` 없음 / `podcast_episodes`에 `script_text`, `tts_markers_json`, `primary_emotion`, `secondary_emotions` 포함
 
-- [ ] **Step 9: 테스트 통과 확인**
+- [x] **Step 9: 테스트 통과 확인**
 
 ```bash
 pytest tests/api/test_save_core_data.py -v
@@ -1853,7 +1887,7 @@ pytest tests/api/test_save_core_data.py -v
 
 Expected: PASS — ingest 시그니처 정합 (`text: str`) + 감정 컬럼 저장 확인
 
-- [ ] **Step 10: 전체 테스트 회귀 확인**
+- [x] **Step 10: 전체 테스트 회귀 확인**
 
 ```bash
 pytest tests/ -v --ignore=tests/live -x
@@ -1861,7 +1895,7 @@ pytest tests/ -v --ignore=tests/live -x
 
 > ⚠️ 기존 `ingest_podcast_episodes` 호출부가 있는 테스트는 시그니처 변경으로 실패할 수 있다. 해당 mock 파라미터도 `text: str`로 갱신 필요.
 
-- [ ] **Step 11: 커밋**
+- [x] **Step 11: 커밋**
 
 ```bash
 git add src/api/client.py src/api/routes/podcasts.py \
@@ -1913,7 +1947,7 @@ BackendClient.ingest_user_summary(session_id, keywords, description)  ← 신규
 **장점:** 화면 1 조기 저장이 내부 분석 데이터 저장에 독립적. Frontend가 이후 GET으로 재조회 가능.
 **단점:** 테이블 2개 추가. 세션 종료 후 데이터 정리 필요.
 
-- [ ] **A-1: init.sql — content_analyses + user_summaries 테이블 추가**
+- [x] **A-1: init.sql — content_analyses + user_summaries 테이블 추가**
 
 `dev/local_db/mysql/init.sql`에 추가:
 
@@ -1955,7 +1989,7 @@ CREATE TABLE IF NOT EXISTS user_summaries (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
-- [ ] **A-2: Docker 재초기화**
+- [x] **A-2: Docker 재초기화**
 
 ```bash
 cd dev/local_db && docker compose -f docker-compose.db.yml down -v && docker compose -f docker-compose.db.yml up -d
@@ -1964,7 +1998,7 @@ docker exec mindlog-mysql mysql -u mindlog -pmindlog mindlog -e "SHOW TABLES;"
 
 Expected: `content_analyses`, `user_summaries` 테이블 포함
 
-- [ ] **A-3: 실패 테스트 작성**
+- [x] **A-3: 실패 테스트 작성**
 
 ```python
 import pytest
@@ -2006,13 +2040,13 @@ async def test_content_analyzer_keeps_existing_publisher_and_adds_user_summary()
     assert us_kwargs["description"] == "많이 힘드셨군요."
 ```
 
-- [ ] **A-4: 테스트 실행 (실패 확인)**
+- [x] **A-4: 테스트 실행 (실패 확인)**
 
 ```bash
 pytest tests/agents/podcast/test_content_analyzer_publisher.py -v
 ```
 
-- [ ] **A-5: backend_resources.py + client.py + content_analyzer.py 수정**
+- [x] **A-5: backend_resources.py + client.py + content_analyzer.py 수정**
 
 `src/api/backend_resources.py`에 상수 추가:
 ```python
@@ -2078,13 +2112,13 @@ await backend_client.ingest_user_summary(
 
 > ℹ️ `backend_client`는 이미 `ingest_mind_frequencies` 호출 시 생성된 인스턴스 재사용. `ingest_user_summary` 호출을 `ingest_mind_frequencies` 호출 이후에 추가한다.
 
-- [ ] **A-6: 테스트 통과 확인**
+- [x] **A-6: 테스트 통과 확인**
 
 ```bash
 pytest tests/agents/podcast/ -v
 ```
 
-- [ ] **A-7: 커밋**
+- [x] **A-7: 커밋**
 
 ```bash
 git add dev/local_db/mysql/init.sql \
@@ -2102,7 +2136,7 @@ git commit -m "feat: ContentAnalyzer user_summary 별도 저장 추가 + user_su
 > - **에러 로그 수준 낮음**: 실패 시 `_logger.warning` (WARNING 레벨 — 로그 필터에서 누락될 수 있음)
 > - **중복 try/except**: `content_analyzer.py`의 outer try/except는 `ingest_mind_frequencies`가 내부에서 예외를 먹기 때문에 실제로 실행되지 않는 죽은 코드
 
-- [ ] **B-1: 실패 테스트 작성 — 로깅 검증**
+- [x] **B-1: 실패 테스트 작성 — 로깅 검증**
 
 `tests/api/test_client.py` (기존 파일에 테스트 추가):
 
@@ -2140,7 +2174,7 @@ async def test_ingest_mind_frequencies_logs_error_at_error_level(caplog):
     assert any(r.levelno == logging.ERROR for r in caplog.records), "실패 시 ERROR 레벨 필수"
 ```
 
-- [ ] **B-2: 테스트 실행 (실패 확인)**
+- [x] **B-2: 테스트 실행 (실패 확인)**
 
 ```bash
 pytest tests/api/test_client.py -k "mind_frequencies" -v
@@ -2148,7 +2182,7 @@ pytest tests/api/test_client.py -k "mind_frequencies" -v
 
 Expected: FAIL — 성공 로그 없음, WARNING 레벨
 
-- [ ] **B-3: client.py — ingest_mind_frequencies 로깅 수정**
+- [x] **B-3: client.py — ingest_mind_frequencies 로깅 수정**
 
 `src/api/client.py:149-168` 수정:
 
@@ -2194,7 +2228,7 @@ async def ingest_mind_frequencies(
         )
 ```
 
-- [ ] **B-4: content_analyzer.py — 중복 try/except 제거**
+- [x] **B-4: content_analyzer.py — 중복 try/except 제거**
 
 `src/agents/podcast/content_analyzer.py:125-138` 수정:
 
@@ -2228,7 +2262,7 @@ finally:
     await backend_client.close()
 ```
 
-- [ ] **B-5: 테스트 실행 (통과 확인)**
+- [x] **B-5: 테스트 실행 (통과 확인)**
 
 ```bash
 pytest tests/api/test_client.py -k "mind_frequencies" -v
@@ -2236,7 +2270,7 @@ pytest tests/api/test_client.py -k "mind_frequencies" -v
 
 Expected: PASS
 
-- [ ] **B-6: 커밋**
+- [x] **B-6: 커밋**
 
 ```bash
 git add src/api/client.py src/agents/podcast/content_analyzer.py \

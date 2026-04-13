@@ -4,6 +4,14 @@
 > 기존 계획서 9개 + 코드베이스 8개 영역 병렬 검증 결과 기반.
 > **이미 해결된 항목은 전부 제외**했으며, 각 항목은 현재 develop(194116e)에서 미해결 상태임을 코드로 확인했다.
 
+> **2026-04-13 업데이트 (Plan #25 — feature/validation-restructure-0413)**
+> - ✅ **백엔드 API 형상 불일치 해결**: `ingest_podcast_episodes()` 6개 파라미터 → 3개 (`session_id`, `image_url`, `text`)로 수정. 감정 컬럼(`primary_emotion`, `secondary_emotions`) `_save_core_data()` 추가.
+> - ✅ **`RESOURCE_MIND_FREQUENCIES` 경로 수정**: `"tickets/mind-frequencies"` → `"mind-frequencies"` (백엔드 실제 경로 확인).
+> - ✅ **`ingest_mind_frequencies` 로깅 수정**: 성공 시 INFO 로그 추가, 실패 시 WARNING → ERROR 격상, 중복 try/except 제거.
+> - ✅ **ContentAnalyzer user_summary 신규 저장 추가**: `BackendClient.ingest_user_summary()` 신규 메서드 + content_analyses/user_summaries MySQL 테이블 추가.
+> - ✅ **mypy 에러**: 기존 63건 → 0건 수정 완료 (PR #52 이전 이미 해결).
+> - ✅ **테스트**: 512 passed, 0 errors (live 테스트 제외).
+
 ---
 
 ## 1. 기존 계획서 잔여 현황
