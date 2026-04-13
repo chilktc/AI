@@ -132,15 +132,13 @@ class ContentAnalyzerAgent(BaseAgent):
                 keywords=keywords,
                 description=description,
             )
-            # (신규 추가) user_summary 별도 저장 — 화면 1 전용
+            # user_summary 별도 저장 — 화면 1 전용
             user_summary = validated_analysis.get("user_summary", {})
             await backend_client.ingest_user_summary(
                 session_id=session_id,
                 keywords=user_summary.get("keywords", []),
                 description=user_summary.get("summary", ""),
             )
-        except Exception as e:
-            self.logger.warning("[ContentAnalyzer] ingest_mind_frequencies failed (ignored): %s", e)
         finally:
             await backend_client.close()
 

@@ -156,7 +156,7 @@ class BackendClient:
         """mind-frequencies 수집 엔드포인트 호출 (fire-and-forget).
 
         POST {base_url}/tickets/mind-frequencies
-        실패 시 로그만 기록하고 파이프라인에 영향을 주지 않는다.
+        실패 시 ERROR 로그만 기록하고 파이프라인에 영향을 주지 않는다.
         """
         try:
             response = await self._client.post(
@@ -168,8 +168,17 @@ class BackendClient:
                 },
             )
             response.raise_for_status()
+            _logger.info(
+                "[BackendClient] ingest_mind_frequencies OK (session=%s, keywords=%d개)",
+                session_id,
+                len(keywords),
+            )
         except Exception as e:
-            _logger.warning("[BackendClient] ingest_mind_frequencies failed (ignored): %s", e)
+            _logger.error(
+                "[BackendClient] ingest_mind_frequencies FAILED (session=%s): %s",
+                session_id,
+                e,
+            )
 
     async def ingest_user_summary(
         self, session_id: str, keywords: list[str], description: str
