@@ -114,27 +114,24 @@ class ScriptPersonalizerAgent(BaseAgent):
                     )
 
             # AgentState에서 감정적 여정 정보 추출
+            # SP-1: AgentState 미정의 키 폴백 제거 (최상위 emotional_journey 참조 없음)
             content_analysis = state.get("content_analysis", {})
-            emotional_journey_data = content_analysis.get(
-                "emotional_journey", state.get("emotional_journey")
-            )
+            emotional_journey_data = content_analysis.get("emotional_journey")
 
             emotional_journey = None
-            if emotional_journey_data:
+            if emotional_journey_data and isinstance(emotional_journey_data, dict):
                 try:
                     emotional_journey = EmotionalJourney(
-                        opening=emotional_journey_data.get(
-                            "opening", emotional_journey_data.get("start_emotion", "차분함")
-                        ),
+                        opening=emotional_journey_data.get("opening", "차분함"),
                         development=emotional_journey_data.get("development", "공감"),
-                        resolution=emotional_journey_data.get(
-                            "resolution", emotional_journey_data.get("resolution_emotion", "따뜻함")
-                        ),
+                        climax=emotional_journey_data.get("climax", ""),        # v2.2.0: 핵심 전환점
+                        closing=emotional_journey_data.get("closing", "따뜻함"), # v2.2.0: resolution 대체
+                        # SP-2: start_emotion/resolution_emotion/resolution 레거시 폴백 전부 제거
                         journey_type=emotional_journey_data.get("journey_type", "healing"),
                     )
                 except Exception as e:
                     self.logger.warning(
-                        "[ScriptPersonalizer] Failed to parse EmotionalJourney: %s", e
+                        "[ScriptPersonalizer] EmotionalJourney 생성 실패: %s", e
                     )
 
             # 에피소드 ID 생성
@@ -183,10 +180,8 @@ class ScriptPersonalizerAgent(BaseAgent):
             processing_time = (datetime.now() - start_time).total_seconds() * 1000
             self.logger.info("[ScriptPersonalizer] Completed in %.2fms", processing_time)
 
-            # 메모리 저장용 에피소드 텍스트 추출 (세그먼트 텍스트 연결)
-            memory_text = "\n\n".join(
-                seg.script_text for seg in personalized_script.segments if seg.script_text
-            )
+            # 메모리 저장용 에피소드 텍스트 추출
+            memory_text = personalized_script.script_text or ""
 
             return {
                 "final_output": personalized_script.model_dump_json(),
@@ -216,9 +211,7 @@ class ScriptPersonalizerAgent(BaseAgent):
                 )
                 fallback = fallback_script.model_dump_json()
                 try:
-                    fallback_memory_text = "\n\n".join(
-                        seg.script_text for seg in validated_script.segments if seg.script_text
-                    )
+                    fallback_memory_text = validated_script.script_text or ""
                     fallback_metadata["episode_id"] = fallback_script.episode_id
                     fallback_metadata["episode_title"] = fallback_script.episode_title
                 except Exception:
@@ -446,7 +439,8 @@ class ScriptPersonalizerAgent(BaseAgent):
 Emotional Journey:
 - Opening: {emotional_journey.opening}
 - Development: {emotional_journey.development}
-- Resolution: {emotional_journey.resolution}
+- Climax: {emotional_journey.climax}
+- Closing: {emotional_journey.closing}
 - Type: {emotional_journey.journey_type}
 """
 

@@ -28,41 +28,13 @@ def create_sample_script() -> ValidatedScript:
     return ValidatedScript(
         episode_title="번아웃, 그것은 나약함이 아닙니다",
         total_duration=15,
-        segments=[
-            ScriptSegment(
-                segment_id="opening",
-                segment_type="opening",
-                duration_minutes=3,
-                script_text=(
-                    "여러분, 안녕하세요. 오늘은 번아웃에 대해 "
-                    "이야기해볼게요. 요즘 많이 지치셨나요?"
-                ),
-                word_count=25,
-                emotional_tone="warm",
-                tts_markers=[],
-            ),
-            ScriptSegment(
-                segment_id="education",
-                segment_type="education",
-                duration_minutes=8,
-                script_text=(
-                    "번아웃은 단순한 피로가 아닙니다. "
-                    "세계보건기구에서도 공식적으로 인정한 직업 현상이에요."
-                ),
-                word_count=30,
-                emotional_tone="informative",
-                tts_markers=[],
-            ),
-            ScriptSegment(
-                segment_id="closing",
-                segment_type="closing",
-                duration_minutes=4,
-                script_text="오늘 이야기가 도움이 되셨길 바랍니다. 여러분을 응원합니다.",
-                word_count=18,
-                emotional_tone="hopeful",
-                tts_markers=[],
-            ),
-        ],
+        script_text=(
+            "여러분, 안녕하세요. 오늘은 번아웃에 대해 이야기해볼게요. "
+            "요즘 많이 지치셨나요?\n\n"
+            "번아웃은 단순한 피로가 아닙니다. "
+            "세계보건기구에서도 공식적으로 인정한 직업 현상이에요.\n\n"
+            "오늘 이야기가 도움이 되셨길 바랍니다. 여러분을 응원합니다."
+        ),
         key_insights=["번아웃은 신호다"],
         themes=["번아웃", "스트레스"],
     )
@@ -73,7 +45,8 @@ def create_sample_journey() -> EmotionalJourney:
     return EmotionalJourney(
         opening="exhausted",
         development="understood",
-        resolution="hopeful",
+        climax="insight",
+        closing="hopeful",
         journey_type="healing",
     )
 
@@ -141,7 +114,7 @@ def print_script_result(
         print(f"   {text_preview[:100]}...\n")
 
         # Determine if it was modified
-        orig_texts_joined = " ".join([s.script_text for s in original.segments])
+        orig_texts_joined = original.script_text
         if text_preview != orig_texts_joined:
             print("   (✅ 통합되어 새롭게 쓰여진 스크립트입니다.)")
         else:
@@ -303,3 +276,39 @@ if __name__ == "__main__":
     # LLM 사용 테스트 — conftest.py의 llm_client 픽스처 또는
     # dev/ollama_bootstrap.py의 register_ollama()를 사용하세요.
     # 예: pytest tests/ -v (llm_client 세션 픽스처 자동 적용)
+
+
+# =============================================================================
+# Task 9 (SP-1 + SP-2) — 레거시 필드 참조 제거 검증
+# =============================================================================
+
+
+def test_personalizer_no_state_top_level_emotional_journey() -> None:
+    """state 최상위 emotional_journey 참조 없다 — AgentState 미정의 키 (SP-1)."""
+    import inspect
+
+    from src.agents.podcast.script_personalizer import ScriptPersonalizerAgent
+
+    source = inspect.getsource(ScriptPersonalizerAgent)
+    assert 'state.get("emotional_journey")' not in source, \
+        "SP-1: state 최상위 emotional_journey 참조 존재"
+
+
+def test_personalizer_no_v1x_emotion_field_names() -> None:
+    """start_emotion/resolution_emotion/resolution v1.x 및 v2.1.x 레거시 필드명 없다 (SP-2).
+
+    CA v2.2.0 이후 emotional_journey는 climax/closing 4-키 구조.
+    resolution 키가 더 이상 존재하지 않으므로 SP가 이를 참조하면 항상 "" 반환.
+    """
+    import inspect
+
+    from src.agents.podcast.script_personalizer import ScriptPersonalizerAgent
+
+    source = inspect.getsource(ScriptPersonalizerAgent)
+    assert '"start_emotion"' not in source, "SP-2: start_emotion 레거시 참조 존재"
+    assert '"resolution_emotion"' not in source, "SP-2: resolution_emotion 레거시 참조 존재"
+    # CA v2.2.0: resolution → closing으로 변경됨
+    assert '.get("resolution"' not in source, \
+        "SP-2: resolution v2.1.x 참조 잔존 — closing으로 변경 필요"
+    # 신규 키 참조 확인
+    assert '"closing"' in source, "SP-2: closing 키 참조 없음 — v2.2.0 반영 필요"
