@@ -15,7 +15,6 @@ from datetime import datetime, timezone
 from typing import Any
 
 from src.api.backend_resources import (
-    RESOURCE_GRAPH_QUERY,
     RESOURCE_STORAGE_OBJECT,
     RESOURCE_STORAGE_UPLOAD,
     RESOURCE_VECTOR_SEARCH,
@@ -108,21 +107,14 @@ class GraphProxyClient(BaseGraphClient):
     ) -> list[dict[str, Any]]:
         """Backend API를 통해 그래프 쿼리를 실행한다.
 
-        TODO(backend): 4-3 그래프 쿼리 엔드포인트 POST /api/graph/query 확인 필요
-        이 모드가 제대로 구성되지 않으면 graph.query() 동작 불가.
+        graph/query 엔드포인트가 Backend에 미구현 상태이므로 빈 결과를 반환한다.
+        Neo4j 직접 연결(local 모드)이 필요한 경우 storage.mode를 local로 설정할 것.
         """
-        request = SaveRequest(
-            user_id="",
-            session_id="",
-            type="graph_query",
-            data={
-                "query": query,
-                "params": params or {},
-            },
-            timestamp=datetime.now(timezone.utc),
+        logger.debug(
+            "GraphProxyClient.execute_query: graph/query 엔드포인트 미구현 — 빈 결과 반환 (query=%s)",
+            query[:80] if query else "",
         )
-        response = await self._client.save(RESOURCE_GRAPH_QUERY, request)
-        return [{"success": response.success, "id": response.id}]
+        return []
 
     async def close(self) -> None:
         """BackendClient 리소스를 정리한다."""

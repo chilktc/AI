@@ -17,7 +17,6 @@ from config.loader import get_settings
 from src.api.backend_resources import (
     RESOURCE_MIND_FREQUENCIES,
     RESOURCE_PODCAST_EPISODES,
-    RESOURCE_USER_SUMMARY,
 )
 from src.api.contracts import (
     GraphCumulativeData,
@@ -53,6 +52,7 @@ class BackendClient:
         self._base_url = base_url or settings.api_base_url
         parsed = urlparse(self._base_url)
         self._profile_base_url = f"{parsed.scheme}://{parsed.netloc}"
+        self._graph_base_url = f"{parsed.scheme}://{parsed.netloc}/api/v1"
         self._timeout = settings.api_timeout
         self._client = httpx.AsyncClient(timeout=self._timeout)
 
@@ -162,7 +162,7 @@ class BackendClient:
             response = await self._client.post(
                 f"{self._base_url}/{RESOURCE_MIND_FREQUENCIES}",
                 json={
-                    "session_id": session_id,
+                    "sessionId": session_id,   # camelCase — 백엔드 요구 스펙
                     "keywords": keywords,
                     "description": description,
                 },
@@ -180,39 +180,18 @@ class BackendClient:
                 e,
             )
 
-    async def ingest_user_summary(
-        self, session_id: str, keywords: list[str], description: str
-    ) -> None:
-        """user_summaries 수집 엔드포인트 호출 (fire-and-forget).
-
-        POST {base_url}/user_summaries
-        keywords는 list[str]로 전송 — 백엔드에서 콤마 join 후 저장.
-        실패 시 로그만 기록하고 파이프라인에 영향을 주지 않는다.
-        """
-        try:
-            response = await self._client.post(
-                f"{self._base_url}/{RESOURCE_USER_SUMMARY}",
-                json={
-                    "session_id": session_id,
-                    "keywords": keywords,
-                    "description": description,
-                },
-            )
-            response.raise_for_status()
-        except Exception as e:
-            _logger.warning("[BackendClient] ingest_user_summary failed (ignored): %s", e)
-
     async def ingest_podcast_episodes(
         self,
         session_id: str,
         image_url: str,
         text: str,
+        title: str = "",
     ) -> None:
         """podcast_episodes 수집 → 백엔드 podcasts 테이블.
 
         POST {base_url}/podcast_episodes
         백엔드 자동 채움: id(PK,UUID), user_id, created_at
-        AI 서버 전송: session_id, image_url, text
+        AI 서버 전송: session_id, image_url, text, title
         """
         response = await self._client.post(
             f"{self._base_url}/{RESOURCE_PODCAST_EPISODES}",
@@ -220,6 +199,7 @@ class BackendClient:
                 "session_id": session_id,
                 "image_url": image_url,
                 "text": text,
+                "title": title,
             },
         )
         response.raise_for_status()
@@ -228,7 +208,7 @@ class BackendClient:
         """사용자의 누적 그래프 데이터를 조회한다."""
         try:
             response = await self._client.get(
-                f"{self._base_url}/graph_nodes",
+                f"{self._graph_base_url}/graph_nodes",
                 params={"user_id": user_id},
             )
             response.raise_for_status()
@@ -247,7 +227,7 @@ class BackendClient:
                 "data": data.data,
             }
             response = await self._client.put(
-                f"{self._base_url}/graph_nodes",
+                f"{self._graph_base_url}/graph_nodes",
                 json=body,
             )
             response.raise_for_status()

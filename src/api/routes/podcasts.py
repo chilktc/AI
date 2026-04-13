@@ -191,6 +191,7 @@ async def _save_core_data(
                 session_id=session_id,
                 image_url=cover_image_url or "",
                 text=episode_data.script_text,
+                title=episode_data.episode_title,
             ),
             return_exceptions=True,
         )
