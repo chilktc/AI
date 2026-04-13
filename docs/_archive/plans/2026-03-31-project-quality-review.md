@@ -605,7 +605,7 @@ def circuit_breaker_config(self) -> dict[str, Any]:
 4. `compile_graph()` docstring(라인 880-886)에 `astream()` 사용 예제 존재하나 실제 호출 없음.
 
 **현재 엔드포인트** (`podcasts.py:239-344`):
-- `POST /api/v1/podcasts/episodes` → `ainvoke()` → 전체 완료 후 `SlimPodcastResponse` 반환
+- `POST /api/podcasts/episodes` → `ainvoke()` → 전체 완료 후 `SlimPodcastResponse` 반환
 - 스트리밍 없음
 
 ### 8-2. SSE 엔드포인트 추가
@@ -637,7 +637,7 @@ async def stream_podcast_episode(request: PodcastRequest) -> StreamingResponse:
         8. error               — 오류 발생 시
 
     클라이언트 사용 예시:
-        const evtSource = new EventSource('/api/v1/podcasts/episodes/stream');
+        const evtSource = new EventSource('/api/podcasts/episodes/stream');
         evtSource.onmessage = (e) => {
             const data = JSON.parse(e.data);
             if (data.event === 'tier_start') updateProgress(data);
@@ -822,7 +822,7 @@ class SSEEventData(BaseModel):
 
 ```bash
 # 1. 수동 테스트 — curl로 SSE 스트림 확인
-curl -N -X POST http://localhost:8000/api/v1/podcasts/episodes/stream \
+curl -N -X POST http://localhost:8000/api/podcasts/episodes/stream \
   -H "Content-Type: application/json" \
   -d '{"user_id":"test","session_id":"sess_001","situation":"테스트",...}'
 
@@ -1451,7 +1451,7 @@ pytest tests/agents/shared/test_llm_client.py -v -k "circuit"
 
 # Phase 8: SSE 스트리밍 테스트
 pytest tests/api/test_sse_streaming.py -v
-# 수동: curl -N -X POST http://localhost:8000/api/v1/podcasts/episodes/stream -H "Content-Type: application/json" -d '...'
+# 수동: curl -N -X POST http://localhost:8000/api/podcasts/episodes/stream -H "Content-Type: application/json" -d '...'
 
 # Phase 9: PII 정제 테스트 (보안 담당자 검토 전 기본 검증)
 pytest tests/agents/shared/test_output_sanitizer.py -v

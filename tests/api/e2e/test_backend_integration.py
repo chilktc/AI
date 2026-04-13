@@ -31,7 +31,7 @@ from src.api.contracts import LoadResponse, SaveRequest, SaveResponse
 class TestBackendLearningApi:
     """Learning 리소스 save/load 통합 테스트.
 
-    리소스 경로: POST/GET /api/v1/learning
+    리소스 경로: POST/GET /api/learning
     참조: src/api/backend_resources.py → RESOURCE_LEARNING = "learning"
     """
 
@@ -41,11 +41,11 @@ class TestBackendLearningApi:
         skip_if_no_backend: None,
         real_backend_client,
     ) -> None:
-        """POST /api/v1/learning → SaveResponse 반환."""
+        """POST /api/learning → SaveResponse 반환."""
         # TODO(backend): API 명세 확정 후 skip 해제 및 구현
         pytest.skip(
             "백엔드 API 명세 미확정 — "
-            "백엔드팀과 /api/v1/learning 엔드포인트 스키마 확정 후 활성화"
+            "백엔드팀과 /api/learning 엔드포인트 스키마 확정 후 활성화"
         )
 
         request = SaveRequest(
@@ -72,11 +72,11 @@ class TestBackendLearningApi:
         skip_if_no_backend: None,
         real_backend_client,
     ) -> None:
-        """GET /api/v1/learning?user_id=... → LoadResponse 반환."""
+        """GET /api/learning?user_id=... → LoadResponse 반환."""
         # TODO(backend): API 명세 확정 후 skip 해제 및 구현
         pytest.skip(
             "백엔드 API 명세 미확정 — "
-            "백엔드팀과 /api/v1/learning 엔드포인트 스키마 확정 후 활성화"
+            "백엔드팀과 /api/learning 엔드포인트 스키마 확정 후 활성화"
         )
 
         result = await real_backend_client.load(
@@ -100,7 +100,7 @@ class TestBackendConversationApi:
     """Conversation 리소스 save/load 통합 테스트.
 
     리소스 경로: TODO(backend) 4-2 경로명 확정 필요
-    현재 예상: POST/GET /api/v1/conversations
+    현재 예상: POST/GET /api/conversations
     """
 
     @pytest.mark.asyncio
@@ -109,7 +109,7 @@ class TestBackendConversationApi:
         skip_if_no_backend: None,
         real_backend_client,
     ) -> None:
-        """POST /api/v1/conversations → SaveResponse."""
+        """POST /api/conversations → SaveResponse."""
         # TODO(backend): 4-2 리소스 경로명 확정 후 skip 해제
         pytest.skip(
             "리소스 경로 미확정 — " "src/api/backend_resources.py RESOURCE_CONVERSATION 확정 필요"
@@ -138,7 +138,7 @@ class TestBackendEmotionLogApi:
     """Emotion Log 리소스 save 통합 테스트.
 
     리소스 경로: TODO(backend) 4-2 경로명 확정 필요
-    현재 예상: POST /api/v1/emotion_logs
+    현재 예상: POST /api/emotion_logs
     """
 
     @pytest.mark.asyncio
@@ -147,7 +147,7 @@ class TestBackendEmotionLogApi:
         skip_if_no_backend: None,
         real_backend_client,
     ) -> None:
-        """POST /api/v1/emotion_logs → SaveResponse."""
+        """POST /api/emotion_logs → SaveResponse."""
         # TODO(backend): 4-2 리소스 경로명 확정 후 skip 해제
         pytest.skip(
             "리소스 경로 미확정 — " "src/api/backend_resources.py RESOURCE_EMOTION_LOG 확정 필요"

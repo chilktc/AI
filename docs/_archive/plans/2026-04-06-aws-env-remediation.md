@@ -58,7 +58,7 @@
 1. deploy.yml 100번 줄: `BACKEND_API_URL=${{ secrets.BACKEND_API_URL }}`
 2. GitHub Actions는 미등록 Secret을 **빈 문자열 `""`** 로 치환
 3. EC2 `.env`에 `BACKEND_API_URL=` (빈값) 주입
-4. `config/loader.py:264` — `os.getenv("BACKEND_API_URL", "http://localhost:8080/api/v1")`
+4. `config/loader.py:264` — `os.getenv("BACKEND_API_URL", "http://localhost:8080/api")`
 5. Python `os.getenv`는 빈 문자열도 유효한 값으로 인식 → 기본값 미사용
 6. `api_base_url`이 `""` (빈 문자열) → httpx URL 파싱 오류 발생
 7. **모든 Save/Load API 호출 실패** (podcast_episodes, emotion_logs, visualizations, learning 전체)
@@ -66,7 +66,7 @@
 **수정 방향:**
 - GitHub Settings → Secrets → `BACKEND_API_URL` 신규 등록
 - 값: app-3 Backend 서버의 실제 Private IP 또는 도메인
-  - 형식: `http://<app-3-private-ip>:8080/api/v1`
+  - 형식: `http://<app-3-private-ip>:8080/api`
 
 ---
 
@@ -255,7 +255,7 @@ git rm --cached dev/local_db/.env.db
   ```bash
   grep -n "BACKEND_API_URL" config/loader.py
   ```
-  확인 포인트: `os.getenv("BACKEND_API_URL", "http://localhost:8080/api/v1")`
+  확인 포인트: `os.getenv("BACKEND_API_URL", "http://localhost:8080/api")`
   → 빈 문자열 시 기본값 미사용 버그 확인
 
 - [ ] **Step 3: loader.py 빈 문자열 방어 로직 추가 (코드 수정)**
@@ -263,12 +263,12 @@ git rm --cached dev/local_db/.env.db
 
   현재:
   ```python
-  return os.getenv("BACKEND_API_URL", "http://localhost:8080/api/v1")
+  return os.getenv("BACKEND_API_URL", "http://localhost:8080/api")
   ```
   수정 후:
   ```python
   val = os.getenv("BACKEND_API_URL", "").strip()
-  return val if val else "http://localhost:8080/api/v1"
+  return val if val else "http://localhost:8080/api"
   ```
 
 - [ ] **Step 4: GitHub Secrets에 `BACKEND_API_URL` 등록 (수동 작업)**
@@ -276,7 +276,7 @@ git rm --cached dev/local_db/.env.db
   GitHub → chilktc/AI → Settings → Secrets and variables → Actions
   → New repository secret
   Name: BACKEND_API_URL
-  Value: http://<app-3-private-ip>:8080/api/v1
+  Value: http://<app-3-private-ip>:8080/api
   ```
 
 - [ ] **Step 5: 커밋**
@@ -414,7 +414,7 @@ git rm --cached dev/local_db/.env.db
   ```
   Expected:
   ```
-  BACKEND_API_URL=http://<app-3-ip>:8080/api/v1  ← 실제 값 존재
+  BACKEND_API_URL=http://<app-3-ip>:8080/api  ← 실제 값 존재
   STORAGE_MODE=proxy  (또는 local + MYSQL_URL 존재)
   APP_ENV=production
   ```
@@ -461,7 +461,7 @@ git rm --cached dev/local_db/.env.db
   ```
   Provider: bedrock
   Region: ap-northeast-2
-  API URL: http://<app-3-ip>:8080/api/v1   ← localhost가 아닌 실제 IP
+  API URL: http://<app-3-ip>:8080/api   ← localhost가 아닌 실제 IP
   Storage mode: proxy  (또는 local)
   ```
 

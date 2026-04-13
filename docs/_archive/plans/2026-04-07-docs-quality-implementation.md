@@ -13,7 +13,7 @@
 
 | 발견 에이전트 | 문제 | 심각도 | 수정 내용 |
 |-------------|------|--------|----------|
-| C | Phase 1 경로 오류: `/api/v1/episodes/stream` → 실제 절대경로 `/api/v1/podcasts/episodes/stream` | 🔴 HIGH | Phase 1 변경 후 문구 수정 |
+| C | Phase 1 경로 오류: `/api/episodes/stream` → 실제 절대경로 `/api/podcasts/episodes/stream` | 🔴 HIGH | Phase 1 변경 후 문구 수정 |
 | B | Phase 3 Args에 `iteration_count` 누락 (state.get() 호출 코드 확인됨) | 🟡 MEDIUM | Phase 3 Args 보강 |
 | A | Phase 2 Returns에 `safety_flags` 내부 필드 설명 부족 | 🟡 MEDIUM | Phase 2 Returns 보강 |
 | D | Phase 4 검증에 `test_compile_conversation_raises_error()` 보존 확인 누락 | 🟡 MEDIUM | Phase 4 검증 보강 |
@@ -51,8 +51,8 @@
 
 **실제 엔드포인트 확인** (3차 점검):
 - `src/api/routes/podcasts.py:381`: `@router.post("/episodes/stream")`
-- `main.py:202`: `app.include_router(podcasts.router, prefix="/api/v1/podcasts", ...)`
-- 절대경로: `POST /api/v1/podcasts/episodes/stream`
+- `main.py:202`: `app.include_router(podcasts.router, prefix="/api/podcasts", ...)`
+- 절대경로: `POST /api/podcasts/episodes/stream`
 - HTTP 메서드: POST (GET이 아님)
 
 **추가 발견**: `StreamEvent`는 정의만 있고 실제 SSE 구현(`podcasts.py`)은 raw dict를 사용한다.  
@@ -66,15 +66,15 @@ WebSocket 엔드포인트는 코드에 존재하지 않는다.
 
 ```python
     사용법:
-        SSE: GET /api/v1/conversations/stream?session_id=...
-        WS:  ws://api/v1/ws/conversations?session_id=...
+        SSE: GET /api/conversations/stream?session_id=...
+        WS:  ws://api/ws/conversations?session_id=...
 ```
 
 ### 변경 후
 
 ```python
     사용법:
-        SSE: POST /api/v1/podcasts/episodes/stream (Content-Type: application/json)
+        SSE: POST /api/podcasts/episodes/stream (Content-Type: application/json)
 ```
 
 > WS 줄 제거 이유: WebSocket 엔드포인트 미구현.  

@@ -9,7 +9,7 @@ AI 서버 ↔ Backend 서버 간 통신을 검증한다.
     pytest tests/api/e2e/ -v -m live --backend-url=http://<BACKEND_IP>:8080
 
     # 환경변수로 지정
-    BACKEND_API_URL=http://<BACKEND_IP>:8080/api/v1 pytest tests/api/e2e/ -v -m live
+    BACKEND_API_URL=http://<BACKEND_IP>:8080/api pytest tests/api/e2e/ -v -m live
 """
 
 from __future__ import annotations
@@ -58,7 +58,7 @@ def backend_url(request: pytest.FixtureRequest) -> str:
 
     env_url = os.getenv("BACKEND_API_URL", "")
     if env_url:
-        # 환경변수가 /api/v1 까지 포함할 수 있으므로 base만 추출
+        # 환경변수가 /api 까지 포함할 수 있으므로 base만 추출
         parsed = urlparse(env_url)
         return f"{parsed.scheme}://{parsed.netloc}"
 
@@ -68,7 +68,7 @@ def backend_url(request: pytest.FixtureRequest) -> str:
 @pytest.fixture(scope="session")
 def backend_api_url(backend_url: str) -> str:
     """Backend API v1 전체 경로."""
-    return f"{backend_url}/api/v1"
+    return f"{backend_url}/api"
 
 
 @pytest.fixture(scope="session")

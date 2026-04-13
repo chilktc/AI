@@ -36,7 +36,7 @@
 
 ### 2-1. users
 
-사용자 프로필 정보. `PATCH /api/v1/users/{user_id}/profile`로 수정.
+사용자 프로필 정보. `PATCH /api/users/{user_id}/profile`로 수정.
 
 | 컬럼 | 타입 | 제약조건 | 설명 |
 |------|------|---------|------|
@@ -311,7 +311,7 @@ mind-log-bucket/
 ### 추적 조회 API
 
 ```
-GET /api/v1/admin/traces/{trace_id}
+GET /api/admin/traces/{trace_id}
 ```
 
 | 파라미터 | 기본값 | 설명 |

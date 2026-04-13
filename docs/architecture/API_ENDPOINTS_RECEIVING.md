@@ -9,11 +9,11 @@
 | 속성 | 값 |
 |------|---|
 | 상태 | 구현 완료 |
-| 엔드포인트 | /api/v1/podcasts/episodes |
+| 엔드포인트 | /api/podcasts/episodes |
 | 카테고리 | Podcast |
 | 타입 | `POST` |
 
-**EndPoint** : `POST /api/v1/podcasts/episodes`
+**EndPoint** : `POST /api/podcasts/episodes`
 
 **설명** : 사용자의 주제(topic)와 설명(description)을 받아 팟캐스트모드 LangGraph 파이프라인(TIER 0→1→2→3→4)을 실행하고, 핵심 데이터를 DB에 동기 저장한 뒤 완료 신호를 반환합니다. 모든 데이터는 DB에 저장되므로 Backend가 GET API로 조회 가능합니다.
 
@@ -159,12 +159,12 @@
 | 속성 | 값 |
 |------|---|
 | 상태 | 명세 완료 |
-| 엔드포인트 | /api/v1/users/{user_id}/emotions |
+| 엔드포인트 | /api/users/{user_id}/emotions |
 | 카테고리 | History |
 | 타입 | `GET` |
 | 방향 | Backend Server → Frontend (AI 서버 미관여) |
 
-**EndPoint** : `GET /api/v1/users/{user_id}/emotions`
+**EndPoint** : `GET /api/users/{user_id}/emotions`
 
 **설명** : 사용자의 과거 감정 분석 기록을 시간순으로 조회합니다. 프론트엔드의 감정 추이 그래프, 감정 분포 차트, 감정 달력 등 시각화 컴포넌트에 데이터를 제공합니다. Backend 서버가 MySQL `emotion_logs` 테이블에서 직접 조회하여 반환합니다 (AI 서버 미관여).
 
@@ -281,7 +281,7 @@
 
 ### 변경 이력
 
-- **v1.2**: 엔드포인트 변경 (`/api/v1/history/emotions` → `/api/v1/users/{user_id}/emotions`), `user_id`를 Query → Path Variable로 이동, 응답 래퍼 변경 (`{code, message, data}` → `{success, emotions[], pagination, tracing}`), `recorded_at` → `created_at`, `limit` → `page_size` (1~100), `log_id`/`session_id` 신규 필드 추가
+- **v1.2**: 엔드포인트 변경 (`/api/history/emotions` → `/api/users/{user_id}/emotions`), `user_id`를 Query → Path Variable로 이동, 응답 래퍼 변경 (`{code, message, data}` → `{success, emotions[], pagination, tracing}`), `recorded_at` → `created_at`, `limit` → `page_size` (1~100), `log_id`/`session_id` 신규 필드 추가
 
 ---
 
@@ -290,12 +290,12 @@
 | 속성 | 값 |
 |------|---|
 | 상태 | 명세 완료 |
-| 엔드포인트 | /api/v1/users/{user_id}/podcasts/episodes |
+| 엔드포인트 | /api/users/{user_id}/podcasts/episodes |
 | 카테고리 | History |
 | 타입 | `GET` |
 | 방향 | Backend Server → Frontend (AI 서버 미관여) |
 
-**EndPoint** : `GET /api/v1/users/{user_id}/podcasts/episodes`
+**EndPoint** : `GET /api/users/{user_id}/podcasts/episodes`
 
 **설명** : 사용자가 생성한 팟캐스트 에피소드 목록을 페이지네이션 기반으로 조회합니다. Backend 서버가 MySQL `podcast_episodes` 테이블에서 직접 조회하여 반환합니다 (AI 서버 미관여).
 
@@ -408,7 +408,7 @@
 
 ### 변경 이력
 
-- **v1.2**: 엔드포인트 변경 (`/api/v1/history/episodes` → `/api/v1/users/{user_id}/podcasts/episodes`), `user_id` Query → Path Variable, 응답 래퍼 변경, `theme`(단수) → `themes`(배열), `primary_emotion` Required → nullable, `limit` → `page_size`, 페이지네이션 6필드 확장
+- **v1.2**: 엔드포인트 변경 (`/api/history/episodes` → `/api/users/{user_id}/podcasts/episodes`), `user_id` Query → Path Variable, 응답 래퍼 변경, `theme`(단수) → `themes`(배열), `primary_emotion` Required → nullable, `limit` → `page_size`, 페이지네이션 6필드 확장
 
 ---
 
@@ -417,12 +417,12 @@
 | 속성 | 값 |
 |------|---|
 | 상태 | 명세 완료 |
-| 엔드포인트 | /api/v1/users/{user_id}/podcasts/episodes/{episode_id} |
+| 엔드포인트 | /api/users/{user_id}/podcasts/episodes/{episode_id} |
 | 카테고리 | History |
 | 타입 | `GET` |
 | 방향 | Backend Server → Frontend (AI 서버 미관여) |
 
-**EndPoint** : `GET /api/v1/users/{user_id}/podcasts/episodes/{episode_id}`
+**EndPoint** : `GET /api/users/{user_id}/podcasts/episodes/{episode_id}`
 
 **설명** : 특정 팟캐스트 에피소드의 전체 데이터를 상세 조회합니다. Backend 서버가 MySQL의 `podcast_episodes` + `podcast_segments` 테이블을 JOIN하여 직접 조회합니다. 응답 구조는 팟캐스트 에피소드 생성 API의 `PodcastEpisodeResponse`와 동일합니다.
 
@@ -575,7 +575,7 @@
 
 ### 변경 이력
 
-- **v1.2**: 엔드포인트 변경 (`/api/v1/history/episodes/{episodeId}` → `/api/v1/users/{user_id}/podcasts/episodes/{episode_id}`), 응답 래퍼 변경, `episode_title` → `title`, `total_duration` → `total_duration_minutes`, `tts_markers` 추가, `cover_image.interpretation` → `interpretation_text`, `cover_image.style_info` 추가, `emotion.arousal` 제거 (EmotionSummary 미포함)
+- **v1.2**: 엔드포인트 변경 (`/api/history/episodes/{episodeId}` → `/api/users/{user_id}/podcasts/episodes/{episode_id}`), 응답 래퍼 변경, `episode_title` → `title`, `total_duration` → `total_duration_minutes`, `tts_markers` 추가, `cover_image.interpretation` → `interpretation_text`, `cover_image.style_info` 추가, `emotion.arousal` 제거 (EmotionSummary 미포함)
 
 ---
 
@@ -584,11 +584,11 @@
 | 속성 | 값 |
 |------|---|
 | 상태 | 구현 완료 |
-| 엔드포인트 | /api/v1/sessions |
+| 엔드포인트 | /api/sessions |
 | 카테고리 | Session |
 | 타입 | `POST` |
 
-**EndPoint** : `POST /api/v1/sessions`
+**EndPoint** : `POST /api/sessions`
 
 **설명** : 대화나 팟캐스트 모드 진입 시 Backend 서버가 호출합니다. 신규 세션 ID(`sess_{uuid}`)를 생성하여 반환합니다.
 
@@ -669,11 +669,11 @@
 | 속성 | 값 |
 |------|---|
 | 상태 | 구현 완료 (Learning 트리거 비활성) |
-| 엔드포인트 | /api/v1/sessions/{session_id}/close |
+| 엔드포인트 | /api/sessions/{session_id}/close |
 | 카테고리 | Session |
 | 타입 | `POST` |
 
-**EndPoint** : `POST /api/v1/sessions/{session_id}/close`
+**EndPoint** : `POST /api/sessions/{session_id}/close`
 
 **설명** : 대화가 끝났을 때 Backend 서버가 호출합니다. 향후 Learning Agent를 비동기로 트리거하여 세션 피드백을 학습할 예정입니다.
 
@@ -877,11 +877,11 @@
 | 속성 | 값 |
 |------|---|
 | 상태 | 명세 완료 |
-| 엔드포인트 | /api/v1/users/{user_id}/profile |
+| 엔드포인트 | /api/users/{user_id}/profile |
 | 카테고리 | User |
 | 타입 | `PATCH` |
 
-**EndPoint** : `PATCH /api/v1/users/{user_id}/profile`
+**EndPoint** : `PATCH /api/users/{user_id}/profile`
 
 **설명** : 사용자의 개인화 프로필을 수정합니다. Personalization Agent와 Script Personalizer가 톤/스타일 조정 시 참조하는 설정입니다.
 

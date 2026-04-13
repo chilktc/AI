@@ -209,17 +209,17 @@ class TestWithLLM:
     def agent(self, llm_client):
         if llm_client is None:
             pytest.skip("Ollama client not available")
-        agent = ScriptPersonalizerAgent(db_client=None, enable_deep_personalization=True)
+        agent = ScriptPersonalizerAgent(api_client=None, enable_deep_personalization=True)
         agent.llm_client = llm_client
 
         # Mock _get_user_profile to return our sample profiles
         original_get_profile = agent._get_user_profile
 
-        def mock_get_profile(user_id):
+        async def mock_get_profile(user_id):
             for name, profile in SAMPLE_PROFILES.items():
                 if profile.user_id == user_id:
                     return profile
-            return original_get_profile(user_id)
+            return await original_get_profile(user_id)
 
         agent._get_user_profile = mock_get_profile
 
@@ -288,7 +288,7 @@ if __name__ == "__main__":
 
     # LLM 없이 테스트
     print("\n📌 규칙 기반 테스트")
-    agent = ScriptPersonalizerAgent(db_client=None, enable_deep_personalization=False)
+    agent = ScriptPersonalizerAgent(api_client=None, enable_deep_personalization=False)
 
     for name, profile in SAMPLE_PROFILES.items():
         state = {

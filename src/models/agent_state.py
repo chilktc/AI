@@ -30,9 +30,11 @@ class AgentState(TypedDict, total=False):
 
     # === 입력 (Intent Classifier가 설정) ===
     user_input: str  # 사용자 원본 입력
+    structured_input: dict[str, Any]  # 프론트엔드로부터 전달받는 4가지 입력 필드
     user_id: str  # 사용자 고유 ID
     session_id: str  # 세션 고유 ID
     mode: Literal["podcast"]  # 실행 모드
+    learning_pattern: dict[str, Any] | None  # 백엔드 Push 사용자 학습 패턴 (nullable)
 
     # === 분석 필드 ===
     intent: dict[str, Any]  # Intent Classifier → 의도 분류 결과

@@ -4,10 +4,15 @@ Pinecone 벡터 DB 직접 클라이언트.
 KnowledgeAgent의 _search_knowledge_base() 및
 BaseMemoryAgent의 벡터 검색과 호환되는 인터페이스를 제공한다.
 
+사용 경로:
+    - factory.py create_vector_client() → local/hybrid 모드에서 반환
+    - KnowledgeAgent(Plan #19): 전문지식 인덱스(expert-knowledge) 직접 쿼리
+    - EpisodeMemoryAgent는 KT Cloud REST API 사용 → 이 클라이언트 미사용
+
 사용법:
     client = PineconeClient()
     result = await client.query(
-        index="expert_knowledge",
+        index="expert-knowledge",
         vector=embedding,
         filter={"domain": {"$in": ["psychology"]}},
         top_k=5,

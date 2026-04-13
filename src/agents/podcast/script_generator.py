@@ -157,14 +157,30 @@ class ScriptGeneratorAgent(BaseAgent):
             # 3. 핵심 인사이트 추출
             key_insights = await self._extract_insights(generated_segments)
 
-            # 4. 최종 스크립트 (Draft) 구조화
+            # 4. 최종 스크립트 (Draft) 구조화 — [v3.1 Flattening]
             total_duration = sum(seg.get("duration_minutes", 0) for seg in generated_segments)
             total_words = sum(seg.get("word_count", 0) for seg in generated_segments)
+
+            # 세그먼트들을 단일 텍스트로 병합
+            combined_script = "\n\n".join(seg.get("script_text", "") for seg in generated_segments)
+
+            # TTS 마커 평탄화 (필요 시 인덱스 재계산 로직이 들어갈 수 있으나, 현재는 빈 리스트)
+            all_markers = []
+            current_pos = 0
+            for seg in generated_segments:
+                seg_text = seg.get("script_text", "")
+                markers = seg.get("tts_markers", [])
+                for m in markers:
+                    # 마커의 position을 전체 텍스트 기준으로 보정
+                    m["position"] = current_pos + m.get("position", 0)
+                    all_markers.append(m)
+                current_pos += len(seg_text) + 2  # \n\n 고려
 
             script_draft = {
                 "episode_title": episode_title,
                 "total_duration": total_duration,
-                "segments": generated_segments,
+                "script_text": combined_script,
+                "tts_markers": all_markers,
                 "key_insights": key_insights,
                 "themes": [main_theme] + sub_themes,
                 "metadata": {

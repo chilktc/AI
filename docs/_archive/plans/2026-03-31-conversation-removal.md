@@ -198,9 +198,9 @@ self._prompt_loader.load_user_prompt(self._prompt_mode, "knowledge", "expand_que
 | `tests/api/test_sessions_endpoint.py` | mode 기본값 테스트 | `"conversation"` → `"podcast"` |
 
 ### 변경 없음
-- `POST /api/v1/podcasts/episodes` — 영향 없음
-- `POST /api/v1/podcasts/episodes/stream` — 영향 없음
-- `POST /api/v1/sessions` — mode 기본값만 변경
+- `POST /api/podcasts/episodes` — 영향 없음
+- `POST /api/podcasts/episodes/stream` — 영향 없음
+- `POST /api/sessions` — mode 기본값만 변경
 - `GET /health` — 영향 없음
 
 ---

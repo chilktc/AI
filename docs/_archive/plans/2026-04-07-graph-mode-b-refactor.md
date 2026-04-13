@@ -411,8 +411,8 @@ AI서버 참조 코드: `src/api/graph_cumulative.py` — `publish_graph_to_rdb(
 ```markdown
 | 순서 | 엔드포인트 | 메서드 | 용도 |
 |------|-----------|--------|------|
-| **①** | `/api/v1/graph_nodes/episodes` | POST | AI서버 → GoT 에피소드 원본 전송 (EMA는 Backend가 수행) |
-| **②** | `/api/v1/graph/users/{id}/data` | GET | **프론트엔드용** — MySQL 누적 데이터 직접 서빙 |
+| **①** | `/api/graph_nodes/episodes` | POST | AI서버 → GoT 에피소드 원본 전송 (EMA는 Backend가 수행) |
+| **②** | `/api/graph/users/{id}/data` | GET | **프론트엔드용** — MySQL 누적 데이터 직접 서빙 |
 ```
 
 - [ ] **Step 4: 섹션 7 Backend팀 요청사항 업데이트**
@@ -421,11 +421,11 @@ AI서버 참조 코드: `src/api/graph_cumulative.py` — `publish_graph_to_rdb(
 ```markdown
 | 순서 | 엔드포인트 | 용도 |
 |------|----------|------|
-| 1 | `POST /api/v1/graph_nodes/episodes` | GoT 에피소드 수신 + EMA 계산 + UPSERT |
-| 2 | `GET /api/v1/graph/users/{id}/data` | 프론트엔드용 — RDB에서 직접 조회 |
+| 1 | `POST /api/graph_nodes/episodes` | GoT 에피소드 수신 + EMA 계산 + UPSERT |
+| 2 | `GET /api/graph/users/{id}/data` | 프론트엔드용 — RDB에서 직접 조회 |
 ```
 
-삭제: `GET /api/v1/graph_nodes?user_id=X`, `PUT /api/v1/graph_nodes` (Mode A 전용)
+삭제: `GET /api/graph_nodes?user_id=X`, `PUT /api/graph_nodes` (Mode A 전용)
 
 - [ ] **Step 5: 섹션 10 settings 예시에서 graph 블록 삭제**
 
