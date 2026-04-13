@@ -333,7 +333,7 @@ class KnowledgeAgent(BaseAgent):
             # 3-1. Backend RDB: Pinecone top_k chunk_id로 원문 조회
             chunk_ids = [m.get("id") for m in matches if m.get("id")]
             score_map = {m.get("id"): m.get("score", 0.0) for m in matches if m.get("id")}
-            documents = await self._fetch_documents_from_backend(chunk_ids)
+            documents = await self._fetch_documents_from_backend(chunk_ids)  # type: ignore[arg-type]
 
             # 4. 결과를 articles 구조로 매핑 (Pinecone metadata 대신 RDB 원문 사용)
             articles = [
@@ -546,7 +546,7 @@ class KnowledgeAgent(BaseAgent):
                     "[KnowledgeAgent] RDB 원문 조회 완료 — %d건",
                     len(documents),
                 )
-                return documents
+                return documents  # type: ignore[no-any-return]
         except Exception as e:
             self.logger.error("[KnowledgeAgent] RDB 원문 조회 실패: %s", e)
             return []
