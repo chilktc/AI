@@ -1,7 +1,7 @@
 # 마스터 계획 인덱스 (Master Plan Index)
 
 **목적**: 모든 기획 문서의 현황 추적 및 상태 관리  
-**버전**: v27
+**버전**: v28
 **마지막 업데이트**: 2026-04-13
 **관리 원칙**:
 - 완료된 계획 → PR 링크 + 간단한 변경 사항 기록
@@ -44,6 +44,8 @@
 | 28 | Git History 민감정보 제거 | `plans/2026-04-13-git-history-cleanup.md` | 🔲 합의 대기 | — | 3인 합의 후 실행. 제거 대상: KT Cloud 토큰/엔드포인트, ALB 도메인, 내부 IP 4종, DB 비밀번호 3종 (총 10종). git-filter-repo --force, remote add 재등록, 전원 re-clone 필요 |
 | 29 | CI/CD 워크플로우 개선 | *(인라인 — 별도 계획서 없음)* | ✅ 완료 | 1e27eb4, e4af0f8 | ① pinecone_mock.py 복원 (fe99482 커밋에서 실수 삭제) + Black 포맷 12개 파일 수정 → CI 통과. ② build-and-push 속도 개선: arm64 제거(amd64 전용), registry 레이어 캐시 추가. ③ Neo4j/Pinecone 보호: `docker compose pull/up ai-server`만 실행 (`--no-deps`). ④ CI pip 캐시 추가, codecov token, docker-build GHA 캐시. ⑤ `aws ssm wait`에 `--region` 추가 |
 | 30 | SaveResponse 스키마 유연화 (긴급 핫픽스) | `plans/2026-04-13-saveresponse-schema-hotfix.md` | ✅ 임시 완료 | d4626bc | AWS 환경 save API 응답 형식 변경(`{'success': true}`→`{'code': 'ok', 'message': '성공'}`) 대응. SaveResponse를 양쪽 형식 모두 수용하도록 유연화. 임시 해결책 완료, 백엔드 API 계약 확정 대기 중. |
+| 31 | 로깅 시스템 강화 | *(인라인 — 별도 계획서 없음)* | ✅ 완료 | 0e115d5 (PR #101) | HTTP 이벤트 훅 추가(모든 요청/응답 자동 로깅), 에러 응답 상세 기록, DeveloperFormatter(다중행 가독성), JSON 포맷터 ISO 8601 타임스탬프. `src/api/client.py`, `src/utils/logger.py` |
+| 32 | 테스트 정리 — live 테스트 분리 | *(인라인 — 별도 계획서 없음)* | 🔲 PR 대기 | — | pyproject.toml addopts="-m 'not live'" 추가, test_safety/test_backend_integration 삭제, live fixture 분리, api_client→backend_client 시그니처 수정. 539 passed (live 제외 ~9초). 브랜치: `refactor/test-cleanup` |
 
 **범례:**
 - ✅ 완료 — 코드 구현 완료, PR 머지됨
@@ -209,4 +211,4 @@
 
 ---
 
-*마스터 인덱스 v27 — 2026-04-13 (Plan #30 SaveResponse 유연화 긴급 핫픽스 완료: 백엔드 API 응답 형식 변경 대응. Plan #29 CI/CD 개선 완료. Plan #19 ③ test_pinecone_mock import error 해소.)*
+*마스터 인덱스 v28 — 2026-04-13 (Plan #31 로깅 시스템 강화 기재 추가. Plan #32 테스트 정리(live 분리) PR 대기 — refactor/test-cleanup 브랜치.)*
