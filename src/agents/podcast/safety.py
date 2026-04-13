@@ -76,7 +76,6 @@ class SafetyAgent(BaseAgent):
                 "risk_level": 0,
                 "risk_score": 0.0,
                 "status": "safe",
-                "flags": {},
                 "required_in_script": [],
                 "error": "llm_call_failed",
             }
@@ -94,10 +93,20 @@ class SafetyAgent(BaseAgent):
             result["required_in_script"] = [system_msg] + llm_reasons
 
         # 4. [제어 로직] CLAUDE.md의 CRISIS 선점 메커니즘 지원
+        # SA-1: LLM 응답에서 허용 4개 키만 명시 추출 (스펙 외 필드 유입 방지)
+        required = result.get("required_in_script", [])
+        if not isinstance(required, list):
+            required = []
+
         update_data = {
-            "safety_flags": result,
+            "safety_flags": {
+                "status": status,
+                "risk_level": risk_level,
+                "risk_score": float(result.get("risk_score", 0.0)),
+                "required_in_script": required,
+            },
             "risk_level": risk_level,
-            "risk_score": result.get("risk_score", 0.0),
+            "risk_score": float(result.get("risk_score", 0.0)),
         }
 
         if status == "crisis":
