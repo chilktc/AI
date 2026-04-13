@@ -60,6 +60,9 @@ class VisualizationAgent(BaseAgent):
                     "status": "failed",
                     "error": "llm_call_failed",
                     "image_url": None,
+                    "style_type": "abstract",
+                    "interpretation": "",
+                    "color_palette": [],
                 }
             }
         image_prompt: str = planning.get("image_prompt") or ""
@@ -74,8 +77,8 @@ class VisualizationAgent(BaseAgent):
                 "status": result.get("status"),
                 "retry_count": result.get("retry_count"),
                 "error": result.get("error"),
-                "style_type": planning.get("style_type"),
-                "interpretation": planning.get("interpretation"),
+                "style_type": str(planning.get("style_type") or "abstract"),
+                "interpretation": str(planning.get("interpretation") or ""),
                 "original_prompt": image_prompt,
             }
         }

@@ -172,3 +172,54 @@ async def test_visualization_llm_failure_returns_failed_status(agent: Visualizat
     assert vd["status"] == "failed"
     assert vd["error"] == "llm_call_failed"
     assert vd["image_url"] is None
+
+
+@pytest.mark.asyncio
+async def test_visual_data_style_type_is_str_not_none(agent: VisualizationAgent) -> None:
+    """LLM이 style_type=None 반환 시 빈 문자열 기본값 적용 (VI-1)."""
+    llm_response = {"image_prompt": "test", "style_type": None, "interpretation": None}
+    image_gen_response = {"image_binary": b"\x89PNG\r\n\x1a\n"}
+    state = AgentState(
+        user_input="오늘 하루",
+        user_id="u",
+        session_id="s",
+        mode="podcast",
+        emotion_vectors={"primary_emotion": "calm"},
+    )
+
+    agent.s3_client = MagicMock()
+
+    with (
+        patch.object(agent, "call_llm_json", new_callable=AsyncMock, return_value=llm_response),
+        patch.object(
+            agent, "call_image_gen", new_callable=AsyncMock, return_value=image_gen_response
+        ),
+    ):
+        result = await agent.process(state)
+
+    vd = result.get("visual_data", {})
+    assert isinstance(vd.get("style_type"), str), f"style_type 타입 오류: {vd.get('style_type')!r}"
+    assert vd["style_type"] == "abstract"
+    assert isinstance(vd.get("interpretation"), str)
+
+
+@pytest.mark.asyncio
+async def test_error_path_visual_data_has_same_keys_as_normal_path(
+    agent: VisualizationAgent,
+) -> None:
+    """에러 반환도 정상 반환과 동일한 키 구조를 가진다 (VI-2)."""
+    state = AgentState(
+        user_input="오늘 하루",
+        user_id="u",
+        session_id="s",
+        mode="podcast",
+    )
+
+    with patch.object(
+        agent, "call_llm_json", new_callable=AsyncMock, side_effect=RuntimeError("LLM 실패")
+    ):
+        result = await agent.process(state)
+
+    vd = result.get("visual_data", {})
+    for key in ["image_url", "style_type", "interpretation"]:
+        assert key in vd, f"에러 경로 visual_data에 '{key}' 키 없음"
