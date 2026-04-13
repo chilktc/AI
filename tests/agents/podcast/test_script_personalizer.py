@@ -13,7 +13,6 @@ import pytest
 from src.agents.podcast.script_personalizer import ScriptPersonalizerAgent
 from src.models.schemas import (
     EmotionalJourney,
-    ScriptSegment,
     UserProfile,
     ValidatedScript,
 )

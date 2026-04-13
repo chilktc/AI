@@ -111,7 +111,7 @@ class GraphProxyClient(BaseGraphClient):
         Neo4j 직접 연결(local 모드)이 필요한 경우 storage.mode를 local로 설정할 것.
         """
         logger.debug(
-            "GraphProxyClient.execute_query: graph/query 엔드포인트 미구현 — 빈 결과 반환 (query=%s)",
+            "GraphProxyClient.execute_query: graph/query 미구현 — 빈 결과 반환 (query=%s)",
             query[:80] if query else "",
         )
         return []

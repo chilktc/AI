@@ -23,8 +23,8 @@ from config.app_config import (
     FORMALITY_REPLACEMENTS,
     STYLE_MAPPINGS,
 )
-from src.api.client import BackendClient
 from src.agents.shared.base_agent import BaseAgent
+from src.api.client import BackendClient
 from src.models.agent_state import AgentState
 from src.models.schemas import (
     EmotionalJourney,
