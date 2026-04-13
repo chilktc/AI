@@ -39,7 +39,6 @@ Frontend ─────────────────────── B
 
 | 항목 | 변경 내용 | Task |
 |------|---------|------|
-| `script_personalizer.py` 버그 수정 | `.segments` → `.script_text` 참조 변경 (memory_text 생성 런타임 오류) | Task 0 (선행) |
 | `ingest_podcast_episodes()` **정합** | 백엔드 `podcasts` 테이블(`session_id, image_url, text`)에 맞춰 시그니처·호출부 전면 수정 | Task 8 |
 | `_save_core_data()` 확장 | (1) 감정 컬럼(`primary_emotion`, `secondary_emotions`) 추가, (2) `ingest_podcast_episodes()` 호출 인자 정합 | Task 8 |
 | `podcast_episodes` 테이블 | `script_text`, `tts_markers_json`, `primary_emotion`, `secondary_emotions` 컬럼 추가 — **init.sql 직접 수정** | Task 8 |
@@ -790,7 +789,7 @@ SaveRequest(
 > ⚠️ **현재 코드 문제 (Task 8에서 수정)**:
 > 1. `ingest_podcast_episodes()` 시그니처가 `podcasts` 테이블과 불일치: `texts: list[str]` → `text: str`, 불필요 파라미터(title, summary, keywords) 존재
 > 2. 호출부에서 `texts=key_insights` 전달 중 → `text=script_text`로 변경 필요
-> 3. `memory_text` 생성 코드 `.segments` 버그 → **Task 0에서 선행 수정**
+> 3. `memory_text` 생성 코드 `.segments` 버그 → ✅ **수정 완료** (커밋 `c8ad23c`)
 
 | 경고 배너 | — | `safety_alert` (SlimPodcastResponse) |
 
@@ -848,14 +847,13 @@ SaveRequest(
 
 | 상태 | 파일 | 변경 내용 | Task |
 |------|------|---------|------|
-| **수정** | `src/agents/podcast/script_personalizer.py` | `.segments` → `.script_text` 버그 수정 | Task 0 |
 | **수정** | `dev/local_db/mysql/init.sql` | `podcast_episodes` 컬럼 추가, `podcast_segments` 제거, `content_analyses` 추가 | Task 8, 9 |
 | **수정** | `src/api/client.py` | `ingest_podcast_episodes()` 시그니처 변경: `text: str`만 전달 | Task 8 |
 | **수정** | `src/api/routes/podcasts.py` | `_save_core_data()` 감정 컬럼 추가 + ingest 호출부 수정 | Task 8 |
 | **수정** | `src/api/backend_resources.py` | `RESOURCE_PODCAST_EPISODES` 주석 갱신 | Task 8 |
 | **수정** | `src/agents/podcast/content_analyzer.py` | `publisher.publish()` — `user_summary` 필드만 전송 | Task 9 |
 | **신규** | `docs/architecture/AGENT_IO_DATAFLOW.md` | 이 계획서 내용을 별도 문서로 추출 | Task 7 |
-| **수정** | `tests/` | 관련 테스트 추가/수정 | Task 0, 8, 9 |
+| **수정** | `tests/` | 관련 테스트 추가/수정 | Task 8, 9 |
 
 > ℹ️ **migration 스크립트 파일 없음** — DB 구조 변경은 `dev/local_db/mysql/init.sql` 직접 수정. Docker 재초기화로 반영.
 > ⚠️ **init.sql 동시 수정 주의**: Task 8, 9가 모두 init.sql을 수정한다. Task 순서대로 적용할 것.
@@ -866,132 +864,11 @@ SaveRequest(
 
 | 순서 | Task | 의존 | 이유 |
 |:----:|:----:|------|------|
-| **0** | **Task 0** | — | **선행 필수**: script_personalizer.py `.segments` → `.script_text` 버그 수정 |
-| 1 | Task 8 | Task 0 | init.sql 정합 + `ingest_podcast_episodes()` 정합 + `_save_core_data()` 감정 확장 |
+| 1 | Task 8 | — | init.sql 정합 + `ingest_podcast_episodes()` 정합 + `_save_core_data()` 감정 확장 |
 | 2 | Task 9 | — | ContentAnalyzer publisher 변경 + content_analyses 테이블 + mind_frequencies 검증 |
 | 3 | Task 7 | Task 8, 9 | 문서 추출 — 전체 구현 완료 후 마지막 |
 
 > ℹ️ 구 Task 1~6, 11은 백엔드 테이블 미확보로 **보류**. 상세는 "보류 항목" 섹션 참조.
-
----
-
-## Task 0: script_personalizer.py `.segments` → `.script_text` 버그 수정 (선행 필수)
-
-**Files:**
-- Modify: `src/agents/podcast/script_personalizer.py`
-- Modify: `tests/agents/test_script_personalizer.py` (기존 테스트 갱신)
-
-**목적:** v3.0 스키마 평탄화(PR #91)로 `PersonalizedScript.segments`와 `ValidatedScript.segments`가 제거됨.
-`script_personalizer.py`에서 `.segments`를 참조하는 코드가 런타임 `AttributeError`를 발생시키며 `memory_text` 생성이 실패한다.
-
-**버그 위치:**
-- `script_personalizer.py:187-188` — `personalized_script.segments` → 존재하지 않는 필드
-- `script_personalizer.py:219-220` — `validated_script.segments` → 존재하지 않는 필드
-
-> ℹ️ v3.0 구조: `PersonalizedScript.script_text: str` (전체 스크립트 텍스트), `ValidatedScript.script_text: str`
-> `memory_text`는 Pinecone 저장 + MySQL 저장 모두에 사용. 이 버그가 수정되지 않으면 에피소드 내용이 어디에도 저장되지 않음.
-
-- [ ] **Step 1: 현재 코드 확인**
-
-```bash
-grep -n "\.segments" src/agents/podcast/script_personalizer.py
-```
-
-Expected: L187-188, L219-220에서 `.segments` 참조 확인
-
-- [ ] **Step 2: 실패 테스트 작성**
-
-`tests/agents/test_script_personalizer.py`에 추가:
-
-```python
-@pytest.mark.asyncio
-async def test_memory_text_uses_script_text_not_segments():
-    """v3.0: memory_text가 script_text에서 직접 생성되어야 한다 (.segments 참조 금지)."""
-    from src.agents.podcast.script_personalizer import ScriptPersonalizerAgent
-    from unittest.mock import AsyncMock, patch
-
-    agent = ScriptPersonalizerAgent()
-    test_script_text = "오늘 직장에서 힘든 일이 있었군요.\n\n함께 이야기해 볼게요."
-    mock_llm_result = {
-        "episode_id": "ep_test",
-        "episode_title": "테스트 에피소드",
-        "total_duration": 5,
-        "script_text": test_script_text,
-        "tts_markers": [],
-        "key_insights": ["인사이트"],
-        "themes": ["스트레스"],
-        "personalization_meta": {"applied_style": {}, "adjusted_segments": [], "attitude_applied": "balanced"},
-    }
-    state = {
-        "user_id": "u1", "session_id": "s1",
-        "script_draft": {"episode_title": "테스트", "script_text": test_script_text},
-        "validation_result": {"overall_score": 0.85, "verdict": "PASS"},
-        "emotion_vectors": {"primary_emotion": "anxiety"},
-        "safety_flags": {"status": "safe"},
-    }
-    with patch.object(agent, "call_llm_json", new=AsyncMock(return_value=mock_llm_result)):
-        result = await agent(state)
-
-    assert result.get("memory_text") == test_script_text
-    assert result.get("memory_write") is True
-```
-
-- [ ] **Step 3: 테스트 실행 (실패 확인)**
-
-```bash
-pytest tests/agents/test_script_personalizer.py::test_memory_text_uses_script_text_not_segments -v
-```
-
-Expected: FAIL — `AttributeError: 'PersonalizedScript' object has no attribute 'segments'`
-
-- [ ] **Step 4: 버그 수정 — personalized_script.segments → personalized_script.script_text**
-
-`src/agents/podcast/script_personalizer.py` L187-188 변경:
-
-```python
-# 변경 전 (L187-188):
-memory_text = "\n\n".join(
-    seg.script_text for seg in personalized_script.segments
-)
-
-# 변경 후:
-memory_text = personalized_script.script_text
-```
-
-- [ ] **Step 5: 버그 수정 — validated_script.segments → validated_script.script_text**
-
-`src/agents/podcast/script_personalizer.py` L219-220 변경:
-
-```python
-# 변경 전 (L219-220):
-memory_text = "\n\n".join(
-    seg.script_text for seg in validated_script.segments
-)
-
-# 변경 후:
-memory_text = validated_script.script_text
-```
-
-- [ ] **Step 6: 테스트 통과 확인**
-
-```bash
-pytest tests/agents/test_script_personalizer.py -v
-```
-
-Expected: PASS
-
-- [ ] **Step 7: 전체 테스트 회귀 확인**
-
-```bash
-pytest tests/ -v --ignore=tests/live -x
-```
-
-- [ ] **Step 8: 커밋**
-
-```bash
-git add src/agents/podcast/script_personalizer.py tests/agents/test_script_personalizer.py
-git commit -m "fix: script_personalizer .segments → .script_text — v3.0 memory_text 생성 버그 수정"
-```
 
 ---
 
