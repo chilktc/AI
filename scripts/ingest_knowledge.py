@@ -12,7 +12,8 @@ EpisodeMemoryAgent의 적재 패턴(Embedding → Pinecone upsert)을 재사용�
     python scripts/ingest_knowledge.py --config scripts/ingest_config.yaml
 
     # 특정 파일만 적재
-    python scripts/ingest_knowledge.py --pdf scripts/pdfs/cbt_guide.pdf --domain mental_health --title "CBT 기법 가이드"
+    python scripts/ingest_knowledge.py --pdf scripts/pdfs/cbt_guide.pdf \
+        --domain mental_health --title "CBT 기법 가이드"
 
 필요 환경변수 (.env):
     KT_CLOUD_KNOWLEDGE_EMBEDDING_ENDPOINT  — KT Cloud Embedding API
@@ -226,7 +227,7 @@ async def ingest_document(
     # 1. PDF 텍스트 추출
     pages = extract_text_from_pdf(pdf_path)
     if not pages:
-        print(f"  ⚠️  텍스트 추출 실패 또는 빈 PDF")
+        print("  ⚠️  텍스트 추출 실패 또는 빈 PDF")
         return {"total_chunks": 0, "success": 0, "failed": 0}
     print(f"  📖 {len(pages)}개 페이지에서 텍스트 추출 완료")
 
@@ -364,7 +365,7 @@ async def main() -> None:
 
     # 적재 실행
     print(f"\n{'='*50}")
-    print(f"📚 Knowledge Base 적재 시작")
+    print("📚 Knowledge Base 적재 시작")
     print(f"  문서 수: {len(documents)}")
     print(f"  청크 크기: {chunk_size}자, 오버랩: {chunk_overlap}자")
     print(f"  Pinecone 인덱스: {pinecone_index}")
@@ -405,7 +406,7 @@ async def main() -> None:
 
     # 결과 출력
     print(f"\n{'='*50}")
-    print(f"📊 적재 완료 요약")
+    print("📊 적재 완료 요약")
     print(f"  전체 청크: {total_stats['total_chunks']}")
     print(f"  성공: {total_stats['success']}")
     print(f"  실패: {total_stats['failed']}")
