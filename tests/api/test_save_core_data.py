@@ -48,8 +48,8 @@ async def test_ingest_sends_text_not_texts():
     mock_bc.ingest_podcast_episodes.assert_called_once()
     kwargs = mock_bc.ingest_podcast_episodes.call_args.kwargs
     assert kwargs["text"] == "안녕하세요. 오늘 힘든 하루였죠.", "text=script_text 전달 필수"
+    assert kwargs["title"] == "테스트", "title=episode_title 전달 필수"
     assert "texts" not in kwargs, "구 파라미터 texts 제거 필수"
-    assert "title" not in kwargs, "구 파라미터 title 제거 필수"
     assert "summary" not in kwargs, "구 파라미터 summary 제거 필수"
     assert "keywords" not in kwargs, "구 파라미터 keywords 제거 필수"
 
