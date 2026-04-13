@@ -54,6 +54,7 @@ class AgentState(TypedDict, total=False):
     validation_result: dict[str, Any]  # Batch Validator → 검증 결과
     final_output: str  # Script Personalizer → 최종 응답
     visual_data: dict[str, Any]  # Visualization Agent → 시각화 메타데이터
+    stories_context: dict[str, Any] | None  # Stories 선택 데이터 (keywords, title, description)
 
     # === 메모리 저장 트리거 (Script Personalizer → async_post) ===
     memory_write: bool  # True이면 async_post에서 에피소드 메모리 저장 실행
