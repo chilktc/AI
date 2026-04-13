@@ -358,4 +358,4 @@ GET /api/admin/traces/{trace_id}
 ---
 
 *출처: Notion "작업중인 db 스키마" + `src/api/external_schemas.py` (56 Pydantic 모델)*
-*마지막 업데이트: 2026-03-13*
+*마지막 업데이트: 2026-04-14 11:00*

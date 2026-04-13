@@ -38,7 +38,7 @@ TIER 4 (후처리): Script Personalizer
 | 벡터 DB | Pinecone |
 | 관계형 DB | MySQL |
 | 그래프 DB | Neo4j |
-| 캐시 | Redis |
+| 캐시 | Redis (선택적 — Intent Classifier 캐싱용, 기본 비활성) |
 | 이미지 저장 | S3 / CDN |
 | 프레임워크 | FastAPI + Uvicorn |
 | CI/CD | GitHub Actions |
@@ -85,7 +85,7 @@ mind-log/
 │   └── utils/            # 공통 유틸리티
 ├── config/               # 환경 설정 파일 (settings.yaml)
 ├── prompts/              # 에이전트 프롬프트 YAML (멀티버전)
-├── tests/                # 테스트 코드 (532 passed)
+├── tests/                # 테스트 코드 (563 passed, live 제외 기준)
 ├── docs/                 # 프로젝트 문서
 └── CLAUDE.md             # AI 개발 가이드 (아키텍처 + 협업 규칙)
 ```
@@ -117,3 +117,7 @@ mind-log/
 ## 라이선스
 
 MIT License
+
+---
+
+*마지막 업데이트: 2026-04-14 11:00*
