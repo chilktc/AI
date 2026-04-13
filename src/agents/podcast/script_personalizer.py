@@ -235,7 +235,7 @@ class ScriptPersonalizerAgent(BaseAgent):
             try:
                 profile = await self.backend_client.get_user_profile(user_id)
                 if profile:
-                    return UserProfile.model_validate(profile)
+                    return UserProfile.model_validate(profile)  # type: ignore[no-any-return]
             except Exception as e:
                 self.logger.warning(
                     "[ScriptPersonalizer] Failed to fetch user profile via API: %s", e
