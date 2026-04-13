@@ -227,7 +227,6 @@ class TestBackendClientLifecycle:
 async def test_ingest_mind_frequencies_logs_on_success(caplog):
     """성공 시 INFO 레벨 로그가 남아야 한다."""
     import logging
-
     from unittest.mock import MagicMock, patch
 
     from src.api.client import BackendClient
@@ -251,7 +250,6 @@ async def test_ingest_mind_frequencies_logs_on_success(caplog):
 async def test_ingest_mind_frequencies_logs_error_at_error_level(caplog):
     """실패 시 ERROR 레벨 로그가 남아야 한다 (WARNING 아님)."""
     import logging
-
     from unittest.mock import patch
 
     from src.api.client import BackendClient

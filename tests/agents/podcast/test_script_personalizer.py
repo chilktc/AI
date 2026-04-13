@@ -13,7 +13,6 @@ import pytest
 from src.agents.podcast.script_personalizer import ScriptPersonalizerAgent
 from src.models.schemas import (
     EmotionalJourney,
-    ScriptSegment,
     UserProfile,
     ValidatedScript,
 )
@@ -183,7 +182,7 @@ class TestWithLLM:
     def agent(self, llm_client):
         if llm_client is None:
             pytest.skip("Ollama client not available")
-        agent = ScriptPersonalizerAgent(api_client=None, enable_deep_personalization=True)
+        agent = ScriptPersonalizerAgent(backend_client=None, enable_deep_personalization=True)
         agent.llm_client = llm_client
 
         # Mock _get_user_profile to return our sample profiles

@@ -8,7 +8,8 @@ from src.models.agent_state import AgentState
 
 
 @pytest.fixture
-def agent(llm_client):
+def live_agent(llm_client):
+    """Ollama LLM을 사용하는 라이브 테스트용 에이전트."""
     if llm_client is None:
         pytest.skip("Ollama client not available")
     agent = ScriptGeneratorAgent()
@@ -18,9 +19,9 @@ def agent(llm_client):
 
 @pytest.mark.live
 @pytest.mark.asyncio
-async def test_script_generator_title_generation(agent):
+async def test_script_generator_title_generation(live_agent):
     start_time = time.time()
-    title = await agent._generate_title("Mental Health", ["CBT"], {"start_emotion": "sad"})
+    title = await live_agent._generate_title("Mental Health", ["CBT"], {"start_emotion": "sad"})
     elapsed_time = time.time() - start_time
     print(f"\n[Generate Title] ⏱️ 추론 시간: {elapsed_time:.2f}초")
     assert isinstance(title, str)
@@ -29,10 +30,10 @@ async def test_script_generator_title_generation(agent):
 
 @pytest.mark.live
 @pytest.mark.asyncio
-async def test_script_generator_insights_extraction(agent):
+async def test_script_generator_insights_extraction(live_agent):
     segments = [{"script_text": "첫 번째로 번아웃은 누구에게나 올 수 있는 흔한 증상입니다."}]
     start_time = time.time()
-    insights = await agent._extract_insights(segments)
+    insights = await live_agent._extract_insights(segments)
     elapsed_time = time.time() - start_time
     print(f"\n[Extract Insights] ⏱️ 추론 시간: {elapsed_time:.2f}초")
 
@@ -41,7 +42,7 @@ async def test_script_generator_insights_extraction(agent):
 
 @pytest.mark.live
 @pytest.mark.asyncio
-async def test_script_generator_process(agent):
+async def test_script_generator_process(live_agent):
     state = {
         "main_theme": "Mental Health",
         "segment_plan": [
@@ -58,7 +59,7 @@ async def test_script_generator_process(agent):
     }
 
     start_time = time.time()
-    result = await agent.process(state)
+    result = await live_agent.process(state)
     elapsed_time = time.time() - start_time
     print(f"\n[Script Generator Process] ⏱️ 추론 시간: {elapsed_time:.2f}초")
 
@@ -72,13 +73,18 @@ async def test_script_generator_process(agent):
 
 @pytest.mark.live
 @pytest.mark.asyncio
-async def test_script_generator_includes_safety_context_when_warning(agent):
+async def test_script_generator_includes_safety_context_when_warning(live_agent):
     """Safety warning 상태일 때 safety_context가 스크립트 메타데이터에 포함된다."""
     state = {
         "content_analysis": {
             "main_theme": "스트레스 관리",
             "sub_themes": ["번아웃"],
-            "emotional_journey": {"opening": "불안", "development": "이해", "climax": "전환", "closing": "안정"},
+            "emotional_journey": {
+                "opening": "불안",
+                "development": "이해",
+                "climax": "전환",
+                "closing": "안정",
+            },
             "target_duration": 3,
         },
         "safety_flags": {
@@ -100,7 +106,7 @@ async def test_script_generator_includes_safety_context_when_warning(agent):
         ],
         "knowledge_context": {},
     }
-    result = await agent.process(state)
+    result = await live_agent.process(state)
     draft = result["script_draft"]
     assert "safety_context" in draft["metadata"]
     assert draft["metadata"]["safety_context"]["status"] == "warning"
@@ -109,7 +115,7 @@ async def test_script_generator_includes_safety_context_when_warning(agent):
 
 @pytest.mark.live
 @pytest.mark.asyncio
-async def test_script_generator_no_safety_context_when_safe(agent):
+async def test_script_generator_no_safety_context_when_safe(live_agent):
     """Safety safe 상태일 때 safety_context.status가 'safe'이다."""
     state = {
         "content_analysis": {
@@ -132,7 +138,7 @@ async def test_script_generator_no_safety_context_when_safe(agent):
         ],
         "knowledge_context": {},
     }
-    result = await agent.process(state)
+    result = await live_agent.process(state)
     draft = result["script_draft"]
     assert draft["metadata"]["safety_context"]["status"] == "safe"
 

@@ -15,12 +15,12 @@ from collections.abc import AsyncIterator
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Request as HttpRequest
+from fastapi import APIRouter
+from fastapi import Request as HttpRequest
 from fastapi.responses import StreamingResponse
 
 # src.api.main import removed from top level to prevent circular import
 from src.api.backend_resources import (
-    RESOURCE_PODCAST_EPISODES,
     RESOURCE_PODCAST_METADATA,
     RESOURCE_VISUALIZATION,
     TYPE_PODCAST_METADATA,

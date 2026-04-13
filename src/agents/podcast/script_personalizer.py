@@ -23,8 +23,8 @@ from config.app_config import (
     FORMALITY_REPLACEMENTS,
     STYLE_MAPPINGS,
 )
-from src.api.client import BackendClient
 from src.agents.shared.base_agent import BaseAgent
+from src.api.client import BackendClient
 from src.models.agent_state import AgentState
 from src.models.schemas import (
     EmotionalJourney,
@@ -144,7 +144,7 @@ class ScriptPersonalizerAgent(BaseAgent):
                 raise ValueError("validated_script is required but not provided")
 
             # STEP 1: 사용자 프로필 조회 및 스타일 전략 결정
-            user_profile = self._get_user_profile(user_id)
+            user_profile = await self._get_user_profile(user_id)
             personalization_strategy = self._determine_strategy(user_profile)
 
             self.logger.info("[ScriptPersonalizer] Strategy: %s", personalization_strategy)
@@ -226,16 +226,16 @@ class ScriptPersonalizerAgent(BaseAgent):
     # STEP 1: 사용자 프로필 조회 및 스타일 전략 결정
     # =========================================================================
 
-    def _get_user_profile(self, user_id: str) -> UserProfile:
+    async def _get_user_profile(self, user_id: str) -> UserProfile:
         """
         사용자 프로필 조회 (Backend API 연동)
         """
 
         if self.backend_client:
             try:
-                profile = self.backend_client.get_user_profile(user_id)
+                profile = await self.backend_client.get_user_profile(user_id)
                 if profile:
-                    return profile
+                    return UserProfile.model_validate(profile)  # type: ignore[no-any-return]
             except Exception as e:
                 self.logger.warning(
                     "[ScriptPersonalizer] Failed to fetch user profile via API: %s", e
