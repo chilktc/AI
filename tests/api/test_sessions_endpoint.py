@@ -1,8 +1,8 @@
 """
 Sessions 엔드포인트 테스트.
 
-POST /api/v1/sessions (세션 생성) 및
-POST /api/v1/sessions/{session_id}/close (세션 종료) 검증.
+POST /api/sessions (세션 생성) 및
+POST /api/sessions/{session_id}/close (세션 종료) 검증.
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ import pytest
 
 
 class TestCreateSession:
-    """POST /api/v1/sessions 엔드포인트 테스트."""
+    """POST /api/sessions 엔드포인트 테스트."""
 
     @pytest.mark.parametrize(
         "mode_input, expected_mode",
@@ -32,7 +32,7 @@ class TestCreateSession:
         if mode_input is not None:
             body["mode"] = mode_input
 
-        response = test_client.post("/api/v1/sessions", json=body)
+        response = test_client.post("/api/sessions", json=body)
 
         assert response.status_code == 200
         data = response.json()
@@ -59,12 +59,12 @@ class TestCreateSession:
         expected_status,
     ) -> None:
         """필수 필드 누락/잘못된 값 시 422 에러."""
-        response = test_client.post("/api/v1/sessions", json=body)
+        response = test_client.post("/api/sessions", json=body)
         assert response.status_code == expected_status
 
 
 class TestCloseSession:
-    """POST /api/v1/sessions/{session_id}/close 엔드포인트 테스트."""
+    """POST /api/sessions/{session_id}/close 엔드포인트 테스트."""
 
     @pytest.mark.parametrize(
         "feedback",
@@ -81,7 +81,7 @@ class TestCloseSession:
             body["feedback"] = feedback
 
         response = test_client.post(
-            "/api/v1/sessions/sess_abc123/close",
+            "/api/sessions/sess_abc123/close",
             json=body,
         )
 

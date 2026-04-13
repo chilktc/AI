@@ -100,8 +100,8 @@ pytest tests/api/test_middleware.py -v
 tests/api/
 ├── conftest.py                    ← mock Fixture (compiled_graph, backend_client)
 ├── test_health_endpoint.py        ← GET /health, GET /health/ready
-├── test_sessions_endpoint.py      ← POST /api/v1/sessions, POST /close
-├── test_podcasts_endpoint.py      ← POST /api/v1/podcasts/episodes
+├── test_sessions_endpoint.py      ← POST /api/sessions, POST /close
+├── test_podcasts_endpoint.py      ← POST /api/podcasts/episodes
 ├── test_backend_client.py         ← BackendClient save/load (httpx mock)
 ├── test_middleware.py             ← X-Request-ID, 로깅 제외 경로
 └── e2e/                           ← 실제 백엔드 연동 (아래 섹션 5 참조)
@@ -152,8 +152,8 @@ Backend 서버(app-3:8080)     ← Spring Boot + MySQL
 AI 서버(app-2:8000)          ← FastAPI + LangGraph 파이프라인
         │
         │ BackendClient (src/api/client.py)
-        │  - POST /api/v1/{resource}  → save()
-        │  - GET  /api/v1/{resource}  → load()
+        │  - POST /api/{resource}  → save()
+        │  - GET  /api/{resource}  → load()
         │  - 재시도: exponential backoff, 최대 3회
         │  - 타임아웃: 기본 5초
         ▼
@@ -164,7 +164,7 @@ Backend 서버(app-3:8080)     ← 데이터 영속화
 
 | 환경변수 | 설명 | 기본값 |
 |---------|------|--------|
-| `BACKEND_API_URL` | Backend API 기본 URL | `http://localhost:8080/api/v1` |
+| `BACKEND_API_URL` | Backend API 기본 URL | `http://localhost:8080/api` |
 | `api.timeout` (config) | 기본 타임아웃 (초) | `5` |
 | `STORAGE_MODE` | 저장소 모드 | `local` |
 
@@ -223,7 +223,7 @@ pytest tests/api/e2e/test_backend_health.py -v -m live \
     --backend-url=http://<APP3_IP>:8080
 
 # 또는 환경변수로 실행
-BACKEND_API_URL=http://<APP3_IP>:8080/api/v1 \
+BACKEND_API_URL=http://<APP3_IP>:8080/api \
     pytest tests/api/e2e/test_backend_health.py -v -m live
 
 # 로컬 개발 시 (localhost)
@@ -239,7 +239,7 @@ pytest tests/api/e2e/test_backend_health.py -v -m live \
 | `test_backend_responds_to_http` | HTTP 요청 응답 (서버 동작 확인) |
 | `test_health_returns_200` | 헬스체크 엔드포인트 200 OK |
 | `test_health_response_is_json` | 헬스체크 JSON 응답 |
-| `test_api_v1_path_exists` | `/api/v1/` 경로 인식 |
+| `test_api_v1_path_exists` | `/api/` 경로 인식 |
 | `test_client_initialization` | BackendClient 생성/종료 |
 | `test_client_timeout_setting` | 타임아웃 설정 검증 |
 
@@ -264,7 +264,7 @@ pytest tests/api/e2e/test_backend_integration.py -v -m live \
 | Fixture | 설명 |
 |---------|------|
 | `backend_url` | `--backend-url` CLI 옵션 또는 `BACKEND_API_URL` 환경변수 |
-| `backend_api_url` | `{backend_url}/api/v1` 전체 경로 |
+| `backend_api_url` | `{backend_url}/api` 전체 경로 |
 | `skip_if_no_backend` | 백엔드 미연결 시 자동 skip (테스트 실패 방지) |
 | `real_backend_client` | 실제 BackendClient 인스턴스 (mock 아님) |
 | `http_client` | 동기 httpx.Client (헬스체크용) |
@@ -309,7 +309,7 @@ curl http://localhost:8000/metrics
 
 ```bash
 # .env 파일
-BACKEND_API_URL=http://<APP3_IP>:8080/api/v1
+BACKEND_API_URL=http://<APP3_IP>:8080/api
 STORAGE_MODE=proxy
 ```
 

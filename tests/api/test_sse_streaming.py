@@ -1,7 +1,7 @@
 """
 SSE 스트리밍 엔드포인트 테스트.
 
-POST /api/v1/podcasts/episodes/stream — SSE 실시간 스트리밍 검증.
+POST /api/podcasts/episodes/stream — SSE 실시간 스트리밍 검증.
 compiled_graph.astream()을 mock하여 파이프라인 없이 SSE 이벤트 시퀀스를 테스트.
 """
 
@@ -127,7 +127,7 @@ def sse_test_client(mock_compiled_graph_sse):
     """SSE 테스트용 FastAPI TestClient."""
     mock_backend = AsyncMock()
     mock_backend.close = AsyncMock()
-    mock_backend._base_url = "http://mock-backend:8080/api/v1"
+    mock_backend._base_url = "http://mock-backend:8080/api"
 
     with (
         patch("src.api.main.compiled_graph", mock_compiled_graph_sse),
@@ -149,12 +149,12 @@ def sse_test_client(mock_compiled_graph_sse):
 
 
 class TestSSEStreamEndpoint:
-    """POST /api/v1/podcasts/episodes/stream SSE 스트리밍 테스트."""
+    """POST /api/podcasts/episodes/stream SSE 스트리밍 테스트."""
 
     def test_sse_response_content_type(self, sse_test_client) -> None:
         """SSE 응답의 Content-Type이 text/event-stream이다."""
         response = sse_test_client.post(
-            "/api/v1/podcasts/episodes/stream",
+            "/api/podcasts/episodes/stream",
             json=_valid_request(),
         )
         assert response.status_code == 200
@@ -163,7 +163,7 @@ class TestSSEStreamEndpoint:
     def test_sse_response_cache_headers(self, sse_test_client) -> None:
         """SSE 응답에 캐시 비활성화 헤더가 포함된다."""
         response = sse_test_client.post(
-            "/api/v1/podcasts/episodes/stream",
+            "/api/podcasts/episodes/stream",
             json=_valid_request(),
         )
         assert response.headers.get("cache-control") == "no-cache"
@@ -171,7 +171,7 @@ class TestSSEStreamEndpoint:
     def test_sse_event_sequence_starts_with_connected(self, sse_test_client) -> None:
         """첫 번째 이벤트는 항상 connected이다."""
         response = sse_test_client.post(
-            "/api/v1/podcasts/episodes/stream",
+            "/api/podcasts/episodes/stream",
             json=_valid_request(),
         )
         events = _parse_sse_events(response.text)
@@ -182,7 +182,7 @@ class TestSSEStreamEndpoint:
     def test_sse_event_sequence_ends_with_done(self, sse_test_client) -> None:
         """마지막 이벤트는 항상 done이다."""
         response = sse_test_client.post(
-            "/api/v1/podcasts/episodes/stream",
+            "/api/podcasts/episodes/stream",
             json=_valid_request(),
         )
         events = _parse_sse_events(response.text)
@@ -192,7 +192,7 @@ class TestSSEStreamEndpoint:
     def test_sse_contains_custom_tier_events(self, sse_test_client) -> None:
         """custom 모드 이벤트(tier_start, agent_complete, tier_end)가 전달된다."""
         response = sse_test_client.post(
-            "/api/v1/podcasts/episodes/stream",
+            "/api/podcasts/episodes/stream",
             json=_valid_request(),
         )
         events = _parse_sse_events(response.text)
@@ -205,7 +205,7 @@ class TestSSEStreamEndpoint:
     def test_sse_contains_result_event(self, sse_test_client) -> None:
         """result 이벤트에 episode_id와 session_id가 포함된다."""
         response = sse_test_client.post(
-            "/api/v1/postcasts/episodes/stream",
+            "/api/postcasts/episodes/stream",
             json=_valid_request(),
         )
         events = _parse_sse_events(response.text)
@@ -213,7 +213,7 @@ class TestSSEStreamEndpoint:
 
         # 경로 오타 시 404이므로 올바른 경로로 재테스트
         response = sse_test_client.post(
-            "/api/v1/podcasts/episodes/stream",
+            "/api/podcasts/episodes/stream",
             json=_valid_request(),
         )
         events = _parse_sse_events(response.text)
@@ -227,7 +227,7 @@ class TestSSEStreamEndpoint:
     def test_sse_custom_events_have_timestamp(self, sse_test_client) -> None:
         """custom 이벤트에는 timestamp가 추가된다."""
         response = sse_test_client.post(
-            "/api/v1/podcasts/episodes/stream",
+            "/api/podcasts/episodes/stream",
             json=_valid_request(),
         )
         events = _parse_sse_events(response.text)
@@ -239,7 +239,7 @@ class TestSSEStreamEndpoint:
     def test_sse_full_event_order(self, sse_test_client) -> None:
         """이벤트 순서: connected → (custom 이벤트들) → result → done."""
         response = sse_test_client.post(
-            "/api/v1/podcasts/episodes/stream",
+            "/api/podcasts/episodes/stream",
             json=_valid_request(),
         )
         events = _parse_sse_events(response.text)
@@ -262,7 +262,7 @@ class TestSSEStreamError:
 
         mock_backend = AsyncMock()
         mock_backend.close = AsyncMock()
-        mock_backend._base_url = "http://mock-backend:8080/api/v1"
+        mock_backend._base_url = "http://mock-backend:8080/api"
 
         with (
             patch("src.api.main.compiled_graph", mock_compiled_graph_sse),
@@ -277,7 +277,7 @@ class TestSSEStreamError:
 
             client = TestClient(app, raise_server_exceptions=False)
             response = client.post(
-                "/api/v1/podcasts/episodes/stream",
+                "/api/podcasts/episodes/stream",
                 json=_valid_request(),
             )
 
@@ -291,7 +291,7 @@ class TestSSEStreamError:
         """compiled_graph=None 시 error 이벤트가 전송된다."""
         mock_backend = AsyncMock()
         mock_backend.close = AsyncMock()
-        mock_backend._base_url = "http://mock-backend:8080/api/v1"
+        mock_backend._base_url = "http://mock-backend:8080/api"
 
         with (
             patch("src.api.main.compiled_graph", None),
@@ -305,7 +305,7 @@ class TestSSEStreamError:
 
             client = TestClient(app, raise_server_exceptions=False)
             response = client.post(
-                "/api/v1/podcasts/episodes/stream",
+                "/api/podcasts/episodes/stream",
                 json=_valid_request(),
             )
 
@@ -321,7 +321,7 @@ class TestSSEStreamError:
         mock_graph = MagicMock()
         mock_backend = AsyncMock()
         mock_backend.close = AsyncMock()
-        mock_backend._base_url = "http://mock-backend:8080/api/v1"
+        mock_backend._base_url = "http://mock-backend:8080/api"
 
         with (
             patch("src.api.main.compiled_graph", mock_graph),
@@ -336,7 +336,7 @@ class TestSSEStreamError:
             client = TestClient(app, raise_server_exceptions=False)
             # situation 필드 누락
             response = client.post(
-                "/api/v1/podcasts/episodes/stream",
+                "/api/podcasts/episodes/stream",
                 json={"user_id": "u1", "session_id": "s1"},
             )
 

@@ -87,6 +87,7 @@ class IntentClassifierAgent(BaseAgent):
             user_input = state.get("user_input", "")
             user_id = state.get("user_id", "anonymous")
             session_id = state.get("session_id", "session_0")
+            learning_pattern: dict[str, Any] = state.get("learning_pattern") or {}
 
             # 추적 ID 생성
             trace_id = f"trace_{uuid.uuid4().hex[:12]}"
@@ -128,6 +129,7 @@ class IntentClassifierAgent(BaseAgent):
                     normalized_input=normalized_input,
                     previous_intent=previous_intent,
                     preliminary_intent=preliminary_result["intent"],
+                    learning_pattern=learning_pattern,
                 )
             else:
                 # LLM이 없으면 규칙 기반 결과 사용
@@ -289,7 +291,11 @@ class IntentClassifierAgent(BaseAgent):
     # =========================================================================
 
     def _build_llm_prompt(
-        self, user_input: str, previous_intent: dict[str, Any] | None, preliminary_intent: str
+        self,
+        user_input: str,
+        previous_intent: dict[str, Any] | None,
+        preliminary_intent: str,
+        learning_pattern: dict[str, Any] | None = None,
     ) -> str:
         """LLM 프롬프트 생성"""
 
@@ -301,6 +307,16 @@ class IntentClassifierAgent(BaseAgent):
                 f"\n(Consider conversation continuity)"
             )
 
+        learning_context = ""
+        if learning_pattern:
+            parts = []
+            if "preferred_format" in learning_pattern:
+                parts.append(f"Preferred Format: {learning_pattern['preferred_format']}")
+            if "emotional_trend" in learning_pattern:
+                parts.append(f"Emotional Trend: {learning_pattern['emotional_trend']}")
+            if parts:
+                learning_context = "User Learning Pattern:\n" + "\n".join(parts)
+
         # PromptLoader를 통해 yaml에서 로드된 system_prompt 포맷팅
         base_prompt = self.get_prompt("system_prompt")
 
@@ -309,6 +325,10 @@ class IntentClassifierAgent(BaseAgent):
             preliminary_intent=preliminary_intent,
             user_input=user_input,
         )
+
+        if learning_context:
+            prompt = f"{learning_context}\n\n{prompt}"
+
         return prompt
 
     async def _llm_classify(
@@ -317,6 +337,7 @@ class IntentClassifierAgent(BaseAgent):
         normalized_input: str,
         previous_intent: dict[str, Any] | None,
         preliminary_intent: str,
+        learning_pattern: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """LLM을 사용한 정밀 분류"""
 
@@ -324,6 +345,7 @@ class IntentClassifierAgent(BaseAgent):
             user_input=user_input,
             previous_intent=previous_intent,
             preliminary_intent=preliminary_intent,
+            learning_pattern=learning_pattern,
         )
 
         try:

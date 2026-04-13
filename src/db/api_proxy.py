@@ -43,8 +43,8 @@ class VectorProxyClient(BaseVectorClient):
     ) -> dict[str, Any]:
         """Backend API를 통해 벡터 검색을 수행한다.
 
-        TODO(backend): 4-3 벡터 검색 엔드포인트 POST /api/v1/vector/search 확인 필요
-        TODO(backend): 4-3 요청/응답 스키마 확정 필요
+        TODO(backend): 4-3 벡터 검색 엔드포인트 POST /api/vector/search 확인 필요
+        이 모드가 제대로 구성되지 않으면 vector 검색 시 오류 발생.
         """
         request = SaveRequest(
             user_id="",
@@ -108,8 +108,8 @@ class GraphProxyClient(BaseGraphClient):
     ) -> list[dict[str, Any]]:
         """Backend API를 통해 그래프 쿼리를 실행한다.
 
-        TODO(backend): 4-3 그래프 쿼리 엔드포인트 POST /api/v1/graph/query 확인 필요
-        TODO(backend): 4-3 Cypher 쿼리 프록시 가능 여부 확인
+        TODO(backend): 4-3 그래프 쿼리 엔드포인트 POST /api/graph/query 확인 필요
+        이 모드가 제대로 구성되지 않으면 graph.query() 동작 불가.
         """
         request = SaveRequest(
             user_id="",
@@ -208,8 +208,8 @@ class StorageProxyClient(BaseStorageClient):
     ) -> dict[str, Any]:
         """Backend API를 통해 S3에 업로드한다.
 
-        TODO(backend): 4-4 이미지 업로드 엔드포인트 POST /api/v1/storage/upload 확인
-        TODO(backend): 4-4 바이너리 데이터 전송 방식 확정 (base64 vs multipart)
+        TODO(backend): 4-4 이미지 업로드 엔드포인트 POST /api/storage/upload 확인
+        (현재 이미지 저장 요구사항이 없으나 확장을 위해 남겨둠) 데이터 전송 방식 확정
         """
         import base64
 

@@ -1,7 +1,7 @@
 """
 Podcasts 엔드포인트 테스트.
 
-POST /api/v1/podcasts/episodes (팟캐스트 에피소드 생성) 검증.
+POST /api/podcasts/episodes (팟캐스트 에피소드 생성) 검증.
 compiled_graph를 mock하여 파이프라인 없이 엔드포인트 매핑 로직을 테스트.
 """
 
@@ -16,7 +16,7 @@ from tests.api.conftest import make_pipeline_result
 
 
 class TestCreatePodcastEpisode:
-    """POST /api/v1/podcasts/episodes 엔드포인트 테스트."""
+    """POST /api/podcasts/episodes 엔드포인트 테스트."""
 
     def _valid_request(self, **overrides: Any) -> dict[str, Any]:
         """유효한 PodcastRequest 생성 헬퍼."""
@@ -37,7 +37,7 @@ class TestCreatePodcastEpisode:
     ) -> None:
         """유효한 요청으로 에피소드 생성 시 200 + 응답 구조 + 상태 매핑 + config 검증."""
         response = test_client.post(
-            "/api/v1/podcasts/episodes",
+            "/api/podcasts/episodes",
             json=self._valid_request(colleagueReaction="동료는 아무 말도 안 해"),
         )
 
@@ -112,7 +112,7 @@ class TestCreatePodcastEpisode:
         )
 
         response = test_client.post(
-            "/api/v1/podcasts/episodes",
+            "/api/podcasts/episodes",
             json=self._valid_request(),
         )
 
@@ -160,7 +160,7 @@ class TestCreatePodcastEpisode:
             mock_compiled_graph.ainvoke = AsyncMock(side_effect=mock_side_effect)
 
         body = request_body if request_body is not None else self._valid_request()
-        response = test_client.post("/api/v1/podcasts/episodes", json=body)
+        response = test_client.post("/api/podcasts/episodes", json=body)
 
         assert response.status_code == expected_status
         data = response.json()

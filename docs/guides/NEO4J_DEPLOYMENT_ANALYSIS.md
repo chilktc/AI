@@ -96,7 +96,7 @@ Topic.domain, GoTNode.episode_id, GoTNode.node_type
 |------|----------------|-------------|
 | `local` | AI서버 → Neo4j **직접 접속** | Neo4j가 AI서버와 같은 네트워크에 있어야 함 |
 | `hybrid` | AI서버 → Neo4j **직접 접속** | `local`과 동일 (MySQL만 Backend 경유) |
-| `proxy` (기본) | AI서버 → **Backend API** → Neo4j | Backend팀의 `POST /api/v1/graph/query` 구현 필요 |
+| `proxy` (기본) | AI서버 → **Backend API** → Neo4j | Backend팀의 `POST /api/graph/query` 구현 필요 |
 
 **`proxy` 모드 문제점**: `GraphProxyClient`(`src/db/api_proxy.py:95~130`)는 코드가 있지만, Backend 서버(app-3)에 해당 엔드포인트가 **아직 없다** (`TODO(backend)` 상태).
 
@@ -175,7 +175,7 @@ NEO4J_PASSWORD=<secure-password>
 ```
 
 **장점**: DB 접근 중앙 관리, AI서버 메모리 부담 없음
-**단점**: Backend팀의 `POST /api/v1/graph/query` 구현 필요, 레이턴시 증가
+**단점**: Backend팀의 `POST /api/graph/query` 구현 필요, 레이턴시 증가
 
 ### 시나리오 C: 별도 인스턴스에 Neo4j 설치
 
@@ -244,7 +244,7 @@ NEO4J_PASSWORD=<secure-password>
 ### 코드 통합
 
 - [ ] `STORAGE_MODE` 결정 (`local`/`hybrid`/`proxy`)
-- [ ] `proxy` 선택 시: Backend팀에 `POST /api/v1/graph/query` 엔드포인트 요청
+- [ ] `proxy` 선택 시: Backend팀에 `POST /api/graph/query` 엔드포인트 요청
 - [ ] Knowledge Agent(개발자1) 실제 구현 — Neo4j Cypher 쿼리 포함
 - [ ] `PodcastReasoningAgent`에 실제 Knowledge Agent DI 연결
 - [ ] Stub 제거 또는 폴백 전환

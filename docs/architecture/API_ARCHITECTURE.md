@@ -48,8 +48,8 @@ main.py lifespan 시작
     │
     └── 라우터 등록:
         ├── health.router       →  /health, /health/ready (태그: "Health Check")
-        ├── sessions.router     →  /api/v1/sessions (prefix)
-        ├── podcasts.router     →  /api/v1/podcasts (prefix)
+        ├── sessions.router     →  /api/sessions (prefix)
+        ├── podcasts.router     →  /api/podcasts (prefix)
         └── get_metrics_router() → /metrics (Prometheus)
 ```
 
@@ -60,7 +60,7 @@ main.py lifespan 시작
 ```
 Backend 서버
     │
-    ▼ POST /api/v1/sessions
+    ▼ POST /api/sessions
 AI 서버 (sessions.py::create_session)
     │
     ├── 1) sess_{uuid.hex[:12]} 생성
@@ -77,7 +77,7 @@ Backend 서버
 ```
 Backend 서버
     │
-    ▼ POST /api/v1/podcasts/episodes
+    ▼ POST /api/podcasts/episodes
 AI 서버 (podcasts.py::create_podcast_episode)
     │
     ├── PodcastRequest 수신 (user_id, session_id, topic, description, preferences, tracing)
@@ -126,12 +126,12 @@ TIER 1 병렬 실행 중, 일부 에이전트가 **파이프라인 완료를 기
     ├── EmotionAgent.process()
     │       └── AgentDataPublisher.publish()
     │              └── BackendClient.save(RESOURCE_EMOTION_LOG, SaveRequest)
-    │                     └── POST /api/v1/emotion_logs → Backend 서버
+    │                     └── POST /api/emotion_logs → Backend 서버
     │
     └── ContentAnalyzerAgent.process()
             └── AgentDataPublisher.publish()
                    └── BackendClient.save(RESOURCE_CONTENT_ANALYSIS, SaveRequest)
-                          └── POST /api/v1/content_analyses → Backend 서버
+                          └── POST /api/content_analyses → Backend 서버
 ```
 
 **관련 파일**: `src/api/publisher.py` → `AgentDataPublisher`
@@ -167,11 +167,11 @@ HTTP 응답 반환 **전** `_save_core_data()`에서 핵심 데이터를 DB에 �
     │
     ├── (1) 에피소드 메타 + 세그먼트
     │       └── BackendClient.save(RESOURCE_PODCAST_EPISODE, SaveRequest)
-    │              └── POST /api/v1/podcast_episodes → Backend 서버
+    │              └── POST /api/podcast_episodes → Backend 서버
     │
     └── (2) 시각화 메타 (visual_data 존재 시)
             └── BackendClient.save(RESOURCE_VISUALIZATION, SaveRequest)
-                   └── POST /api/v1/visualizations → Backend 서버
+                   └── POST /api/visualizations → Backend 서버
 ```
 
 **관련 파일**: `src/api/routes/podcasts.py` → `_save_core_data()`
@@ -197,7 +197,7 @@ HTTP 응답 반환 **전** `_save_core_data()`에서 핵심 데이터를 DB에 �
 ```
 Backend 서버
     │
-    ▼ POST /api/v1/sessions/{session_id}/close
+    ▼ POST /api/sessions/{session_id}/close
 AI 서버 (sessions.py::close_session)
     │
     ├── SessionCloseRequest 수신 (user_id, session_id, feedback)

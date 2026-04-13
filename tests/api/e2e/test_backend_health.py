@@ -12,7 +12,7 @@ AI 서버(app-2) → Backend 서버(app-3) 간 네트워크 연결과
         --backend-url=http://<BACKEND_IP>:8080
 
     # 환경변수로 실행
-    BACKEND_API_URL=http://<BACKEND_IP>:8080/api/v1 \\
+    BACKEND_API_URL=http://<BACKEND_IP>:8080/api \\
         pytest tests/api/e2e/test_backend_health.py -v -m live
 """
 
@@ -66,7 +66,7 @@ class TestBackendConnectivity:
         어떤 경로든 HTTP 응답(200~404)이 오면 서버가 동작 중인 것.
         """
         # 가능한 헬스체크 경로 목록 (백엔드 프레임워크에 따라 다를 수 있음)
-        health_paths = ["/health", "/", "/api/v1"]
+        health_paths = ["/health", "/", "/api"]
         any_responded = False
 
         for path in health_paths:
@@ -164,7 +164,7 @@ class TestBackendApiBase:
         backend_api_url: str,
         http_client: httpx.Client,
     ) -> None:
-        """GET /api/v1/ 경로가 존재해야 한다.
+        """GET /api/ 경로가 존재해야 한다.
 
         404(Not Found)도 서버가 해당 경로 패턴을 인식한다는 의미이므로 허용.
         405(Method Not Allowed)도 경로 인식의 증거.

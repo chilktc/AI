@@ -286,14 +286,14 @@ Frontend (app-4:3000) → Backend 서버 (app-3:8080) ↔ AI 서버 (app-2:8000)
 ### 저장 API (Save)
 
 ```
-POST /api/v1/{resource}
+POST /greenroom/ingest/ai/{resource}
 Content-Type: application/json
 
 요청 예시:
 {
   "user_id": "uuid",
   "session_id": "uuid",
-  "type": "podcast_episode | emotion_log | visualization | learning",
+  "type": "podcast_metadata | emotion_log | visualization | learning | content_analysis",
   "data": { ... },
   "timestamp": "2026-02-10T12:00:00Z"
 }
@@ -309,7 +309,7 @@ Content-Type: application/json
 ### 조회 API (Load)
 
 ```
-GET /api/v1/{resource}?user_id={uuid}&type={type}&limit={n}
+GET /greenroom/ingest/ai/{resource}?user_id={uuid}&type={type}&limit={n}
 Content-Type: application/json
 
 응답:
@@ -340,9 +340,10 @@ Content-Type: application/json
 - 리소스 경로 상수: `src/api/backend_resources.py` (RESOURCE_* 상수)
 - Save 타입 상수: `src/api/backend_resources.py` (TYPE_* 상수)
 - 타임아웃: 기본 5초, LLM 관련 30초 (config `api.timeout`, `api.llm_timeout`)
-- Backend URL 기본값: `http://localhost:8080/api/v1` (`BACKEND_API_URL` 환경변수로 오버라이드)
+- Backend URL 기본값: `http://localhost:8080/greenroom/ingest/ai` (`BACKEND_API_URL` 환경변수로 오버라이드)
 - 실패 시 최대 3회 재시도 (exponential backoff)
-- 활성 리소스: learning, podcast_episodes, content_analyses, emotion_logs, visualizations
+- 활성 리소스 (SaveRequest 경유): podcast_metadata, content_analyses, emotion_logs, visualizations, learning
+- 수집 API (직접 전송, SaveRequest 미사용): podcast_episodes, tickets/mind-frequencies
 - 세션 리소스: sessions (`TODO(backend)` — 백엔드 팀 협의 필요)
 - 저장 모드(`config/settings.yaml`의 `storage.mode`): `local` | `proxy`(기본) | `hybrid`
 

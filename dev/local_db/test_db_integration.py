@@ -26,8 +26,8 @@ class TestMySQLAgentQueries:
     async def test_user_profile_lookup(self, mysql_client) -> None:
         """ScriptPersonalizer 패턴: 사용자 프로필 조회."""
         rows = await mysql_client.fetch(
-            "SELECT user_id, age_group, preferred_style, preferred_attitude, "
-            "accessibility_needs FROM users WHERE user_id = %s",
+            "SELECT user_id, age_group, preferred_style, preferred_attitude "
+            "FROM users WHERE user_id = %s",
             ("test-user-001",),
         )
         assert len(rows) == 1
@@ -80,21 +80,19 @@ class TestMySQLAgentQueries:
                 (pattern_id,),
             )
 
-    async def test_episode_segment_join(self, mysql_client) -> None:
-        """에피소드 + 세그먼트 JOIN 쿼리."""
+    async def test_flattened_episode_query(self, mysql_client) -> None:
+        """v3.1 Flattening: 에피소드 단건 조회 (본문 포함)."""
         rows = await mysql_client.fetch(
-            "SELECT e.episode_id, e.episode_title, "
-            "s.segment_id, s.segment_type, s.script_text "
-            "FROM podcast_episodes e "
-            "JOIN podcast_segments s ON e.episode_id = s.episode_id "
-            "WHERE e.user_id = %s "
-            "ORDER BY e.episode_id, s.segment_order",
-            ("test-user-001",),
+            "SELECT episode_id, episode_title, script_text, tts_markers_json "
+            "FROM podcast_episodes "
+            "WHERE episode_id = %s",
+            ("ep-test-001",),
         )
-        assert len(rows) >= 3  # ep-test-001 has 3 segments
-        segment_types = {r["segment_type"] for r in rows}
-        assert "opening" in segment_types
-        assert "closing" in segment_types
+        assert len(rows) == 1
+        row = rows[0]
+        assert row["episode_title"]
+        assert row["script_text"]
+        assert isinstance(json.loads(row["tts_markers_json"]), list)
 
     async def test_emotion_log_query(self, mysql_client) -> None:
         """EmotionAgent 패턴: 감정 로그 조회."""

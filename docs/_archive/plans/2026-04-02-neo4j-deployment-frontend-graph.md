@@ -598,8 +598,8 @@ app.include_router(graph_router)
 
 | 항목 | AI팀 제공물 | Backend 구현 |
 |------|-----------|-------------|
-| 저장 페이로드 | SaveRequest 스키마 (4-2에서 정의) | `POST /api/v1/graph_analyses` 수신 |
-| 프론트엔드 조회 | 응답 형식 예시 (nodes/links/keywords/distribution) | `GET /api/v1/users/{user_id}/graph` 구현 |
+| 저장 페이로드 | SaveRequest 스키마 (4-2에서 정의) | `POST /api/graph_analyses` 수신 |
+| 프론트엔드 조회 | 응답 형식 예시 (nodes/links/keywords/distribution) | `GET /api/users/{user_id}/graph` 구현 |
 | 데이터 소스 (현재) | AI서버 내부 API `/internal/graph/users/{user_id}/data` | Backend가 프록시 |
 | 데이터 소스 (이관 후) | Cypher 쿼리 + transform 로직 인계 | Backend가 직접 Neo4j 조회 |
 
