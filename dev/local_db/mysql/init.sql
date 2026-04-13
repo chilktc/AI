@@ -147,3 +147,39 @@ CREATE TABLE IF NOT EXISTS visualization_meta (
     FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE,
     FOREIGN KEY (user_id)    REFERENCES users(user_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- content_analyses (ContentAnalyzer 전체 분석 결과 내부용)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS content_analyses (
+    content_id          VARCHAR(64)   PRIMARY KEY,
+    session_id          VARCHAR(64)   NOT NULL,
+    user_id             VARCHAR(64)   NOT NULL,
+    main_theme          VARCHAR(255)  NOT NULL    DEFAULT '',
+    sub_themes          JSON          NOT NULL    DEFAULT (CAST('[]' AS JSON)),
+    target_duration     INT           DEFAULT 4,
+    narrative_structure VARCHAR(100)  DEFAULT 'reflection',
+    emotional_journey   JSON          DEFAULT (CAST('{}' AS JSON)),
+    confidence          FLOAT         DEFAULT 0.0,
+    user_summary_keywords JSON        DEFAULT (CAST('[]' AS JSON)),
+    user_summary_text   TEXT          DEFAULT '',
+    created_at          DATETIME      NOT NULL    DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id)    REFERENCES users(user_id)    ON DELETE CASCADE,
+    INDEX idx_content_user_session (user_id, session_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- user_summaries (ContentAnalyzer user_summary 1차 로딩 화면 전용)
+-- id, created_at: 백엔드에서 채움 (AI 서버는 전송 불필요)
+-- keywords: AI 서버가 list[str] 전송 → 백엔드에서 콤마 join 후 저장
+-- session_id UNIQUE: 세션당 1건
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS user_summaries (
+    id               VARCHAR(64)   PRIMARY KEY               COMMENT '백엔드에서 채움 (UUID)',
+    session_id       VARCHAR(64)   NOT NULL UNIQUE           COMMENT '세션 식별자',
+    keywords         TEXT          NOT NULL DEFAULT ''       COMMENT '키워드 콤마 join 문자열 (백엔드 처리)',
+    description      TEXT          NOT NULL DEFAULT ''       COMMENT 'user_summary.summary 텍스트',
+    created_at       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '백엔드에서 채움',
+    FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
