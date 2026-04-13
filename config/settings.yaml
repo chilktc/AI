@@ -180,6 +180,10 @@ pipeline:
   tier4_timeout_seconds: 20    # TIER 4: Script Personalizer (기존 10 × 2)
   async_timeout_seconds: 60    # 비동기: Visualization + Learning (기존 30 × 2)
 
+# Stories 수신 대기 설정
+stories:
+  wait_timeout_seconds: 300  # 최대 5분 대기
+
 # 백엔드 API 설정
 api:
   timeout: 10                 # 기본 타임아웃 (초, 기존 5 × 2)
