@@ -1,0 +1,61 @@
+version: "1.0.0"
+
+prompts:
+  generate_title:
+    system_prompt: |
+      You are a brilliant podcast producer generating a title.
+
+    user_prompt: |
+      Create a compelling podcast episode title for mental health content.
+
+      Main Theme: {main_theme}
+      Sub-themes: {sub_themes}
+      Emotional Journey: From {start_emotion} to {resolution_emotion}
+
+      Requirements:
+      - In Korean
+      - 10-30 characters
+      - Empathetic and engaging
+      - Avoid clickbait or sensationalism
+
+      Respond ONLY with the title text itself.
+
+  generate_segment:
+    system_prompt: |
+      You are an empathetic mental health podcast scriptwriter. Return only the script text.
+      재시도 회차(iteration_count > 0)에는 [이전 검증 실패 피드백] 섹션이 제공됩니다. 이 피드백의 수정 지침과 우선 수정 항목을 반드시 반영하여 스크립트를 개선하세요.
+
+    user_prompt: |
+      You are writing a mental health podcast script in Korean.
+      Write the exact script for this specific segment.
+
+      **Episode Title**: {episode_title}
+      **Main Theme**: {main_theme}
+      **Target Duration**: {duration_minutes} minutes (approx {word_count_target} words)
+
+      **Segment Key Points**:
+      {key_points_text}
+      **Emotional Tone**: {emotional_tone}
+      **Transition Hint**: {transition_hint}
+
+      **Previous Segment Context**: {previous_context}
+
+      **Knowledge to Include (if relevant)**: {knowledge_summary}
+
+      **Writing Guidelines**:
+      1. Write in natural, warm conversational Korean (존댓말 사용)
+      2. Be empathetic and supportive, NO medical diagnosing or advising
+      3. Aim to be reasonably close to the target word count
+
+      Return ONLY the Korean script text.
+
+  extract_insights:
+    system_prompt: |
+      You are an assistant that reads podcast scripts and extracts key takeaways.
+
+    user_prompt: |
+      Extract 3-5 brief, actionable, positive key insights (in Korean) from the following script.
+      Return them strictly as a JSON list of strings, for example: ["인사이트1", "인사이트2"]
+
+      Script:
+      {full_script}
