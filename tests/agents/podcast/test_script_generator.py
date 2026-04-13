@@ -78,7 +78,7 @@ async def test_script_generator_includes_safety_context_when_warning(agent):
         "content_analysis": {
             "main_theme": "스트레스 관리",
             "sub_themes": ["번아웃"],
-            "emotional_journey": {"opening": "불안", "resolution": "안정"},
+            "emotional_journey": {"opening": "불안", "development": "이해", "climax": "전환", "closing": "안정"},
             "target_duration": 3,
         },
         "safety_flags": {

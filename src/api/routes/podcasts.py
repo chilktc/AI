@@ -15,7 +15,7 @@ from collections.abc import AsyncIterator
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request as HttpRequest
 from fastapi.responses import StreamingResponse
 
 # src.api.main import removed from top level to prevent circular import
@@ -247,6 +247,7 @@ async def _save_core_data(
 )
 async def create_podcast_episode(
     request: PodcastRequest,
+    http_request: HttpRequest,
 ) -> SlimPodcastResponse:
     """
     팟캐스트 에피소드 생성.
@@ -290,9 +291,11 @@ async def create_podcast_episode(
     # C-2: TelemetryCallback으로 TIER별 메트릭 수집
     from src.monitoring.callbacks import MindLogTelemetryCallback
 
+    req_id = getattr(http_request.state, "request_id", request.tracing.request_id)
     telemetry_cb = MindLogTelemetryCallback(
         session_id=request.session_id,
         mode="podcast",
+        request_id=req_id,
     )
 
     try:
@@ -304,6 +307,7 @@ async def create_podcast_episode(
             config={
                 "configurable": {"thread_id": request.session_id},
                 "callbacks": [telemetry_cb],
+                "metadata": {"request_id": req_id},
             },
         )
     except Exception as e:
@@ -370,7 +374,9 @@ def _now_iso() -> str:
 
 
 @router.post("/episodes/stream")
-async def stream_podcast_episode(request: PodcastRequest) -> StreamingResponse:
+async def stream_podcast_episode(
+    request: PodcastRequest, http_request: HttpRequest
+) -> StreamingResponse:
     """팟캐스트 에피소드 생성 — SSE 스트리밍.
 
     TIER별 진행 상황을 실시간으로 전송한다.
@@ -414,14 +420,17 @@ async def stream_podcast_episode(request: PodcastRequest) -> StreamingResponse:
     from src.api.main import compiled_graph
     from src.monitoring.callbacks import MindLogTelemetryCallback
 
+    req_id = getattr(http_request.state, "request_id", request.tracing.request_id)
     telemetry_cb = MindLogTelemetryCallback(
         session_id=request.session_id,
         mode="podcast",
+        request_id=req_id,
     )
 
     config = {
         "configurable": {"thread_id": request.session_id},
         "callbacks": [telemetry_cb],
+        "metadata": {"request_id": req_id},
     }
 
     async def event_generator() -> AsyncIterator[str]:

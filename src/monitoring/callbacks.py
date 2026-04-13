@@ -78,7 +78,9 @@ class MindLogTelemetryCallback(BaseCallbackHandler):
         events: 수집된 모니터링 이벤트 목록
     """
 
-    def __init__(self, session_id: str = "", mode: str = "") -> None:
+    def __init__(
+        self, session_id: str = "", mode: str = "", request_id: str = ""
+    ) -> None:
         super().__init__()
         self._run_id = str(uuid.uuid4())
         self._node_start_times: dict[str, float] = {}
@@ -87,6 +89,7 @@ class MindLogTelemetryCallback(BaseCallbackHandler):
             run_id=self._run_id,
             session_id=session_id,
             mode=mode,
+            request_id=request_id,
         )
 
     @property
@@ -105,6 +108,7 @@ class MindLogTelemetryCallback(BaseCallbackHandler):
         **kwargs: Any,
     ) -> None:
         """노드 실행 시작을 기록한다."""
+        serialized = serialized or {}
         node_name = serialized.get("name", str(run_id))
         self._node_start_times[str(run_id)] = time.monotonic()
 
@@ -225,6 +229,7 @@ class MindLogTelemetryCallback(BaseCallbackHandler):
         m = self.get_metrics()
         return {
             "run_id": m.run_id,
+            "request_id": m.request_id,
             "session_id": m.session_id,
             "mode": m.mode,
             "total_duration_ms": m.total_duration_ms,

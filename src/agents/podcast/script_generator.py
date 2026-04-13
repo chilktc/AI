@@ -225,7 +225,10 @@ class ScriptGeneratorAgent(BaseAgent):
             "opening", emotional_journey.get("start_emotion", "None")
         )
         resolution_emotion = emotional_journey.get(
-            "resolution", emotional_journey.get("resolution_emotion", "None")
+            "closing",
+            emotional_journey.get(
+                "resolution", emotional_journey.get("resolution_emotion", "None")
+            ),
         )
 
         # yaml 내에 user_prompt 도 정의해 두었거나,
