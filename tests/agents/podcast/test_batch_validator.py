@@ -394,3 +394,59 @@ async def test_early_return_has_action_field(
     assert "action" in vr, "BV-2: 조기 반환에 action 없음"
     assert "verdict" in vr
     assert "overall_score" in vr
+
+
+# === LLM 실제 호출 테스트 ===
+
+
+@pytest.mark.live
+class TestBatchValidatorWithLLM:
+    """BatchValidatorAgent LLM 실제 호출 테스트."""
+
+    @pytest.fixture
+    def agent(self, llm_client) -> BatchValidatorAgent:
+        if llm_client is None:
+            pytest.skip("LLM client not available")
+        ag = BatchValidatorAgent()
+        ag.llm_client = llm_client
+        return ag
+
+    @pytest.mark.asyncio
+    async def test_llm_validation_result_structure(self, agent: BatchValidatorAgent) -> None:
+        """실제 LLM이 올바른 validation_result 구조를 반환한다 (BV-1 확인 포함)."""
+        import time
+
+        state = AgentState(
+            user_input="직장 스트레스",
+            user_id="u",
+            session_id="s",
+            mode="podcast",
+            script_draft={
+                "episode_title": "번아웃을 극복하는 방법",
+                "segments": [
+                    {"script_text": "안녕하세요, 오늘은 번아웃에 대해 이야기해봅시다.", "duration_minutes": 1},
+                    {"script_text": "번아웃은 현대인에게 매우 흔한 증상입니다.", "duration_minutes": 2},
+                    {"script_text": "오늘 함께 알아본 내용이 도움이 되셨으면 좋겠습니다.", "duration_minutes": 1},
+                ],
+            },
+            content_analysis={"main_theme": "번아웃", "target_duration": 4},
+            reasoning_result={"episode_structure": []},
+            safety_flags={"status": "safe"},
+            emotion_vectors={"primary_emotion": "fatigue", "intensity": 0.7},
+            iteration_count=0,
+        )
+        start = time.time()
+        result = await agent.process(state)
+        elapsed = time.time() - start
+
+        vr = result["validation_result"]
+        print(f"\n[BatchValidator] ⏱️ {elapsed:.2f}초")
+        print(f"  verdict={vr.get('verdict')}, score={vr.get('overall_score')}")
+
+        assert "verdict" in vr
+        assert vr["verdict"] in {"PASS", "FAIL", "CRITICAL_FAIL"}
+        assert "overall_score" in vr
+        assert "action" in vr
+        # BV-1: LLM 임의 필드 차단 확인
+        assert "extra_llm_field" not in vr
+        assert "debug_info" not in vr

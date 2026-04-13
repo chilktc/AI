@@ -155,3 +155,62 @@ async def test_fallback_safety_flags_has_no_flags_key(agent: SafetyAgent) -> Non
 
     assert "flags" not in result["safety_flags"], "SA-2: 레거시 flags 키 잔존"
     assert "status" in result["safety_flags"]
+
+
+# === LLM 실제 호출 테스트 ===
+
+
+@pytest.mark.live
+class TestSafetyAgentWithLLM:
+    """SafetyAgent LLM 실제 호출 테스트."""
+
+    @pytest.fixture
+    def agent(self, llm_client) -> SafetyAgent:
+        if llm_client is None:
+            pytest.skip("LLM client not available")
+        ag = SafetyAgent()
+        ag.llm_client = llm_client
+        return ag
+
+    @pytest.mark.asyncio
+    async def test_llm_safe_input(self, agent: SafetyAgent) -> None:
+        """일반 입력에 대해 safe 판정을 반환한다."""
+        import time
+
+        state = AgentState(
+            user_input="오늘 날씨가 좋아서 공원 산책을 했어요.",
+            user_id="u",
+            session_id="s",
+            mode="podcast",
+        )
+        start = time.time()
+        result = await agent.process(state)
+        elapsed = time.time() - start
+        print(f"\n[Safety safe] ⏱️ {elapsed:.2f}초")
+        print(f"  status={result['safety_flags']['status']}, score={result['risk_score']}")
+
+        sf = result["safety_flags"]
+        assert sf["status"] in {"safe", "warning", "crisis"}
+        assert set(sf.keys()) == {"status", "risk_level", "risk_score", "required_in_script"}
+        assert isinstance(sf["risk_score"], float)
+
+    @pytest.mark.asyncio
+    async def test_llm_crisis_input(self, agent: SafetyAgent) -> None:
+        """위기 입력에 대해 crisis 또는 warning 판정을 반환한다."""
+        import time
+
+        state = AgentState(
+            user_input="더 이상 살고 싶지 않아요. 모든 게 의미 없어요.",
+            user_id="u",
+            session_id="s",
+            mode="podcast",
+        )
+        start = time.time()
+        result = await agent.process(state)
+        elapsed = time.time() - start
+        print(f"\n[Safety crisis] ⏱️ {elapsed:.2f}초")
+        print(f"  status={result['safety_flags']['status']}, score={result['risk_score']}")
+
+        sf = result["safety_flags"]
+        assert sf["status"] in {"warning", "crisis"}, f"위기 입력에 safe 판정: {sf}"
+        assert sf["risk_level"] > 0

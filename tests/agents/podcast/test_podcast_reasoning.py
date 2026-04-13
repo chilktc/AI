@@ -797,3 +797,80 @@ async def test_cot_llm_failure_returns_empty_dict() -> None:
     with patch.object(agent, "call_llm_json", side_effect=Exception("LLM error")):
         result = await agent._chain_of_thoughts("테스트", {}, None, None, None, None)
     assert result == {}
+
+
+# === LLM 실제 호출 테스트 ===
+
+
+@pytest.mark.live
+class TestPodcastReasoningWithLLM:
+    """PodcastReasoningAgent LLM 실제 호출 테스트."""
+
+    @pytest.fixture
+    def agent(self, llm_client) -> PodcastReasoningAgent:
+        if llm_client is None:
+            pytest.skip("LLM client not available")
+        ag = PodcastReasoningAgent()
+        ag.llm_client = llm_client
+        return ag
+
+    @pytest.mark.asyncio
+    async def test_llm_reasoning_result_structure(self, agent: PodcastReasoningAgent) -> None:
+        """실제 LLM이 올바른 reasoning_result를 반환한다."""
+        import time
+
+        state = AgentState(
+            user_input="직장 스트레스로 번아웃이 왔어요. 무기력하고 의욕이 없습니다.",
+            user_id="u",
+            session_id="s",
+            mode="podcast",
+            content_analysis={
+                "main_theme": "번아웃 회복",
+                "sub_themes": ["직장 스트레스", "무기력", "자기돌봄"],
+                "emotional_journey": {
+                    "opening": "무기력",
+                    "development": "이해",
+                    "climax": "전환점",
+                    "closing": "회복",
+                },
+                "target_duration": 5,
+                "confidence": 0.85,
+            },
+        )
+        start = time.time()
+        result = await agent.process(state)
+        elapsed = time.time() - start
+
+        rr = result.get("reasoning_result", {})
+        print(f"\n[PodcastReasoning] ⏱️ {elapsed:.2f}초")
+        print(f"  reasoning_depth={rr.get('reasoning_depth')}, keys={list(rr.keys())[:5]}")
+
+        assert isinstance(rr, dict)
+        assert len(rr) > 0
+
+    @pytest.mark.asyncio
+    async def test_llm_reasoning_depth_key_present(self, agent: PodcastReasoningAgent) -> None:
+        """reasoning_result에 reasoning_depth 키가 포함된다."""
+        import time
+
+        state = AgentState(
+            user_input="불안하고 우울한 기분이에요.",
+            user_id="u",
+            session_id="s",
+            mode="podcast",
+            content_analysis={
+                "main_theme": "불안 관리",
+                "sub_themes": ["불안", "우울"],
+                "target_duration": 3,
+            },
+        )
+        start = time.time()
+        result = await agent.process(state)
+        elapsed = time.time() - start
+
+        rr = result.get("reasoning_result", {})
+        print(f"\n[PodcastReasoning depth] ⏱️ {elapsed:.2f}초")
+        print(f"  reasoning_depth={rr.get('reasoning_depth')}")
+
+        assert "reasoning_depth" in rr
+        assert rr["reasoning_depth"] in {"full", "standard", "minimal"}

@@ -549,3 +549,82 @@ async def test_error_path_emotional_journey_has_four_keys(
     result = await agent.process(state)
     ej = result["content_analysis"]["emotional_journey"]
     assert set(ej.keys()) == {"opening", "development", "climax", "closing"}
+
+
+# === LLM 실제 호출 테스트 ===
+
+
+@pytest.mark.live
+class TestContentAnalyzerWithLLM:
+    """ContentAnalyzerAgent LLM 실제 호출 테스트."""
+
+    @pytest.fixture
+    def agent(self, llm_client) -> ContentAnalyzerAgent:
+        if llm_client is None:
+            pytest.skip("LLM client not available")
+        ag = ContentAnalyzerAgent()
+        ag.llm_client = llm_client
+        return ag
+
+    @pytest.mark.asyncio
+    async def test_llm_content_analysis_structure(self, agent: ContentAnalyzerAgent) -> None:
+        """실제 LLM이 올바른 content_analysis 9-필드 구조를 반환한다."""
+        import time
+
+        state = AgentState(
+            user_input="요즘 직장 스트레스가 너무 심해서 번아웃이 올 것 같아요. 매일 야근하고 주말도 없어요.",
+            user_id="u",
+            session_id="s",
+            mode="podcast",
+        )
+        with patch("src.agents.podcast.content_analyzer.AgentDataPublisher") as mock_pub:
+            mock_pub.return_value.publish = AsyncMock(return_value=True)
+            with patch("src.agents.podcast.content_analyzer.BackendClient") as mock_bc:
+                mock_bc.return_value.ingest_mind_frequencies = AsyncMock()
+                mock_bc.return_value.close = AsyncMock()
+                start = time.time()
+                result = await agent.process(state)
+                elapsed = time.time() - start
+
+        ca = result["content_analysis"]
+        print(f"\n[ContentAnalyzer] ⏱️ {elapsed:.2f}초")
+        print(f"  main_theme={ca.get('main_theme')}, sub_themes={ca.get('sub_themes')}")
+        print(f"  target_duration={ca.get('target_duration')}, confidence={ca.get('confidence')}")
+
+        assert "main_theme" in ca
+        assert isinstance(ca["main_theme"], str) and len(ca["main_theme"]) > 0
+        assert isinstance(ca.get("sub_themes"), list)
+        assert 3 <= ca.get("target_duration", 0) <= 5
+        ej = ca.get("emotional_journey", {})
+        assert set(ej.keys()) >= {"opening", "development", "climax", "closing"}
+
+    @pytest.mark.asyncio
+    async def test_llm_whitelist_no_extra_fields(self, agent: ContentAnalyzerAgent) -> None:
+        """LLM 응답에 임의 필드가 있어도 content_analysis는 9개 허용 키만 포함한다."""
+        import time
+
+        state = AgentState(
+            user_input="불안한 마음이 드는 날이에요.",
+            user_id="u",
+            session_id="s",
+            mode="podcast",
+        )
+        allowed_keys = {
+            "main_theme", "sub_themes", "emotional_journey", "user_summary",
+            "target_duration", "key_messages", "content_complexity",
+            "narrative_structure", "confidence",
+            "depth_level",  # _validate_and_correct()가 코드에서 직접 설정
+        }
+        with patch("src.agents.podcast.content_analyzer.AgentDataPublisher") as mock_pub:
+            mock_pub.return_value.publish = AsyncMock(return_value=True)
+            with patch("src.agents.podcast.content_analyzer.BackendClient") as mock_bc:
+                mock_bc.return_value.ingest_mind_frequencies = AsyncMock()
+                mock_bc.return_value.close = AsyncMock()
+                start = time.time()
+                result = await agent.process(state)
+                elapsed = time.time() - start
+
+        ca = result["content_analysis"]
+        print(f"\n[ContentAnalyzer whitelist] ⏱️ {elapsed:.2f}초")
+        extra = set(ca.keys()) - allowed_keys
+        assert extra == set(), f"허용되지 않은 필드 발견: {extra}"

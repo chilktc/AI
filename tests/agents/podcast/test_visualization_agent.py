@@ -223,3 +223,87 @@ async def test_error_path_visual_data_has_same_keys_as_normal_path(
     vd = result.get("visual_data", {})
     for key in ["image_url", "style_type", "interpretation"]:
         assert key in vd, f"에러 경로 visual_data에 '{key}' 키 없음"
+
+
+# === LLM 실제 호출 테스트 ===
+
+
+@pytest.mark.live
+class TestVisualizationWithLLM:
+    """VisualizationAgent LLM 실제 호출 테스트 (이미지 생성 mock, S3 mock)."""
+
+    @pytest.fixture
+    def agent(self, llm_client) -> VisualizationAgent:
+        if llm_client is None:
+            pytest.skip("LLM client not available")
+        ag = VisualizationAgent()
+        ag.llm_client = llm_client
+        ag.s3_client = MagicMock()
+        return ag
+
+    @pytest.mark.asyncio
+    async def test_llm_visual_data_structure(self, agent: VisualizationAgent) -> None:
+        """실제 LLM이 이미지 프롬프트를 생성하고 visual_data 구조가 올바르다."""
+        import time
+
+        state = AgentState(
+            user_input="오늘 많이 지쳤어요",
+            user_id="u",
+            session_id="s",
+            mode="podcast",
+            emotion_vectors={
+                "primary_emotion": "fatigue",
+                "intensity": 0.7,
+                "valence": -0.4,
+                "arousal": 0.3,
+            },
+            content_analysis={"main_theme": "번아웃 회복"},
+        )
+        image_gen_response = {"image_binary": b"\x89PNG\r\n\x1a\n" + b"\x00" * 100}
+
+        with patch.object(
+            agent, "call_image_gen", new_callable=AsyncMock, return_value=image_gen_response
+        ):
+            start = time.time()
+            result = await agent.process(state)
+            elapsed = time.time() - start
+
+        vd = result["visual_data"]
+        print(f"\n[Visualization] ⏱️ {elapsed:.2f}초")
+        print(f"  status={vd.get('status')}, style_type={vd.get('style_type')!r}")
+        print(f"  prompt={str(vd.get('original_prompt', ''))[:60]}...")
+
+        assert vd["status"] == "completed"
+        assert isinstance(vd.get("style_type"), str)  # VI-1: None 아닌 str
+        assert isinstance(vd.get("interpretation"), str)
+        assert vd.get("original_prompt") is not None
+        assert vd.get("image_url") is not None
+
+    @pytest.mark.asyncio
+    async def test_llm_prompt_contains_emotion_info(self, agent: VisualizationAgent) -> None:
+        """LLM 호출 시 감정 정보가 user_message에 포함된다."""
+        import time
+
+        state = AgentState(
+            user_input="불안한 하루였어요",
+            user_id="u",
+            session_id="s",
+            mode="podcast",
+            emotion_vectors={"primary_emotion": "anxiety", "intensity": 0.8},
+            content_analysis={"main_theme": "불안 관리"},
+        )
+        image_gen_response = {"image_binary": b"\x89PNG\r\n\x1a\n" + b"\x00" * 100}
+        llm_mock = AsyncMock(wraps=agent.call_llm_json)
+
+        with patch.object(agent, "call_image_gen", new_callable=AsyncMock, return_value=image_gen_response):
+            with patch.object(agent, "call_llm_json", llm_mock):
+                start = time.time()
+                await agent.process(state)
+                elapsed = time.time() - start
+
+        print(f"\n[Visualization prompt check] ⏱️ {elapsed:.2f}초")
+        call_args = llm_mock.call_args
+        user_message = call_args.kwargs.get(
+            "user_message", call_args.args[1] if len(call_args.args) > 1 else ""
+        )
+        assert "anxiety" in user_message or "불안" in str(state.get("emotion_vectors", {}))
