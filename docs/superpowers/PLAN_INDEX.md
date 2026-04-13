@@ -1,8 +1,8 @@
 # 마스터 계획 인덱스 (Master Plan Index)
 
 **목적**: 모든 기획 문서의 현황 추적 및 상태 관리  
-**버전**: v19
-**마지막 업데이트**: 2026-04-13
+**버전**: v20
+**마지막 업데이트**: 2026-04-09
 **관리 원칙**:
 - 완료된 계획 → PR 링크 + 간단한 변경 사항 기록
 - 미완료 계획 → 상태 및 다음 액션 기록
@@ -47,84 +47,46 @@
 
 ---
 
-## 실제 미완료 항목 전체 (2차 교차 검증 기준)
+## ✅ 완료된 항목
 
-### 그룹 1: 소규모 코드 정리 ✅ 완료 — PR #61
+### 코드 정리 (PR #61)
 
-| # | 작업 | 파일 | 상태 |
-|---|------|------|------|
-| 1 | safety.py 독스트링 Google-style 통일 | `src/agents/podcast/safety.py` | ✅ `7c80efd` |
-| 2 | batch_validator.py 독스트링 Google-style 통일 | `src/agents/podcast/batch_validator.py` | ✅ `228faf4` |
-| 3 | external_schemas.py docstring 불일치 수정 | `src/api/external_schemas.py` | ✅ `c114a55` |
-| 4 | src/agents/conversation/ 빈 디렉토리 제거 | `src/agents/conversation/` | ✅ Git 미추적 디렉토리 삭제 |
+| # | 작업 | 파일 | PR |
+|---|------|------|-----|
+| 1 | safety.py 독스트링 Google-style 통일 | `src/agents/podcast/safety.py` | `7c80efd` |
+| 2 | batch_validator.py 독스트링 Google-style 통일 | `src/agents/podcast/batch_validator.py` | `228faf4` |
+| 3 | external_schemas.py docstring 불일치 수정 | `src/api/external_schemas.py` | `c114a55` |
+| 4 | src/agents/conversation/ 빈 디렉토리 제거 | `src/agents/conversation/` | #61 |
 
-### 그룹 2: 테스트 보완 ✅ 완료
+### 테스트 보완
 
-| # | 작업 | 파일 | 상태 |
-|---|------|------|------|
-| 5 | Circuit Breaker 상태 전환 테스트 | `tests/agents/shared/test_llm_client.py` | ✅ 9개 테스트 추가 (CLOSED→OPEN, OPEN→HALF_OPEN, HALF_OPEN→CLOSED/OPEN 등) |
-| 6 | SSE `/episodes/stream` 엔드포인트 테스트 | `tests/api/test_sse_streaming.py` | ✅ 11개 테스트 추가 (SSE 이벤트 시퀀스, 에러 핸들링, 422 검증) |
+| # | 작업 | 파일 | PR |
+|---|------|------|-----|
+| 5 | Circuit Breaker 상태 전환 테스트 9개 | `tests/agents/shared/test_llm_client.py` | `eaa6c28` |
+| 6 | SSE `/episodes/stream` 엔드포인트 테스트 11개 | `tests/api/test_sse_streaming.py` | `eaa6c28` |
 
-### 그룹 3: 외부 의존성 (코드로 해결 불가)
+### 외부 의존성 — 해소됨
 
-| # | 작업 | 담당 | 상태 |
-|---|------|------|------|
-| ~~7~~ | ~~Bedrock EC2 벤치마크~~ | ~~인프라~~ | ✅ 완료 — 에이전트별 최적 모델 settings.yaml 반영 |
-| 8 | TODO(backend) 21건 해소 | 백엔드 팀 | api_proxy.py 15건, backend_resources.py 5건, s3_client.py 1건 |
-| 9 | API Key 인증 / max_length / Rate Limiting 협의 | 백엔드 팀 | comprehensive-review.md H-2,5,E-2 |
-| ~~10~~ | ~~Neo4j Backend 이관~~ | — | ✅ 이관 불필요 — AI 서버에서 직접 운영 확정 |
-
-### 그룹 4: 보안 수동 조치 (SECURITY_REMEDIATION_TRACKER.md)
-
-| # | 작업 | 상태 |
+| # | 작업 | 비고 |
 |---|------|------|
-| 11 | KT Cloud API 토큰 로테이션 | ❌ 미완료 |
-| 12 | OpenAI API 키 로테이션 | ❌ 미완료 |
-| 13 | LangSmith API 키 로테이션 | ❌ 미완료 |
-| 14 | Grafana/OpenSearch 비밀번호 변경 | ❌ 미완료 |
-| 15 | 로컬 DB 비밀번호 재설정 | ❌ 미완료 |
-| 16 | Git history 정리 (KT Cloud 토큰 잔존) | ❌ 미완료 — 3인 합의 필요 |
+| 7 | Bedrock EC2 벤치마크 | 에이전트별 최적 모델 settings.yaml 반영 |
+| 10 | Neo4j Backend 이관 | 이관 불필요 — AI 서버에서 직접 운영 확정 |
 
-### 그룹 5: 기능 미구현
+### 기능 구현 완료
 
-| # | 작업 | 파일 | 상태 | 비고 |
-|---|------|------|------|------|
-| ~~17~~ | ~~EpisodeMemoryStub → 실제 DI 연결~~ | `podcast_reasoning.py` | ✅ Plan #23 완료 (PR #86) | memory_write 트리거로 대체 구현 |
-| ~~18~~ | ~~base_memory._save_to_store() stub~~ | `base_memory.py` | ✅ Plan #23 완료 (PR #85/#86) | EpisodeMemoryAgent 실구현 완료 |
-| ~~19~~ | ~~episode_memory mock_db.json → Pinecone~~ | `episode_memory.py` | ✅ Plan #23 완료 (PR #85) | Pinecone 네임스페이스 저장 구현 |
-| ~~24~~ | ~~knowledge.py 인덱스명 하드코딩~~ | `knowledge.py` | ✅ PR #67 완료 | `expert-knowledge` 수정 |
-| 20 | KTCloudEmbeddingClient 어댑터 + factory.py + KnowledgeAgent DI | `src/db/`, `podcast_reasoning.py` | ❌ 미완료 | Plan #19. episode_memory._embed() 추출 ~30줄 |
-| 21 | test_knowledge.py 벡터 검색 테스트 추가 | `tests/agents/podcast/test_knowledge.py` | ❌ 미완료 | Plan #19. 현재 stub 테스트만 존재 |
-| 22 | script_personalizer empathetic/rational 구현 | `script_personalizer.py:402,405` | ❌ 미완료 | 비즈니스 규칙 정의 선행 필요 |
-| 23 | script_personalizer hearing_impairment 구현 | `script_personalizer.py:450` | ❌ 미완료 | 비즈니스 규칙 정의 선행 필요 |
-| 24 | _query_user_profile() MySQL 구현 | `script_personalizer.py:275` | ❌ 미완료 | DB 연결 선행 필요 |
-| 25 | data/cache/ 디렉토리 생성 | 프로젝트 루트 | ❌ 미완료 | episode_memory 런타임 의존 |
+| # | 작업 | 파일 | PR |
+|---|------|------|-----|
+| 17 | EpisodeMemoryStub → 실제 DI 연결 | `podcast_reasoning.py` | #86 |
+| 18 | base_memory._save_to_store() 실구현 | `base_memory.py` | #85/#86 |
+| 19 | episode_memory mock_db.json → Pinecone | `episode_memory.py` | #85 |
+| 24 | knowledge.py 인덱스명 하드코딩 수정 | `knowledge.py` | #67 |
 
-### 그룹 6: Plan #19 CLI 스크립트 / 문서 (개발자 도구, 운영 필수 아님)
-
-| # | 작업 | 파일 | 상태 |
-|---|------|------|------|
-| 26 | test_embedding.py CLI 스크립트 | `dev/scripts/test_embedding.py` | ❌ 미작성 |
-| 27 | test_vector_roundtrip.py CLI 스크립트 | `dev/scripts/test_vector_roundtrip.py` | ❌ 미작성 |
-| 28 | ingest_knowledge_base.py + 샘플 데이터 | `dev/scripts/ingest_knowledge_base.py` | ❌ 미작성 |
-| 29 | PINECONE_DEVELOPER_GUIDE.md | `docs/guides/PINECONE_DEVELOPER_GUIDE.md` | ❌ 미작성 |
-
-### 그룹 7: Plan #22 에이전트 출력 감사 (보류)
-
-| # | 작업 | 상태 |
-|---|------|------|
-| 30 | IC-1 제외 13건 에이전트 출력 스키마 수정 | 🔲 보류 — 동작 중인 시스템 스키마 변경 리스크 > 이득 |
-
----
-
-## 이미 구현된 주요 기능 (체크리스트 오인 방지)
+### 구현된 주요 기능 목록
 
 | 기능 | 위치 | 완료 PR |
 |------|------|--------|
 | Circuit Breaker (구현체) | `src/agents/shared/llm_client.py:42` | 기존 구현 |
-| Circuit Breaker 상태 전환 테스트 (9개) | `tests/agents/shared/test_llm_client.py` | `eaa6c28` |
 | SSE 스트리밍 엔드포인트 | `src/api/routes/podcasts.py:381` | PR #48 |
-| SSE 스트리밍 엔드포인트 테스트 (11개) | `tests/api/test_sse_streaming.py` | `eaa6c28` |
 | 프롬프트 인젝션 방어 | `src/agents/shared/input_sanitizer.py` | PR #58 |
 | PII 정제 | `src/agents/shared/output_sanitizer.py` | PR #58 |
 | 타입 힌트 현대화 (Dict→dict) | 전체 에이전트 | PR #52 |
@@ -133,12 +95,8 @@
 | Python 3.9 호환성 | `schemas.py` 등 | PR #52 |
 | 대화모드 제거 (기능) | 전체 | PR #45/#48/#49 |
 | features 섹션 비활성화 | `config/settings.yaml:207` | 주석 처리됨 |
-| prompts/_archive/ README | `prompts/podcast/_archive/README.md` | 작성됨 |
 | AGENT_ROLES.md 모델명/이슈 갱신 | `docs/architecture/AGENT_ROLES.md` | PR #62 |
-| QUICK_START.md ProjectDocs 참조 수정 | `docs/getting-started/QUICK_START.md` | PR #62 |
-| README.md 프로젝트 구조 보완 | `README.md` | PR #62 |
 | 코드 품질 9개 Phase 전체 완료 | `QUALITY_REVIEW_CHECKLIST.md` v6 | PR #52~#62 |
-| 루트 테스트 파일 이동 | — | 파일 자체 없음 |
 | deploy.yml printf 전환 | `.github/workflows/deploy.yml` | PR #59 |
 | Pinecone 클라이언트 + CLI 스크립트 3종 | `src/db/pinecone_client.py`, `dev/scripts/` | PR #64 |
 | Pinecone 테스트 59개 (client, mock, factory, scripts) | `tests/db/test_pinecone_*.py`, `tests/db/test_factory_vector.py` | PR #67/#68 |
@@ -151,6 +109,54 @@
 | BackendClient load/put_graph_cumulative | `src/api/client.py` | PR #88 |
 | graph_cumulative 테스트 27개 (549 passed) | `tests/api/test_graph_cumulative.py` | PR #88 |
 | TestPublishGraphToBackend 삭제 + TestSaveGraphData 수정 | `tests/agents/podcast/test_podcast_reasoning.py` | PR #90 |
+
+---
+
+## ❌ 미완료 항목
+
+### 외부 의존성 — 백엔드 팀 대기
+
+| # | 작업 | 담당 | 비고 |
+|---|------|------|------|
+| 8 | TODO(backend) 21건 해소 | 백엔드 팀 | api_proxy.py 15건, backend_resources.py 5건, s3_client.py 1건 |
+| 9 | API Key 인증 / max_length / Rate Limiting 협의 | 백엔드 팀 | comprehensive-review.md H-2,5,E-2 |
+
+### 보안 수동 조치 (SECURITY_REMEDIATION_TRACKER.md)
+
+| # | 작업 | 상태 |
+|---|------|------|
+| 11 | KT Cloud API 토큰 로테이션 | ❌ 미완료 |
+| 12 | OpenAI API 키 로테이션 | ❌ 미완료 |
+| 13 | LangSmith API 키 로테이션 | ❌ 미완료 |
+| 14 | Grafana/OpenSearch 비밀번호 변경 | ❌ 미완료 |
+| 15 | 로컬 DB 비밀번호 재설정 | ❌ 미완료 |
+| 16 | Git history 정리 (KT Cloud 토큰 잔존) | ❌ 미완료 — 3인 합의 필요 |
+
+### 기능 미구현 (Plan #12/#19)
+
+| # | 작업 | 파일 | 비고 |
+|---|------|------|------|
+| 20 | KTCloudEmbeddingClient 어댑터 + factory.py + KnowledgeAgent DI | `src/db/`, `podcast_reasoning.py` | episode_memory._embed() 추출 ~30줄 |
+| 21 | test_knowledge.py 벡터 검색 테스트 추가 | `tests/agents/podcast/test_knowledge.py` | 현재 stub 테스트만 존재 |
+| 22 | script_personalizer empathetic/rational 구현 | `script_personalizer.py:402,405` | 비즈니스 규칙 정의 선행 필요 |
+| 23 | script_personalizer hearing_impairment 구현 | `script_personalizer.py:450` | 비즈니스 규칙 정의 선행 필요 |
+| 24 | _query_user_profile() MySQL 구현 | `script_personalizer.py:275` | DB 연결 선행 필요 |
+| 25 | data/cache/ 디렉토리 생성 | 프로젝트 루트 | episode_memory 런타임 의존 |
+
+### CLI 스크립트 / 문서 — Plan #19 (개발자 도구, 운영 필수 아님)
+
+| # | 작업 | 파일 |
+|---|------|------|
+| 26 | test_embedding.py CLI 스크립트 | `dev/scripts/test_embedding.py` |
+| 27 | test_vector_roundtrip.py CLI 스크립트 | `dev/scripts/test_vector_roundtrip.py` |
+| 28 | ingest_knowledge_base.py + 샘플 데이터 | `dev/scripts/ingest_knowledge_base.py` |
+| 29 | PINECONE_DEVELOPER_GUIDE.md | `docs/guides/PINECONE_DEVELOPER_GUIDE.md` |
+
+### 보류 — Plan #22 에이전트 출력 감사
+
+| # | 작업 | 상태 |
+|---|------|------|
+| 30 | IC-1 제외 13건 에이전트 출력 스키마 수정 | 🔲 보류 — 동작 중인 시스템 스키마 변경 리스크 > 이득 |
 
 ---
 
@@ -195,4 +201,4 @@
 
 ---
 
-*마스터 인덱스 v19 — 2026-04-13 (PR #88/#89/#90 전부 MERGED. 오픈 PR 없음. 미완료: #12/#19 잔여 기능, #22 보류. 그룹 5~7로 미완료 항목 재정리.)*
+*마스터 인덱스 v20 — 2026-04-09 (PR #88/#89/#90 전부 MERGED. 오픈 PR 없음. 완료/미완료 항목 섹션 명확히 분리.)*
