@@ -44,7 +44,12 @@ async def test_script_generator_insights_extraction(live_agent):
 @pytest.mark.asyncio
 async def test_script_generator_process(live_agent):
     state = {
-        "main_theme": "Mental Health",
+        "content_analysis": {
+            "main_theme": "마음 건강",
+            "sub_themes": [],
+            "emotional_journey": {},
+            "target_duration": 3,
+        },
         "segment_plan": [
             {
                 "segment_id": "seg_001",
@@ -66,8 +71,7 @@ async def test_script_generator_process(live_agent):
     assert "script_draft" in result
     draft = result["script_draft"]
     assert "episode_title" in draft
-    assert len(draft["segments"]) == 1
-    assert "script_text" in draft["segments"][0]
+    assert "script_text" in draft
     assert isinstance(draft["key_insights"], list)
 
 
