@@ -1,7 +1,7 @@
 # 마스터 계획 인덱스 (Master Plan Index)
 
 **목적**: 모든 기획 문서의 현황 추적 및 상태 관리  
-**버전**: v21
+**버전**: v22
 **마지막 업데이트**: 2026-04-13
 **관리 원칙**:
 - 완료된 계획 → PR 링크 + 간단한 변경 사항 기록
@@ -32,13 +32,15 @@
 | 16 | 파이프라인 견고성 - Phase 2 | `pipeline-robustness-part2.md` | ✅ 완료 | #60 | get_fallback_output() 추가 |
 | 17 | 독스트링 품질 개선 구현 | `2026-04-07-docs-quality-implementation.md` | ✅ 완료 | #61 (MERGED) | Phase 1-4 구현 + CB/SSE 테스트 추가 (538 passed, 14 skipped — PR #67/#68 Pinecone 테스트 59개 추가 후) |
 | 18 | Neo4j 통합 구현 계획 | `2026-04-07-neo4j-integration-plan.md` | ✅ 완료 | — | 작업 1(GoT→Neo4j E2E) ✅ 6 passed in 0.59s (AWS SSM 2026-04-09). 작업 2(Mode A) ✅ PR #88. 코드 전체 완료. 부수: seed.py 제약조건 에러 핸들링 개선 필요 |
-| 19 | Pinecone 벡터 DB 공통 인프라 | `2026-04-07-pinecone-vector-db-integration.md` | 🔶 대부분 완료 | #64~#68 | Task 1/3/4 완료. KnowledgeAgent 95% 구현됨. BedrockEmbeddingClient 불필요 — KT Cloud 어댑터(~30줄) 추출 후 주입하면 즉시 테스트 가능. 미완: KTCloudEmbeddingClient+factory+DI연결, test_knowledge 벡터검색 테스트, Task 5/6/7(CLI), Task 9(가이드) |
+| 19 | Pinecone 벡터 DB 공통 인프라 | `2026-04-07-pinecone-vector-db-integration.md` | 🔶 대부분 완료 | #64~#68 | Task 1/3/4 완료. KnowledgeAgent+PineconeClient 코드 완전 구현됨 (테스트 32개 통과). ⚠️ 미완: ① EmbeddingClient(KTCloud 어댑터) 미구현 → `knowledge._search_knowledge_base()` fallback 동작 중 ② `podcast_reasoning.py` KnowledgeAgentStub 사용 (DI 미연결) ③ `test_pinecone_mock.py` import error (`dev/local_db/pinecone_mock.py` 파일 없음) ④ Task 5/6/7(CLI), Task 9(가이드) 미작성 |
 | 20 | Graph Mode B 단일화 리팩터 | `2026-04-07-graph-mode-b-refactor.md` | ✅ 완료 | #69 | Mode A 삭제, publish_graph_to_rdb 단일 경로 확정, EMA를 Backend 책임으로 이관 (538 passed) |
 | 21 | 문서 전수 점검 및 정합성 수정 | *(인라인 — 별도 계획서 없음)* | ✅ 완료 | #70~#80 | 4차 사이클 점검: 대화모드 잔재·링크·날짜·버전 일관성·설계 결정 갱신 전체 완료 |
 | 22 | 에이전트 출력 감사 수정 | `2026-04-08-agent-output-audit-fix.md` | 🔲 구현 대기 | — | IC-1 완료 제외 13건 미수정 |
 | 23 | 에피소드 메모리 저장 트리거 | `_archive/plans/2026-04-08-episode-memory-save-trigger.md` | ✅ 완료 | #86, #87 | AgentState memory_write 필드 추가, Script Personalizer 반환, async_post 트리거 전부 develop에 머지 확인 (6b61763~ea06bd9) |
 | 24 | Mode A 부활 — 누적 그래프 EMA | `_archive/plans/2026-04-09-mode-a-revival-graph-cumulative.md` | ✅ 완료 | #88 | contracts.py GraphCumulativeData, client.py GET/PUT 메서드, graph_cumulative.py Mode B→A 전환, 테스트 27개 (549 passed). BE 3차 테스트: session_id/timestamp 제거 후 PUT ✅ 200, Test 6~8 전체 PASS, E2E(GET→PUT→GET) 검증 완료 |
-| 25 | Agent I/O 통합 및 재가공 에이전트 | `plans/2026-04-13-agent-io-consolidation.md` | 🔶 Task 8/9 완료 (PR 대기) | — | Task 8: ingest_podcast_episodes() 정합 + podcast_segments 제거 + 감정 컬럼. Task 9: ContentAnalyzer user_summary 신규 저장 + content_analyses/user_summaries 테이블 + ingest_mind_frequencies 로깅 수정. ⛔ 보류: PodcastReprocessingAgent/EpisodeSummaryAgent(백엔드 테이블 미확보), AGENT_IO_DATAFLOW.md 추출 |
+| 25 | Agent I/O 통합 및 재가공 에이전트 | `plans/2026-04-13-agent-io-consolidation.md` | 🔶 Task 8/9 완료 | #96 | Task 8: ingest_podcast_episodes() 정합 + podcast_segments 제거 + 감정 컬럼. Task 9: ContentAnalyzer user_summary 신규 저장 + content_analyses/user_summaries 테이블 + ingest_mind_frequencies 로깅 수정. ⛔ 보류: PodcastReprocessingAgent/EpisodeSummaryAgent(백엔드 테이블 미확보), AGENT_IO_DATAFLOW.md 추출 |
+| 26 | 프로덕션 버그 3종 수정 | `plans/2026-04-13-production-bugfix.md` | ✅ 완료 | #93, #94, #95 | Task 1: ScriptPersonalizer .segments→.script_text (c8ad23c). Task 2: graph_cumulative 타임스탬프 +00:00 제거 (29f66bf). Task 3: 프롬프트 YAML 5개 force-add (acb8903) |
+| 27 | Backend API 전수 테스트 | `plans/2026-04-13-backend-api-test.md` | 🔲 구현 대기 | — | Chrome MCP + SSM으로 AI→Backend API 10개 전수 테스트. graph_nodes PUT 정합 필수 확인 대상 |
 
 **범례:**
 - ✅ 완료 — 코드 구현 완료, PR 머지됨
