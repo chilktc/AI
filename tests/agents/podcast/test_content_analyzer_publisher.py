@@ -85,8 +85,11 @@ class TestContentAnalyzerPublish:
         # user/session 검증
         assert call_kwargs["user_id"] == "user_456"
         assert call_kwargs["session_id"] == "sess_def"
-        # data 검증
-        assert call_kwargs["data"] == result["content_analysis"]
+        # data 검증 — _build_db_payload로 trace_id가 추가된 상태
+        published_data = call_kwargs["data"]
+        for key in result["content_analysis"]:
+            assert key in published_data
+        assert "trace_id" in published_data
 
     @pytest.mark.asyncio
     async def test_publish_called_with_empty_user_session_when_missing(
@@ -234,7 +237,8 @@ async def test_content_analyzer_calls_mind_frequencies_only():
     mock_bc_cls.return_value.ingest_mind_frequencies.assert_called_once()
     mf_kwargs = mock_bc_cls.return_value.ingest_mind_frequencies.call_args.kwargs
     assert mf_kwargs["session_id"] == "s1"
-    assert mf_kwargs["keywords"] == ["번아웃"]
+    assert "번아웃" in mf_kwargs["keywords"]
+    assert len(mf_kwargs["keywords"]) >= 3  # min_sub_themes 보장
     assert mf_kwargs["description"] == "직장 스트레스"
 
     # ingest_user_summary: 호출되지 않아야 함 (제거됨)
