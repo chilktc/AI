@@ -91,29 +91,20 @@ CREATE TABLE IF NOT EXISTS podcast_episodes (
     validation_score    FLOAT         DEFAULT 0.0,
     retry_count         INT           DEFAULT 0,
     pipeline_duration_ms INT          DEFAULT 0,
+    script_text         TEXT          NULL
+                                      COMMENT 'v3.0 평탄화된 전체 스크립트 텍스트',
+    tts_markers_json    TEXT          NULL
+                                      COMMENT 'v3.0 TTS 마커 JSON 배열',
+    primary_emotion     VARCHAR(100)  DEFAULT 'neutral'
+                                      COMMENT 'EmotionAgent primary_emotion',
+    secondary_emotions  JSON          DEFAULT (CAST('[]' AS JSON))
+                                      COMMENT 'secondary_emotions[0:2]',
     trace_id            VARCHAR(64)   NULL,
     correlation_id      VARCHAR(64)   NULL,
     created_at          DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE,
     FOREIGN KEY (user_id)    REFERENCES users(user_id) ON DELETE CASCADE,
     INDEX idx_episode_user_created (user_id, created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ------------------------------------------------------------
--- 2-5. podcast_segments
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS podcast_segments (
-    segment_id       VARCHAR(64)   PRIMARY KEY,
-    episode_id       VARCHAR(64)   NOT NULL,
-    segment_order    INT           NOT NULL,
-    segment_type     ENUM('opening','education','practical','exploration','transition','closing') NOT NULL,
-    duration_minutes FLOAT         NOT NULL,
-    script_text      TEXT          NOT NULL,
-    word_count       INT           DEFAULT 0,
-    emotional_tone   VARCHAR(100)  DEFAULT 'neutral',
-    tts_markers_json TEXT          NULL,
-    FOREIGN KEY (episode_id) REFERENCES podcast_episodes(episode_id) ON DELETE CASCADE,
-    INDEX idx_segment_episode_order (episode_id, segment_order)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
