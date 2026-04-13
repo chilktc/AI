@@ -86,7 +86,9 @@ class BatchValidatorAgent(BaseAgent):
                     "overall_score": 0.0,
                     "action": {
                         "decision": "revise",
-                        "revision_instructions": f"Empty script_draft (iteration={iteration_count})",
+                        "revision_instructions": (
+                            f"Empty script_draft (iteration={iteration_count})"
+                        ),
                         "priority_fixes": [],
                     },
                 },
@@ -162,9 +164,11 @@ class BatchValidatorAgent(BaseAgent):
             "action": {
                 "decision": decision,
                 "revision_instructions": str(action.get("revision_instructions", "")),
-                "priority_fixes": action.get("priority_fixes", [])
-                if isinstance(action.get("priority_fixes"), list)
-                else [],
+                "priority_fixes": (
+                    action.get("priority_fixes", [])
+                    if isinstance(action.get("priority_fixes"), list)
+                    else []
+                ),
             },
         }
         if isinstance(validation.get("scores"), dict):

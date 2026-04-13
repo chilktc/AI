@@ -361,9 +361,7 @@ async def test_validation_result_excludes_llm_extra_fields(
         iteration_count=0,
     )
 
-    with patch.object(
-        agent, "call_llm_json", new_callable=AsyncMock, return_value=llm_response
-    ):
+    with patch.object(agent, "call_llm_json", new_callable=AsyncMock, return_value=llm_response):
         result = await agent.process(state)
 
     vr = result["validation_result"]
@@ -424,9 +422,18 @@ class TestBatchValidatorWithLLM:
             script_draft={
                 "episode_title": "번아웃을 극복하는 방법",
                 "segments": [
-                    {"script_text": "안녕하세요, 오늘은 번아웃에 대해 이야기해봅시다.", "duration_minutes": 1},
-                    {"script_text": "번아웃은 현대인에게 매우 흔한 증상입니다.", "duration_minutes": 2},
-                    {"script_text": "오늘 함께 알아본 내용이 도움이 되셨으면 좋겠습니다.", "duration_minutes": 1},
+                    {
+                        "script_text": "안녕하세요, 오늘은 번아웃에 대해 이야기해봅시다.",
+                        "duration_minutes": 1,
+                    },
+                    {
+                        "script_text": "번아웃은 현대인에게 매우 흔한 증상입니다.",
+                        "duration_minutes": 2,
+                    },
+                    {
+                        "script_text": "오늘 함께 알아본 내용이 도움이 되셨으면 좋겠습니다.",
+                        "duration_minutes": 1,
+                    },
                 ],
             },
             content_analysis={"main_theme": "번아웃", "target_duration": 4},

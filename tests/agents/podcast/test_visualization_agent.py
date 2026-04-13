@@ -295,7 +295,9 @@ class TestVisualizationWithLLM:
         image_gen_response = {"image_binary": b"\x89PNG\r\n\x1a\n" + b"\x00" * 100}
         llm_mock = AsyncMock(wraps=agent.call_llm_json)
 
-        with patch.object(agent, "call_image_gen", new_callable=AsyncMock, return_value=image_gen_response):
+        with patch.object(
+            agent, "call_image_gen", new_callable=AsyncMock, return_value=image_gen_response
+        ):
             with patch.object(agent, "call_llm_json", llm_mock):
                 start = time.time()
                 await agent.process(state)

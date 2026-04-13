@@ -231,9 +231,11 @@ class ContentAnalyzerAgent(BaseAgent):
         if not isinstance(raw_summary, dict):
             raw_summary = {}
         user_summary = {
-            "keywords": raw_summary.get("keywords", [])[:5]
-            if isinstance(raw_summary.get("keywords"), list)
-            else [],
+            "keywords": (
+                raw_summary.get("keywords", [])[:5]
+                if isinstance(raw_summary.get("keywords"), list)
+                else []
+            ),
             "summary": str(raw_summary.get("summary", "")),
         }
 
@@ -303,9 +305,7 @@ class ContentAnalyzerAgent(BaseAgent):
             "confidence": confidence,
         }
 
-    def _build_db_payload(
-        self, validated: dict[str, Any], trace_id: str = ""
-    ) -> dict[str, Any]:
+    def _build_db_payload(self, validated: dict[str, Any], trace_id: str = "") -> dict[str, Any]:
         """content_analyses DB 저장용 페이로드. 9개 필드 + trace_id."""
         return {
             **validated,

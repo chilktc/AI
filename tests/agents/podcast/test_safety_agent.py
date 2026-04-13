@@ -128,9 +128,7 @@ async def test_safety_flags_contains_only_four_expected_keys(agent: SafetyAgent)
         "reasons": ["정보성 발화"],
         "extra_llm_field": "유입 금지",
     }
-    state = AgentState(
-        user_input="오늘 기분이 좋아요", user_id="u", session_id="s", mode="podcast"
-    )
+    state = AgentState(user_input="오늘 기분이 좋아요", user_id="u", session_id="s", mode="podcast")
 
     with patch.object(agent, "call_llm_json", new_callable=AsyncMock, return_value=llm_response):
         result = await agent.process(state)
@@ -144,9 +142,7 @@ async def test_safety_flags_contains_only_four_expected_keys(agent: SafetyAgent)
 @pytest.mark.asyncio
 async def test_fallback_safety_flags_has_no_flags_key(agent: SafetyAgent) -> None:
     """LLM 호출 실패 시 폴백 safety_flags에 레거시 flags 키 없다 (SA-2)."""
-    state = AgentState(
-        user_input="오늘 날씨 좋아요", user_id="u", session_id="s", mode="podcast"
-    )
+    state = AgentState(user_input="오늘 날씨 좋아요", user_id="u", session_id="s", mode="podcast")
 
     with patch.object(
         agent, "call_llm_json", new_callable=AsyncMock, side_effect=RuntimeError("LLM 실패")

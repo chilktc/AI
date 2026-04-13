@@ -402,7 +402,12 @@ def test_validate_and_correct_excludes_unexpected_fields(
     analysis = {
         "user_summary": {"keywords": ["스트레스"], "summary": "힘든 사용자"},
         "main_theme": "스트레스 관리",
-        "emotional_journey": {"opening": "피로", "development": "인식", "climax": "전환", "closing": "안도"},
+        "emotional_journey": {
+            "opening": "피로",
+            "development": "인식",
+            "climax": "전환",
+            "closing": "안도",
+        },
         "key_messages": ["자기돌봄이 중요"],
         "depth_level": "moderate",
         "sub_themes": ["스트레스", "감정", "관계"],
@@ -424,16 +429,21 @@ def test_validate_and_correct_enforces_min_sub_themes(
     analysis = {
         "user_summary": {"keywords": ["스트레스"], "summary": "힘든 사용자"},
         "main_theme": "스트레스 관리",
-        "emotional_journey": {"opening": "피로", "development": "인식", "climax": "전환", "closing": "안도"},
+        "emotional_journey": {
+            "opening": "피로",
+            "development": "인식",
+            "climax": "전환",
+            "closing": "안도",
+        },
         "key_messages": ["자기돌봄이 중요"],
         "depth_level": "moderate",
         "sub_themes": [],
     }
     result = agent._validate_and_correct(analysis, depth_level="moderate")
 
-    assert len(result["sub_themes"]) >= agent.min_sub_themes, (
-        f"sub_themes 최소 {agent.min_sub_themes}개 보장 실패"
-    )
+    assert (
+        len(result["sub_themes"]) >= agent.min_sub_themes
+    ), f"sub_themes 최소 {agent.min_sub_themes}개 보장 실패"
 
 
 def test_build_db_payload_includes_trace_id(
@@ -443,7 +453,12 @@ def test_build_db_payload_includes_trace_id(
     validated = {
         "user_summary": {"keywords": ["스트레스"], "summary": "힘든 사용자"},
         "main_theme": "스트레스 관리",
-        "emotional_journey": {"opening": "피로", "development": "인식", "climax": "전환", "closing": "안도"},
+        "emotional_journey": {
+            "opening": "피로",
+            "development": "인식",
+            "climax": "전환",
+            "closing": "안도",
+        },
         "key_messages": ["자기돌봄이 중요"],
         "depth_level": "moderate",
         "sub_themes": ["직장 스트레스", "감정 조절", "자기돌봄"],
@@ -465,7 +480,12 @@ def test_validate_and_correct_validates_user_summary_type(
     analysis = {
         "user_summary": "문자열로 잘못 반환",
         "main_theme": "주제",
-        "emotional_journey": {"opening": "피로", "development": "인식", "climax": "전환", "closing": "안도"},
+        "emotional_journey": {
+            "opening": "피로",
+            "development": "인식",
+            "climax": "전환",
+            "closing": "안도",
+        },
         "key_messages": [],
     }
     result = agent._validate_and_correct(analysis, depth_level="light")
@@ -571,8 +591,12 @@ class TestContentAnalyzerWithLLM:
         """실제 LLM이 올바른 content_analysis 9-필드 구조를 반환한다."""
         import time
 
+        user_txt = (
+            "요즘 직장 스트레스가 너무 심해서 번아웃이 올 것 같아요. "
+            "매일 야근하고 주말도 없어요."
+        )
         state = AgentState(
-            user_input="요즘 직장 스트레스가 너무 심해서 번아웃이 올 것 같아요. 매일 야근하고 주말도 없어요.",
+            user_input=user_txt,
             user_id="u",
             session_id="s",
             mode="podcast",
@@ -610,9 +634,15 @@ class TestContentAnalyzerWithLLM:
             mode="podcast",
         )
         allowed_keys = {
-            "main_theme", "sub_themes", "emotional_journey", "user_summary",
-            "target_duration", "key_messages", "content_complexity",
-            "narrative_structure", "confidence",
+            "main_theme",
+            "sub_themes",
+            "emotional_journey",
+            "user_summary",
+            "target_duration",
+            "key_messages",
+            "content_complexity",
+            "narrative_structure",
+            "confidence",
             "depth_level",  # _validate_and_correct()가 코드에서 직접 설정
         }
         with patch("src.agents.podcast.content_analyzer.AgentDataPublisher") as mock_pub:

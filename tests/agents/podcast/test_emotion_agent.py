@@ -124,9 +124,7 @@ async def test_fallback_emotional_journey_hint_is_empty_not_hardcoded(
     agent: EmotionAgent,
 ) -> None:
     """LLM 실패 시 emotional_journey_hint는 빈 리스트다 — 하드코딩 금지 (EA-1)."""
-    state = AgentState(
-        user_input="힘든 하루", user_id="u", session_id="s", mode="podcast"
-    )
+    state = AgentState(user_input="힘든 하루", user_id="u", session_id="s", mode="podcast")
 
     with patch.object(
         agent, "call_llm_json", new_callable=AsyncMock, side_effect=RuntimeError("LLM 실패")
@@ -171,7 +169,11 @@ class TestEmotionAgentWithLLM:
 
         ev = result["emotion_vectors"]
         print(f"\n[Emotion] ⏱️ {elapsed:.2f}초")
-        print(f"  primary={ev.get('primary_emotion')}, intensity={ev.get('intensity'):.2f}, valence={ev.get('valence'):.2f}")
+        print(
+            f"  primary={ev.get('primary_emotion')}, "
+            f"intensity={ev.get('intensity'):.2f}, "
+            f"valence={ev.get('valence'):.2f}"
+        )
 
         assert "primary_emotion" in ev
         assert isinstance(ev["primary_emotion"], str)
