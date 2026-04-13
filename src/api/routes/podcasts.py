@@ -474,7 +474,7 @@ async def stream_podcast_episode(
                 intent_type=final_state.get("intent", {}).get("intent_type", "unknown"),
                 complexity_score=float(final_state.get("intent", {}).get("complexity_score", 0.0)),
                 reasoning_depth=str(
-                    final_state.get("reasoning_result", {}).get("depth_level", "standard")
+                    final_state.get("reasoning_result", {}).get("reasoning_depth", "standard")
                 ),
                 retry_count=int(final_state.get("iteration_count", 0)),
                 total_words=len(episode_data.script_text.split()),
