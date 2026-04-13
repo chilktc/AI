@@ -29,7 +29,7 @@ RESOURCE_VISUALIZATION = "visualizations"  # 시각화(커버 이미지) 메타 
 RESOURCE_SESSION = "sessions"  # TODO(backend): 경로명 확정
 
 # --- mind-frequencies 수집 ---
-RESOURCE_MIND_FREQUENCIES = "tickets/mind-frequencies"  # POST /greenroom/ingest/ai/tickets/mind-frequencies
+RESOURCE_MIND_FREQUENCIES = "mind-frequencies"  # POST /greenroom/ingest/ai/mind-frequencies
 RESOURCE_USER_SUMMARY = "user_summaries"  # POST /greenroom/ingest/ai/user_summaries
 
 # --- 프록시 전용 (STORAGE_MODE=proxy/hybrid 시) ---

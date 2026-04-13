@@ -155,7 +155,7 @@ class BackendClient:
     ) -> None:
         """mind-frequencies 수집 엔드포인트 호출 (fire-and-forget).
 
-        POST {base_url}/tickets/mind-frequencies
+        POST {base_url}/mind-frequencies
         실패 시 ERROR 로그만 기록하고 파이프라인에 영향을 주지 않는다.
         """
         try:
