@@ -83,8 +83,12 @@ class BatchValidatorAgent(BaseAgent):
             return {
                 "validation_result": {
                     "verdict": "FAIL",
-                    "reason": "Empty script_draft",
                     "overall_score": 0.0,
+                    "action": {
+                        "decision": "revise",
+                        "revision_instructions": f"Empty script_draft (iteration={iteration_count})",
+                        "priority_fixes": [],
+                    },
                 },
             }
 
@@ -111,56 +115,63 @@ class BatchValidatorAgent(BaseAgent):
                 }
             }
 
-        # 검증 결과에 따른 라우팅 결정
-        # 프롬프트 출력: action.decision = "approve" | "revise" | "escalate"
-        action = validation.get("action", {})
-        decision = action.get("decision", "revise")
+        # BV-1: LLM 응답에서 명시 필드만 추출
+        result = self._build_validation_result(validation)
+        decision = result["action"]["decision"]
         passed = decision == "approve"
 
-        # verdict 필드: route_after_tier3_podcast()가 라우팅에 사용
-        # decision → verdict 매핑: approve→PASS, revise→FAIL, escalate→CRITICAL_FAIL
-        verdict_map = {"approve": "PASS", "revise": "FAIL", "escalate": "CRITICAL_FAIL"}
-        validation["verdict"] = verdict_map.get(decision, "FAIL")
-
         if passed:
-            # 검증 통과 → TIER 4 (Script Personalizer)로 진행
-            self.logger.info("스크립트 검증 통과 (score=%.2f)", validation.get("overall_score", 0))
-            return {
-                "validation_result": validation,
-            }
+            self.logger.info("스크립트 검증 통과 (score=%.2f)", result["overall_score"])
+            return {"validation_result": result}
 
         elif decision == "escalate":
-            # CRITICAL_FAIL → route_after_tier3_podcast()가 재시도/강제통과 결정
             self.logger.warning(
                 "스크립트 검증 CRITICAL_FAIL — 평가 미달 (score=%.2f)",
-                validation.get("overall_score", 0),
+                result["overall_score"],
             )
-            return {
-                "validation_result": validation,
-            }
+            return {"validation_result": result}
 
         elif iteration_count < self.max_retries:
-            # 검증 실패 + 재시도 가능 → TIER 2 재시도
-            # iteration_count 증가는 workflow의 increment_iteration_node()가 전담
             self.logger.warning(
                 "스크립트 검증 실패 — 현재 %d/%d (score=%.2f)",
                 iteration_count,
                 self.max_retries,
-                validation.get("overall_score", 0),
+                result["overall_score"],
             )
-            return {
-                "validation_result": validation,
-            }
+            return {"validation_result": result}
 
         else:
-            # 검증 실패 + 최대 재시도 초과 → 강제 통과
             self.logger.warning(
                 "스크립트 검증 실패 — 최대 재시도 초과, 강제 통과 (score=%.2f)",
-                validation.get("overall_score", 0),
+                result["overall_score"],
             )
-            return {
-                "validation_result": {**validation, "forced_pass": True},
-            }
+            result["forced_pass"] = True
+            return {"validation_result": result}
+
+    def _build_validation_result(self, validation: dict[str, Any]) -> dict[str, Any]:
+        """LLM 응답에서 명시 필드만 추출하고 verdict를 설정한다."""
+        action = validation.get("action", {})
+        if not isinstance(action, dict):
+            action = {}
+        decision = action.get("decision", "revise")
+        verdict_map = {"approve": "PASS", "revise": "FAIL", "escalate": "CRITICAL_FAIL"}
+
+        result: dict[str, Any] = {
+            "verdict": verdict_map.get(decision, "FAIL"),
+            "overall_score": float(validation.get("overall_score", 0.0)),
+            "action": {
+                "decision": decision,
+                "revision_instructions": str(action.get("revision_instructions", "")),
+                "priority_fixes": action.get("priority_fixes", [])
+                if isinstance(action.get("priority_fixes"), list)
+                else [],
+            },
+        }
+        if isinstance(validation.get("scores"), dict):
+            result["scores"] = validation["scores"]
+        if isinstance(validation.get("critical_issues"), list):
+            result["critical_issues"] = validation["critical_issues"]
+        return result
 
     def _build_validation_context(
         self,
