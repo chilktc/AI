@@ -88,7 +88,8 @@ def mock_content_analysis_result() -> dict[str, Any]:
             "emotional_journey": {
                 "opening": "공감",
                 "development": "탐색",
-                "resolution": "위로",
+                "climax": "전환",
+                "closing": "위로",
             },
             "target_duration": 5,
             "narrative_structure": "reflection",
