@@ -109,9 +109,7 @@ class ScriptPersonalizerAgent(BaseAgent):
                             themes=script_data.get("themes", []),
                         )
                 except Exception as pydantic_err:
-                    self.logger.warning(
-                        "[ScriptPersonalizer] Pydantic 실패: %s", pydantic_err
-                    )
+                    self.logger.warning("[ScriptPersonalizer] Pydantic 실패: %s", pydantic_err)
 
             # AgentState에서 감정적 여정 정보 추출
             # SP-1: AgentState 미정의 키 폴백 제거 (최상위 emotional_journey 참조 없음)
@@ -124,15 +122,15 @@ class ScriptPersonalizerAgent(BaseAgent):
                     emotional_journey = EmotionalJourney(
                         opening=emotional_journey_data.get("opening", "차분함"),
                         development=emotional_journey_data.get("development", "공감"),
-                        climax=emotional_journey_data.get("climax", ""),        # v2.2.0: 핵심 전환점
-                        closing=emotional_journey_data.get("closing", "따뜻함"), # v2.2.0: resolution 대체
+                        climax=emotional_journey_data.get("climax", ""),  # v2.2.0: 핵심 전환점
+                        closing=emotional_journey_data.get(
+                            "closing", "따뜻함"
+                        ),  # v2.2.0: resolution 대체
                         # SP-2: start_emotion/resolution_emotion/resolution 레거시 폴백 전부 제거
                         journey_type=emotional_journey_data.get("journey_type", "healing"),
                     )
                 except Exception as e:
-                    self.logger.warning(
-                        "[ScriptPersonalizer] EmotionalJourney 생성 실패: %s", e
-                    )
+                    self.logger.warning("[ScriptPersonalizer] EmotionalJourney 생성 실패: %s", e)
 
             # 에피소드 ID 생성
             episode_id = f"ep_{uuid.uuid4().hex[:12]}"
@@ -239,7 +237,9 @@ class ScriptPersonalizerAgent(BaseAgent):
                 if profile:
                     return profile
             except Exception as e:
-                self.logger.warning("[ScriptPersonalizer] Failed to fetch user profile via API: %s", e)
+                self.logger.warning(
+                    "[ScriptPersonalizer] Failed to fetch user profile via API: %s", e
+                )
 
         # 기본 프로필 반환
         self.logger.info("[ScriptPersonalizer] Using default profile for user=%s", user_id)
@@ -416,9 +416,7 @@ class ScriptPersonalizerAgent(BaseAgent):
             )
 
         except Exception as e:
-            self.logger.warning(
-                f"[ScriptPersonalizer] LLM personalization failed: {str(e)}"
-            )
+            self.logger.warning(f"[ScriptPersonalizer] LLM personalization failed: {str(e)}")
             return script
 
     async def _personalize_integrated_script_with_llm(

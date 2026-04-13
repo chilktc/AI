@@ -17,7 +17,9 @@ Backend API 계약서: docs/architecture/API_SPEC.md (v2.0)
 # --- 활성 리소스 (팟캐스트 파이프라인에서 사용 중) ---
 RESOURCE_LEARNING = "learning"  # LearningAgent 학습 결과 저장
 RESOURCE_PODCAST_METADATA = "podcast_metadata"  # 에피소드 메타 + 스크립트 전체 저장
-RESOURCE_PODCAST_EPISODES = "podcast_episodes"  # podcast_episodes 수집 API (session_id, image_url, text)
+RESOURCE_PODCAST_EPISODES = (
+    "podcast_episodes"  # podcast_episodes 수집 API (session_id, image_url, text)
+)
 RESOURCE_CONTENT_ANALYSIS = "content_analyses"  # ContentAnalyzer 분석 결과
 RESOURCE_EMOTION_LOG = "emotion_logs"  # 감정 벡터 데이터 저장
 RESOURCE_VISUALIZATION = "visualizations"  # 시각화(커버 이미지) 메타 저장
@@ -30,7 +32,8 @@ RESOURCE_SESSION = "sessions"  # TODO(backend): 경로명 확정
 
 # --- mind-frequencies 수집 ---
 RESOURCE_MIND_FREQUENCIES = "mind-frequencies"  # POST /greenroom/ingest/ai/mind-frequencies
-RESOURCE_USER_SUMMARY = "user_summaries"  # POST /greenroom/ingest/ai/user_summaries
+# [제거됨 2026-04-13] user_summaries → mind-frequencies로 통합
+# RESOURCE_USER_SUMMARY = "user_summaries"
 
 # --- 프록시 전용 (STORAGE_MODE=proxy/hybrid 시) ---
 RESOURCE_VECTOR_SEARCH = "vector/search"  # TODO(backend): 엔드포인트 존재 여부 확인

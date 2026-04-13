@@ -243,8 +243,7 @@ async def test_ingest_mind_frequencies_logs_on_success(caplog):
             )
 
     assert any(
-        "ingest_mind_frequencies" in r.message and "s1" in r.message
-        for r in caplog.records
+        "ingest_mind_frequencies" in r.message and "s1" in r.message for r in caplog.records
     ), "성공 시 INFO 로그 필수"
 
 
@@ -265,6 +264,4 @@ async def test_ingest_mind_frequencies_logs_error_at_error_level(caplog):
                 session_id="s1", keywords=["번아웃"], description="힘든 하루"
             )
 
-    assert any(
-        r.levelno == logging.ERROR for r in caplog.records
-    ), "실패 시 ERROR 레벨 필수"
+    assert any(r.levelno == logging.ERROR for r in caplog.records), "실패 시 ERROR 레벨 필수"

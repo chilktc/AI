@@ -44,8 +44,7 @@ class TestBackendLearningApi:
         """POST /api/learning → SaveResponse 반환."""
         # TODO(backend): API 명세 확정 후 skip 해제 및 구현
         pytest.skip(
-            "백엔드 API 명세 미확정 — "
-            "백엔드팀과 /api/learning 엔드포인트 스키마 확정 후 활성화"
+            "백엔드 API 명세 미확정 — " "백엔드팀과 /api/learning 엔드포인트 스키마 확정 후 활성화"
         )
 
         request = SaveRequest(
@@ -75,8 +74,7 @@ class TestBackendLearningApi:
         """GET /api/learning?user_id=... → LoadResponse 반환."""
         # TODO(backend): API 명세 확정 후 skip 해제 및 구현
         pytest.skip(
-            "백엔드 API 명세 미확정 — "
-            "백엔드팀과 /api/learning 엔드포인트 스키마 확정 후 활성화"
+            "백엔드 API 명세 미확정 — " "백엔드팀과 /api/learning 엔드포인트 스키마 확정 후 활성화"
         )
 
         result = await real_backend_client.load(

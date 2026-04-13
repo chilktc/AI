@@ -19,7 +19,7 @@ from src.api.graph_cumulative import (
 )
 
 _NOW = datetime(2026, 4, 9, 0, 0, 0, tzinfo=timezone.utc)
-_NOW_ISO = _NOW.strftime('%Y-%m-%dT%H:%M:%S')
+_NOW_ISO = _NOW.strftime("%Y-%m-%dT%H:%M:%S")
 
 
 # ═══════════════════════════════════════════════════════════════════════

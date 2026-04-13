@@ -180,8 +180,12 @@ async def _save_core_data(
                 "pipeline_duration_ms": elapsed_ms,
                 "trace_id": trace_id,
                 "correlation_id": correlation_id,
-                "primary_emotion": final_state.get("emotion_vectors", {}).get("primary_emotion", "neutral"),
-                "secondary_emotions": final_state.get("emotion_vectors", {}).get("secondary_emotions", [])[:2],
+                "primary_emotion": final_state.get("emotion_vectors", {}).get(
+                    "primary_emotion", "neutral"
+                ),
+                "secondary_emotions": final_state.get("emotion_vectors", {}).get(
+                    "secondary_emotions", []
+                )[:2],
             },
             timestamp=datetime.now(timezone.utc),
         )
@@ -191,6 +195,7 @@ async def _save_core_data(
                 session_id=session_id,
                 image_url=cover_image_url or "",
                 text=episode_data.script_text,
+                title=episode_data.episode_title,
             ),
             return_exceptions=True,
         )

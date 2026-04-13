@@ -113,7 +113,7 @@ class ContentAnalyzerAgent(BaseAgent):
         validated_analysis = self._validate_and_correct(analysis, depth_level)
 
         # 백엔드에 분석 결과 직접 전달 (실패 시 예외 미전파)
-        session_id = state.get("session_id", "")
+        session_id = state.get("session_id") or ""
         publisher = AgentDataPublisher()
         await publisher.publish(
             resource=RESOURCE_CONTENT_ANALYSIS,
@@ -131,13 +131,6 @@ class ContentAnalyzerAgent(BaseAgent):
                 session_id=session_id,
                 keywords=keywords,
                 description=description,
-            )
-            # user_summary 별도 저장 — 화면 1 전용
-            user_summary = validated_analysis.get("user_summary", {})
-            await backend_client.ingest_user_summary(
-                session_id=session_id,
-                keywords=user_summary.get("keywords", []),
-                description=user_summary.get("summary", ""),
             )
         finally:
             await backend_client.close()
