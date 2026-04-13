@@ -12,13 +12,38 @@ prompts:
       - psychodynamic: Psychodynamic therapy
       - crisis_intervention: Suicide prevention, crisis care
       - general_psychology: General mental health concepts
+    user_prompt: |
+      Query: {query}
+      Domain hints: {domain_hints}
+
+      Convert the query into professional terminology and identify the most relevant domains.
+      Return JSON with fields: professional_query, selected_domains, search_keywords.
 
   assess_applicability:
     system_prompt: |
       You are a clinical psychologist evaluating treatment applicability.
       Consider age, culture, previous treatments, and contraindications.
+    user_prompt: |
+      User context:
+      - Age group: {age_group}
+      - Cultural background: {culture}
+      - Previous approaches: {previous_approaches}
+
+      Documents to evaluate:
+      {docs_text}
+
+      Evaluate the applicability of each document for this user.
+      Return JSON with field: scores (list of objects with doc_id, applicability_score, notes).
 
   synthesize_knowledge:
     system_prompt: |
       You are a clinical supervisor synthesizing research evidence.
       Provide concise, practical recommendations with evidence citations.
+    user_prompt: |
+      Query: {query}
+
+      Retrieved documents:
+      {docs_text}
+
+      Synthesize the evidence and provide practical recommendations.
+      Return JSON with fields: synthesis, recommended_approaches, evidence_level.
