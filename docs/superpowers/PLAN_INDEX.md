@@ -1,8 +1,8 @@
 # 마스터 계획 인덱스 (Master Plan Index)
 
 **목적**: 모든 기획 문서의 현황 추적 및 상태 관리  
-**버전**: v33
-**마지막 업데이트**: 2026-04-13
+**버전**: v34
+**마지막 업데이트**: 2026-04-14
 **관리 원칙**:
 - 완료된 계획 → PR 링크 + 간단한 변경 사항 기록
 - 미완료 계획 → 상태 및 다음 액션 기록
@@ -48,6 +48,7 @@
 | 32 | 테스트 정리 — live 테스트 분리 | *(인라인 — 별도 계획서 없음)* | ✅ 완료 | PR #105 (3b43bc4) | pyproject.toml addopts="-m 'not live'" 추가, test_safety/test_backend_integration 삭제, live fixture 분리, api_client→backend_client 시그니처 수정. 539 passed (live 제외 ~9초). |
 | 33 | KT Cloud RAG 통합 — Knowledge Ingestion Pipeline | `docs/architecture/API_ENDPOINTS_INTERNAL.md` | ✅ 완료 | PR #106 (afc3a56) | jun 개발자. KT Cloud RAG Suite 연동, Knowledge Ingestion 스크립트(`scripts/ingest_knowledge.py`), 지식 청크 적재 파이프라인. `src/agents/podcast/knowledge.py` 확장. |
 | 34 | Stories 데이터 수신 인프라 | `plans/2026-04-13-stories-receive-infra.md` | 🔲 구현 대기 | — | 백엔드 `POST /api/stories/select` 수신 엔드포인트 신규 생성. `load_stories()` 삭제(방향 반대), `personalization-context` 중복 제거. 활용 에이전트·AgentState 주입 시점은 미정 — 수신 인프라만 구현. |
+| 35 | Stories asyncio.Event 수신 인프라 | *(인라인)* | ✅ 완료 | — | asyncio.Event 멀티 구독 패턴 + TIER 4 wait_for_stories_node. Plan #34 대체 (581 passed) |
 
 **범례:**
 - ✅ 완료 — 코드 구현 완료, PR 머지됨
@@ -213,4 +214,4 @@
 
 ---
 
-*마스터 인덱스 v33 — 2026-04-13 (Plan #22 Task 1-7 구현 완료. SA/EA/CA/SG/VI/BV 출력 명시화 + 횡단 이슈 수정)*
+*마스터 인덱스 v34 — 2026-04-14 (Plan #35 완료: Stories asyncio.Event 수신 인프라 + TIER 4 wait_for_stories_node)*
