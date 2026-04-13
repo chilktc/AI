@@ -78,9 +78,7 @@ class MindLogTelemetryCallback(BaseCallbackHandler):
         events: 수집된 모니터링 이벤트 목록
     """
 
-    def __init__(
-        self, session_id: str = "", mode: str = "", request_id: str = ""
-    ) -> None:
+    def __init__(self, session_id: str = "", mode: str = "", request_id: str = "") -> None:
         super().__init__()
         self._run_id = str(uuid.uuid4())
         self._node_start_times: dict[str, float] = {}

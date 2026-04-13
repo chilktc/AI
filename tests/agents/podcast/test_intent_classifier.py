@@ -12,6 +12,7 @@ import pytest
 
 from src.agents.podcast.intent_classifier import IntentClassifierAgent
 
+
 def print_result(user_input: str, result: dict, elapsed_time: float = None):
     """테스트 결과 출력"""
     intent = result.get("intent", {})
@@ -189,5 +190,3 @@ async def test_intent_field_has_no_internal_pydantic_fields() -> None:
     assert "reasoning" in intent
     assert "trace_id" in intent
     assert "classified_at" in intent
-
-
