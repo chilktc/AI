@@ -1,7 +1,7 @@
 # 마스터 계획 인덱스 (Master Plan Index)
 
 **목적**: 모든 기획 문서의 현황 추적 및 상태 관리  
-**버전**: v24
+**버전**: v27
 **마지막 업데이트**: 2026-04-13
 **관리 원칙**:
 - 완료된 계획 → PR 링크 + 간단한 변경 사항 기록
@@ -32,16 +32,18 @@
 | 16 | 파이프라인 견고성 - Phase 2 | `pipeline-robustness-part2.md` | ✅ 완료 | #60 | get_fallback_output() 추가 |
 | 17 | 독스트링 품질 개선 구현 | `2026-04-07-docs-quality-implementation.md` | ✅ 완료 | #61 (MERGED) | Phase 1-4 구현 + CB/SSE 테스트 추가 (538 passed, 14 skipped — PR #67/#68 Pinecone 테스트 59개 추가 후) |
 | 18 | Neo4j 통합 구현 계획 | `2026-04-07-neo4j-integration-plan.md` | ✅ 완료 | — | 작업 1(GoT→Neo4j E2E) ✅ 6 passed in 0.59s (AWS SSM 2026-04-09). 작업 2(Mode A) ✅ PR #88. 코드 전체 완료. 부수: seed.py 제약조건 에러 핸들링 개선 필요 |
-| 19 | Pinecone 벡터 DB 공통 인프라 | `2026-04-07-pinecone-vector-db-integration.md` | 🔶 대부분 완료 | #64~#68 | Task 1/3/4 완료. KnowledgeAgent+PineconeClient 코드 완전 구현됨 (테스트 32개 통과). ⚠️ 미완: ① EmbeddingClient(KTCloud 어댑터) 미구현 → `knowledge._search_knowledge_base()` fallback 동작 중 ② `podcast_reasoning.py` KnowledgeAgentStub 사용 (DI 미연결) ③ `test_pinecone_mock.py` import error (`dev/local_db/pinecone_mock.py` 파일 없음) ④ Task 5/6/7(CLI), Task 9(가이드) 미작성 |
+| 19 | Pinecone 벡터 DB 공통 인프라 | `2026-04-07-pinecone-vector-db-integration.md` | 🔶 대부분 완료 | #64~#68 | Task 1/3/4 완료. KnowledgeAgent+PineconeClient 코드 완전 구현됨 (테스트 32개 통과). ⚠️ 미완: ① EmbeddingClient(KTCloud 어댑터) 미구현 → `knowledge._search_knowledge_base()` fallback 동작 중 ② `podcast_reasoning.py` KnowledgeAgentStub 사용 (DI 미연결) ③ Task 5/6/7(CLI), Task 9(가이드) 미작성 |
 | 20 | Graph Mode B 단일화 리팩터 | `2026-04-07-graph-mode-b-refactor.md` | ✅ 완료 | #69 | Mode A 삭제, publish_graph_to_rdb 단일 경로 확정, EMA를 Backend 책임으로 이관 (538 passed) |
 | 21 | 문서 전수 점검 및 정합성 수정 | *(인라인 — 별도 계획서 없음)* | ✅ 완료 | #70~#80 | 4차 사이클 점검: 대화모드 잔재·링크·날짜·버전 일관성·설계 결정 갱신 전체 완료 |
 | 22 | 에이전트 출력 감사 수정 | `2026-04-08-agent-output-audit-fix.md` | 🔲 구현 대기 | — | IC-1 완료 제외 13건 미수정 |
 | 23 | 에피소드 메모리 저장 트리거 | `_archive/plans/2026-04-08-episode-memory-save-trigger.md` | ✅ 완료 | #86, #87 | AgentState memory_write 필드 추가, Script Personalizer 반환, async_post 트리거 전부 develop에 머지 확인 (6b61763~ea06bd9) |
 | 24 | Mode A 부활 — 누적 그래프 EMA | `_archive/plans/2026-04-09-mode-a-revival-graph-cumulative.md` | ✅ 완료 | #88 | contracts.py GraphCumulativeData, client.py GET/PUT 메서드, graph_cumulative.py Mode B→A 전환, 테스트 27개 (549 passed). BE 3차 테스트: session_id/timestamp 제거 후 PUT ✅ 200, Test 6~8 전체 PASS, E2E(GET→PUT→GET) 검증 완료 |
-| 25 | Agent I/O 통합 및 재가공 에이전트 | `plans/2026-04-13-agent-io-consolidation.md` | 🔶 Task 8/9 완료 | #96 | Task 8: ingest_podcast_episodes() 정합 + podcast_segments 제거 + 감정 컬럼. Task 9: ContentAnalyzer user_summary 신규 저장 + content_analyses/user_summaries 테이블 + ingest_mind_frequencies 로깅 수정. ⛔ 보류: PodcastReprocessingAgent/EpisodeSummaryAgent(백엔드 테이블 미확보), AGENT_IO_DATAFLOW.md 추출 |
+| 25 | Agent I/O 통합 및 재가공 에이전트 | `plans/2026-04-13-agent-io-consolidation.md` | 🔶 Task 8 완료 | #96 | Task 8: ingest_podcast_episodes() 정합 + podcast_segments 제거 + 감정 컬럼. Task 9: ingest_user_summary() 추가했으나 Plan #27(884c18c)에서 제거 — mind-frequencies로 통합 확정. ⛔ 보류: PodcastReprocessingAgent/EpisodeSummaryAgent(백엔드 테이블 미확보), AGENT_IO_DATAFLOW.md 추출 |
 | 26 | 프로덕션 버그 3종 수정 | `plans/2026-04-13-production-bugfix.md` | ✅ 완료 | #93, #94, #95 | Task 1: ScriptPersonalizer .segments→.script_text (c8ad23c). Task 2: graph_cumulative 타임스탬프 +00:00 제거 (29f66bf). Task 3: 프롬프트 YAML 5개 force-add (acb8903) |
 | 27 | Backend API 전수 테스트 | `plans/2026-04-13-backend-api-test.md` | 🔶 버그 수정 완료 | 884c18c, a1d3e2f | B-2(session_id 백엔드 수정·원복), B-3(title추가), B-4(graph_nodes /api/v1 경로), user_summaries 제거, graph/query 제거. CLI 재검증 대기. graph_nodes GET/PUT 2개만 백엔드 통신 대상 (Neo4j 내부 확정) |
-| 28 | Git History 민감정보 제거 | `plans/2026-04-13-git-history-cleanup.md` | 🔲 합의 대기 | — | 3인 합의 후 실행. 제거 대상: KT Cloud 토큰/엔드포인트, ALB 도메인, 내부 IP, DB 비밀번호 7종. git-filter-repo 사용, 전원 re-clone 필요 |
+| 28 | Git History 민감정보 제거 | `plans/2026-04-13-git-history-cleanup.md` | 🔲 합의 대기 | — | 3인 합의 후 실행. 제거 대상: KT Cloud 토큰/엔드포인트, ALB 도메인, 내부 IP 4종, DB 비밀번호 3종 (총 10종). git-filter-repo --force, remote add 재등록, 전원 re-clone 필요 |
+| 29 | CI/CD 워크플로우 개선 | *(인라인 — 별도 계획서 없음)* | ✅ 완료 | 1e27eb4, e4af0f8 | ① pinecone_mock.py 복원 (fe99482 커밋에서 실수 삭제) + Black 포맷 12개 파일 수정 → CI 통과. ② build-and-push 속도 개선: arm64 제거(amd64 전용), registry 레이어 캐시 추가. ③ Neo4j/Pinecone 보호: `docker compose pull/up ai-server`만 실행 (`--no-deps`). ④ CI pip 캐시 추가, codecov token, docker-build GHA 캐시. ⑤ `aws ssm wait`에 `--region` 추가 |
+| 30 | SaveResponse 스키마 유연화 (긴급 핫픽스) | `plans/2026-04-13-saveresponse-schema-hotfix.md` | ✅ 임시 완료 | d4626bc | AWS 환경 save API 응답 형식 변경(`{'success': true}`→`{'code': 'ok', 'message': '성공'}`) 대응. SaveResponse를 양쪽 형식 모두 수용하도록 유연화. 임시 해결책 완료, 백엔드 API 계약 확정 대기 중. |
 
 **범례:**
 - ✅ 완료 — 코드 구현 완료, PR 머지됨
@@ -156,6 +158,8 @@
 | 28 | ingest_knowledge_base.py + 샘플 데이터 | `dev/scripts/ingest_knowledge_base.py` |
 | 29 | PINECONE_DEVELOPER_GUIDE.md | `docs/guides/PINECONE_DEVELOPER_GUIDE.md` |
 
+> ③ `test_pinecone_mock.py` import error — `dev/local_db/pinecone_mock.py` 복원 완료 (1e27eb4, 27 passed)
+
 ### 보류 — Plan #22 에이전트 출력 감사
 
 | # | 작업 | 상태 |
@@ -205,4 +209,4 @@
 
 ---
 
-*마스터 인덱스 v20 — 2026-04-09 (PR #88/#89/#90 전부 MERGED. 오픈 PR 없음. 완료/미완료 항목 섹션 명확히 분리.)*
+*마스터 인덱스 v27 — 2026-04-13 (Plan #30 SaveResponse 유연화 긴급 핫픽스 완료: 백엔드 API 응답 형식 변경 대응. Plan #29 CI/CD 개선 완료. Plan #19 ③ test_pinecone_mock import error 해소.)*

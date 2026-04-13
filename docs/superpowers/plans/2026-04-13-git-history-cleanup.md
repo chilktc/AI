@@ -21,10 +21,13 @@
 | 1 | KT Cloud API 토큰 | `kt_cctc5n6h10bzzwhdhrpsopw4tiwr0yvz59f270tuhy1tl54pwr18swmcvmzajsg8e` | `1d099b6` | 제거됨 (환경변수로 교체) |
 | 2 | KT Cloud 엔드포인트 | `https://no753ozr79oq.proxy.aifoundry.ktcloud.com/v1/embeddings` | `1d099b6` | 제거됨 (환경변수로 교체) |
 | 3 | ALB 도메인 | `t7-mindlog-prod-alb-1834710625.ap-northeast-2.elb.amazonaws.com` | 과거 커밋 | 제거됨 |
-| 4 | 내부 IP | `10.7.10.20` | 과거 커밋 | 제거됨 |
-| 5 | DB 비밀번호 | `mindlog_pass` | 과거 커밋 | 제거됨 |
-| 6 | DB 루트 비밀번호 | `mindlog_root` | 과거 커밋 | 제거됨 |
-| 7 | Neo4j DB 비밀번호 | `mindlog_neo4j` | 과거 커밋 | 제거됨 |
+| 4 | 내부 IP (app-3) | `10.7.10.20` | `e8024ed` | 제거됨 |
+| 5 | 내부 IP (app-4) | `10.7.11.20` | `e8024ed` | 제거됨 |
+| 6 | 내부 IP (app-1) | `10.7.11.10` | `e8024ed` | 제거됨 |
+| 7 | 내부 IP (app-2) | `10.7.10.10` | `e8024ed` | 제거됨 |
+| 8 | DB 비밀번호 | `mindlog_pass` | `d403e61` | 제거됨 |
+| 9 | DB 루트 비밀번호 | `mindlog_root` | `d403e61` | 제거됨 |
+| 10 | Neo4j DB 비밀번호 | `mindlog_neo4j` | `d403e61` | 제거됨 |
 
 > **중요**: 코드에서 제거했어도 git history에는 영구적으로 남아있다.
 > `git show 1d099b6` 으로 현재도 토큰이 조회됨을 확인 완료.
@@ -36,10 +39,12 @@
 실행 전 **3인 모두** 완료 확인:
 
 - [ ] 팀원 전원 현재 작업 브랜치 push 완료
+- [ ] GitHub에 열린 PR 전체 닫기 — filter-repo 후 커밋 해시가 전면 변경되어 기존 PR 무효화
 - [ ] 팀원 전원 동의 서명 (Slack 또는 PR 코멘트)
 - [ ] GitHub main 브랜치 보호 규칙 일시 해제 확인 (현재 규칙 없음 — 2026-04-13 확인)
 - [ ] KT Cloud 토큰 로테이션 완료 (기존 토큰 폐기 — 이미 노출된 것으로 간주)
 - [ ] 작업 담당자 로컬에 `git-filter-repo` 설치 확인
+- [ ] PLAN_INDEX 등 docs의 커밋 해시 참조는 filter-repo 후 전면 무효화됨을 팀 공지
 
 ---
 
@@ -61,7 +66,7 @@
 
   ```bash
   git log --all --oneline | wc -l
-  # 현재: 405 커밋 (2026-04-13 기준)
+  # 현재: 406 커밋 (2026-04-13 기준)
   ```
 
 - [ ] **Step 3: 로컬 백업 번들 생성**
@@ -82,6 +87,9 @@
   no753ozr79oq.proxy.aifoundry.ktcloud.com==>KT_ENDPOINT_REMOVED
   t7-mindlog-prod-alb-1834710625.ap-northeast-2.elb.amazonaws.com==>ALB_DOMAIN_REMOVED
   10.7.10.20==>INTERNAL_IP_REMOVED
+  10.7.11.20==>INTERNAL_IP_REMOVED
+  10.7.11.10==>INTERNAL_IP_REMOVED
+  10.7.10.10==>INTERNAL_IP_REMOVED
   mindlog_pass==>DB_PASS_REMOVED
   mindlog_root==>DB_ROOT_REMOVED
   mindlog_neo4j==>DB_NEO4J_REMOVED
@@ -122,11 +130,14 @@
 
   ```bash
   cd /tmp/mind-log-mirror
-  git filter-repo --replace-text /tmp/expressions.txt
+  git filter-repo --replace-text /tmp/expressions.txt --force
   ```
 
+  > `--force` 필수: mirror clone에는 remote가 설정되어 있어 생략하면 실행 거부됨
+  > filter-repo 완료 후 origin remote가 자동 삭제됨 (정상)
+
   Expected: 진행 상황 출력, 완료 메시지.
-  > 실행 시간: 405커밋 기준 수 분 소요 예상
+  > 실행 시간: 406커밋 기준 수 분 소요 예상
 
 - [ ] **Step 3: 결과 검증 — 패턴 잔존 여부 확인**
 
@@ -167,7 +178,8 @@
 
   ```bash
   cd /tmp/mind-log-mirror
-  git remote set-url origin https://github.com/chilktc/AI
+  # filter-repo가 remote를 삭제하므로 반드시 add로 재등록
+  git remote add origin https://github.com/chilktc/AI
   git push --force --all
   git push --force --tags
   ```
@@ -246,6 +258,17 @@
 ---
 
 ## Task 5: 후속 조치 및 문서 업데이트
+
+- [ ] **Step 0: filter-repo 실행 후 필수 후속 처리 (re-clone 직후)**
+
+  filter-repo는 모든 커밋 해시를 재작성한다. 다음 항목이 stale 상태가 됨:
+
+  | 영향 항목 | 처리 방법 |
+  |-----------|----------|
+  | GitHub PR (열린 것 포함) | 실행 전 전부 닫고, re-clone 후 새 해시로 재오픈 |
+  | PLAN_INDEX.md의 커밋 해시 참조 | 새 해시로 일괄 업데이트 필요 (또는 "git history 재작성 후 해시 무효" 주석 추가) |
+  | git log로 확인하던 과거 참조 | 기존 해시 → 새 해시 검색 필요 |
+  | 이 계획서의 민감정보 표 | filter-repo 후 값이 `***REDACTED***` 로 치환됨 (정상) |
 
 - [ ] **Step 1: SECURITY_REMEDIATION_TRACKER.md Section 5 완료 처리**
 
