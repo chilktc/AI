@@ -28,9 +28,16 @@ class SaveRequest(BaseModel):
 
 
 class SaveResponse(BaseModel):
-    """데이터 저장 응답 스키마."""
+    """데이터 저장 응답 스키마.
 
-    success: bool  # 성공 여부
+    백엔드 API 응답 형식 변경 대응:
+    - 이전: {'success': True, 'id': '...', 'message': '...'}
+    - 현재: {'code': 'ok', 'message': '성공'}
+    두 형식 모두 수용하도록 유연하게 설계.
+    """
+
+    success: bool | None = None  # 성공 여부 (선택, 백엔드 형식 변경 대응)
+    code: str | None = None  # 응답 코드 ('ok', 'error' 등)
     id: str | None = None  # 생성된 리소스 ID
     message: str | None = None  # 응답 메시지
 
