@@ -216,3 +216,55 @@ class TestBackendClientLifecycle:
 
         await backend_client.close()
         mock_httpx_client.aclose.assert_awaited_once()
+
+
+# ---------------------------------------------------------------------------
+# Tests: ingest_mind_frequencies() 로깅
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_ingest_mind_frequencies_logs_on_success(caplog):
+    """성공 시 INFO 레벨 로그가 남아야 한다."""
+    import logging
+
+    from unittest.mock import MagicMock, patch
+
+    from src.api.client import BackendClient
+
+    client = BackendClient(base_url="http://test")
+    mock_resp = MagicMock()
+    mock_resp.raise_for_status = MagicMock()
+
+    with caplog.at_level(logging.INFO, logger="src.api.client"):
+        with patch.object(client._client, "post", return_value=mock_resp):
+            await client.ingest_mind_frequencies(
+                session_id="s1", keywords=["번아웃"], description="힘든 하루"
+            )
+
+    assert any(
+        "ingest_mind_frequencies" in r.message and "s1" in r.message
+        for r in caplog.records
+    ), "성공 시 INFO 로그 필수"
+
+
+@pytest.mark.asyncio
+async def test_ingest_mind_frequencies_logs_error_at_error_level(caplog):
+    """실패 시 ERROR 레벨 로그가 남아야 한다 (WARNING 아님)."""
+    import logging
+
+    from unittest.mock import patch
+
+    from src.api.client import BackendClient
+
+    client = BackendClient(base_url="http://test")
+
+    with caplog.at_level(logging.ERROR, logger="src.api.client"):
+        with patch.object(client._client, "post", side_effect=Exception("connection refused")):
+            await client.ingest_mind_frequencies(
+                session_id="s1", keywords=["번아웃"], description="힘든 하루"
+            )
+
+    assert any(
+        r.levelno == logging.ERROR for r in caplog.records
+    ), "실패 시 ERROR 레벨 필수"

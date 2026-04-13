@@ -1,7 +1,7 @@
 # 마스터 계획 인덱스 (Master Plan Index)
 
 **목적**: 모든 기획 문서의 현황 추적 및 상태 관리  
-**버전**: v20
+**버전**: v21
 **마지막 업데이트**: 2026-04-13
 **관리 원칙**:
 - 완료된 계획 → PR 링크 + 간단한 변경 사항 기록
@@ -38,7 +38,7 @@
 | 22 | 에이전트 출력 감사 수정 | `2026-04-08-agent-output-audit-fix.md` | 🔲 구현 대기 | — | IC-1 완료 제외 13건 미수정 |
 | 23 | 에피소드 메모리 저장 트리거 | `_archive/plans/2026-04-08-episode-memory-save-trigger.md` | ✅ 완료 | #86, #87 | AgentState memory_write 필드 추가, Script Personalizer 반환, async_post 트리거 전부 develop에 머지 확인 (6b61763~ea06bd9) |
 | 24 | Mode A 부활 — 누적 그래프 EMA | `_archive/plans/2026-04-09-mode-a-revival-graph-cumulative.md` | ✅ 완료 | #88 | contracts.py GraphCumulativeData, client.py GET/PUT 메서드, graph_cumulative.py Mode B→A 전환, 테스트 27개 (549 passed). BE 3차 테스트: session_id/timestamp 제거 후 PUT ✅ 200, Test 6~8 전체 PASS, E2E(GET→PUT→GET) 검증 완료 |
-| 25 | Agent I/O 통합 및 재가공 에이전트 | `plans/2026-04-13-agent-io-consolidation.md` | 🔲 구현 대기 | — | 중간 저장(Emotion/CA publish) 제거, 단일 최종 저장 통합, PodcastReprocessingAgent 신규, AGENT_IO_DATAFLOW 문서화 |
+| 25 | Agent I/O 통합 및 재가공 에이전트 | `plans/2026-04-13-agent-io-consolidation.md` | 🔶 Task 8/9 완료 (PR 대기) | — | Task 8: ingest_podcast_episodes() 정합 + podcast_segments 제거 + 감정 컬럼. Task 9: ContentAnalyzer user_summary 신규 저장 + content_analyses/user_summaries 테이블 + ingest_mind_frequencies 로깅 수정. ⛔ 보류: PodcastReprocessingAgent/EpisodeSummaryAgent(백엔드 테이블 미확보), AGENT_IO_DATAFLOW.md 추출 |
 
 **범례:**
 - ✅ 완료 — 코드 구현 완료, PR 머지됨

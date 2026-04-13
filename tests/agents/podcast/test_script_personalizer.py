@@ -175,6 +175,7 @@ async def test_malformed_script_draft_with_segments_uses_raw_fallback() -> None:
 # =============================================================================
 
 
+@pytest.mark.live
 class TestWithLLM:
     """LLM을 직접 사용하는 테스트 (Ollama)"""
 

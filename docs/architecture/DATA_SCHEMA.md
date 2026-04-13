@@ -1,15 +1,15 @@
 # 데이터 스키마 명세 (DATA_SCHEMA.md)
 
-> **버전**: v1.0
+> **버전**: v1.1
 > **SSOT**: Notion "작업중인 db 스키마" (N10) + `src/api/external_schemas.py`
-> **최종 업데이트**: 2026-03-13
+> **최종 업데이트**: 2026-04-13
 
 ---
 
 ## 목차
 
 1. [DB별 책임 분담](#1-db별-책임-분담)
-2. [MySQL 테이블 (7개)](#2-mysql-테이블-7개)
+2. [MySQL 테이블 (8개)](#2-mysql-테이블-8개)
 3. [Pinecone 인덱스 (2개)](#3-pinecone-인덱스-2개)
 4. [Neo4j 노드 (5개)](#4-neo4j-노드-5개)
 5. [S3 오브젝트 스토리지](#5-s3-오브젝트-스토리지)
@@ -30,9 +30,11 @@
 
 ---
 
-## 2. MySQL 테이블 (7개)
+## 2. MySQL 테이블 (8개)
 
 모든 테이블은 `SaveRequest(type, data)`를 통해 BackendClient로 저장된다.
+
+> **변경 이력 (2026-04-13):** `podcast_segments` 테이블 제거 (v3.0 flat script_text 전환으로 폐기). `podcast_episodes`에 `script_text`, `tts_markers_json`, `primary_emotion`, `secondary_emotions` 컬럼 추가. `content_analyses`, `user_summaries` 신규 추가. 총 7→8개.
 
 ### 2-1. users
 
@@ -96,6 +98,7 @@
 ### 2-4. podcast_episodes
 
 팟캐스트 에피소드 메타데이터. SaveRequest type: `podcast_episode`.
+`ingest_podcast_episodes(session_id, image_url, text)` — Backend `podcasts` 테이블 ingest (별도 fire-and-forget).
 
 | 컬럼 | 타입 | 제약조건 | 설명 |
 |------|------|---------|------|
@@ -105,7 +108,7 @@
 | `episode_title` | VARCHAR | not null | 한국어 제목 |
 | `total_duration` | FLOAT | not null | 분 단위 |
 | `total_words` | INT | default `0` | 총 단어 수 |
-| `segment_count` | INT | not null | 세그먼트 수 (통상 3-5) |
+| `segment_count` | INT | not null | 세그먼트 수 (v3.0 이후 미사용, 0 고정) |
 | `key_insights` | JSON | not null | 핵심 인사이트 배열 (3-5개, 한국어) |
 | `themes` | JSON | not null | 테마 태그 배열 (한국어) |
 | `reasoning_depth` | ENUM | default `standard` | `full\|standard\|minimal` |
@@ -116,31 +119,24 @@
 | `validation_score` | FLOAT | default `0.0` | 검증 점수 |
 | `retry_count` | INT | default `0` | TIER 2→3 재시도 횟수 |
 | `pipeline_duration_ms` | INT | default `0` | 파이프라인 소요 시간 (ms) |
+| `script_text` | TEXT | nullable | **v3.0 신규** — 평탄화된 전체 스크립트 텍스트 |
+| `tts_markers_json` | TEXT | nullable | **v3.0 신규** — TTS 마커 JSON 배열 |
+| `primary_emotion` | VARCHAR(100) | default `neutral` | **v3.0 신규** — EmotionAgent primary_emotion |
+| `secondary_emotions` | JSON | default `[]` | **v3.0 신규** — secondary_emotions[0:2] |
 | `trace_id` | VARCHAR | nullable | |
 | `correlation_id` | VARCHAR | nullable | |
 | `created_at` | DATETIME | not null | |
 
 **인덱스**: `(user_id, created_at)`
 
-### 2-5. podcast_segments
+> **Backend `podcasts` 테이블 (ingest 전용):** `id(PK,UUID)`, `user_id`, `created_at` 는 백엔드 자동 채움. AI 서버는 `session_id`, `image_url`, `text` 3개만 전송.
 
-팟캐스트 세그먼트 (에피소드 하위). SaveRequest type: 에피소드와 함께 저장.
+### 2-5. ~~podcast_segments~~ [제거됨 2026-04-13]
 
-| 컬럼 | 타입 | 제약조건 | 설명 |
-|------|------|---------|------|
-| `segment_id` | VARCHAR | **PK** | UUID v4 |
-| `episode_id` | VARCHAR | **FK** → podcast_episodes | |
-| `segment_order` | INT | not null | 0-based 순서 |
-| `segment_type` | ENUM | not null | `opening\|education\|practical\|exploration\|transition\|closing` |
-| `duration_minutes` | FLOAT | not null | 1-3분 |
-| `script_text` | TEXT | not null | 스크립트 본문 (한국어, 100-400 단어) |
-| `word_count` | INT | default `0` | |
-| `emotional_tone` | VARCHAR | default `neutral` | |
-| `tts_markers_json` | TEXT | default `[]` | TTS 마커 (직렬화 JSON, Backend가 파싱) |
+> v3.0에서 세그먼트 구조 폐기 — `podcast_episodes.script_text`(TEXT) 단일 필드로 통합.
+> `dev/local_db/mysql/init.sql`에서 테이블 정의 완전 제거. 이전 이력은 git log 참조.
 
-**인덱스**: `(episode_id, segment_order)` — 순서 보장
-
-### 2-6. learning_patterns
+### 2-6 (구 2-5). learning_patterns
 
 학습 패턴 데이터. SaveRequest type: `learning`.
 
@@ -161,7 +157,7 @@
 
 **인덱스**: `(user_id, created_at)`
 
-### 2-7. visualization_meta
+### 2-7 (구 2-6). visualization_meta
 
 시각화 메타데이터. SaveRequest type: `visualization`.
 
@@ -178,6 +174,40 @@
 | `interpretation_text` | TEXT | not null | 해석 텍스트 (한국어) |
 | `trace_id` | VARCHAR | nullable | |
 | `created_at` | DATETIME | not null | |
+
+### 2-8. content_analyses [신규 2026-04-13]
+
+ContentAnalyzer 전체 분석 결과 저장 (내부 분석용). `publisher.publish()` → `BackendClient.save(resource="content_analyses")` 경유.
+
+| 컬럼 | 타입 | 제약조건 | 설명 |
+|------|------|---------|------|
+| `content_id` | VARCHAR(64) | **PK** | |
+| `session_id` | VARCHAR(64) | **FK** → sessions, not null | |
+| `user_id` | VARCHAR(64) | **FK** → users, not null | |
+| `main_theme` | VARCHAR(255) | not null, default `''` | 주요 주제 |
+| `sub_themes` | JSON | not null, default `[]` | 하위 주제 배열 |
+| `target_duration` | INT | default `4` | 목표 에피소드 길이(분) |
+| `narrative_structure` | VARCHAR(100) | default `reflection` | 서사 구조 |
+| `emotional_journey` | JSON | default `{}` | 감정 여정 4-키 구조 (opening/development/climax/closing) |
+| `confidence` | FLOAT | default `0.0` | 분석 신뢰도 |
+| `user_summary_keywords` | JSON | default `[]` | 사용자 요약 키워드 배열 |
+| `user_summary_text` | TEXT | default `''` | 사용자 요약 텍스트 |
+| `created_at` | DATETIME | not null | |
+
+**인덱스**: `(user_id, session_id)`
+
+### 2-9. user_summaries [신규 2026-04-13]
+
+ContentAnalyzer user_summary 화면 1 전용 저장 (Frontend 1차 로딩 트리거).
+`BackendClient.ingest_user_summary(session_id, keywords, description)` — fire-and-forget (user_id 없음, 백엔드 패턴).
+
+| 컬럼 | 타입 | 제약조건 | 설명 |
+|------|------|---------|------|
+| `id` | VARCHAR(64) | **PK** | 백엔드에서 자동 채움 (UUID) |
+| `session_id` | VARCHAR(64) | **FK** → sessions, UNIQUE | 세션당 1건 |
+| `keywords` | TEXT | not null, default `''` | AI 서버가 `list[str]` 전송 → 백엔드에서 콤마 join 저장 |
+| `description` | TEXT | not null, default `''` | user_summary.summary 텍스트 |
+| `created_at` | DATETIME | not null | 백엔드에서 자동 채움 |
 
 ---
 

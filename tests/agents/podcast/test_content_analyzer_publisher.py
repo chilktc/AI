@@ -191,3 +191,44 @@ class TestContentAnalyzerPublishFailure:
 
         # AgentState 계약: content_analysis 키만 반환
         assert set(result.keys()) == {"content_analysis"}
+
+
+# ---------------------------------------------------------------------------
+# Tests: ingest_user_summary 신규 호출 검증
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_content_analyzer_keeps_existing_publisher_and_adds_user_summary():
+    """기존 publisher.publish(전체 데이터) 유지 + ingest_user_summary 신규 호출 검증."""
+    from src.agents.podcast.content_analyzer import ContentAnalyzerAgent
+
+    mock_llm_return = {
+        "main_theme": "직장 스트레스",
+        "sub_themes": ["번아웃"],
+        "user_summary": {"keywords": ["번아웃", "스트레스"], "summary": "많이 힘드셨군요."},
+        "target_duration": 4,
+        "narrative_structure": "reflection",
+    }
+    agent = ContentAnalyzerAgent()
+    with patch.object(agent, "call_llm_json", new=AsyncMock(return_value=mock_llm_return)), \
+         patch("src.agents.podcast.content_analyzer.AgentDataPublisher") as mock_pub_cls, \
+         patch("src.agents.podcast.content_analyzer.BackendClient") as mock_bc_cls:
+        mock_pub_cls.return_value.publish = AsyncMock(return_value=True)
+        mock_bc_cls.return_value.ingest_mind_frequencies = AsyncMock()
+        mock_bc_cls.return_value.ingest_user_summary = AsyncMock()
+        mock_bc_cls.return_value.close = AsyncMock()
+        await agent({"user_input": "직장 스트레스", "user_id": "u1", "session_id": "s1"})
+
+    # 기존 publisher: 1회 (전체 validated_analysis)
+    mock_pub_cls.return_value.publish.assert_called_once()
+    pub_kwargs = mock_pub_cls.return_value.publish.call_args.kwargs
+    assert pub_kwargs["resource"] == "content_analyses"
+    assert "main_theme" in pub_kwargs["data"]
+
+    # 신규 ingest_user_summary: 1회
+    mock_bc_cls.return_value.ingest_user_summary.assert_called_once()
+    us_kwargs = mock_bc_cls.return_value.ingest_user_summary.call_args.kwargs
+    assert us_kwargs["session_id"] == "s1"
+    assert us_kwargs["keywords"] == ["번아웃", "스트레스"]
+    assert us_kwargs["description"] == "많이 힘드셨군요."
