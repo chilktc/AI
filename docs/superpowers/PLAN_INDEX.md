@@ -1,8 +1,8 @@
 # 마스터 계획 인덱스 (Master Plan Index)
 
 **목적**: 모든 기획 문서의 현황 추적 및 상태 관리  
-**버전**: v12  
-**마지막 업데이트**: 2026-04-08  
+**버전**: v19
+**마지막 업데이트**: 2026-04-13
 **관리 원칙**:
 - 완료된 계획 → PR 링크 + 간단한 변경 사항 기록
 - 미완료 계획 → 상태 및 다음 액션 기록
@@ -25,16 +25,19 @@
 | 9 | Neo4j 배포 + 프론트엔드 그래프 | `2026-04-02-neo4j-deployment-frontend-graph.md` | ✅ 완료 | #50, #51 | GoT→Neo4j→Backend 완료 |
 | 10 | AWS 환경변수 & 보안 | `2026-04-06-aws-env-remediation.md` | ✅ 완료 | #59 | STORAGE_MODE, BACKEND_API_URL 완료 |
 | 11 | 종합 실행 계획서 (2026-04-06) | `2026-04-06-comprehensive-execution-plan.md` | ✅ 완료 | #52, #57 | Phase 1-2 완료 (mypy, 테스트 격리) |
-| 12 | 미완료 항목 현황 (2026-04-06) | `2026-04-06-pending-items-inventory.md` | 🔶 대부분 완료 | #52 | mypy/테스트 해결. 잔여: stub 에이전트(Pinecone), personalizer 분기, 영속화 레이어 |
+| 12 | 미완료 항목 현황 (2026-04-06) | `2026-04-06-pending-items-inventory.md` | 🔶 대부분 완료 | #52 | mypy/테스트 해결. 잔여: ① podcast_reasoning Stub→실제 DI 미연결 ② personalizer empathetic/rational pass, _query_user_profile return None ③ data/cache/ 디렉토리 미생성 |
 | 13 | 파이프라인 견고성 (아카이브) | `2026-04-06-pipeline-robustness-remediation.md` | 📁 아카이브 | — | v1-v4 이력 보존 |
 | 14 | 파이프라인 견고성 강화 마스터 | `pipeline-robustness-index.md` | ✅ 완료 | #60 | 13개 취약점 수정 |
 | 15 | 파이프라인 견고성 - Phase 1 | `pipeline-robustness-part1.md` | ✅ 완료 | #60 | Changes 1-9 완료 |
 | 16 | 파이프라인 견고성 - Phase 2 | `pipeline-robustness-part2.md` | ✅ 완료 | #60 | get_fallback_output() 추가 |
 | 17 | 독스트링 품질 개선 구현 | `2026-04-07-docs-quality-implementation.md` | ✅ 완료 | #61 (MERGED) | Phase 1-4 구현 + CB/SSE 테스트 추가 (538 passed, 14 skipped — PR #67/#68 Pinecone 테스트 59개 추가 후) |
-| 18 | Neo4j 통합 구현 계획 | `2026-04-07-neo4j-integration-plan.md` | 🔶 대부분 완료 | — | seed group 필드 수정 완료, E2E 검증은 인프라 선행 필요 |
-| 19 | Pinecone 벡터 DB 공통 인프라 | `2026-04-07-pinecone-vector-db-integration.md` | 🔶 대부분 완료 | #64~#68 | CLI 스크립트+pinecone_client+테스트 59개 구현, EC2 연결 검증, 인덱스명 하이픈 통일. 미완: BedrockEmbeddingClient, 팩토리 연동, 가이드 문서 |
+| 18 | Neo4j 통합 구현 계획 | `2026-04-07-neo4j-integration-plan.md` | ✅ 완료 | — | 작업 1(GoT→Neo4j E2E) ✅ 6 passed in 0.59s (AWS SSM 2026-04-09). 작업 2(Mode A) ✅ PR #88. 코드 전체 완료. 부수: seed.py 제약조건 에러 핸들링 개선 필요 |
+| 19 | Pinecone 벡터 DB 공통 인프라 | `2026-04-07-pinecone-vector-db-integration.md` | 🔶 대부분 완료 | #64~#68 | Task 1/3/4 완료. KnowledgeAgent 95% 구현됨. BedrockEmbeddingClient 불필요 — KT Cloud 어댑터(~30줄) 추출 후 주입하면 즉시 테스트 가능. 미완: KTCloudEmbeddingClient+factory+DI연결, test_knowledge 벡터검색 테스트, Task 5/6/7(CLI), Task 9(가이드) |
 | 20 | Graph Mode B 단일화 리팩터 | `2026-04-07-graph-mode-b-refactor.md` | ✅ 완료 | #69 | Mode A 삭제, publish_graph_to_rdb 단일 경로 확정, EMA를 Backend 책임으로 이관 (538 passed) |
 | 21 | 문서 전수 점검 및 정합성 수정 | *(인라인 — 별도 계획서 없음)* | ✅ 완료 | #70~#80 | 4차 사이클 점검: 대화모드 잔재·링크·날짜·버전 일관성·설계 결정 갱신 전체 완료 |
+| 22 | 에이전트 출력 감사 수정 | `2026-04-08-agent-output-audit-fix.md` | 🔲 구현 대기 | — | IC-1 완료 제외 13건 미수정 |
+| 23 | 에피소드 메모리 저장 트리거 | `_archive/plans/2026-04-08-episode-memory-save-trigger.md` | ✅ 완료 | #86, #87 | AgentState memory_write 필드 추가, Script Personalizer 반환, async_post 트리거 전부 develop에 머지 확인 (6b61763~ea06bd9) |
+| 24 | Mode A 부활 — 누적 그래프 EMA | `_archive/plans/2026-04-09-mode-a-revival-graph-cumulative.md` | ✅ 완료 | #88 | contracts.py GraphCumulativeData, client.py GET/PUT 메서드, graph_cumulative.py Mode B→A 전환, 테스트 27개 (549 passed). BE 3차 테스트: session_id/timestamp 제거 후 PUT ✅ 200, Test 6~8 전체 PASS, E2E(GET→PUT→GET) 검증 완료 |
 
 **범례:**
 - ✅ 완료 — 코드 구현 완료, PR 머지됨
@@ -82,18 +85,35 @@
 | 15 | 로컬 DB 비밀번호 재설정 | ❌ 미완료 |
 | 16 | Git history 정리 (KT Cloud 토큰 잔존) | ❌ 미완료 — 3인 합의 필요 |
 
-### 그룹 5: 기능 미구현 (Pinecone/DB 연동 후 처리)
+### 그룹 5: 기능 미구현
 
-| # | 작업 | 파일 | 라인 | 의존성 |
-|---|------|------|------|--------|
-| 17 | EpisodeMemoryStub → 실제 에이전트 DI 연결 | `podcast_reasoning.py` | 58-59 | Pinecone 연동 |
-| 18 | base_memory._save_to_store() stub 구현 | `base_memory.py` | 88-89 | KT Cloud API |
-| 19 | episode_memory mock_db.json → Pinecone 전환 | `episode_memory.py` | 15 | Pinecone 연동 |
-| ~~24~~ | ~~knowledge.py 인덱스명 하드코딩~~ (`expert_knowledge`) | ~~`knowledge.py`~~ | ~~135~~ | ✅ `expert-knowledge` 수정 완료 (PR #67) |
-| 20 | script_personalizer empathetic/rational 구현 | `script_personalizer.py` | 402, 405 | 비즈니스 규칙 정의 |
-| 21 | script_personalizer hearing_impairment 구현 | `script_personalizer.py` | 450 | 비즈니스 규칙 정의 |
-| 22 | _query_user_profile() MySQL 구현 | `script_personalizer.py` | 275 | DB 연결 |
-| 23 | data/cache/ 디렉토리 생성 | 프로젝트 루트 | — | episode_memory 런타임 의존 |
+| # | 작업 | 파일 | 상태 | 비고 |
+|---|------|------|------|------|
+| ~~17~~ | ~~EpisodeMemoryStub → 실제 DI 연결~~ | `podcast_reasoning.py` | ✅ Plan #23 완료 (PR #86) | memory_write 트리거로 대체 구현 |
+| ~~18~~ | ~~base_memory._save_to_store() stub~~ | `base_memory.py` | ✅ Plan #23 완료 (PR #85/#86) | EpisodeMemoryAgent 실구현 완료 |
+| ~~19~~ | ~~episode_memory mock_db.json → Pinecone~~ | `episode_memory.py` | ✅ Plan #23 완료 (PR #85) | Pinecone 네임스페이스 저장 구현 |
+| ~~24~~ | ~~knowledge.py 인덱스명 하드코딩~~ | `knowledge.py` | ✅ PR #67 완료 | `expert-knowledge` 수정 |
+| 20 | KTCloudEmbeddingClient 어댑터 + factory.py + KnowledgeAgent DI | `src/db/`, `podcast_reasoning.py` | ❌ 미완료 | Plan #19. episode_memory._embed() 추출 ~30줄 |
+| 21 | test_knowledge.py 벡터 검색 테스트 추가 | `tests/agents/podcast/test_knowledge.py` | ❌ 미완료 | Plan #19. 현재 stub 테스트만 존재 |
+| 22 | script_personalizer empathetic/rational 구현 | `script_personalizer.py:402,405` | ❌ 미완료 | 비즈니스 규칙 정의 선행 필요 |
+| 23 | script_personalizer hearing_impairment 구현 | `script_personalizer.py:450` | ❌ 미완료 | 비즈니스 규칙 정의 선행 필요 |
+| 24 | _query_user_profile() MySQL 구현 | `script_personalizer.py:275` | ❌ 미완료 | DB 연결 선행 필요 |
+| 25 | data/cache/ 디렉토리 생성 | 프로젝트 루트 | ❌ 미완료 | episode_memory 런타임 의존 |
+
+### 그룹 6: Plan #19 CLI 스크립트 / 문서 (개발자 도구, 운영 필수 아님)
+
+| # | 작업 | 파일 | 상태 |
+|---|------|------|------|
+| 26 | test_embedding.py CLI 스크립트 | `dev/scripts/test_embedding.py` | ❌ 미작성 |
+| 27 | test_vector_roundtrip.py CLI 스크립트 | `dev/scripts/test_vector_roundtrip.py` | ❌ 미작성 |
+| 28 | ingest_knowledge_base.py + 샘플 데이터 | `dev/scripts/ingest_knowledge_base.py` | ❌ 미작성 |
+| 29 | PINECONE_DEVELOPER_GUIDE.md | `docs/guides/PINECONE_DEVELOPER_GUIDE.md` | ❌ 미작성 |
+
+### 그룹 7: Plan #22 에이전트 출력 감사 (보류)
+
+| # | 작업 | 상태 |
+|---|------|------|
+| 30 | IC-1 제외 13건 에이전트 출력 스키마 수정 | 🔲 보류 — 동작 중인 시스템 스키마 변경 리스크 > 이득 |
 
 ---
 
@@ -123,6 +143,14 @@
 | Pinecone 클라이언트 + CLI 스크립트 3종 | `src/db/pinecone_client.py`, `dev/scripts/` | PR #64 |
 | Pinecone 테스트 59개 (client, mock, factory, scripts) | `tests/db/test_pinecone_*.py`, `tests/db/test_factory_vector.py` | PR #67/#68 |
 | Pinecone 인덱스명 하이픈 통일 | `config/settings.yaml`, `dev/scripts/`, `src/agents/podcast/knowledge.py` | PR #67/#68 |
+| EpisodeMemoryAgent 실구현 (KT Cloud + Pinecone) | `src/agents/podcast/episode_memory.py` | PR #85 |
+| AgentState memory_write 트리거 + Script Personalizer 반환 | `src/models/agent_state.py`, `script_personalizer.py` | PR #86 |
+| async_post 에피소드 메모리 저장 호출 | `src/graph/workflow.py` | PR #86 |
+| GoT→Neo4j E2E 검증 (6 passed, AWS SSM) | `dev/local_db/test_neo4j_integration.py` | PR #90 |
+| GraphCumulativeData 스키마 + Mode A EMA 전환 | `src/api/contracts.py`, `src/api/graph_cumulative.py` | PR #88 |
+| BackendClient load/put_graph_cumulative | `src/api/client.py` | PR #88 |
+| graph_cumulative 테스트 27개 (549 passed) | `tests/api/test_graph_cumulative.py` | PR #88 |
+| TestPublishGraphToBackend 삭제 + TestSaveGraphData 수정 | `tests/agents/podcast/test_podcast_reasoning.py` | PR #90 |
 
 ---
 
@@ -161,7 +189,10 @@
 | #78 | feature/reasoning-docs-stage9-medium | 앵커 오류 + PLAN_INDEX PR/테스트수 + graph-design 이력 주석 (MERGED) |
 | #79 | feature/reasoning-docs-stage10-low | 날짜 갱신 3건 + README CONTRIBUTING 설명 보완 (MERGED) |
 | #80 | feature/reasoning-docs-stage11 | PR 버전 불일치 + 대화모드 잔재 + 설계 결정 #15~#18 추가 (MERGED) |
+| #88 | feature/reasoning-plan-sync-0409 | Plan #24 Mode A 부활: contracts/settings/resources/client/graph_cumulative + 테스트 27개 (549 passed) (MERGED) |
+| #89 | feature/reasoning-plan-sync-0409 | black 포맷 수정 backend_resources.py — CI lint 통과 (MERGED) |
+| #90 | feature/reasoning-lint-fix-0409 | TestPublishGraphToBackend 삭제 + TestSaveGraphData publish_graph_to_rdb 패치 수정 + PLAN_INDEX v18 (MERGED) |
 
 ---
 
-*마스터 인덱스 v12 — 2026-04-08 (Plan #21 문서 전수 점검 완료, PR #70~#80 전체 MERGED)*
+*마스터 인덱스 v19 — 2026-04-13 (PR #88/#89/#90 전부 MERGED. 오픈 PR 없음. 미완료: #12/#19 잔여 기능, #22 보류. 그룹 5~7로 미완료 항목 재정리.)*

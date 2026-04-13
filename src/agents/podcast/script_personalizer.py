@@ -68,8 +68,6 @@ class ScriptPersonalizerAgent(BaseAgent):
             agent_cfg = get_settings().get_agent_config("script_personalizer")
             enable_deep_personalization = agent_cfg.get("deep_personalization", False)
         self.enable_deep_personalization = enable_deep_personalization
-        if not self.enable_deep_personalization:
-            self.llm_client = None  # type: ignore[assignment]
 
         self.backend_client = backend_client
 
@@ -185,9 +183,21 @@ class ScriptPersonalizerAgent(BaseAgent):
             processing_time = (datetime.now() - start_time).total_seconds() * 1000
             self.logger.info("[ScriptPersonalizer] Completed in %.2fms", processing_time)
 
+            # 메모리 저장용 에피소드 텍스트 추출 (세그먼트 텍스트 연결)
+            memory_text = "\n\n".join(
+                seg.script_text for seg in personalized_script.segments if seg.script_text
+            )
+
             return {
-                # 문자열 형태의 최종 스크립트 반환
-                "final_output": personalized_script.model_dump_json()
+                "final_output": personalized_script.model_dump_json(),
+                "memory_write": True,
+                "memory_text": memory_text,
+                "memory_metadata": {
+                    "user_id": state.get("user_id", ""),
+                    "session_id": state.get("session_id", ""),
+                    "episode_id": personalized_script.episode_id,
+                    "episode_title": personalized_script.episode_title,
+                },
             }
 
         except Exception as e:
@@ -195,13 +205,31 @@ class ScriptPersonalizerAgent(BaseAgent):
 
             # 에러 시 원본 스크립트 그대로 반환
             fallback = ""
+            fallback_memory_text = ""
+            fallback_metadata: dict[str, Any] = {
+                "user_id": state.get("user_id", ""),
+                "session_id": state.get("session_id", ""),
+            }
             if "validated_script" in locals() and validated_script:
                 fallback_script = self._create_fallback_script(
                     validated_script=validated_script, user_id=user_id
                 )
                 fallback = fallback_script.model_dump_json()
+                try:
+                    fallback_memory_text = "\n\n".join(
+                        seg.script_text for seg in validated_script.segments if seg.script_text
+                    )
+                    fallback_metadata["episode_id"] = fallback_script.episode_id
+                    fallback_metadata["episode_title"] = fallback_script.episode_title
+                except Exception:
+                    fallback_memory_text = ""
 
-            return {"final_output": fallback}
+            return {
+                "final_output": fallback,
+                "memory_write": False,
+                "memory_text": fallback_memory_text,
+                "memory_metadata": fallback_metadata,
+            }
 
     # =========================================================================
     # STEP 1: 사용자 프로필 조회 및 스타일 전략 결정

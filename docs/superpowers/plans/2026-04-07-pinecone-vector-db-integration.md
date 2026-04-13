@@ -10,13 +10,13 @@
 
 ---
 
-## 현재 완료 현황 (2026-04-07 기준)
+## 현재 완료 현황 (2026-04-09 업데이트)
 
 | Task | 상태 | PR | 비고 |
 |------|------|-----|------|
 | Task 1: 환경변수 검증 스크립트 | ✅ 완료 | #64 | `validate_pinecone_env.py` 작성, 테스트 5개 통과 |
 | Task 2: BedrockEmbeddingClient | ❌ 미완료 | — | 미구현 — 팩토리 연동 포함 |
-| Task 3: Pinecone 인덱스 생성 스크립트 | ✅ 완료 | #64, #67 | `create_pinecone_indexes.py`, EC2 인덱스 생성 확인 |
+| Task 3: Pinecone 인덱스 생성 스크립트 | ✅ 완료 | #64, #67 | `create_pinecone_indexes.py`, EC2 인덱스 생성 확인. **차원 4096 확정** |
 | Task 4: Pinecone 연결 상태 테스트 스크립트 | ✅ 완료 | #64, #67 | `test_pinecone_connection.py`, EC2 헬스체크 통과 |
 | Task 5: 임베딩 생성 테스트 스크립트 | ❌ 미완료 | — | `test_embedding.py` 미작성 |
 | Task 6: 벡터 저장 → 검색 E2E 테스트 | ❌ 미완료 | — | `test_vector_roundtrip.py` 미작성 |
@@ -24,10 +24,13 @@
 | Task 8: 전체 회귀 테스트 | 🔶 일부 완료 | #67 | tests/db/ 59개 통과, 전체 479 passed 유지 |
 | Task 9: 개발자 가이드 | ❌ 미완료 | — | `PINECONE_DEVELOPER_GUIDE.md` 미작성 |
 
-**추가 완료:**
+**추가 완료 (2026-04-09 기준):**
 - EC2 Docker 환경 Pinecone 연결 검증 완료 (PR #65, #66 선행 필요 수정 포함)
 - 인덱스명 하이픈 규칙 적용: `expert-knowledge`, `mem-podcast-episode`
 - `knowledge.py:135` 인덱스명 하드코딩 수정 (`expert_knowledge` → `expert-knowledge`)
+- **인덱스 차원 1024 → 4096 변경**: `create_pinecone_indexes.py`, `test_pinecone_connection.py`, `tests/db/test_pinecone_*.py` 일괄 수정 완료
+- **Pinecone DB 연결 완료**: EC2 환경에서 실제 인덱스 생성 및 연결 확인
+- **PR #85(feature/agents-gaeun) 머지 완료** (2026-04-08 07:54): EpisodeMemoryAgent._save_to_store() 실제 구현 반영. EpisodeMemory 저장 트리거 구현은 Plan #23 즉시 실행 가능
 
 ---
 

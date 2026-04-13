@@ -116,7 +116,7 @@ class IntentClassifierAgent(BaseAgent):
                 )
                 self._cache_result(session_id, trace_id, result)
                 return {
-                    "intent": result.model_dump(),
+                    "intent": self._extract_intent_dict(result),
                     "risk_level": 4,
                     "risk_score": 1.0,
                     "safety_flags": {"risk_detected": True, "details": "Crisis keywords detected"},
@@ -160,7 +160,7 @@ class IntentClassifierAgent(BaseAgent):
             risk_score = 1.0 if final_result.flags.risk_flag else 0.0
 
             return {
-                "intent": final_result.model_dump(),
+                "intent": self._extract_intent_dict(final_result),
                 "risk_level": risk_level,
                 "risk_score": risk_score,
                 "safety_flags": {"risk_detected": final_result.flags.risk_flag},
@@ -174,7 +174,7 @@ class IntentClassifierAgent(BaseAgent):
                 trace_id if "trace_id" in locals() else "unknown"
             )
             return {
-                "intent": fallback.model_dump(),
+                "intent": self._extract_intent_dict(fallback),
                 "risk_level": 0,
                 "risk_score": 0.0,
                 "safety_flags": {"risk_detected": False, "error": str(e)},
@@ -613,6 +613,29 @@ class IntentClassifierAgent(BaseAgent):
             trace_id=trace_id,
             classified_at=datetime.now(),
         )
+
+    @staticmethod
+    def _extract_intent_dict(result: IntentClassifierOutput) -> dict[str, Any]:
+        """IntentClassifierOutput에서 명시된 whitelist 필드만 추출한다 (IC-1).
+
+        model_dump() 대신 명시 추출을 사용하여 Pydantic 모델에 필드가 추가될 때
+        의도치 않은 필드가 AgentState의 intent 필드에 유입되는 것을 방지한다.
+
+        Args:
+            result: IntentClassifierOutput 인스턴스
+
+        Returns:
+            whitelist 필드만 포함한 dict
+        """
+        return {
+            "intent_type": result.intent_type,
+            "complexity_score": result.complexity_score,
+            "detected_entities": result.detected_entities.model_dump(),
+            "flags": result.flags.model_dump(),
+            "reasoning": result.reasoning,
+            "trace_id": result.trace_id,
+            "classified_at": result.classified_at,
+        }
 
     # =========================================================================
     # Redis 캐싱 (선택적)

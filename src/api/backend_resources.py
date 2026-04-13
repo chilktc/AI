@@ -21,9 +21,9 @@ RESOURCE_PODCAST_EPISODES = "podcast_episodes"  # podcast_episodes 수집 API (i
 RESOURCE_CONTENT_ANALYSIS = "content_analyses"  # ContentAnalyzer 분석 결과
 RESOURCE_EMOTION_LOG = "emotion_logs"  # 감정 벡터 데이터 저장
 RESOURCE_VISUALIZATION = "visualizations"  # 시각화(커버 이미지) 메타 저장
-# [이관 주석] 아래 리소스는 Neo4j 위치와 무관하게 항상 필요.
-# Backend가 프론트엔드에 그래프 데이터를 서빙하기 위해 사용.
-RESOURCE_GRAPH_ANALYSIS = "graph_analyses"  # GoT 그래프 분석 결과 저장
+# [제거됨 2026-04-09] _publish_graph_to_backend() 제거로 미사용.
+# 프론트엔드는 /graph_nodes (누적 그래프)를 직접 읽으므로 graph_analyses 불필요.
+# RESOURCE_GRAPH_ANALYSIS = "graph_analyses"
 
 # --- 협의 필요 리소스 ---
 RESOURCE_SESSION = "sessions"  # TODO(backend): 경로명 확정
@@ -46,8 +46,8 @@ TYPE_EMOTION_LOG = "emotion_log"
 TYPE_VISUALIZATION = "visualization"
 TYPE_LEARNING = "learning"
 TYPE_CONTENT_ANALYSIS = "content_analysis"
-TYPE_GRAPH_ANALYSIS = "graph_analysis"  # GoT 그래프 분석 결과
+# TYPE_GRAPH_ANALYSIS = "graph_analysis"  # [제거됨 2026-04-09]
 
-# --- 누적 그래프 리소스 ---
-RESOURCE_GRAPH_EPISODES = "graph_nodes/episodes"
-TYPE_GRAPH_EPISODE = "graph_episode"
+# --- 누적 그래프 리소스 (Mode A) ---
+RESOURCE_GRAPH_NODES = "graph_nodes"  # GET(조회)/PUT(갱신) 공통 엔드포인트
+TYPE_GRAPH_CUMULATIVE = "graph_cumulative"  # PUT 전송 시 SaveRequest.type 필드

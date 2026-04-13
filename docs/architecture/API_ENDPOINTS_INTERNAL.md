@@ -11,6 +11,8 @@
 |--------|------|------|--------|
 | `save(resource, data)` | POST /api/{resource} | 데이터 저장 | _save_episode_bundle, AgentDataPublisher, LearningAgent |
 | `load(resource, user_id, **params)` | GET /api/{resource} | 데이터 조회 | 미구현 (향후 확장용) |
+| `load_graph_cumulative(user_id)` | GET /api/graph_nodes | 누적 그래프 조회 | publish_graph_to_rdb() |
+| `put_graph_cumulative(data)` | PUT /api/graph_nodes | 누적 그래프 저장 | publish_graph_to_rdb() |
 
 ### 통신 설정
 
@@ -339,6 +341,185 @@
 |--------|------|-------------|
 | 200 OK | - | 저장 성공 |
 | 400 Bad Request | VALIDATION_ERROR | 요청 검증 실패 |
+| 500 Internal Server Error | SERVER_ERROR | Backend 서버 내부 오류 |
+
+---
+
+# 14. 누적 그래프 조회
+
+| 속성 | 값 |
+|------|---|
+| 상태 | **테스트 완료 (2026-04-09)** |
+| 엔드포인트 | /api/v1/graph_nodes |
+| 카테고리 | Internal |
+| 타입 | `GET` |
+| 방향 | AI Server → Backend Server |
+
+**EndPoint** : `GET /api/v1/graph_nodes?user_id={uuid}`
+
+**설명** : EMA 계산 전 기존 누적 그래프 데이터를 조회합니다. 신규 유저는 200 + 빈 nodes/links를 반환합니다 (404 아님).
+
+**구현 파일** : `src/api/client.py` → `load_graph_cumulative()`
+**리소스 상수** : `RESOURCE_GRAPH_NODES` (`src/api/backend_resources.py`)
+**호출 시점** : `publish_graph_to_rdb()` 내부 — EMA 병합 전 기존 데이터 조회
+
+---
+
+### Request
+
+```
+GET /api/v1/graph_nodes?user_id={uuid}
+```
+
+| 파라미터 | 타입 | 필수 | 설명 |
+|---------|------|------|------|
+| `user_id` | string | Y | 사용자 UUID |
+
+### Response Body
+
+> 주의: 범용 `LoadResponse`가 아닌 **전용 응답 형식** 사용.
+
+**신규 유저** (데이터 없음):
+```json
+{
+  "code": "ok",
+  "data": {
+    "user_id": "...",
+    "type": "graph_cumulative",
+    "data": { "nodes": [], "links": [] }
+  }
+}
+```
+
+**기존 유저**:
+```json
+{
+  "code": "ok",
+  "data": {
+    "user_id": "...",
+    "type": "graph_cumulative",
+    "data": {
+      "nodes": [
+        {
+          "label": "업무과부하",
+          "grp": "work_structure",
+          "weight": 0.81,
+          "mention_count": 3,
+          "trend": "increasing",
+          "first_seen": "2026-04-08T10:00:00",
+          "last_seen": "2026-04-08T10:30:00"
+        }
+      ],
+      "links": [
+        {
+          "source_label": "업무과부하",
+          "source_grp": "work_structure",
+          "target_label": "번아웃",
+          "target_grp": "emotional_exhaustion",
+          "weight": 3,
+          "relationship": "causes",
+          "first_seen": "2026-04-08T10:00:00",
+          "last_seen": "2026-04-08T10:30:00"
+        }
+      ]
+    }
+  }
+}
+```
+
+**AI 코드 파싱**: `body["data"]["data"]` (이중 중첩) → `GraphCumulativeData.model_validate()`
+
+### Status Code
+
+| Status | Code | Description |
+|--------|------|-------------|
+| 200 OK | - | 정상 조회 (신규 유저도 200) |
+| 500 Internal Server Error | SERVER_ERROR | Backend 서버 내부 오류 |
+
+---
+
+# 15. 누적 그래프 저장 (UPSERT)
+
+| 속성 | 값 |
+|------|---|
+| 상태 | **테스트 완료 (2026-04-09)** |
+| 엔드포인트 | /api/v1/graph_nodes |
+| 카테고리 | Internal |
+| 타입 | `PUT` |
+| 방향 | AI Server → Backend Server |
+
+**EndPoint** : `PUT /api/v1/graph_nodes`
+
+**설명** : AI 서버가 EMA 계산 완료 후 누적 그래프를 Backend에 저장(UPSERT)합니다. UPSERT 키: `user_id + label + grp` (노드), `user_id + source_label + source_grp + target_label + target_grp` (링크).
+
+**구현 파일** : `src/api/client.py` → `put_graph_cumulative()`
+**리소스 상수** : `RESOURCE_GRAPH_NODES` (`src/api/backend_resources.py`)
+**타입 상수** : `TYPE_GRAPH_CUMULATIVE` = `"graph_cumulative"`
+**호출 시점** : `publish_graph_to_rdb()` 내부 — EMA 병합 후 결과 저장
+
+---
+
+### Request Body
+
+> 주의: 범용 `SaveRequest`를 사용하지 않는 전용 형식. `session_id`/`timestamp`를 포함하지 않음.
+
+```json
+{
+  "user_id": "string (UUID)",
+  "type": "graph_cumulative",
+  "data": {
+    "nodes": [
+      {
+        "label": "업무과부하",
+        "grp": "work_structure",
+        "weight": 0.81,
+        "mention_count": 3,
+        "trend": "increasing",
+        "first_seen": "2026-04-08T10:00:00",
+        "last_seen": "2026-04-09T10:30:00"
+      }
+    ],
+    "links": [
+      {
+        "source_label": "업무과부하",
+        "source_grp": "work_structure",
+        "target_label": "번아웃",
+        "target_grp": "emotional_exhaustion",
+        "weight": 3,
+        "relationship": "causes",
+        "first_seen": "2026-04-08T10:00:00",
+        "last_seen": "2026-04-09T10:30:00"
+      }
+    ]
+  }
+}
+```
+
+**BE 거부 필드** (포함 시 400 `GRAPH_REQUEST_SCHEMA_MISMATCH`):
+- `session_id` — 누적 데이터는 유저 단위, 세션 무관
+- `timestamp` — 노드/링크별 `first_seen`/`last_seen`으로 충분
+
+**BE 필수 필드**:
+- `nodes[].first_seen`, `nodes[].last_seen` — 없으면 400
+- `links[].source_grp`, `links[].target_grp` — 없으면 400
+- `links[].first_seen`, `links[].last_seen` — 없으면 400
+
+### Response Body
+
+```json
+{ "code": "ok", "message": "성공" }
+```
+
+> 주의: 범용 `SaveResponse`가 아닌 전용 응답. `success` 대신 `code` 필드 사용.
+
+### Status Code
+
+| Status | Code | Description |
+|--------|------|-------------|
+| 200 OK | ok | 저장/갱신 성공 |
+| 400 Bad Request | GRAPH_REQUEST_SCHEMA_MISMATCH | 허용하지 않는 필드 포함 |
+| 400 Bad Request | GRAPH_NODE_LABEL_REQUIRED | nodes[].label 누락 |
+| 400 Bad Request | GRAPH_INVALID_GROUP | 유효하지 않은 grp 값 |
 | 500 Internal Server Error | SERVER_ERROR | Backend 서버 내부 오류 |
 
 ---

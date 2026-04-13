@@ -177,6 +177,55 @@ class TestWithLLM:
 
 
 # =============================================================================
+# IC-1: intent 필드 whitelist 추출 테스트
+# =============================================================================
+
+
+@pytest.mark.asyncio
+async def test_intent_field_has_no_internal_pydantic_fields() -> None:
+    """intent 필드에 Pydantic 내부 필드가 포함되지 않는다 (IC-1)."""
+    from unittest.mock import AsyncMock, patch
+
+    from src.agents.podcast.intent_classifier import IntentClassifierAgent
+    from src.models.agent_state import AgentState
+
+    agent = IntentClassifierAgent()
+    mock_output = {
+        "intent_type": "stress_relief",
+        "complexity_score": 0.7,
+        "sub_intents": ["sleep", "anxiety"],
+        "confidence": 0.9,
+        "_internal_debug": "제거 대상",
+        "raw_tokens": 125,
+        "detected_entities": {"emotions": [], "topics": [], "persons": []},
+        "flags": {
+            "requires_memory": False,
+            "requires_knowledge": False,
+            "visualization_hint": False,
+            "urgency_level": 0,
+            "risk_flag": False,
+        },
+        "reasoning": "test",
+    }
+    state = AgentState(user_input="스트레스 받아요", user_id="u", session_id="s", mode="podcast")
+
+    with patch.object(agent, "call_llm_json", new_callable=AsyncMock, return_value=mock_output):
+        result = await agent.process(state)
+
+    intent = result.get("intent", {})
+    assert "_internal_debug" not in intent, "내부 디버그 필드 유입됨"
+    assert "raw_tokens" not in intent, "내부 토큰 정보 유입됨"
+    assert "sub_intents" not in intent, "whitelist 외 필드(sub_intents) 유입됨"
+    assert "intent_type" in intent
+    assert "complexity_score" in intent
+    assert "detected_entities" in intent
+    assert "flags" in intent
+    assert "reasoning" in intent
+    assert "trace_id" in intent
+    assert "classified_at" in intent
+
+
+# =============================================================================
 # 직접 실행
 # =============================================================================
 

@@ -15,7 +15,12 @@ import httpx
 
 from config.loader import get_settings
 from src.api.backend_resources import RESOURCE_MIND_FREQUENCIES, RESOURCE_PODCAST_EPISODES
-from src.api.contracts import LoadResponse, SaveRequest, SaveResponse
+from src.api.contracts import (
+    GraphCumulativeData,
+    LoadResponse,
+    SaveRequest,
+    SaveResponse,
+)
 from src.utils.retry import with_retry
 
 _logger = logging.getLogger(__name__)
@@ -129,16 +134,11 @@ class BackendClient:
         백엔드에서 사용자 프로필을 조회한다.
         GET {host}/internal/users/{user_id}/profile
 
-        _profile_base_url(호스트만)을 사용하므로 ingest base_url 변경에 영향받지 않는다.
-
         Args:
             user_id: 조회할 사용자 고유 ID
 
         Returns:
             사용자 프로필 데이터 딕셔너리
-
-        Raises:
-            httpx.HTTPStatusError: HTTP 에러 응답 시
         """
         response = await self._client.get(
             f"{self._profile_base_url}/internal/users/{user_id}/profile"
@@ -149,16 +149,10 @@ class BackendClient:
     async def ingest_mind_frequencies(
         self, session_id: str, keywords: list[str], description: str
     ) -> None:
-        """
-        mind-frequencies 수집 엔드포인트 호출 (fire-and-forget).
+        """mind-frequencies 수집 엔드포인트 호출 (fire-and-forget).
 
         POST {base_url}/tickets/mind-frequencies
         실패 시 로그만 기록하고 파이프라인에 영향을 주지 않는다.
-
-        Args:
-            session_id: 현재 세션 ID
-            keywords: 콘텐츠 키워드 목록
-            description: 에피소드 주제 설명
         """
         try:
             response = await self._client.post(
@@ -182,19 +176,9 @@ class BackendClient:
         summary: str,
         keywords: list[str],
     ) -> None:
-        """
-        podcast_episodes 수집 엔드포인트 호출.
+        """podcast_episodes 수집 엔드포인트 호출.
 
         POST {base_url}/podcast_episodes
-        @with_retry 미적용 — _save_core_data() 의 try/except 블록에서 에러를 처리한다.
-
-        Args:
-            session_id: 현재 세션 ID
-            image_url: 에피소드 커버 이미지 URL
-            texts: 에피소드 핵심 인사이트 목록
-            title: 에피소드 제목
-            summary: 에피소드 요약 (현재 더미값)
-            keywords: 에피소드 키워드 목록 (현재 더미값)
         """
         response = await self._client.post(
             f"{self._base_url}/{RESOURCE_PODCAST_EPISODES}",
@@ -208,3 +192,35 @@ class BackendClient:
             },
         )
         response.raise_for_status()
+
+    async def load_graph_cumulative(self, user_id: str) -> GraphCumulativeData | None:
+        """사용자의 누적 그래프 데이터를 조회한다."""
+        try:
+            response = await self._client.get(
+                f"{self._base_url}/graph_nodes",
+                params={"user_id": user_id},
+            )
+            response.raise_for_status()
+            body: dict[str, Any] = response.json()
+            inner = body.get("data", {}).get("data") or {}
+            return GraphCumulativeData.model_validate(inner)  # type: ignore[no-any-return]
+        except Exception:
+            return None
+
+    async def put_graph_cumulative(self, data: SaveRequest) -> bool:
+        """누적 그래프 데이터를 백엔드에 저장(UPSERT)한다."""
+        try:
+            body = {
+                "user_id": data.user_id,
+                "type": data.type,
+                "data": data.data,
+            }
+            response = await self._client.put(
+                f"{self._base_url}/graph_nodes",
+                json=body,
+            )
+            response.raise_for_status()
+            resp_body: dict[str, Any] = response.json()
+            return isinstance(resp_body, dict) and resp_body.get("code") == "ok"
+        except Exception:
+            return False

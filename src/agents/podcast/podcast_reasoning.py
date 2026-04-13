@@ -496,12 +496,10 @@ class PodcastReasoningAgent(BaseAgent):
 
         세 작업 모두 실패해도 파이프라인은 계속 진행한다.
         """
-        # [이관 주석] Neo4j 저장은 이관 후 삭제. Backend 전송만 유지.
         user_id = state.get("user_id", "")
         await self._save_got_to_neo4j(got_result, session_id, episode_id, user_id)
-        await self._publish_graph_to_backend(got_result, state)
 
-        # [신규] RDB 누적 그래프 — label+group 기준 통합 UPSERT
+        # RDB 누적 그래프 — label+group 기준 통합 UPSERT
         from src.api.graph_cumulative import publish_graph_to_rdb
 
         await publish_graph_to_rdb(got_result, cast(dict[str, Any], state), episode_id)
@@ -578,41 +576,6 @@ class PodcastReasoningAgent(BaseAgent):
                     )
         except Exception as e:
             self.logger.warning("Neo4j 저장 실패 (파이프라인 계속): %s", e)
-
-    async def _publish_graph_to_backend(
-        self,
-        got_result: dict[str, Any],
-        state: AgentState,
-    ) -> None:
-        """GoT 결과를 변환하여 Backend에 전송한다.
-
-        [이관 주석] 이 메서드는 Neo4j 위치와 무관하게 항상 유지.
-        Backend가 프론트엔드에 그래프 데이터를 서빙하기 위해 필요.
-        """
-        try:
-            from src.api.backend_resources import RESOURCE_GRAPH_ANALYSIS
-            from src.api.graph_transformer import (
-                calc_category_distribution,
-                transform_got_to_graph_data,
-            )
-            from src.api.publisher import AgentDataPublisher
-
-            transformed = transform_got_to_graph_data(got_result)
-            category_dist = calc_category_distribution(transformed["nodes"])
-
-            publisher = AgentDataPublisher()
-            await publisher.publish(
-                resource=RESOURCE_GRAPH_ANALYSIS,
-                data={
-                    "got_result": got_result,
-                    "graph_data": transformed,
-                    "category_distribution": category_dist,
-                },
-                user_id=state.get("user_id", ""),
-                session_id=state.get("session_id", ""),
-            )
-        except Exception as e:
-            self.logger.warning("Backend 그래프 전송 실패 (파이프라인 계속): %s", e)
 
 
 async def podcast_reasoning_node(state: AgentState) -> dict[str, Any]:
