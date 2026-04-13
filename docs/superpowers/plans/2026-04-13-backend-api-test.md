@@ -81,7 +81,7 @@ GoT 추론 결과 저장 흐름:
 
 | 항목 | 이전 값 (잘못됨) | 올바른 값 | 조치 |
 |------|----------------|---------|------|
-| `BACKEND_API_URL` (GitHub Secret) | `http://10.7.10.20:8080/api/v1` | `http://10.7.10.20:8080/greenroom/ingest/ai` | ✅ 수정 완료 (2026-04-13) |
+| `BACKEND_API_URL` (GitHub Secret) | `http://${BACKEND_HOST}:8080/api/v1` | `http://${BACKEND_HOST}:8080/greenroom/ingest/ai` | ✅ 수정 완료 (2026-04-13) |
 
 > **주의:** `BACKEND_API_URL` 변경 후 `/greenroom/ingest/ai/graph_nodes`로 호출하면 **500 INTERNAL_SERVER_ERROR** 발생 확인.
 > B-4 코드 수정 전 배포 시 graph_nodes GET/PUT 전부 실패. **B-4는 긴급 수정 대상.**
@@ -105,28 +105,28 @@ GoT 추론 결과 저장 흐름:
 # graph_nodes GET — /api/v1 경로 확인
 sudo docker exec mindlog-ai-service python3 -c "
 import httpx
-r = httpx.get('http://10.7.10.20:8080/api/v1/graph_nodes', params={'user_id':'<real_user_id>'}, timeout=10)
+r = httpx.get('http://${BACKEND_HOST}:8080/api/v1/graph_nodes', params={'user_id':'<real_user_id>'}, timeout=10)
 print(r.status_code, r.text[:200])
 "
 
 # graph_nodes PUT — EMA 저장 확인
 sudo docker exec mindlog-ai-service python3 -c "
 import httpx
-r = httpx.put('http://10.7.10.20:8080/api/v1/graph_nodes', json={'user_id':'<real_user_id>','type':'graph_cumulative','data':{'nodes':[],'links':[]}}, timeout=10)
+r = httpx.put('http://${BACKEND_HOST}:8080/api/v1/graph_nodes', json={'user_id':'<real_user_id>','type':'graph_cumulative','data':{'nodes':[],'links':[]}}, timeout=10)
 print(r.status_code, r.text[:200])
 "
 
 # mind-frequencies — session_id snake_case 확인
 sudo docker exec mindlog-ai-service python3 -c "
 import httpx
-r = httpx.post('http://10.7.10.20:8080/greenroom/ingest/ai/mind-frequencies', json={'session_id':'<real_session_id>','keywords':['stress'],'description':'test'}, timeout=10)
+r = httpx.post('http://${BACKEND_HOST}:8080/greenroom/ingest/ai/mind-frequencies', json={'session_id':'<real_session_id>','keywords':['stress'],'description':'test'}, timeout=10)
 print(r.status_code, r.text[:200])
 "
 
 # podcast_episodes — title 포함 확인
 sudo docker exec mindlog-ai-service python3 -c "
 import httpx
-r = httpx.post('http://10.7.10.20:8080/greenroom/ingest/ai/podcast_episodes', json={'session_id':'<real_session_id>','image_url':'','text':'테스트 스크립트','title':'테스트 에피소드'}, timeout=10)
+r = httpx.post('http://${BACKEND_HOST}:8080/greenroom/ingest/ai/podcast_episodes', json={'session_id':'<real_session_id>','image_url':'','text':'테스트 스크립트','title':'테스트 에피소드'}, timeout=10)
 print(r.status_code, r.text[:200])
 "
 ```

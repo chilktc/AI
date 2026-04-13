@@ -21,10 +21,10 @@
 | 1 | KT Cloud API 토큰 | `kt_cctc5n6h10bzzwhdhrpsopw4tiwr0yvz59f270tuhy1tl54pwr18swmcvmzajsg8e` | `1d099b6` | 제거됨 (환경변수로 교체) |
 | 2 | KT Cloud 엔드포인트 | `https://no753ozr79oq.proxy.aifoundry.ktcloud.com/v1/embeddings` | `1d099b6` | 제거됨 (환경변수로 교체) |
 | 3 | ALB 도메인 | `t7-mindlog-prod-alb-1834710625.ap-northeast-2.elb.amazonaws.com` | 과거 커밋 | 제거됨 |
-| 4 | 내부 IP (app-3) | `10.7.10.20` | `e8024ed` | 제거됨 |
-| 5 | 내부 IP (app-4) | `10.7.11.20` | `e8024ed` | 제거됨 |
-| 6 | 내부 IP (app-1) | `10.7.11.10` | `e8024ed` | 제거됨 |
-| 7 | 내부 IP (app-2) | `10.7.10.10` | `e8024ed` | 제거됨 |
+| 4 | 내부 IP (app-3) | `${BACKEND_HOST}` | `e8024ed` | 제거됨 |
+| 5 | 내부 IP (app-4) | `${FRONTEND_HOST}` | `e8024ed` | 제거됨 |
+| 6 | 내부 IP (app-1) | `${AI_HOST_APP1}` | `e8024ed` | 제거됨 |
+| 7 | 내부 IP (app-2) | `${AI_HOST_APP2}` | `e8024ed` | 제거됨 |
 | 8 | DB 비밀번호 | `mindlog_pass` | `d403e61` | 제거됨 |
 | 9 | DB 루트 비밀번호 | `mindlog_root` | `d403e61` | 제거됨 |
 | 10 | Neo4j DB 비밀번호 | `mindlog_neo4j` | `d403e61` | 제거됨 |
@@ -44,6 +44,7 @@
 - [ ] GitHub main 브랜치 보호 규칙 일시 해제 확인 (현재 규칙 없음 — 2026-04-13 확인)
 - [ ] KT Cloud 토큰 로테이션 완료 (기존 토큰 폐기 — 이미 노출된 것으로 간주)
 - [ ] 작업 담당자 로컬에 `git-filter-repo` 설치 확인
+- [x] 문서 내 하드코딩 IP를 환경변수(`${BACKEND_HOST}` 등)로 교체 완료 (2026-04-13) — filter-repo 실행 시 현재 문서 파괴 방지
 - [ ] PLAN_INDEX 등 docs의 커밋 해시 참조는 filter-repo 후 전면 무효화됨을 팀 공지
 
 ---
@@ -66,7 +67,7 @@
 
   ```bash
   git log --all --oneline | wc -l
-  # 현재: 406 커밋 (2026-04-13 기준)
+  # 현재: 441 커밋 (2026-04-13 기준)
   ```
 
 - [ ] **Step 3: 로컬 백업 번들 생성**
@@ -86,10 +87,10 @@
   kt_cctc5n6h10bzzwhdhrpsopw4tiwr0yvz59f270tuhy1tl54pwr18swmcvmzajsg8e==>***KT_TOKEN_REMOVED***
   no753ozr79oq.proxy.aifoundry.ktcloud.com==>KT_ENDPOINT_REMOVED
   t7-mindlog-prod-alb-1834710625.ap-northeast-2.elb.amazonaws.com==>ALB_DOMAIN_REMOVED
-  10.7.10.20==>INTERNAL_IP_REMOVED
-  10.7.11.20==>INTERNAL_IP_REMOVED
-  10.7.11.10==>INTERNAL_IP_REMOVED
-  10.7.10.10==>INTERNAL_IP_REMOVED
+  ${BACKEND_HOST}==>INTERNAL_IP_REMOVED
+  ${FRONTEND_HOST}==>INTERNAL_IP_REMOVED
+  ${AI_HOST_APP1}==>INTERNAL_IP_REMOVED
+  ${AI_HOST_APP2}==>INTERNAL_IP_REMOVED
   mindlog_pass==>DB_PASS_REMOVED
   mindlog_root==>DB_ROOT_REMOVED
   mindlog_neo4j==>DB_NEO4J_REMOVED
@@ -98,6 +99,7 @@
   ```
 
   > ⚠️ `expressions.txt`를 레포 내부에 저장하지 말 것 — git history에 기록됨
+  > ⚠️ `${BACKEND_HOST}` 등 환경변수 자리에 **실제 IP 값**을 대입하여 작성할 것. 문서 보안을 위해 리터럴 IP를 기재하지 않음.
 
 - [ ] **Step 5: 드라이런으로 영향 범위 확인**
 
@@ -105,7 +107,7 @@
   # 현재 레포에서 각 패턴이 몇 개의 커밋에 있는지 확인
   git log --all -S "kt_cctc5n6h10bzzwhdhrpsopw4tiwr0yvz59f270tuhy1tl54pwr18swmcvmzajsg8e" --oneline
   git log --all -S "mindlog_pass" --oneline
-  git log --all -S "10.7.10.20" --oneline
+  git log --all -S "${BACKEND_HOST}" --oneline
   ```
 
   각 패턴에 해당하는 커밋 수 기록. 예상: 각 1~5개.
@@ -137,7 +139,7 @@
   > filter-repo 완료 후 origin remote가 자동 삭제됨 (정상)
 
   Expected: 진행 상황 출력, 완료 메시지.
-  > 실행 시간: 406커밋 기준 수 분 소요 예상
+  > 실행 시간: 441커밋 기준 수 분 소요 예상
 
 - [ ] **Step 3: 결과 검증 — 패턴 잔존 여부 확인**
 
@@ -150,7 +152,7 @@
   git log --all -S "mindlog_pass" --oneline
   # Expected: 출력 없음
 
-  git log --all -S "10.7.10.20" --oneline
+  git log --all -S "${BACKEND_HOST}" --oneline
   # Expected: 출력 없음
   ```
 
@@ -334,7 +336,7 @@ git push --force --tags
 ```
 [ ] git log --all -S "kt_cctc..." 결과 없음
 [ ] git log --all -S "mindlog_pass" 결과 없음
-[ ] git log --all -S "10.7.10.20" 결과 없음
+[ ] git log --all -S "${BACKEND_HOST}" 결과 없음
 [ ] 전원 re-clone 완료
 [ ] develop/main 브랜치 최신 커밋 내용 정상 동작 확인
 [ ] CI/CD 파이프라인 정상 실행 확인

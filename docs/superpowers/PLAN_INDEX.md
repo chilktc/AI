@@ -1,7 +1,7 @@
 # 마스터 계획 인덱스 (Master Plan Index)
 
 **목적**: 모든 기획 문서의 현황 추적 및 상태 관리  
-**버전**: v30
+**버전**: v33
 **마지막 업데이트**: 2026-04-13
 **관리 원칙**:
 - 완료된 계획 → PR 링크 + 간단한 변경 사항 기록
@@ -35,7 +35,7 @@
 | 19 | Pinecone 벡터 DB 공통 인프라 | `2026-04-07-pinecone-vector-db-integration.md` | 🔶 대부분 완료 | #64~#68 | Task 1/3/4 완료. KnowledgeAgent+PineconeClient 코드 완전 구현됨 (테스트 32개 통과). ⚠️ 미완: ① EmbeddingClient(KTCloud 어댑터) 미구현 → `knowledge._search_knowledge_base()` fallback 동작 중 ② `podcast_reasoning.py` KnowledgeAgentStub 사용 (DI 미연결) ③ Task 5/6/7(CLI), Task 9(가이드) 미작성 |
 | 20 | Graph Mode B 단일화 리팩터 | `2026-04-07-graph-mode-b-refactor.md` | ✅ 완료 | #69 | Mode A 삭제, publish_graph_to_rdb 단일 경로 확정, EMA를 Backend 책임으로 이관 (538 passed) |
 | 21 | 문서 전수 점검 및 정합성 수정 | *(인라인 — 별도 계획서 없음)* | ✅ 완료 | #70~#80 | 4차 사이클 점검: 대화모드 잔재·링크·날짜·버전 일관성·설계 결정 갱신 전체 완료 |
-| 22 | 에이전트 출력 감사 수정 | `2026-04-08-agent-output-audit-fix.md` | 🔲 구현 대기 | — | IC-1 완료 제외 13건 미수정 |
+| 22 | 에이전트 출력 감사 수정 | `2026-04-08-agent-output-audit-fix.md` | ✅ 완료 | — | v9: IC-1/SP-1/SP-2/schemas 완료(8건) + Task 1-7 구현 완료(SA/EA/CA/SG/VI/BV/횡단). 556 passed |
 | 23 | 에피소드 메모리 저장 트리거 | `_archive/plans/2026-04-08-episode-memory-save-trigger.md` | ✅ 완료 | #86, #87 | AgentState memory_write 필드 추가, Script Personalizer 반환, async_post 트리거 전부 develop에 머지 확인 (6b61763~ea06bd9) |
 | 24 | Mode A 부활 — 누적 그래프 EMA | `_archive/plans/2026-04-09-mode-a-revival-graph-cumulative.md` | ✅ 완료 | #88 | contracts.py GraphCumulativeData, client.py GET/PUT 메서드, graph_cumulative.py Mode B→A 전환, 테스트 27개 (549 passed). BE 3차 테스트: session_id/timestamp 제거 후 PUT ✅ 200, Test 6~8 전체 PASS, E2E(GET→PUT→GET) 검증 완료 |
 | 25 | Agent I/O 통합 및 재가공 에이전트 | `plans/2026-04-13-agent-io-consolidation.md` | 🔶 Task 8 완료 | #96 | Task 8: ingest_podcast_episodes() 정합 + podcast_segments 제거 + 감정 컬럼. Task 9: ingest_user_summary() 추가했으나 Plan #27(884c18c)에서 제거 — mind-frequencies로 통합 확정. ⛔ 보류: PodcastReprocessingAgent/EpisodeSummaryAgent(백엔드 테이블 미확보), AGENT_IO_DATAFLOW.md 추출 |
@@ -164,11 +164,11 @@
 
 > ③ `test_pinecone_mock.py` import error — `dev/local_db/pinecone_mock.py` 복원 완료 (1e27eb4, 27 passed)
 
-### 보류 — Plan #22 에이전트 출력 감사
+### 완료 — Plan #22 에이전트 출력 감사
 
 | # | 작업 | 상태 |
 |---|------|------|
-| 30 | IC-1 제외 13건 에이전트 출력 스키마 수정 | 🔲 보류 — 동작 중인 시스템 스키마 변경 리스크 > 이득 |
+| 30 | 에이전트 출력 스키마 수정 7건 (Plan #22 v9) | ✅ 완료 — Task 1~7 전체 구현 (556 passed) |
 
 ---
 
@@ -213,4 +213,4 @@
 
 ---
 
-*마스터 인덱스 v30 — 2026-04-13 (Plan #34 Stories 수신 인프라 계획서 추가. 백엔드 POST /api/stories/select 수신 엔드포인트 + load_stories() 삭제 + personalization-context 중복 제거.)*
+*마스터 인덱스 v33 — 2026-04-13 (Plan #22 Task 1-7 구현 완료. SA/EA/CA/SG/VI/BV 출력 명시화 + 횡단 이슈 수정)*

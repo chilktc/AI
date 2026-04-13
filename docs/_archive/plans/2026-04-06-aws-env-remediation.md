@@ -145,7 +145,7 @@ git rm --cached dev/local_db/.env.db
 **발생 경위:**
 1. `SECURITY_REMEDIATION_TRACKER.md`에 명시된 커밋 `1d099b6`에 KT Cloud API 토큰 잔존
 2. ALB 도메인 (`t7-mindlog-prod-alb-*.ap-northeast-2.elb.amazonaws.com`) 과거 커밋에 존재
-3. 내부 IP (`10.7.10.20`) 과거 커밋에 존재
+3. 내부 IP (`${BACKEND_HOST}`) 과거 커밋에 존재
 4. PR#58에서 코드 제거는 완료했으나 `git filter-repo` 미실행
 
 **수정 방향:**
@@ -489,7 +489,7 @@ git rm --cached dev/local_db/.env.db
 - [ ] **Step 1: 제거할 패턴 목록 확인** (`docs/SECURITY_REMEDIATION_TRACKER.md` 참조)
   - KT Cloud API 토큰 (커밋 `1d099b6` 이전)
   - ALB 도메인 `t7-mindlog-prod-alb-1834710625.ap-northeast-2.elb.amazonaws.com`
-  - 내부 IP `10.7.10.20`
+  - 내부 IP `${BACKEND_HOST}`
   - DB 비밀번호 `mindlog_pass`, `mindlog_root`, `mindlog_neo4j`
 
 - [ ] **Step 2: 모든 팀원 로컬 브랜치 백업**
@@ -503,7 +503,7 @@ git rm --cached dev/local_db/.env.db
   cd mind-log-mirror
   git filter-repo --replace-text <(cat << 'EOF'
   t7-mindlog-prod-alb-1834710625.ap-northeast-2.elb.amazonaws.com==>ALB_DOMAIN_REMOVED
-  10.7.10.20==>INTERNAL_IP_REMOVED
+  ${BACKEND_HOST}==>INTERNAL_IP_REMOVED
   mindlog_pass==>DB_PASS_REMOVED
   mindlog_root==>DB_ROOT_REMOVED
   mindlog_neo4j==>DB_NEO4J_REMOVED
