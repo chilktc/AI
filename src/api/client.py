@@ -68,7 +68,7 @@ class BackendClient:
 
     def _on_request(self, request: httpx.Request) -> None:
         """HTTP 요청 로깅 이벤트 훅."""
-        content_length = request.content.length if request.content else 0
+        content_length = len(request.content) if request.content else 0
         _logger.debug(
             "[BackendClient] HTTP 요청",
             extra={
