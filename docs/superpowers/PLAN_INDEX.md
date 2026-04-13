@@ -1,7 +1,7 @@
 # 마스터 계획 인덱스 (Master Plan Index)
 
 **목적**: 모든 기획 문서의 현황 추적 및 상태 관리  
-**버전**: v22
+**버전**: v23
 **마지막 업데이트**: 2026-04-13
 **관리 원칙**:
 - 완료된 계획 → PR 링크 + 간단한 변경 사항 기록
@@ -40,7 +40,7 @@
 | 24 | Mode A 부활 — 누적 그래프 EMA | `_archive/plans/2026-04-09-mode-a-revival-graph-cumulative.md` | ✅ 완료 | #88 | contracts.py GraphCumulativeData, client.py GET/PUT 메서드, graph_cumulative.py Mode B→A 전환, 테스트 27개 (549 passed). BE 3차 테스트: session_id/timestamp 제거 후 PUT ✅ 200, Test 6~8 전체 PASS, E2E(GET→PUT→GET) 검증 완료 |
 | 25 | Agent I/O 통합 및 재가공 에이전트 | `plans/2026-04-13-agent-io-consolidation.md` | 🔶 Task 8/9 완료 | #96 | Task 8: ingest_podcast_episodes() 정합 + podcast_segments 제거 + 감정 컬럼. Task 9: ContentAnalyzer user_summary 신규 저장 + content_analyses/user_summaries 테이블 + ingest_mind_frequencies 로깅 수정. ⛔ 보류: PodcastReprocessingAgent/EpisodeSummaryAgent(백엔드 테이블 미확보), AGENT_IO_DATAFLOW.md 추출 |
 | 26 | 프로덕션 버그 3종 수정 | `plans/2026-04-13-production-bugfix.md` | ✅ 완료 | #93, #94, #95 | Task 1: ScriptPersonalizer .segments→.script_text (c8ad23c). Task 2: graph_cumulative 타임스탬프 +00:00 제거 (29f66bf). Task 3: 프롬프트 YAML 5개 force-add (acb8903) |
-| 27 | Backend API 전수 테스트 | `plans/2026-04-13-backend-api-test.md` | 🔶 버그 수정 완료 | 884c18c | B-2(sessionId camelCase), B-3(title추가), B-4(graph_nodes /api/v1 경로), user_summaries 제거, graph/query 제거. CLI 재검증 대기. graph_nodes GET/PUT 2개만 백엔드 통신 대상 (Neo4j 내부, graph/query 불필요 확정) |
+| 27 | Backend API 전수 테스트 | `plans/2026-04-13-backend-api-test.md` | 🔶 버그 수정 완료 | 884c18c, a1d3e2f | B-2(session_id 백엔드 수정·원복), B-3(title추가), B-4(graph_nodes /api/v1 경로), user_summaries 제거, graph/query 제거. CLI 재검증 대기. graph_nodes GET/PUT 2개만 백엔드 통신 대상 (Neo4j 내부 확정) |
 
 **범례:**
 - ✅ 완료 — 코드 구현 완료, PR 머지됨

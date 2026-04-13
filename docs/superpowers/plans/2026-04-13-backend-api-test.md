@@ -130,7 +130,7 @@ f"{self._graph_base_url}/graph_nodes" # /api/v1/graph_nodes → 200
 | 버그 | 파일 | 수정 내용 | 상태 |
 |------|------|----------|------|
 | B-1 | `backend_resources.py` | `RESOURCE_MIND_FREQUENCIES` 경로 수정 | ✅ 완료 (이전 세션) |
-| B-2 | `client.py` | `"session_id"` → `"sessionId"` (camelCase) | ✅ 완료 |
+| B-2 | `client.py` | `"session_id"` snake_case — 백엔드에서 수용하도록 수정 (AI 서버 코드 원복, commit a1d3e2f) | ✅ 완료 (백엔드 측 수정) |
 | B-3 | `client.py`, `routes/podcasts.py` | `title` 파라미터 추가 | ✅ 완료 |
 | B-4 | `client.py` | `_graph_base_url = host/api/v1` 분리, graph_nodes URL 교정 | ✅ 완료 |
 | 추가 | `content_analyzer.py`, `client.py` | `user_summaries` 호출 제거 (mind-frequencies 통합) | ✅ 완료 |
