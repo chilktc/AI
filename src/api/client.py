@@ -171,24 +171,20 @@ class BackendClient:
         self,
         session_id: str,
         image_url: str,
-        texts: list[str],
-        title: str,
-        summary: str,
-        keywords: list[str],
+        text: str,
     ) -> None:
-        """podcast_episodes 수집 엔드포인트 호출.
+        """podcast_episodes 수집 → 백엔드 podcasts 테이블.
 
         POST {base_url}/podcast_episodes
+        백엔드 자동 채움: id(PK,UUID), user_id, created_at
+        AI 서버 전송: session_id, image_url, text
         """
         response = await self._client.post(
             f"{self._base_url}/{RESOURCE_PODCAST_EPISODES}",
             json={
                 "session_id": session_id,
                 "image_url": image_url,
-                "texts": texts,
-                "title": title,
-                "summary": summary,
-                "keywords": keywords,
+                "text": text,
             },
         )
         response.raise_for_status()

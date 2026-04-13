@@ -180,6 +180,8 @@ async def _save_core_data(
                 "pipeline_duration_ms": elapsed_ms,
                 "trace_id": trace_id,
                 "correlation_id": correlation_id,
+                "primary_emotion": final_state.get("emotion_vectors", {}).get("primary_emotion", "neutral"),
+                "secondary_emotions": final_state.get("emotion_vectors", {}).get("secondary_emotions", [])[:2],
             },
             timestamp=datetime.now(timezone.utc),
         )
@@ -188,10 +190,7 @@ async def _save_core_data(
             backend_client.ingest_podcast_episodes(
                 session_id=session_id,
                 image_url=cover_image_url or "",
-                texts=episode_data.key_insights or [],
-                title=episode_data.episode_title or "",
-                summary="",  # TODO: 요약문 생성 로직 구현 예정
-                keywords=[],  # TODO: 키워드 추출 로직 구현 예정
+                text=episode_data.script_text,
             ),
             return_exceptions=True,
         )
