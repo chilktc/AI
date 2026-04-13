@@ -55,6 +55,7 @@ DEFAULT_CHUNK_OVERLAP = 50
 # PDF 텍스트 추출
 # ============================================================
 
+
 def extract_text_from_pdf(pdf_path: str) -> list[dict]:
     """PDF에서 페이지별 텍스트를 추출한다.
 
@@ -82,6 +83,7 @@ def extract_text_from_pdf(pdf_path: str) -> list[dict]:
 # 청킹
 # ============================================================
 
+
 def chunk_text(
     text: str,
     chunk_size: int = DEFAULT_CHUNK_SIZE,
@@ -107,6 +109,7 @@ def make_chunk_id(source: str, page: int, idx: int) -> str:
 # KT Cloud Embedding API
 # ============================================================
 
+
 async def embed_text(text: str, endpoint: str, token: str) -> list[float]:
     """KT Cloud Embedding API로 텍스트를 벡터로 변환한다."""
     async with httpx.AsyncClient() as client:
@@ -126,6 +129,7 @@ async def embed_text(text: str, endpoint: str, token: str) -> list[float]:
 # ============================================================
 # Pinecone
 # ============================================================
+
 
 async def get_pinecone_host(index_name: str, api_key: str) -> str:
     """Pinecone 인덱스 호스트를 조회한다."""
@@ -163,6 +167,7 @@ async def upsert_pinecone(
 # Backend RDB 저장
 # ============================================================
 
+
 async def save_to_backend(
     backend_url: str,
     chunk_id: str,
@@ -197,6 +202,7 @@ async def save_to_backend(
 # 문서 1개 적재
 # ============================================================
 
+
 async def ingest_document(
     pdf_path: str,
     domain: str,
@@ -230,11 +236,13 @@ async def ingest_document(
         chunks = chunk_text(page_data["text"], chunk_size, chunk_overlap)
         for idx, chunk_text_str in enumerate(chunks):
             chunk_id = make_chunk_id(source, page_data["page"], idx)
-            all_chunks.append({
-                "chunk_id": chunk_id,
-                "text": chunk_text_str,
-                "page": page_data["page"],
-            })
+            all_chunks.append(
+                {
+                    "chunk_id": chunk_id,
+                    "text": chunk_text_str,
+                    "page": page_data["page"],
+                }
+            )
     print(f"  ✂️  {len(all_chunks)}개 청크 생성")
 
     # 3. 각 청크 처리
@@ -289,6 +297,7 @@ async def ingest_document(
 # 메인
 # ============================================================
 
+
 async def main() -> None:
     parser = argparse.ArgumentParser(description="Knowledge Base PDF 적재 스크립트")
     parser.add_argument("--config", default=DEFAULT_CONFIG, help="YAML 설정 파일 경로")
@@ -326,11 +335,13 @@ async def main() -> None:
         if not args.domain:
             print("❌ --pdf 사용 시 --domain이 필수입니다.")
             sys.exit(1)
-        documents = [{
-            "path": args.pdf,
-            "domain": args.domain,
-            "title": args.title or Path(args.pdf).stem,
-        }]
+        documents = [
+            {
+                "path": args.pdf,
+                "domain": args.domain,
+                "title": args.title or Path(args.pdf).stem,
+            }
+        ]
         chunk_size = DEFAULT_CHUNK_SIZE
         chunk_overlap = DEFAULT_CHUNK_OVERLAP
     else:
