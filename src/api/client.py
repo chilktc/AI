@@ -14,7 +14,11 @@ from urllib.parse import urlparse
 import httpx
 
 from config.loader import get_settings
-from src.api.backend_resources import RESOURCE_MIND_FREQUENCIES, RESOURCE_PODCAST_EPISODES
+from src.api.backend_resources import (
+    RESOURCE_MIND_FREQUENCIES,
+    RESOURCE_PODCAST_EPISODES,
+    RESOURCE_USER_SUMMARY,
+)
 from src.api.contracts import (
     GraphCumulativeData,
     LoadResponse,
@@ -166,6 +170,28 @@ class BackendClient:
             response.raise_for_status()
         except Exception as e:
             _logger.warning("[BackendClient] ingest_mind_frequencies failed (ignored): %s", e)
+
+    async def ingest_user_summary(
+        self, session_id: str, keywords: list[str], description: str
+    ) -> None:
+        """user_summaries 수집 엔드포인트 호출 (fire-and-forget).
+
+        POST {base_url}/user_summaries
+        keywords는 list[str]로 전송 — 백엔드에서 콤마 join 후 저장.
+        실패 시 로그만 기록하고 파이프라인에 영향을 주지 않는다.
+        """
+        try:
+            response = await self._client.post(
+                f"{self._base_url}/{RESOURCE_USER_SUMMARY}",
+                json={
+                    "session_id": session_id,
+                    "keywords": keywords,
+                    "description": description,
+                },
+            )
+            response.raise_for_status()
+        except Exception as e:
+            _logger.warning("[BackendClient] ingest_user_summary failed (ignored): %s", e)
 
     async def ingest_podcast_episodes(
         self,

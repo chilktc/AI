@@ -30,6 +30,7 @@ RESOURCE_SESSION = "sessions"  # TODO(backend): 경로명 확정
 
 # --- mind-frequencies 수집 ---
 RESOURCE_MIND_FREQUENCIES = "tickets/mind-frequencies"  # POST /greenroom/ingest/ai/tickets/mind-frequencies
+RESOURCE_USER_SUMMARY = "user_summaries"  # POST /greenroom/ingest/ai/user_summaries
 
 # --- 프록시 전용 (STORAGE_MODE=proxy/hybrid 시) ---
 RESOURCE_VECTOR_SEARCH = "vector/search"  # TODO(backend): 엔드포인트 존재 여부 확인
