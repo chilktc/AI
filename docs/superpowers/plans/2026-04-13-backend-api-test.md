@@ -40,101 +40,17 @@
 
 ---
 
-## 확인된 코드 버그 (4건)
+## 코드 버그 수정 완료 (2026-04-13)
 
-### B-1: `src/api/backend_resources.py`
-
-```python
-# Before
-RESOURCE_MIND_FREQUENCIES = "tickets/mind-frequencies"
-
-# After
-RESOURCE_MIND_FREQUENCIES = "mind-frequencies"
-```
-
-### B-2: `src/api/client.py` — `ingest_mind_frequencies()`
-
-```python
-# Before
-json={
-    "session_id": session_id,   # snake_case → 백엔드 VALIDATION_ERROR
-    "keywords": keywords,
-    "description": description,
-},
-
-# After
-json={
-    "sessionId": session_id,    # camelCase — 백엔드 요구 스펙
-    "keywords": keywords,
-    "description": description,
-},
-```
-
-### B-3: `src/api/client.py` — `ingest_podcast_episodes()`
-
-```python
-# Before
-json={
-    "session_id": session_id,
-    "image_url": image_url,
-    "texts": texts,             # 배열 → 백엔드 VALIDATION_ERROR
-    "title": title,
-    "summary": summary,
-    "keywords": keywords,
-},
-
-# After
-json={
-    "session_id": session_id,
-    "image_url": image_url,
-    "text": "\n".join(texts),   # 단일 문자열 — 백엔드 요구 스펙
-    "title": title,
-    "summary": summary,
-    "keywords": keywords,
-},
-```
-
-> 구분자(`"\n"` vs `" "`)는 백엔드 팀과 최종 확인 필요.
-
-### B-4: `src/api/client.py` — graph_nodes 경로 분리
-
-`__init__`에 `_graph_base_url` 추가:
-
-```python
-# Before
-self._base_url = base_url or settings.api_base_url
-parsed = urlparse(self._base_url)
-self._profile_base_url = f"{parsed.scheme}://{parsed.netloc}"
-
-# After
-self._base_url = base_url or settings.api_base_url
-parsed = urlparse(self._base_url)
-self._profile_base_url = f"{parsed.scheme}://{parsed.netloc}"
-self._graph_base_url = f"{parsed.scheme}://{parsed.netloc}/api/v1"
-```
-
-`load_graph_cumulative()` / `put_graph_cumulative()` URL 수정:
-
-```python
-# Before
-f"{self._base_url}/graph_nodes"       # /greenroom/ingest/ai/graph_nodes → 404
-
-# After
-f"{self._graph_base_url}/graph_nodes" # /api/v1/graph_nodes → 200
-```
-
----
-
-## 코드 수정 완료 현황 (2026-04-13, commit 884c18c)
-
-| 버그 | 파일 | 수정 내용 | 상태 |
+| 버그 | 파일 | 수정 내용 | 커밋 |
 |------|------|----------|------|
-| B-1 | `backend_resources.py` | `RESOURCE_MIND_FREQUENCIES` 경로 수정 | ✅ 완료 (이전 세션) |
-| B-2 | `client.py` | `"session_id"` snake_case — 백엔드에서 수용하도록 수정 (AI 서버 코드 원복, commit a1d3e2f) | ✅ 완료 (백엔드 측 수정) |
-| B-3 | `client.py`, `routes/podcasts.py` | `title` 파라미터 추가 | ✅ 완료 |
-| B-4 | `client.py` | `_graph_base_url = host/api/v1` 분리, graph_nodes URL 교정 | ✅ 완료 |
-| 추가 | `content_analyzer.py`, `client.py` | `user_summaries` 호출 제거 (mind-frequencies 통합) | ✅ 완료 |
-| 추가 | `api_proxy.py` | `GraphProxyClient.execute_query()` 미구현 엔드포인트 호출 제거 | ✅ 완료 |
+| B-1 | `backend_resources.py` | `RESOURCE_MIND_FREQUENCIES`: `"tickets/mind-frequencies"` → `"mind-frequencies"` | 이전 세션 |
+| B-2 | `client.py` | `ingest_mind_frequencies()` `session_id` 키 — 백엔드에서 snake_case 수용으로 수정 (AI 서버 코드 원복) | a1d3e2f |
+| B-3 | `client.py`, `routes/podcasts.py` | `ingest_podcast_episodes()`: `title` 파라미터 추가 | 884c18c |
+| B-4 | `client.py` | `_graph_base_url = host/api/v1` 분리 → `load/put_graph_cumulative()` URL `/api/v1/graph_nodes` 교정 | 884c18c |
+| 추가 | `content_analyzer.py`, `client.py` | `user_summaries` 엔드포인트 호출 제거 (mind-frequencies 통합) | 884c18c |
+| 추가 | `api_proxy.py` | `GraphProxyClient.execute_query()` 백엔드 미구현 엔드포인트 호출 제거 (빈 결과 반환) | 884c18c |
+| 추가 | `content_analyzer.py` | `state.get("session_id") or ""` — None 전파 방어 | 884c18c |
 
 ---
 
@@ -174,27 +90,43 @@ GoT 추론 결과 저장 흐름:
 
 ## 관련 파일
 
-- `src/api/client.py` — BackendClient (B-2, B-3, B-4 수정 대상)
-- `src/api/backend_resources.py` — RESOURCE_* 상수 (B-1 수정 대상)
+- `src/api/client.py` — BackendClient (B-2, B-3, B-4 수정 완료)
+- `src/api/backend_resources.py` — RESOURCE_* 상수 (B-1 수정 완료)
 - `src/api/contracts.py` — SaveRequest, SaveResponse, GraphCumulativeData
-- `config/settings.yaml` — `api.timeout: 10`, `api_base_url` 기본값
+- `src/api/routes/podcasts.py` — `ingest_podcast_episodes()` 호출부 (B-3 수정 완료)
+- `src/agents/podcast/content_analyzer.py` — user_summaries 제거, session_id 방어 (수정 완료)
+- `src/db/api_proxy.py` — GraphProxyClient.execute_query() 호출 제거 (수정 완료)
 
 ---
 
-## CLI 재검증 절차 (코드 배포 후)
+## CLI 재검증 절차 (배포 후 확인)
 
 ```bash
-# graph_nodes — /api/v1 경로 확인
+# graph_nodes GET — /api/v1 경로 확인
 sudo docker exec mindlog-ai-service python3 -c "
 import httpx
 r = httpx.get('http://10.7.10.20:8080/api/v1/graph_nodes', params={'user_id':'<real_user_id>'}, timeout=10)
 print(r.status_code, r.text[:200])
 "
 
-# mind-frequencies — camelCase sessionId 확인
+# graph_nodes PUT — EMA 저장 확인
 sudo docker exec mindlog-ai-service python3 -c "
 import httpx
-r = httpx.post('http://10.7.10.20:8080/greenroom/ingest/ai/mind-frequencies', json={'sessionId':'<real_session_id>','keywords':['stress'],'description':'test'}, timeout=10)
+r = httpx.put('http://10.7.10.20:8080/api/v1/graph_nodes', json={'user_id':'<real_user_id>','type':'graph_cumulative','data':{'nodes':[],'links':[]}}, timeout=10)
+print(r.status_code, r.text[:200])
+"
+
+# mind-frequencies — session_id snake_case 확인
+sudo docker exec mindlog-ai-service python3 -c "
+import httpx
+r = httpx.post('http://10.7.10.20:8080/greenroom/ingest/ai/mind-frequencies', json={'session_id':'<real_session_id>','keywords':['stress'],'description':'test'}, timeout=10)
+print(r.status_code, r.text[:200])
+"
+
+# podcast_episodes — title 포함 확인
+sudo docker exec mindlog-ai-service python3 -c "
+import httpx
+r = httpx.post('http://10.7.10.20:8080/greenroom/ingest/ai/podcast_episodes', json={'session_id':'<real_session_id>','image_url':'','text':'테스트 스크립트','title':'테스트 에피소드'}, timeout=10)
 print(r.status_code, r.text[:200])
 "
 ```
