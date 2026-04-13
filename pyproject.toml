@@ -8,9 +8,10 @@ python_functions = "test_*"
 markers = [
     "unit: 단위 테스트 (외부 의존성 없음)",
     "integration: 통합 테스트 (에이전트 간 연동)",
-    "live: 실제 LLM API 호출 (느림, 비용 발생)",
+    "live: 실제 LLM/Backend API 호출 (느림, -m live로 명시 실행)",
     "slow: 5초 이상 소요되는 테스트",
 ]
+addopts = "-m 'not live'"
 
 [tool.black]
 line-length = 100
