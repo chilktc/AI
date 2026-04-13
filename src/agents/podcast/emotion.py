@@ -4,7 +4,7 @@ from typing import Any
 
 from src.agents.shared.base_agent import BaseAgent
 from src.agents.shared.context_utils import clamp
-from src.api.backend_resources import RESOURCE_EMOTION_LOG
+from src.api.backend_resources import RESOURCE_EMOTION_LOG, TYPE_EMOTION_LOG
 from src.api.publisher import AgentDataPublisher
 from src.models.agent_state import AgentState
 
@@ -140,6 +140,7 @@ class EmotionAgent(BaseAgent):
             data=emotion_vectors,
             user_id=state.get("user_id", ""),
             session_id=state.get("session_id", ""),
+            data_type=TYPE_EMOTION_LOG,
         )
 
         return {"emotion_vectors": emotion_vectors}
