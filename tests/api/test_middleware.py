@@ -31,7 +31,7 @@ class TestRequestLoggingMiddleware:
     def test_non_excluded_path_gets_request_id(self, test_client) -> None:
         """일반 경로도 X-Request-ID 헤더를 받아야 한다."""
         response = test_client.post(
-            "/api/v1/sessions",
+            "/api/sessions",
             json={"user_id": "test_user", "mode": "podcast"},
         )
 

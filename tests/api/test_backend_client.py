@@ -35,7 +35,7 @@ def backend_client(mock_httpx_client):
     with patch("src.api.client.httpx.AsyncClient", return_value=mock_httpx_client):
         from src.api.client import BackendClient
 
-        client = BackendClient(base_url="http://test-backend:8080/api/v1")
+        client = BackendClient(base_url="http://test-backend:8080/api")
         # 내부 _client를 mock으로 직접 교체
         client._client = mock_httpx_client
         return client
@@ -107,7 +107,7 @@ class TestBackendClientSave:
         url = call_args[0][0]
         json_body = call_args[1]["json"]
 
-        assert url == "http://test-backend:8080/api/v1/podcast_episodes"
+        assert url == "http://test-backend:8080/api/podcast_episodes"
         assert json_body["user_id"] == "user_123"
         assert json_body["session_id"] == "sess_abc123"
         assert json_body["type"] == "podcast_episode"
@@ -212,7 +212,7 @@ class TestBackendClientLifecycle:
         mock_httpx_client,
     ) -> None:
         """base_url 설정 확인 + close() 호출 시 리소스 정리 검증."""
-        assert backend_client._base_url == "http://test-backend:8080/api/v1"
+        assert backend_client._base_url == "http://test-backend:8080/api"
 
         await backend_client.close()
         mock_httpx_client.aclose.assert_awaited_once()

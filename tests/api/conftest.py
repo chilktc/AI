@@ -73,7 +73,7 @@ def mock_backend_client():
     """BackendClient mock."""
     mock = AsyncMock()
     mock.close = AsyncMock()
-    mock._base_url = "http://mock-backend:8080/api/v1"
+    mock._base_url = "http://mock-backend:8080/api"
     return mock
 
 

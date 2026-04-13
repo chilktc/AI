@@ -9,14 +9,14 @@
 
 | 메서드 | HTTP | 용도 | 사용처 |
 |--------|------|------|--------|
-| `save(resource, data)` | POST /api/v1/{resource} | 데이터 저장 | _save_episode_bundle, AgentDataPublisher, LearningAgent |
-| `load(resource, user_id, **params)` | GET /api/v1/{resource} | 데이터 조회 | 미구현 (향후 확장용) |
+| `save(resource, data)` | POST /api/{resource} | 데이터 저장 | _save_episode_bundle, AgentDataPublisher, LearningAgent |
+| `load(resource, user_id, **params)` | GET /api/{resource} | 데이터 조회 | 미구현 (향후 확장용) |
 
 ### 통신 설정
 
 | 항목 | 값 | 환경변수 |
 |------|---|---------|
-| Base URL | `http://localhost:8080/api/v1` | `BACKEND_API_URL` |
+| Base URL | `http://localhost:8080/api` | `BACKEND_API_URL` |
 | 타임아웃 | 5초 | `config/settings.yaml → api.timeout` |
 | 최대 재시도 | 3회 (exponential backoff: 1초, 2초, 4초) | — |
 
@@ -51,27 +51,27 @@
 ---
 
 # 9. 에피소드 저장
-
+ 
 | 속성 | 값 |
 |------|---|
 | 상태 | 명세 완료 |
-| 엔드포인트 | /api/v1/podcast_episodes |
+| 엔드포인트 | /api/podcast_episodes |
 | 카테고리 | Internal |
 | 타입 | `POST` |
 | 방향 | AI Server → Backend Server |
-
-**EndPoint** : `POST /api/v1/podcast_episodes`
-
-**설명** : 팟캐스트 에피소드 생성 후 에피소드 메타데이터와 세그먼트 데이터를 Backend에 비동기 저장합니다.
-
+ 
+**EndPoint** : `POST /api/podcast_episodes`
+ 
+**설명** : 팟캐스트 에피소드 생성 후 에피소드 메타데이터와 통합된 스크립트 데이터를 Backend에 비동기 저장합니다.
+ 
 **구현 파일** : `src/api/routes/podcasts.py` → `_save_episode_bundle()`
 **리소스 상수** : `RESOURCE_PODCAST_EPISODE` (`src/api/backend_resources.py`)
-**호출 시점** : BackgroundTasks로 비동기 호출
-
+**호출 시점** : BackgroundTasks로 비동기 호출 (v3.0: 세그먼트 배열에서 단일 text로 구조 변경)
+ 
 ---
-
+ 
 ### Request Body (data 필드)
-
+ 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | type | String | true | `"podcast_episode"` |
@@ -79,34 +79,73 @@
 | data.episode_title | String | true | 에피소드 제목 (한국어) |
 | data.total_duration | Integer | true | 총 길이 (분) |
 | data.total_words | Integer | true | 전체 단어 수 |
-| data.segment_count | Integer | true | 세그먼트 수 |
+| data.script_text | String | true | **통합 스크립트 전문 (v3.0 추가)** |
 | data.key_insights | Array[String] | true | 핵심 인사이트 |
 | data.themes | Array[String] | true | 주제 태그 |
 | data.reasoning_depth | String | true | 추론 깊이 (`full`/`standard`/`minimal`) |
 | data.cover_image_url | String | false | S3 CDN URL (nullable) |
 | data.trace_id | String | true | 분산 추적 ID |
 | data.correlation_id | String | true | 상관관계 ID |
-| data.segments | Array | true | 세그먼트 목록 |
-| data.segments[].segment_id | String | true | 세그먼트 ID (`seg_{number}`) |
-| data.segments[].segment_order | Integer | true | 순서 (0-based) |
-| data.segments[].segment_type | String | true | 타입 (`opening`/`education`/`practical`/`exploration`/`transition`/`closing`) |
-| data.segments[].duration_minutes | Integer | true | 세그먼트 길이 (분) |
-| data.segments[].script_text | String | true | TTS 입력 텍스트 |
-| data.segments[].word_count | Integer | true | 단어 수 |
-| data.segments[].emotional_tone | String | true | 감정 톤 |
-| data.segments[].tts_markers_json | String | true | JSON 배열 문자열 |
-
+ 
 ### Response Body
-
+ 
 > 공통 응답 형식: `SaveResponse` (src/api/contracts.py)
-
+ 
 ### Status Code
-
+ 
 | Status | Code | Description |
 |--------|------|-------------|
 | 200 OK | - | 저장 성공 |
 | 400 Bad Request | VALIDATION_ERROR | 요청 검증 실패 |
 | 500 Internal Server Error | SERVER_ERROR | Backend 서버 내부 오류 |
+ 
+---
+ 
+# 15. 사용자 프로필 조회 (Internal)
+ 
+| 속성 | 값 |
+|------|---|
+| 상태 | 명세 완료 |
+| 엔드포인트 | /api/internal/users/{user_id}/profile |
+| 카테고리 | Internal |
+| 타입 | `GET` |
+| 방향 | AI Server → Backend Server |
+ 
+**EndPoint** : `GET /api/internal/users/{user_id}/profile`
+ 
+**설명** : AI 서버가 개인화(ScriptPersonalizer)를 위해 Backend 서버에 저장된 사용자의 프로필 및 상호작용 통계를 조회합니다.
+ 
+**호출 시점** : `ScriptPersonalizerAgent._query_user_profile()`
+**리소스 상수** : `RESOURCE_USER_PROFILE` (`src/api/backend_resources.py`)
+ 
+---
+ 
+### Path Parameters
+ 
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| user_id | String (UUID) | true | 사용자 고유 ID |
+ 
+### Response Body (data 필드)
+ 
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| user_id | String | true | 사용자 고유 ID |
+| nickname | String | false | 사용자 닉네임 |
+| interaction_count | Integer | true | 총 상호작용 횟수 (개인화 조건 판단용) |
+| preferred_topics | Array[String] | true | 선호 주제 목록 |
+| emotional_patterns | Array[String] | true | 감정 패턴 목록 |
+| interaction_style | String | true | 상호작용 스타일 |
+ 
+### Status Code
+ 
+| Status | Code | Description |
+|--------|------|-------------|
+| 200 OK | - | 성공 |
+| 404 Not Found | NOT_FOUND | 사용자 미존재 |
+| 500 Internal Server Error | SERVER_ERROR | Backend 서버 내부 오류 |
+ 
+---
 
 ---
 
@@ -115,12 +154,12 @@
 | 속성 | 값 |
 |------|---|
 | 상태 | 명세 완료 |
-| 엔드포인트 | /api/v1/emotion_logs |
+| 엔드포인트 | /api/emotion_logs |
 | 카테고리 | Internal |
 | 타입 | `POST` |
 | 방향 | AI Server → Backend Server |
 
-**EndPoint** : `POST /api/v1/emotion_logs`
+**EndPoint** : `POST /api/emotion_logs`
 
 **설명** : 감정 분석 결과를 Backend에 저장합니다. 2가지 호출 경로가 있습니다.
 
@@ -167,12 +206,12 @@
 | 속성 | 값 |
 |------|---|
 | 상태 | 명세 완료 |
-| 엔드포인트 | /api/v1/visualizations |
+| 엔드포인트 | /api/visualizations |
 | 카테고리 | Internal |
 | 타입 | `POST` |
 | 방향 | AI Server → Backend Server |
 
-**EndPoint** : `POST /api/v1/visualizations`
+**EndPoint** : `POST /api/visualizations`
 
 **설명** : 시각화(커버 이미지) 메타데이터를 Backend에 저장합니다. visual_data가 존재할 때만 호출됩니다.
 
@@ -217,12 +256,12 @@
 | 속성 | 값 |
 |------|---|
 | 상태 | 명세 완료 |
-| 엔드포인트 | /api/v1/learning |
+| 엔드포인트 | /api/learning |
 | 카테고리 | Internal |
 | 타입 | `POST` |
 | 방향 | AI Server → Backend Server |
 
-**EndPoint** : `POST /api/v1/learning`
+**EndPoint** : `POST /api/learning`
 
 **설명** : LearningAgent가 생성한 사용자 패턴 분석 결과를 Backend에 비동기 저장합니다.
 
@@ -263,12 +302,12 @@
 | 속성 | 값 |
 |------|---|
 | 상태 | 명세 완료 |
-| 엔드포인트 | /api/v1/content_analyses |
+| 엔드포인트 | /api/content_analyses |
 | 카테고리 | Internal |
 | 타입 | `POST` |
 | 방향 | AI Server → Backend Server |
 
-**EndPoint** : `POST /api/v1/content_analyses`
+**EndPoint** : `POST /api/content_analyses`
 
 **설명** : ContentAnalyzer 에이전트의 분석 결과를 AgentDataPublisher를 경유하여 Backend에 저장합니다. 저장 실패 시에도 파이프라인 흐름에 영향을 주지 않습니다 (예외 미전파).
 
@@ -311,7 +350,7 @@
 ### 공통 요청 형식
 
 ```
-GET /api/v1/{resource}?user_id={uuid}&type={type}&limit={n}&page={p}
+GET /api/{resource}?user_id={uuid}&type={type}&limit={n}&page={p}
 ```
 
 | 파라미터 | 타입 | 필수 | 설명 |

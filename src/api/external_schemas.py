@@ -138,7 +138,7 @@ class SessionCreateRequest(BaseModel):
     Backend 서버가 대화 시작 시 호출한다.
     세션 ID는 서버에서 생성하여 반환한다.
 
-    Endpoint: POST /api/v1/sessions
+    Endpoint: POST /api/sessions
     """
 
     user_id: str = Field(description="사용자 고유 ID")
@@ -173,7 +173,7 @@ class SessionCloseRequest(BaseModel):
     Backend 서버가 대화 종료 시 호출한다.
     서버는 Learning Agent를 비동기로 트리거한다.
 
-    Endpoint: POST /api/v1/sessions/{session_id}/close
+    Endpoint: POST /api/sessions/{session_id}/close
     """
 
     user_id: str = Field(description="사용자 고유 ID")
@@ -210,15 +210,16 @@ class PodcastRequest(BaseModel):
     프론트엔드가 사용자의 상황·생각·행동·동료반응을 구조화하여 전달한다.
     서버는 이 요청을 팟캐스트 모드 LangGraph 파이프라인에 전달한다.
 
-    Endpoint: POST /api/v1/podcasts/episodes
+    Endpoint: POST /api/podcasts/episodes
     파이프라인: TIER 0 → TIER 1(병렬) → TIER 2(병렬) → TIER 3 → TIER 4
 
     AgentState 매핑:
-        user_input  ← situation + thought + action + (colleagueReaction or "")
-                      (줄바꿈 구분 문자열로 조합)
-        user_id     ← user_id
-        session_id  ← session_id
-        mode        ← "podcast" (고정)
+        user_input       ← situation + thought + action + (colleagueReaction or "")
+                           (줄바꿈 구분 문자열로 조합)
+        user_id          ← user_id
+        session_id       ← session_id
+        mode             ← "podcast" (고정)
+        learning_pattern ← learning_pattern (nullable, Intent Classifier 활용)
     """
 
     model_config = {"populate_by_name": True}
@@ -246,9 +247,9 @@ class PodcastRequest(BaseModel):
         alias="colleagueReaction",
         description="동료의 반응 (선택, 최대 500자)",
     )
-    preferences: PodcastPreferences | None = Field(
+    learning_pattern: dict[str, Any] | None = Field(
         default=None,
-        description="에피소드 생성 선호 설정 (선택)",
+        description="백엔드가 Push하는 사용자 학습 패턴 (nullable, 신규 사용자는 null)",
     )
     tracing: RequestTracing = Field(
         default_factory=RequestTracing,
@@ -287,7 +288,7 @@ class UserProfileUpdateRequest(BaseModel):
     프론트엔드 설정 화면에서 사용자가 프로필을 수정할 때 사용한다.
     Personalization Agent와 Script Personalizer가 참조한다.
 
-    Endpoint: PATCH /api/v1/users/{user_id}/profile
+    Endpoint: PATCH /api/users/{user_id}/profile
     저장 위치: MySQL users 테이블
     """
 
@@ -306,10 +307,6 @@ class UserProfileUpdateRequest(BaseModel):
             default=None,
             description="선호 상담 태도",
         )
-    )
-    accessibility_needs: list[str] | None = Field(
-        default=None,
-        description="접근성 요구사항 (예: ['large_text', 'high_contrast'])",
     )
     notification_enabled: bool | None = Field(
         default=None,
@@ -342,7 +339,6 @@ class UserProfileData(BaseModel):
     age_group: str = Field(default="30s", description="연령대")
     preferred_style: str = Field(default="neutral", description="선호 대화 스타일")
     preferred_attitude: str = Field(default="balanced", description="선호 상담 태도")
-    accessibility_needs: list[str] = Field(default_factory=list, description="접근성 요구사항")
     notification_enabled: bool = Field(default=True, description="알림 수신 동의")
     created_at: datetime = Field(description="계정 생성 시각")
     updated_at: datetime = Field(description="마지막 수정 시각")
@@ -475,7 +471,7 @@ class PodcastEpisodeResponse(BaseModel):
     Script Personalizer(TIER 4)의 최종 스크립트를 핵심으로,
     에피소드 메타데이터와 시각화(커버 이미지)를 포함한다.
 
-    Endpoint 응답: POST /api/v1/podcasts/episodes
+    Endpoint 응답: POST /api/podcasts/episodes
 
     AgentState 매핑:
         episode          ← script_draft + final_output (Script Personalizer)
@@ -510,7 +506,7 @@ class SlimPodcastResponse(BaseModel):
     모든 데이터는 DB에 저장되므로 Backend가 GET API로 조회 가능.
     safety_alert만 직접 포함 (CRISIS 시 에피소드 미생성 → DB 미저장).
 
-    Endpoint 응답: POST /api/v1/podcasts/episodes
+    Endpoint 응답: POST /api/podcasts/episodes
     """
 
     success: Literal[True] = True
@@ -527,7 +523,6 @@ class PodcastEpisodeData(BaseModel):
     """
     팟캐스트 에피소드 데이터.
 
-    Script Personalizer(TIER 4)의 최종 출력을 구조화한 것.
     프론트엔드는 이 데이터로 에피소드 플레이어를 렌더링한다.
     """
 
@@ -535,37 +530,13 @@ class PodcastEpisodeData(BaseModel):
     session_id: str = Field(description="생성 세션 ID")
     episode_title: str = Field(description="에피소드 제목 (한국어)")
     total_duration: int = Field(description="총 에피소드 길이 (분)")
-    segments: list[PodcastSegment] = Field(description="세그먼트 목록")
+    script_text: str = Field(description="전체 스크립트 텍스트 (TTS 입력)")
+    tts_markers: list[TTSMarkerData] = Field(default_factory=list, description="전체 TTS 제어 마커")
     key_insights: list[str] = Field(default_factory=list, description="핵심 인사이트 (3-5개)")
     themes: list[str] = Field(default_factory=list, description="에피소드 주제 태그")
     created_at: datetime = Field(default_factory=_now_utc, description="에피소드 생성 시각")
 
 
-class PodcastSegment(BaseModel):
-    """
-    팟캐스트 에피소드 세그먼트.
-
-    개별 구간의 스크립트 텍스트와 메타데이터.
-    TTS 엔진이 script_text를 읽고, tts_markers로 톤 변화를 제어한다.
-
-    원본 출처: ScriptSegment (src/models/schemas.py)
-
-    Note:
-        ScriptSegment(schemas.py)와 필드 구조가 동일하다.
-        ScriptSegment는 에이전트 내부 파이프라인 전용이고,
-        PodcastSegment는 외부 API 응답 전용이므로 분리 유지한다.
-        두 클래스의 필드를 수정할 때 양쪽을 함께 업데이트할 것.
-    """
-
-    segment_id: str = Field(description="세그먼트 고유 ID")
-    segment_type: str = Field(
-        description="세그먼트 타입 (도입, 탐색, 전환, 마무리 등)",
-    )
-    duration_minutes: int = Field(description="세그먼트 예상 길이 (분)")
-    script_text: str = Field(description="스크립트 텍스트 (TTS 입력)")
-    word_count: int = Field(default=0, description="단어 수")
-    emotional_tone: str = Field(default="neutral", description="감정 톤")
-    tts_markers: list[TTSMarkerData] = Field(default_factory=list, description="TTS 제어 마커")
 
 
 class TTSMarkerData(BaseModel):
@@ -599,7 +570,7 @@ class EmotionHistoryResponse(BaseModel):
     사용자의 과거 감정 로그를 시간순으로 반환한다.
     프론트엔드의 감정 추이 그래프, 감정 달력 등에 사용.
 
-    Endpoint 응답: GET /api/v1/users/{user_id}/emotions
+    Endpoint 응답: GET /api/users/{user_id}/emotions
     """
 
     success: Literal[True] = True
@@ -635,7 +606,7 @@ class PodcastEpisodeListResponse(BaseModel):
     """
     팟캐스트 에피소드 목록 조회 응답.
 
-    Endpoint 응답: GET /api/v1/users/{user_id}/podcasts/episodes
+    Endpoint 응답: GET /api/users/{user_id}/podcasts/episodes
     """
 
     success: Literal[True] = True
@@ -681,7 +652,7 @@ class StreamEvent(BaseModel):
     프론트엔드 소비 가능한 형태로 정규화한 것.
 
     사용법:
-        SSE: POST /api/v1/podcasts/episodes/stream (Content-Type: application/json)
+        SSE: POST /api/podcasts/episodes/stream (Content-Type: application/json)
     """
 
     event_type: StreamEventType = Field(description="이벤트 유형")
@@ -796,7 +767,8 @@ class MySQLPodcastEpisode(BaseModel):
     episode_title: str = Field(description="에피소드 제목")
     total_duration: int = Field(description="총 길이 (분)")
     total_words: int = Field(default=0, description="전체 단어 수")
-    segment_count: int = Field(description="세그먼트 개수")
+    script_text: str = Field(description="전체 스크립트 텍스트")
+    tts_markers_json: str = Field(default="[]", description="TTS 마커 JSON 문자열")
     key_insights: list[str] = Field(default_factory=list, description="핵심 인사이트")
     themes: list[str] = Field(default_factory=list, description="주제 태그")
     reasoning_depth: str = Field(
@@ -816,27 +788,6 @@ class MySQLPodcastEpisode(BaseModel):
     created_at: datetime = Field(default_factory=_now_utc, description="생성 시각")
 
 
-class MySQLPodcastSegment(BaseModel):
-    """
-    MySQL 저장 — 팟캐스트 세그먼트 (에피소드 하위).
-
-    테이블: podcast_segments
-
-    인덱스:
-        - PK: segment_id
-        - FK: episode_id → podcast_episodes.episode_id
-        - INDEX: (episode_id, segment_order) — 순서 보장
-    """
-
-    segment_id: str = Field(description="세그먼트 고유 ID (PK)")
-    episode_id: str = Field(description="에피소드 ID (FK)")
-    segment_order: int = Field(description="세그먼트 순서 (0부터)")
-    segment_type: str = Field(description="세그먼트 타입")
-    duration_minutes: int = Field(description="예상 길이 (분)")
-    script_text: str = Field(description="스크립트 텍스트 (전문)")
-    word_count: int = Field(default=0, description="단어 수")
-    emotional_tone: str = Field(default="neutral", description="감정 톤")
-    tts_markers_json: str = Field(default="[]", description="TTS 마커 JSON 문자열 (직렬화)")
 
 
 class MySQLLearningPattern(BaseModel):
@@ -1224,7 +1175,7 @@ class TraceQuery(BaseModel):
 
     특정 요청의 전체 흐름(파이프라인 실행 + DB 저장)을 조회한다.
 
-    Endpoint: GET /api/v1/admin/traces/{trace_id}
+    Endpoint: GET /api/admin/traces/{trace_id}
     """
 
     trace_id: str = Field(description="조회할 추적 ID")

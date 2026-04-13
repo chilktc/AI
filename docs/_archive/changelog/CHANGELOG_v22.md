@@ -53,7 +53,7 @@ Shared Infrastructure(base_agent.py, llm_client.py, prompt_loader.py, loader.py)
 #### 팟캐스트 데이터 저장 흐름
 
 ```
-POST /api/v1/podcasts/episodes
+POST /api/podcasts/episodes
     │
     ├── 1. LangGraph 파이프라인 실행 (TIER 0→1→2→3→4)
     │       └── final_state 반환
@@ -122,9 +122,9 @@ return {"emotion_vectors": emotion_vectors}  # 기존 return 그대로
 v1.0 → v1.1 변경 요약:
 
 삭제:
-  - 섹션 1: 대화 요청 (POST /api/v1/conversations)
-  - 섹션 2: 대화 스트리밍 SSE (GET /api/v1/conversations/stream)
-  - 섹션 4: 대화 히스토리 조회 (GET /api/v1/history/conversations)
+  - 섹션 1: 대화 요청 (POST /api/conversations)
+  - 섹션 2: 대화 스트리밍 SSE (GET /api/conversations/stream)
+  - 섹션 4: 대화 히스토리 조회 (GET /api/history/conversations)
   - 카테고리 표의 Conversation 행
 
 변경:

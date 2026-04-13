@@ -64,7 +64,10 @@
         "intensity": 0.72,
         "valence": -0.45,
         "arousal": 0.68,
-        "secondary_emotions": ["stress", "fatigue"],
+        "secondary_emotions": [
+          "stress",
+          "fatigue"
+        ],
         "tone_recommendation": "warm_supportive",
         "trace_id": "trace_test000001"
       },
@@ -78,7 +81,9 @@
         "intensity": 0.55,
         "valence": 0.60,
         "arousal": 0.42,
-        "secondary_emotions": ["relief"],
+        "secondary_emotions": [
+          "relief"
+        ],
         "tone_recommendation": "encouraging",
         "trace_id": "trace_test000002"
       }
@@ -92,8 +97,16 @@
         "total_duration": 8.5,
         "total_words": 1200,
         "segment_count": 3,
-        "key_insights": ["업무 과부하가 불안의 주요 원인", "점진적 이완 기법 활용", "경계 설정의 중요성"],
-        "themes": ["직장스트레스", "불안관리", "워라밸"],
+        "key_insights": [
+          "업무 과부하가 불안의 주요 원인",
+          "점진적 이완 기법 활용",
+          "경계 설정의 중요성"
+        ],
+        "themes": [
+          "직장스트레스",
+          "불안관리",
+          "워라밸"
+        ],
         "reasoning_depth": "standard",
         "intent_type": "stress_management",
         "complexity_score": 0.65,
@@ -112,8 +125,17 @@
         "total_duration": 9.0,
         "total_words": 1350,
         "segment_count": 4,
-        "key_insights": ["수면 위생의 기본 원칙", "카페인과 수면의 관계", "이완 호흡법", "일관된 수면 스케줄"],
-        "themes": ["수면장애", "불면증", "생활습관"],
+        "key_insights": [
+          "수면 위생의 기본 원칙",
+          "카페인과 수면의 관계",
+          "이완 호흡법",
+          "일관된 수면 스케줄"
+        ],
+        "themes": [
+          "수면장애",
+          "불면증",
+          "생활습관"
+        ],
         "reasoning_depth": "full",
         "intent_type": "sleep_improvement",
         "complexity_score": 0.72,
@@ -177,12 +199,25 @@
         "session_id": "sess_test000001",
         "user_id": "test-user-001",
         "mode": "podcast",
-        "preferred_topics": ["스트레스관리", "불안", "워라밸"],
-        "emotional_patterns": ["주로 저녁에 불안 호소", "업무 관련 스트레스 반복"],
+        "preferred_topics": [
+          "스트레스관리",
+          "불안",
+          "워라밸"
+        ],
+        "emotional_patterns": [
+          "주로 저녁에 불안 호소",
+          "업무 관련 스트레스 반복"
+        ],
         "interaction_style": "detailed",
-        "personalization_suggestions": ["이완 기법 추천 강화", "구체적 사례 포함"],
+        "personalization_suggestions": [
+          "이완 기법 추천 강화",
+          "구체적 사례 포함"
+        ],
         "effectiveness_score": 0.78,
-        "raw_learning_data": {"session_engagement": "high", "topic_diversity": 0.4},
+        "raw_learning_data": {
+          "session_engagement": "high",
+          "topic_diversity": 0.4
+        },
         "trace_id": "trace_test000001"
       }
     ],
@@ -317,68 +352,170 @@
     "relationships": [
       {
         "type": "HAS_SESSION",
-        "from": {"label": "User", "match_key": "user_id", "match_value": "test-user-001"},
-        "to": {"label": "Session", "match_key": "session_id", "match_value": "sess_test000001"},
+        "from": {
+          "label": "User",
+          "match_key": "user_id",
+          "match_value": "test-user-001"
+        },
+        "to": {
+          "label": "Session",
+          "match_key": "session_id",
+          "match_value": "sess_test000001"
+        },
         "props": {}
       },
       {
         "type": "HAS_SESSION",
-        "from": {"label": "User", "match_key": "user_id", "match_value": "test-user-001"},
-        "to": {"label": "Session", "match_key": "session_id", "match_value": "sess_test000002"},
+        "from": {
+          "label": "User",
+          "match_key": "user_id",
+          "match_value": "test-user-001"
+        },
+        "to": {
+          "label": "Session",
+          "match_key": "session_id",
+          "match_value": "sess_test000002"
+        },
         "props": {}
       },
       {
         "type": "ADDRESSED",
-        "from": {"label": "Session", "match_key": "session_id", "match_value": "sess_test000001"},
-        "to": {"label": "Emotion", "match_key": "emotion_key", "match_value": "anxiety"},
+        "from": {
+          "label": "Session",
+          "match_key": "session_id",
+          "match_value": "sess_test000001"
+        },
+        "to": {
+          "label": "Emotion",
+          "match_key": "emotion_key",
+          "match_value": "anxiety"
+        },
         "props": {}
       },
       {
         "type": "COVERS",
-        "from": {"label": "Session", "match_key": "session_id", "match_value": "sess_test000001"},
-        "to": {"label": "Topic", "match_key": "topic_name", "match_value": "work_stress"},
+        "from": {
+          "label": "Session",
+          "match_key": "session_id",
+          "match_value": "sess_test000001"
+        },
+        "to": {
+          "label": "Topic",
+          "match_key": "topic_name",
+          "match_value": "work_stress"
+        },
         "props": {}
       },
       {
         "type": "OFTEN_COOCCURS",
-        "from": {"label": "Emotion", "match_key": "emotion_key", "match_value": "anxiety"},
-        "to": {"label": "Emotion", "match_key": "emotion_key", "match_value": "stress"},
-        "props": {"count": 12}
+        "from": {
+          "label": "Emotion",
+          "match_key": "emotion_key",
+          "match_value": "anxiety"
+        },
+        "to": {
+          "label": "Emotion",
+          "match_key": "emotion_key",
+          "match_value": "stress"
+        },
+        "props": {
+          "count": 12
+        }
       },
       {
         "type": "OFTEN_COOCCURS",
-        "from": {"label": "Emotion", "match_key": "emotion_key", "match_value": "stress"},
-        "to": {"label": "Emotion", "match_key": "emotion_key", "match_value": "fatigue"},
-        "props": {"count": 8}
+        "from": {
+          "label": "Emotion",
+          "match_key": "emotion_key",
+          "match_value": "stress"
+        },
+        "to": {
+          "label": "Emotion",
+          "match_key": "emotion_key",
+          "match_value": "fatigue"
+        },
+        "props": {
+          "count": 8
+        }
       },
       {
         "type": "RELATED_TO",
-        "from": {"label": "Topic", "match_key": "topic_name", "match_value": "work_stress"},
-        "to": {"label": "Topic", "match_key": "topic_name", "match_value": "sleep_disorder"},
-        "props": {"weight": 0.75}
+        "from": {
+          "label": "Topic",
+          "match_key": "topic_name",
+          "match_value": "work_stress"
+        },
+        "to": {
+          "label": "Topic",
+          "match_key": "topic_name",
+          "match_value": "sleep_disorder"
+        },
+        "props": {
+          "weight": 0.75
+        }
       },
       {
         "type": "RELATED_TO",
-        "from": {"label": "Topic", "match_key": "topic_name", "match_value": "sleep_disorder"},
-        "to": {"label": "Topic", "match_key": "topic_name", "match_value": "relaxation"},
-        "props": {"weight": 0.82}
+        "from": {
+          "label": "Topic",
+          "match_key": "topic_name",
+          "match_value": "sleep_disorder"
+        },
+        "to": {
+          "label": "Topic",
+          "match_key": "topic_name",
+          "match_value": "relaxation"
+        },
+        "props": {
+          "weight": 0.82
+        }
       },
       {
         "type": "LEADS_TO",
-        "from": {"label": "GoTNode", "match_key": "got_node_id", "match_value": "got-test-001"},
-        "to": {"label": "GoTNode", "match_key": "got_node_id", "match_value": "got-test-002"},
-        "props": {"weight": 0.85, "relation_type": "exploration"}
+        "from": {
+          "label": "GoTNode",
+          "match_key": "got_node_id",
+          "match_value": "got-test-001"
+        },
+        "to": {
+          "label": "GoTNode",
+          "match_key": "got_node_id",
+          "match_value": "got-test-002"
+        },
+        "props": {
+          "weight": 0.85,
+          "relation_type": "exploration"
+        }
       },
       {
         "type": "LEADS_TO",
-        "from": {"label": "GoTNode", "match_key": "got_node_id", "match_value": "got-test-002"},
-        "to": {"label": "GoTNode", "match_key": "got_node_id", "match_value": "got-test-003"},
-        "props": {"weight": 0.92, "relation_type": "conclusion"}
+        "from": {
+          "label": "GoTNode",
+          "match_key": "got_node_id",
+          "match_value": "got-test-002"
+        },
+        "to": {
+          "label": "GoTNode",
+          "match_key": "got_node_id",
+          "match_value": "got-test-003"
+        },
+        "props": {
+          "weight": 0.92,
+          "relation_type": "conclusion"
+        }
       },
       {
         "type": "REASONED_BY",
-        "from": {"label": "Session", "match_key": "session_id", "match_value": "sess_test000001"},
-        "to": {"label": "GoTNode", "match_key": "got_node_id", "match_value": "got-test-001"},
+        "from": {
+          "label": "Session",
+          "match_key": "session_id",
+          "match_value": "sess_test000001"
+        },
+        "to": {
+          "label": "GoTNode",
+          "match_key": "got_node_id",
+          "match_value": "got-test-001"
+        },
         "props": {}
       }
     ]
@@ -455,7 +592,11 @@
             "entity_type": "podcast_episode",
             "episode_id": "ep-test-001",
             "title": "직장 스트레스와 불안 다루기",
-            "themes": ["직장스트레스", "불안관리", "워라밸"],
+            "themes": [
+              "직장스트레스",
+              "불안관리",
+              "워라밸"
+            ],
             "primary_emotion": "anxiety",
             "user_id": "test-user-001",
             "session_id": "sess_test000001",
@@ -472,7 +613,11 @@
             "entity_type": "podcast_episode",
             "episode_id": "ep-test-002",
             "title": "수면 장애와 불면증 극복하기",
-            "themes": ["수면장애", "불면증", "생활습관"],
+            "themes": [
+              "수면장애",
+              "불면증",
+              "생활습관"
+            ],
             "primary_emotion": "hope",
             "user_id": "test-user-001",
             "session_id": "sess_test000002",

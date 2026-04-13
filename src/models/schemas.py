@@ -77,7 +77,6 @@ class UserProfile(BaseModel):
     interaction_history: list[dict[str, Any]] = Field(
         default_factory=list, description="상호작용 이력"
     )
-    accessibility_needs: Optional[list[str]] = Field(default=None, description="접근성 요구사항")
     preferred_attitude: str = Field(default="balanced", description="선호 태도")
 
 
@@ -107,7 +106,8 @@ class ValidatedScript(BaseModel):
 
     episode_title: str = Field(..., description="에피소드 제목")
     total_duration: int = Field(..., description="총 시간(분)")
-    segments: list[ScriptSegment] = Field(default_factory=list, description="세그먼트 목록")
+    script_text: str = Field(..., description="전체 스크립트 텍스트")
+    tts_markers: list[TTSMarker] = Field(default_factory=list, description="TTS 마커 목록")
     key_insights: list[str] = Field(default_factory=list, description="핵심 인사이트")
     themes: list[str] = Field(default_factory=list, description="주제 리스트")
 
@@ -128,7 +128,8 @@ class PersonalizedScript(BaseModel):
     episode_id: str = Field(..., description="에피소드 ID")
     episode_title: str = Field(..., description="개인화된 제목")
     total_duration: int = Field(..., description="총 시간")
-    segments: list[ScriptSegment] = Field(default_factory=list, description="개인화된 세그먼트")
+    script_text: str = Field(..., description="개인화된 전체 스크립트 텍스트")
+    tts_markers: list[TTSMarker] = Field(default_factory=list, description="개인화된 TTS 마커 목록")
     key_insights: list[str] = Field(default_factory=list, description="핵심 인사이트")
     themes: list[str] = Field(default_factory=list, description="주제 리스트")
     personalization_meta: PersonalizationMeta = Field(default_factory=PersonalizationMeta)

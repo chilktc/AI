@@ -1,15 +1,15 @@
-# Mind-Log API 기능 명세서
-
+# Mind-Log API 기능 명세서 (v3.0)
+ 
 > **작성일**: 2026-03-03
-> **버전**: v2.0
-> **갱신일**: 2026-03-13
-> **상태**: 팟캐스트모드 구현 완료 v2.0 (2026-03-13)
-
+> **버전**: v3.0
+> **갱신일**: 2026-04-08
+> **상태**: 팟캐스트 개인화 고도화 및 스크립트 구조 통합 (v3.0)
+ 
 ---
-
-## 문서 구성 (v2.0)
-
-v2.0에서 단일 문서(1,865행)를 5개 문서로 분할했습니다. 내용 변경 없이 구조만 재배치했습니다.
+ 
+## 문서 구성 (v3.0)
+ 
+v3.0에서는 스크립트 데이터 구조를 단순화하고, 내부 사용자 프로필 조회 API를 추가했습니다.
 
 | 문서 | 설명 |
 |------|------|
@@ -52,28 +52,28 @@ v2.0에서 단일 문서(1,865행)를 5개 문서로 분할했습니다. 내용 
 
 | # | 이름 | 타입 | 엔드포인트 | 상태 | 변경사항 |
 |---|------|------|----------|------|---------|
-| 1 | [팟캐스트 에피소드 생성](API_ENDPOINTS_RECEIVING.md#1-팟캐스트-에피소드-생성) | `POST` | /api/v1/podcasts/episodes | 구현 완료 | v1.1: 스키마 갱신 |
+| 1 | [팟캐스트 에피소드 생성](API_ENDPOINTS_RECEIVING.md#1-팟캐스트-에피소드-생성) | `POST` | /api/podcasts/episodes | 구현 완료 | v1.1: 스키마 갱신 |
 
 #### History
 
 | # | 이름 | 타입 | 엔드포인트 | 상태 | 변경사항 |
 |---|------|------|----------|------|---------|
-| 2 | [감정 추이 조회](API_ENDPOINTS_RECEIVING.md#2-감정-추이-조회) | `GET` | /api/v1/users/{user_id}/emotions | 명세 완료 | v1.2: 엔드포인트 변경, user_id→PathVar |
-| 3 | [에피소드 목록 조회](API_ENDPOINTS_RECEIVING.md#3-에피소드-목록-조회) | `GET` | /api/v1/users/{user_id}/podcasts/episodes | 명세 완료 | v1.2: 엔드포인트 변경, themes→Array |
-| 4 | [에피소드 단건 조회](API_ENDPOINTS_RECEIVING.md#4-에피소드-단건-조회) | `GET` | /api/v1/users/{user_id}/podcasts/episodes/{episode_id} | 명세 완료 | v1.2: 엔드포인트 변경, 응답 구조 변경 |
+| 2 | [감정 추이 조회](API_ENDPOINTS_RECEIVING.md#2-감정-추이-조회) | `GET` | /api/users/{user_id}/emotions | 명세 완료 | v1.2: 엔드포인트 변경, user_id→PathVar |
+| 3 | [에피소드 목록 조회](API_ENDPOINTS_RECEIVING.md#3-에피소드-목록-조회) | `GET` | /api/users/{user_id}/podcasts/episodes | 명세 완료 | v1.2: 엔드포인트 변경, themes→Array |
+| 4 | [에피소드 단건 조회](API_ENDPOINTS_RECEIVING.md#4-에피소드-단건-조회) | `GET` | /api/users/{user_id}/podcasts/episodes/{episode_id} | 명세 완료 | v1.2: 엔드포인트 변경, 응답 구조 변경 |
 
 #### Session
 
 | # | 이름 | 타입 | 엔드포인트 | 상태 | 변경사항 |
 |---|------|------|----------|------|---------|
-| 5 | [세션 생성](API_ENDPOINTS_RECEIVING.md#5-세션-생성) | `POST` | /api/v1/sessions | 구현 완료 | v1.1 추가 |
-| 6 | [세션 종료](API_ENDPOINTS_RECEIVING.md#6-세션-종료) | `POST` | /api/v1/sessions/{session_id}/close | 구현 완료 | v1.1 추가 |
+| 5 | [세션 생성](API_ENDPOINTS_RECEIVING.md#5-세션-생성) | `POST` | /api/sessions | 구현 완료 | v1.1 추가 |
+| 6 | [세션 종료](API_ENDPOINTS_RECEIVING.md#6-세션-종료) | `POST` | /api/sessions/{session_id}/close | 구현 완료 | v1.1 추가 |
 
 #### User
 
 | # | 이름 | 타입 | 엔드포인트 | 상태 | 변경사항 |
 |---|------|------|----------|------|---------|
-| 14 | [사용자 프로필 수정](API_ENDPOINTS_RECEIVING.md#14-사용자-프로필-수정) | `PATCH` | /api/v1/users/{user_id}/profile | 명세 완료 | v1.2 추가 |
+| 14 | [사용자 프로필 수정](API_ENDPOINTS_RECEIVING.md#14-사용자-프로필-수정) | `PATCH` | /api/users/{user_id}/profile | 명세 완료 | v1.2 추가 |
 
 #### Operational
 
@@ -90,11 +90,12 @@ v2.0에서 단일 문서(1,865행)를 5개 문서로 분할했습니다. 내용 
 
 | # | 이름 | 타입 | 엔드포인트 | 상태 | 변경사항 |
 |---|------|------|----------|------|---------|
-| 9 | [에피소드 저장](API_ENDPOINTS_INTERNAL.md#9-에피소드-저장) | `POST` | /api/v1/podcast_episodes | 명세 완료 | v1.1 추가 |
-| 10 | [감정 로그 저장](API_ENDPOINTS_INTERNAL.md#10-감정-로그-저장) | `POST` | /api/v1/emotion_logs | 명세 완료 | v1.1 추가 |
-| 11 | [시각화 메타 저장](API_ENDPOINTS_INTERNAL.md#11-시각화-메타-저장) | `POST` | /api/v1/visualizations | 명세 완료 | v1.1 추가 |
-| 12 | [학습 데이터 저장](API_ENDPOINTS_INTERNAL.md#12-학습-데이터-저장) | `POST` | /api/v1/learning | 명세 완료 | v1.1 추가 |
-| 13 | [콘텐츠 분석 저장](API_ENDPOINTS_INTERNAL.md#13-콘텐츠-분석-저장) | `POST` | /api/v1/content_analyses | 명세 완료 | v1.1 추가 |
+| 9 | [에피소드 저장](API_ENDPOINTS_INTERNAL.md#9-에피소드-저장) | `POST` | /api/podcast_episodes | 명세 완료 | v1.1 추가 |
+| 10 | [감정 로그 저장](API_ENDPOINTS_INTERNAL.md#10-감정-로그-저장) | `POST` | /api/emotion_logs | 명세 완료 | v1.1 추가 |
+| 11 | [시각화 메타 저장](API_ENDPOINTS_INTERNAL.md#11-시각화-메타-저장) | `POST` | /api/visualizations | 명세 완료 | v1.1 추가 |
+| 12 | [학습 데이터 저장](API_ENDPOINTS_INTERNAL.md#12-학습-데이터-저장) | `POST` | /api/learning | 명세 완료 | v1.1 추가 |
+| 13 | [콘텐츠 분석 저장](API_ENDPOINTS_INTERNAL.md#13-콘텐츠-분석-저장) | `POST` | /api/content_analyses | 명세 완료 | v1.1 추가 |
+| 15 | [사용자 프로필 조회 (Internal)](API_ENDPOINTS_INTERNAL.md#15-사용자-프로필-조회-internal) | `GET` | /api/internal/users/{user_id}/profile | 명세 완료 | v3.0 추가 |
 
 ### ▼ Common
 

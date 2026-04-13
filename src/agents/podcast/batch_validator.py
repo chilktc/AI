@@ -189,17 +189,13 @@ class BatchValidatorAgent(BaseAgent):
         if title:
             script_parts.append(f"제목: {title}")
 
-        segments = script_draft.get("segments", [])
-        if segments:
-            for i, seg in enumerate(segments):
-                if isinstance(seg, dict):
-                    seg_type = seg.get("segment_type", "unknown")
-                    seg_text = seg.get("script_text", "")
-                    seg_tone = seg.get("emotional_tone", "")
-                    script_parts.append(
-                        f"--- 세그먼트 {i + 1} ({seg_type}) [톤: {seg_tone}] ---\n{seg_text}"
-                    )
-            script_parts.append(f"\n총 세그먼트: {len(segments)}개")
+        script_text = script_draft.get("script_text", "")
+        if script_text:
+            script_parts.append(f"[전체 스크립트]\n{script_text}")
+            
+        markers = script_draft.get("tts_markers", [])
+        if markers:
+            script_parts.append(f"\n[TTS 마커]: {len(markers)}개 적용됨")
 
         insights = script_draft.get("key_insights", [])
         if insights:

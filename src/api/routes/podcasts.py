@@ -7,6 +7,7 @@ LangGraph 파이프라인(팟캐스트 모드)을 호출한다.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import uuid
@@ -19,9 +20,10 @@ from fastapi.responses import StreamingResponse
 
 # src.api.main import removed from top level to prevent circular import
 from src.api.backend_resources import (
-    RESOURCE_PODCAST_EPISODE,
+    RESOURCE_PODCAST_EPISODES,
+    RESOURCE_PODCAST_METADATA,
     RESOURCE_VISUALIZATION,
-    TYPE_PODCAST_EPISODE,
+    TYPE_PODCAST_METADATA,
     TYPE_VISUALIZATION,
 )
 from src.api.contracts import SaveRequest
@@ -30,7 +32,6 @@ from src.api.external_schemas import (
     PodcastEpisodeData,
     PodcastRequest,
     PodcastResponseMeta,
-    PodcastSegment,
     SafetyAlertData,
     SlimPodcastResponse,
 )
@@ -42,7 +43,7 @@ router = APIRouter()
 
 def _build_episode_data(state: dict[str, Any]) -> PodcastEpisodeData:
     """AgentState에서 PodcastEpisodeData를 구성한다."""
-    # Script Personalizer 결과 가져오기
+    # Script Personalizer 결과 가져오기 (이미 평탄화된 상태)
     output_str = state.get("final_output", "{}")
 
     try:
@@ -61,28 +62,13 @@ def _build_episode_data(state: dict[str, Any]) -> PodcastEpisodeData:
             target_keys=["script_text", "episode_title", "key_insights"],
         )
 
-    segments_data = script_data.get("segments", [])
-    segments = []
-
-    for seg in segments_data:
-        segments.append(
-            PodcastSegment(
-                segment_id=seg.get("segment_id", ""),
-                segment_type=seg.get("segment_type", ""),
-                duration_minutes=seg.get("duration_minutes", 0),
-                script_text=seg.get("script_text", ""),
-                word_count=seg.get("word_count", 0),
-                emotional_tone=seg.get("emotional_tone", "neutral"),
-                tts_markers=seg.get("tts_markers", []),
-            )
-        )
-
     return PodcastEpisodeData(
         episode_id=script_data.get("episode_id", "ep_fallback"),
         session_id=state.get("session_id", ""),
         episode_title=script_data.get("episode_title", "무제 에피소드"),
         total_duration=script_data.get("total_duration", 0),
-        segments=segments,
+        script_text=script_data.get("script_text", ""),
+        tts_markers=script_data.get("tts_markers", []),
         key_insights=script_data.get("key_insights", []),
         themes=script_data.get("themes", []),
     )
@@ -157,26 +143,8 @@ async def _save_core_data(
     visual_data_raw = final_state.get("visual_data")
 
     # (1) 에피소드 메타 + 세그먼트
+    # (1) 에피소드 메타 + 스크립트 본문
     try:
-        segments_data = []
-        for idx, seg in enumerate(episode_data.segments):
-            segments_data.append(
-                {
-                    "segment_id": seg.segment_id,
-                    "segment_order": idx,
-                    "segment_type": seg.segment_type,
-                    "duration_minutes": seg.duration_minutes,
-                    "script_text": seg.script_text,
-                    "word_count": seg.word_count,
-                    "emotional_tone": seg.emotional_tone,
-                    "tts_markers_json": (
-                        json.dumps([m.model_dump() for m in seg.tts_markers])
-                        if seg.tts_markers
-                        else "[]"
-                    ),
-                }
-            )
-
         cover_image_url = None
         if visual_data_raw:
             cover_image_url = visual_data_raw.get("image_url") or visual_data_raw.get("cdn_url")
@@ -188,13 +156,18 @@ async def _save_core_data(
         episode_request = SaveRequest(
             user_id=user_id,
             session_id=session_id,
-            type=TYPE_PODCAST_EPISODE,
+            type=TYPE_PODCAST_METADATA,
             data={
                 "episode_id": episode_data.episode_id,
                 "episode_title": episode_data.episode_title,
                 "total_duration": episode_data.total_duration,
                 "total_words": meta.total_words,
-                "segment_count": len(episode_data.segments),
+                "script_text": episode_data.script_text,
+                "tts_markers_json": json.dumps(
+                    [m.model_dump() for m in episode_data.tts_markers]
+                    if episode_data.tts_markers
+                    else []
+                ),
                 "key_insights": episode_data.key_insights,
                 "themes": episode_data.themes,
                 "reasoning_depth": meta.reasoning_depth,
@@ -207,15 +180,28 @@ async def _save_core_data(
                 "pipeline_duration_ms": elapsed_ms,
                 "trace_id": trace_id,
                 "correlation_id": correlation_id,
-                "segments": segments_data,
             },
             timestamp=datetime.now(timezone.utc),
         )
-        await backend_client.save(RESOURCE_PODCAST_EPISODE, episode_request)
+        results = await asyncio.gather(
+            backend_client.save(RESOURCE_PODCAST_METADATA, episode_request),
+            backend_client.ingest_podcast_episodes(
+                session_id=session_id,
+                image_url=cover_image_url or "",
+                texts=episode_data.key_insights or [],
+                title=episode_data.episode_title or "",
+                summary="",  # TODO: 요약문 생성 로직 구현 예정
+                keywords=[],  # TODO: 키워드 추출 로직 구현 예정
+            ),
+            return_exceptions=True,
+        )
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                logger.warning("에피소드 저장 작업 %d 실패: %s", i, result)
         logger.info(
-            "에피소드 저장 완료 (episode_id=%s, segments=%d)",
+            "에피소드 저장 완료 (episode_id=%s, words=%d)",
             episode_data.episode_id,
-            len(episode_data.segments),
+            meta.total_words,
         )
     except Exception:
         logger.warning("에피소드 저장 실패", exc_info=True)
@@ -284,6 +270,7 @@ async def create_podcast_episode(
         "user_id": request.user_id,
         "session_id": request.session_id,
         "mode": "podcast",
+        "learning_pattern": request.learning_pattern,
     }
 
     # 프롬프트 인젝션 패턴 감지 — Safety Agent가 최종 판단
@@ -340,7 +327,7 @@ async def create_podcast_episode(
         complexity_score=intent_data.get("complexity_score", 0.0),
         reasoning_depth=final_state.get("reasoning_result", {}).get("reasoning_depth", "standard"),
         retry_count=final_state.get("iteration_count", 0),
-        total_words=sum(seg.word_count for seg in episode_data.segments),
+        total_words=len(episode_data.script_text.split()),
     )
 
     # 4. 핵심 데이터 동기 저장 (응답 반환 전 완료)
@@ -410,6 +397,7 @@ async def stream_podcast_episode(request: PodcastRequest) -> StreamingResponse:
         "user_id": request.user_id,
         "session_id": request.session_id,
         "mode": "podcast",
+        "learning_pattern": request.learning_pattern,
     }
 
     # 프롬프트 인젝션 감지
@@ -476,7 +464,7 @@ async def stream_podcast_episode(request: PodcastRequest) -> StreamingResponse:
                     final_state.get("reasoning_result", {}).get("depth_level", "standard")
                 ),
                 retry_count=int(final_state.get("iteration_count", 0)),
-                total_words=sum(s.word_count for s in episode_data.segments),
+                total_words=len(episode_data.script_text.split()),
             )
 
             # DB 저장

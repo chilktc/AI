@@ -23,6 +23,7 @@ from config.app_config import (
     FORMALITY_REPLACEMENTS,
     STYLE_MAPPINGS,
 )
+from src.api.client import BackendClient
 from src.agents.shared.base_agent import BaseAgent
 from src.models.agent_state import AgentState
 from src.models.schemas import (
@@ -30,7 +31,6 @@ from src.models.schemas import (
     LearningEvent,
     PersonalizationMeta,
     PersonalizedScript,
-    ScriptSegment,
     UserProfile,
     ValidatedScript,
 )
@@ -49,12 +49,12 @@ class ScriptPersonalizerAgent(BaseAgent):
 
     def __init__(
         self,
-        db_client: Any | None = None,
+        backend_client: BackendClient | None = None,
         enable_deep_personalization: bool | None = None,
     ):
         """
         Args:
-            db_client: 데이터베이스 클라이언트 (사용자 프로필 조회용) - 외부에서 주입
+            backend_client: 백엔드 API 클라이언트 (사용자 프로필 조회용)
             enable_deep_personalization: 심화 개인화 활성화 여부.
                 None이면 settings.yaml의
                 agents.script_personalizer.deep_personalization
@@ -71,7 +71,7 @@ class ScriptPersonalizerAgent(BaseAgent):
         if not self.enable_deep_personalization:
             self.llm_client = None  # type: ignore[assignment]
 
-        self.db_client = db_client
+        self.backend_client = backend_client
 
     async def process(self, state: AgentState) -> dict:
         """
@@ -93,38 +93,27 @@ class ScriptPersonalizerAgent(BaseAgent):
             validated_script: ValidatedScript | None = None
             if script_data:
                 try:
-                    validated_script = ValidatedScript(**script_data)
+                    # v3.1 평탄화된 스키마 (script_text) 우선 시도
+                    if "script_text" in script_data:
+                        validated_script = ValidatedScript(**script_data)
+                    else:
+                        # 레거시 segments가 있는 경우 평탄화
+                        raw_segments = script_data.get("segments", [])
+                        full_text = "\n\n".join(
+                            [s.get("script_text", "") for s in raw_segments if isinstance(s, dict)]
+                        )
+                        validated_script = ValidatedScript(
+                            episode_title=script_data.get("episode_title", "마음 이야기"),
+                            total_duration=script_data.get("total_duration", 5),
+                            script_text=full_text,
+                            tts_markers=[],
+                            key_insights=script_data.get("key_insights", []),
+                            themes=script_data.get("themes", []),
+                        )
                 except Exception as pydantic_err:
                     self.logger.warning(
-                        "[ScriptPersonalizer] Pydantic 실패 — raw fallback: %s", pydantic_err
+                        "[ScriptPersonalizer] Pydantic 실패: %s", pydantic_err
                     )
-                    raw_segments = script_data.get("segments", [])
-                    raw_title = script_data.get("episode_title", "마음 이야기")
-                    if raw_segments:
-                        try:
-                            min_segments = [
-                                ScriptSegment(
-                                    segment_id=seg.get("segment_id", f"seg_{i}"),
-                                    segment_type=seg.get("segment_type", "body"),
-                                    duration_minutes=int(seg.get("duration_minutes", 5)),
-                                    script_text=str(seg.get("script_text", "")),
-                                    word_count=len(str(seg.get("script_text", "")).split()),
-                                    emotional_tone=seg.get("emotional_tone", "neutral"),
-                                    tts_markers=[],
-                                )
-                                for i, seg in enumerate(raw_segments)
-                                if isinstance(seg, dict) and seg.get("script_text")
-                            ]
-                            if min_segments:
-                                validated_script = ValidatedScript(
-                                    episode_title=raw_title,
-                                    total_duration=script_data.get("total_duration", 5),
-                                    segments=min_segments,
-                                    key_insights=[],
-                                    themes=[],
-                                )
-                        except Exception:
-                            pass
 
             # AgentState에서 감정적 여정 정보 추출
             content_analysis = state.get("content_analysis", {})
@@ -168,7 +157,7 @@ class ScriptPersonalizerAgent(BaseAgent):
             self.logger.info("[ScriptPersonalizer] Strategy: %s", personalization_strategy)
 
             # STEP 2: 규칙 기반 스타일 조정
-            adjusted_script, adjusted_segments = self._apply_rule_based_adjustments(
+            adjusted_script, was_adjusted = self._apply_rule_based_adjustments(
                 script=validated_script,
                 strategy=personalization_strategy,
                 user_profile=user_profile,
@@ -189,7 +178,7 @@ class ScriptPersonalizerAgent(BaseAgent):
                 adjusted_script=adjusted_script,
                 strategy=personalization_strategy,
                 user_profile=user_profile,
-                adjusted_segments=adjusted_segments,
+                was_adjusted=was_adjusted,
             )
 
             # 처리 시간 로깅
@@ -220,18 +209,16 @@ class ScriptPersonalizerAgent(BaseAgent):
 
     def _get_user_profile(self, user_id: str) -> UserProfile:
         """
-        사용자 프로필 조회
-
-        실제 구현 시 db_client를 통해 MySQL에서 조회
+        사용자 프로필 조회 (Backend API 연동)
         """
 
-        if self.db_client:
+        if self.backend_client:
             try:
-                profile_data = self._query_user_profile(user_id)
-                if profile_data:
-                    return UserProfile(**profile_data)
+                profile = self.backend_client.get_user_profile(user_id)
+                if profile:
+                    return profile
             except Exception as e:
-                self.logger.warning("[ScriptPersonalizer] Failed to fetch user profile: %s", e)
+                self.logger.warning("[ScriptPersonalizer] Failed to fetch user profile via API: %s", e)
 
         # 기본 프로필 반환
         self.logger.info("[ScriptPersonalizer] Using default profile for user=%s", user_id)
@@ -240,45 +227,12 @@ class ScriptPersonalizerAgent(BaseAgent):
             age_group="30s",
             preferred_style="neutral",
             interaction_history=[],
-            accessibility_needs=None,
             preferred_attitude=DEFAULT_ATTITUDE,
         )
 
     def _query_user_profile(self, user_id: str) -> dict[str, Any] | None:
-        """데이터베이스에서 사용자 프로필을 조회한다.
-
-        Args:
-            user_id: 사용자 고유 ID
-
-        Returns:
-            사용자 프로필 dict 또는 None (db_client 미설정/조회 실패 시).
-            반환 dict 키: user_id, age_group, preferred_style, accessibility_needs 등.
-
-        Note:
-            db_client 인터페이스에 맞게 쿼리를 수정해야 한다.
-        """
-        if self.db_client is None:
-            return None
-
-        # MySQL 쿼리 예시 (실제 구현 시 수정 필요)
-        # 예: SQLAlchemy, PyMySQL 등에 맞게 조정
-        try:
-            # 예시 쿼리 구조 (DB 연결 시 아래 주석 해제)
-            # query = """
-            #     SELECT user_id, age_group, preferred_style,
-            #            preferred_attitude, accessibility_needs
-            #     FROM user_profiles
-            #     WHERE user_id = %s
-            # """
-            # result = self.db_client.execute(query, (user_id,))
-            # return result.fetchone()
-
-            # 현재는 None 반환 (DB 연결 전까지)
-            return None
-
-        except Exception as e:
-            self.logger.error("[ScriptPersonalizer] DB query failed: %s", e)
-            return None
+        """(Deprecated) Backend API 사용으로 전환됨."""
+        return None
 
     def _determine_strategy(self, user_profile: UserProfile) -> dict[str, Any]:
         """
@@ -310,7 +264,7 @@ class ScriptPersonalizerAgent(BaseAgent):
             strategy["attitude"] = user_profile.preferred_attitude
 
         # 4. 상호작용 이력 기반 조정 (경험 있는 사용자)
-        if len(user_profile.interaction_history) > 5:
+        if len(user_profile.interaction_history) >= 3:
             # 더 자세한 설명 제공
             strategy["explanation_depth"] = "detailed"
 
@@ -324,70 +278,41 @@ class ScriptPersonalizerAgent(BaseAgent):
         self, script: ValidatedScript, strategy: dict[str, Any], user_profile: UserProfile
     ) -> tuple:
         """
-        규칙 기반 스타일 조정 적용
+        규칙 기반 스타일 조정 적용 (평탄화된 텍스트 처리)
 
         Returns:
-            tuple: (조정된 스크립트, 조정된 세그먼트 ID 목록)
+            tuple: (조정된 스크립트, 변경 여부 bool)
         """
-
-        # 깊은 복사로 원본 보존
-        adjusted_segments = []
-        new_segments = []
 
         formality = strategy.get("formality", "medium")
         replacements = FORMALITY_REPLACEMENTS.get(formality, {})
         attitude = strategy.get("attitude", DEFAULT_ATTITUDE)
 
-        for segment in script.segments:
-            # 세그먼트 복사
-            new_segment = ScriptSegment(
-                segment_id=segment.segment_id,
-                segment_type=segment.segment_type,
-                duration_minutes=segment.duration_minutes,
-                script_text=segment.script_text,
-                word_count=segment.word_count,
-                emotional_tone=segment.emotional_tone,
-                tts_markers=segment.tts_markers.copy() if segment.tts_markers else [],
-            )
+        script_text = script.script_text
+        original_text = script_text
 
-            script_text = new_segment.script_text
-            original_text = script_text
+        # 2-1: 호칭/격식 조정 (단어 치환)
+        for old_word, new_word in replacements.items():
+            script_text = script_text.replace(old_word, new_word)
 
-            # 2-1: 호칭/격식 조정 (단어 치환)
-            for old_word, new_word in replacements.items():
-                script_text = script_text.replace(old_word, new_word)
+        # 2-2: 태도 기반 조정
+        script_text = self._apply_attitude_adjustment(script_text, attitude)
 
-            # 2-2: 태도 기반 조정
-            script_text = self._apply_attitude_adjustment(script_text, attitude)
-
-            # 2-3: 이모지 처리
-            if not strategy.get("emoji_usage", False):
-                script_text = self._remove_emojis(script_text)
-
-            # 2-4: 접근성 조정
-            if user_profile.accessibility_needs:
-                script_text, new_segment.tts_markers = self._apply_accessibility_adjustments(
-                    script_text, user_profile.accessibility_needs, new_segment.tts_markers
-                )
-
-            # 변경 여부 확인
-            if script_text != original_text:
-                adjusted_segments.append(new_segment.segment_id)
-
-            new_segment.script_text = script_text
-            new_segment.word_count = len(script_text.split())
-            new_segments.append(new_segment)
+        # 2-3: 이모지 처리
+        if not strategy.get("emoji_usage", False):
+            script_text = self._remove_emojis(script_text)
 
         # 조정된 스크립트 생성
         adjusted_script = ValidatedScript(
             episode_title=script.episode_title,
             total_duration=script.total_duration,
-            segments=new_segments,
+            script_text=script_text,
+            tts_markers=script.tts_markers.copy(),
             key_insights=script.key_insights,
             themes=script.themes,
         )
 
-        return adjusted_script, adjusted_segments
+        return adjusted_script, (script_text != original_text)
 
     def _apply_attitude_adjustment(self, text: str, attitude: str) -> str:
         """태도 기반 텍스트 조정"""
@@ -426,33 +351,6 @@ class ScriptPersonalizerAgent(BaseAgent):
         )
         return emoji_pattern.sub("", text)
 
-    def _apply_accessibility_adjustments(
-        self, text: str, accessibility_needs: list[str], tts_markers: list
-    ) -> tuple:
-        """접근성 조정 적용"""
-
-        new_markers = list(tts_markers) if tts_markers else []
-
-        if "visual_impairment" in accessibility_needs:
-            # TTS를 위한 추가 마커 삽입
-            # 문단 사이에 짧은 휴식 추가
-            from src.models.schemas import TTSMarker
-
-            # 문장 끝마다 휴식 마커 추가
-            sentences = re.split(r"([.!?])", text)
-            position = 0
-            for sentence in sentences:
-                if sentence in ".!?":
-                    new_markers.append(TTSMarker(position=position, instruction="pause_short"))
-                position += len(sentence)
-
-        if "hearing_impairment" in accessibility_needs:
-            # 청각 장애인용: 더 명확한 문장 구조
-            # (실제로는 LLM이 더 잘 처리함)
-            pass
-
-        return text, new_markers
-
     # =========================================================================
     # STEP 3: 심화 개인화 (LLM 사용, 선택적)
     # =========================================================================
@@ -460,8 +358,10 @@ class ScriptPersonalizerAgent(BaseAgent):
     def _should_deep_personalize(self, user_profile: UserProfile) -> bool:
         """심화 개인화 적용 여부 결정"""
 
-        # 상호작용 이력이 5회 이상인 경우에만 LLM 호출
-        return len(user_profile.interaction_history) > 5
+        # 상호작용 이력이 3회 이상인 경우 LLM 호출
+        # TODO: 추후 개인화 맥락 수신 API(/api/sessions/{session_id}/personalization-context)에서
+        #       받은 데이터를 state 또는 캐시에서 읽어 개인화에 활용 예정
+        return len(user_profile.interaction_history) >= 3
 
     async def _apply_deep_personalization(
         self,
@@ -470,59 +370,35 @@ class ScriptPersonalizerAgent(BaseAgent):
         strategy: dict[str, Any],
         emotional_journey: EmotionalJourney | None,
     ) -> ValidatedScript:
-        """LLM을 사용한 심화 개인화 (전체 대본 통합 처리)"""
+        """LLM을 사용한 심화 개인화 (평탄화된 텍스트 처리)"""
 
         if not self.llm_client:
             return script
 
-        self.logger.info("[ScriptPersonalizer] Applying deep personalization with LLM (Integrated)")
-
-        # 1. 문서 전체의 세그먼트 내용을 하나로 통합
-        integrated_text_blocks = []
-        for segment in script.segments:
-            integrated_text_blocks.append(
-                f"[Segment: {segment.segment_type}]\n{segment.script_text}"
-            )
-        full_script_text = "\n\n".join(integrated_text_blocks)
-
-        new_segments = []
+        self.logger.info("[ScriptPersonalizer] Applying deep personalization with LLM")
 
         try:
-            # 2. 통합된 텍스트를 LLM에 한 번에 전달하여 단일 스크립트 확보
-            integrated_personalized_text = await self._personalize_integrated_script_with_llm(
-                full_script_text=full_script_text,
+            personalized_text = await self._personalize_integrated_script_with_llm(
+                full_script_text=script.script_text,
                 user_profile=user_profile,
                 strategy=strategy,
                 emotional_journey=emotional_journey,
             )
 
-            # 3. 통합된 텍스트를 하나의 'full_episode' 세그먼트에 담아 반환
-            # (Validation/Schemas 와의 호환성을 위해 단일 요소의 list로 처리)
-            single_segment = ScriptSegment(
-                segment_id="full_episode",
-                segment_type="integrated",
-                duration_minutes=script.total_duration,
-                script_text=integrated_personalized_text,
-                word_count=len(integrated_personalized_text.split()),
-                emotional_tone="mixed",
-                tts_markers=[],
+            return ValidatedScript(
+                episode_title=script.episode_title,
+                total_duration=script.total_duration,
+                script_text=personalized_text,
+                tts_markers=script.tts_markers.copy(),
+                key_insights=script.key_insights,
+                themes=script.themes,
             )
-            new_segments.append(single_segment)
 
         except Exception as e:
             self.logger.warning(
-                f"[ScriptPersonalizer] Integrated LLM personalization failed: {str(e)}"
+                f"[ScriptPersonalizer] LLM personalization failed: {str(e)}"
             )
-            # 실패 시 원본 그대로 반환
             return script
-
-        return ValidatedScript(
-            episode_title=script.episode_title,
-            total_duration=script.total_duration,
-            segments=new_segments,
-            key_insights=script.key_insights,
-            themes=script.themes,
-        )
 
     async def _personalize_integrated_script_with_llm(
         self,
@@ -600,7 +476,7 @@ Emotional Journey:
         adjusted_script: ValidatedScript,
         strategy: dict[str, Any],
         user_profile: UserProfile,
-        adjusted_segments: list[str],
+        was_adjusted: bool,
     ) -> PersonalizedScript:
         """최종 개인화 스크립트 구성"""
 
@@ -609,7 +485,7 @@ Emotional Journey:
 
         personalization_meta = PersonalizationMeta(
             applied_style=strategy,
-            adjusted_segments=adjusted_segments,
+            adjusted_segments=["full_episode"] if was_adjusted else [],
             attitude_applied=strategy.get("attitude", DEFAULT_ATTITUDE),
         )
 
@@ -617,7 +493,8 @@ Emotional Journey:
             episode_id=episode_id,
             episode_title=adjusted_script.episode_title,
             total_duration=adjusted_script.total_duration,
-            segments=adjusted_script.segments,
+            script_text=adjusted_script.script_text,
+            tts_markers=adjusted_script.tts_markers,
             key_insights=adjusted_script.key_insights,
             themes=themes,
             personalization_meta=personalization_meta,
@@ -677,7 +554,8 @@ Emotional Journey:
             episode_id=f"ep_fallback_{uuid.uuid4().hex[:8]}",
             episode_title=validated_script.episode_title,
             total_duration=validated_script.total_duration,
-            segments=validated_script.segments,
+            script_text=validated_script.script_text,
+            tts_markers=validated_script.tts_markers,
             key_insights=validated_script.key_insights,
             themes=validated_script.themes if validated_script.themes else [],
             personalization_meta=PersonalizationMeta(
@@ -692,17 +570,13 @@ Emotional Journey:
 
 
 async def create_script_personalizer_node(
-    db_client: Any | None = None, enable_deep_personalization: bool | None = None
+    backend_client: BackendClient | None = None, enable_deep_personalization: bool | None = None
 ) -> Callable[[AgentState], Awaitable[dict[str, Any]]]:
     """
     LangGraph에서 사용할 노드 함수 생성
-
-    NOTE(dead-code): 이 팩토리 함수는 현재 운영에서 미사용.
-    workflow.py는 script_personalizer_node()에서 ScriptPersonalizerAgent()를 직접 생성한다.
-    deep_personalization 설정은 ScriptPersonalizerAgent.__init__()에서 settings.yaml을 직접 읽음.
     """
     agent = ScriptPersonalizerAgent(
-        db_client=db_client, enable_deep_personalization=enable_deep_personalization
+        backend_client=backend_client, enable_deep_personalization=enable_deep_personalization
     )
 
     async def _node(state: AgentState) -> dict:

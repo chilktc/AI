@@ -21,6 +21,7 @@ from typing import Any
 from src.agents.shared.base_agent import BaseAgent
 from src.agents.shared.context_utils import clamp
 from src.api.backend_resources import RESOURCE_CONTENT_ANALYSIS
+from src.api.client import BackendClient
 from src.api.publisher import AgentDataPublisher
 from src.models.agent_state import AgentState
 
@@ -112,13 +113,29 @@ class ContentAnalyzerAgent(BaseAgent):
         validated_analysis = self._validate_and_correct(analysis, depth_level)
 
         # 백엔드에 분석 결과 직접 전달 (실패 시 예외 미전파)
+        session_id = state.get("session_id", "")
         publisher = AgentDataPublisher()
         await publisher.publish(
             resource=RESOURCE_CONTENT_ANALYSIS,
             data=validated_analysis,
             user_id=state.get("user_id", ""),
-            session_id=state.get("session_id", ""),
+            session_id=session_id,
         )
+
+        # mind-frequencies 수집 호출 (fire-and-forget, 콘텐츠 분석 직후)
+        backend_client = BackendClient()
+        try:
+            keywords: list[str] = validated_analysis.get("sub_themes", [])
+            description: str = validated_analysis.get("main_theme", "")
+            await backend_client.ingest_mind_frequencies(
+                session_id=session_id,
+                keywords=keywords,
+                description=description,
+            )
+        except Exception as e:
+            self.logger.warning("[ContentAnalyzer] ingest_mind_frequencies failed (ignored): %s", e)
+        finally:
+            await backend_client.close()
 
         return {
             "content_analysis": validated_analysis,

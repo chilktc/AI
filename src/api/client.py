@@ -7,13 +7,18 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 
 from config.loader import get_settings
+from src.api.backend_resources import RESOURCE_MIND_FREQUENCIES, RESOURCE_PODCAST_EPISODES
 from src.api.contracts import LoadResponse, SaveRequest, SaveResponse
 from src.utils.retry import with_retry
+
+_logger = logging.getLogger(__name__)
 
 
 class BackendClient:
@@ -31,10 +36,14 @@ class BackendClient:
         클라이언트를 초기화한다.
 
         Args:
-            base_url: API 기본 URL (None이면 설정에서 자동 로드)
+            base_url: API 기본 URL (None이면 설정에서 자동 로드).
+                      내부 저장 API 경로 (e.g. /greenroom/ingest/ai) 기준.
+                      사용자 프로필 조회는 별도 _profile_base_url(호스트만) 사용.
         """
         settings = get_settings()
         self._base_url = base_url or settings.api_base_url
+        parsed = urlparse(self._base_url)
+        self._profile_base_url = f"{parsed.scheme}://{parsed.netloc}"
         self._timeout = settings.api_timeout
         self._client = httpx.AsyncClient(timeout=self._timeout)
 
@@ -113,3 +122,89 @@ class BackendClient:
         )
         response.raise_for_status()
         return SaveResponse.model_validate(response.json())  # type: ignore[no-any-return]
+
+    @with_retry(max_retries=3, base_delay=1.0)
+    async def get_user_profile(self, user_id: str) -> dict[str, Any]:
+        """
+        백엔드에서 사용자 프로필을 조회한다.
+        GET {host}/internal/users/{user_id}/profile
+
+        _profile_base_url(호스트만)을 사용하므로 ingest base_url 변경에 영향받지 않는다.
+
+        Args:
+            user_id: 조회할 사용자 고유 ID
+
+        Returns:
+            사용자 프로필 데이터 딕셔너리
+
+        Raises:
+            httpx.HTTPStatusError: HTTP 에러 응답 시
+        """
+        response = await self._client.get(
+            f"{self._profile_base_url}/internal/users/{user_id}/profile"
+        )
+        response.raise_for_status()
+        return response.json()  # type: ignore[no-any-return]
+
+    async def ingest_mind_frequencies(
+        self, session_id: str, keywords: list[str], description: str
+    ) -> None:
+        """
+        mind-frequencies 수집 엔드포인트 호출 (fire-and-forget).
+
+        POST {base_url}/tickets/mind-frequencies
+        실패 시 로그만 기록하고 파이프라인에 영향을 주지 않는다.
+
+        Args:
+            session_id: 현재 세션 ID
+            keywords: 콘텐츠 키워드 목록
+            description: 에피소드 주제 설명
+        """
+        try:
+            response = await self._client.post(
+                f"{self._base_url}/{RESOURCE_MIND_FREQUENCIES}",
+                json={
+                    "session_id": session_id,
+                    "keywords": keywords,
+                    "description": description,
+                },
+            )
+            response.raise_for_status()
+        except Exception as e:
+            _logger.warning("[BackendClient] ingest_mind_frequencies failed (ignored): %s", e)
+
+    async def ingest_podcast_episodes(
+        self,
+        session_id: str,
+        image_url: str,
+        texts: list[str],
+        title: str,
+        summary: str,
+        keywords: list[str],
+    ) -> None:
+        """
+        podcast_episodes 수집 엔드포인트 호출.
+
+        POST {base_url}/podcast_episodes
+        @with_retry 미적용 — _save_core_data() 의 try/except 블록에서 에러를 처리한다.
+
+        Args:
+            session_id: 현재 세션 ID
+            image_url: 에피소드 커버 이미지 URL
+            texts: 에피소드 핵심 인사이트 목록
+            title: 에피소드 제목
+            summary: 에피소드 요약 (현재 더미값)
+            keywords: 에피소드 키워드 목록 (현재 더미값)
+        """
+        response = await self._client.post(
+            f"{self._base_url}/{RESOURCE_PODCAST_EPISODES}",
+            json={
+                "session_id": session_id,
+                "image_url": image_url,
+                "texts": texts,
+                "title": title,
+                "summary": summary,
+                "keywords": keywords,
+            },
+        )
+        response.raise_for_status()
