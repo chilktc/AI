@@ -117,7 +117,7 @@ class EmotionAgent(BaseAgent):
                 "arousal": 0.7 if primary == "anxiety" else 0.3,
                 "secondary_emotions": secondary,
                 "tone_recommendation": "supportive_neutral",
-                "emotional_journey_hint": ["공감", "정리", "실행 가능한 한 가지", "마무리"],
+                "emotional_journey_hint": [],
             }
 
         secondary = vec.get("secondary_emotions", [])

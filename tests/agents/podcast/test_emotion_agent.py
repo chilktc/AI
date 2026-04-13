@@ -117,3 +117,21 @@ async def test_llm_failure_fallback_uses_intent_emotions(agent: EmotionAgent) ->
     ev = result["emotion_vectors"]
     assert ev["primary_emotion"] == "sadness"
     assert ev["secondary_emotions"] == ["fatigue"]
+
+
+@pytest.mark.asyncio
+async def test_fallback_emotional_journey_hint_is_empty_not_hardcoded(
+    agent: EmotionAgent,
+) -> None:
+    """LLM 실패 시 emotional_journey_hint는 빈 리스트다 — 하드코딩 금지 (EA-1)."""
+    state = AgentState(
+        user_input="힘든 하루", user_id="u", session_id="s", mode="podcast"
+    )
+
+    with patch.object(
+        agent, "call_llm_json", new_callable=AsyncMock, side_effect=RuntimeError("LLM 실패")
+    ):
+        result = await agent.process(state)
+
+    hint = result.get("emotion_vectors", {}).get("emotional_journey_hint", "필드없음")
+    assert hint == [], f"기대값 [], 실제값: {hint!r}"
