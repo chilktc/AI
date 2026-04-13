@@ -28,3 +28,4 @@ prometheus-client>=0.20.0      # C-2: Prometheus 메트릭
 
 # === Utils ===
 pyyaml>=6.0.0
+pdfplumber>=0.11.0    # PDF 텍스트 추출 (Phase 1 적재 스크립트용)
