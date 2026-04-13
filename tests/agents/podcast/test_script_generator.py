@@ -201,6 +201,7 @@ async def test_no_revision_feedback_on_first_attempt():
         session_id="s1",
         mode="podcast",
         iteration_count=0,
+        content_analysis={"main_theme": "테스트 주제", "sub_themes": [], "target_duration": 5},
     )
 
     with (
@@ -249,5 +250,38 @@ async def test_missing_content_analysis_uses_empty_dict_not_state():
         }
         result = await agent.process(state)
 
-    # state 전체가 아닌 기본값으로 처리됨 — script_draft가 정상 반환되어야 함
+    # content_analysis 없음 → main_theme 빈 문자열 → 조기 반환
     assert "script_draft" in result
+    assert result["script_draft"].get("_error") == "main_theme_missing"
+    assert "error" not in result  # top-level error 키 없음
+
+
+def test_script_generator_source_has_no_mental_health_hardcode() -> None:
+    """ScriptGeneratorAgent 소스에 'Mental Health' 하드코딩 없다 (SG-1)."""
+    import inspect
+
+    source = inspect.getsource(ScriptGeneratorAgent)
+    assert "Mental Health" not in source, "SG-1: Mental Health 하드코딩 발견됨"
+
+
+@pytest.mark.asyncio
+async def test_script_generator_error_path_no_top_level_error_key():
+    """실패 시 top-level 'error' 키 대신 script_draft 내부에 _error 포함 (SG-2)."""
+    agent = ScriptGeneratorAgent()
+    state = AgentState(
+        user_input="오늘 하루",
+        user_id="u",
+        session_id="s",
+        mode="podcast",
+        content_analysis={"main_theme": "스트레스"},
+    )
+
+    # _generate_title에서 예외 발생 → except 블록 진입
+    with patch.object(
+        agent, "_generate_title", new_callable=AsyncMock, side_effect=RuntimeError("test error")
+    ):
+        result = await agent.process(state)
+
+    assert "error" not in result, "top-level 'error' 키는 AgentState 미정의"
+    assert "script_draft" in result
+    assert "_error" in result["script_draft"]
