@@ -153,6 +153,11 @@ def mock_podcast_nodes(monkeypatch):
     )
     monkeypatch.setattr(wf, "visualization_node", AsyncMock(return_value=MOCK_VISUALIZATION))
     monkeypatch.setattr(wf, "learning_node", AsyncMock(return_value={}))
+    monkeypatch.setattr(
+        wf.stories_store,
+        "wait_for_stories",
+        AsyncMock(return_value={"keywords": [], "title": "mock", "description": "mock"}),
+    )
 
 
 @pytest.fixture
@@ -324,6 +329,11 @@ async def test_retry_then_pass(monkeypatch, podcast_initial_state):
     )
     monkeypatch.setattr(wf, "visualization_node", AsyncMock(return_value=MOCK_VISUALIZATION))
     monkeypatch.setattr(wf, "learning_node", AsyncMock(return_value={}))
+    monkeypatch.setattr(
+        wf.stories_store,
+        "wait_for_stories",
+        AsyncMock(return_value={"keywords": [], "title": "mock", "description": "mock"}),
+    )
 
     from src.graph.workflow import build_unified_graph
 
@@ -349,6 +359,8 @@ def test_podcast_graph_required_nodes():
         "tier2_podcast",
         "batch_validator",
         "script_personalizer",
+        "wait_for_stories",
+        "stories_error",
         "crisis_response",
         "async_post",
         "increment_iteration",

@@ -38,6 +38,7 @@ from typing import Any
 from langgraph.graph import END, StateGraph
 
 from config.loader import get_settings
+from src.api.stories_store import stories_store
 from src.models.agent_state import AgentState
 
 logger = logging.getLogger(__name__)
@@ -71,6 +72,7 @@ _TIER2_TIMEOUT: int = _settings.tier2_timeout
 _TIER3_TIMEOUT: int = _settings.tier3_timeout
 _TIER4_TIMEOUT: int = _settings.tier4_timeout
 _ASYNC_TIMEOUT: int = _settings.async_timeout
+_STORIES_WAIT_TIMEOUT: int = _settings.stories_wait_timeout
 
 
 async def _with_timeout(
@@ -500,6 +502,59 @@ def route_after_tier3_podcast(state: AgentState) -> str:
     return "tier4_podcast"
 
 
+def route_after_wait_stories(state: AgentState) -> str:
+    """
+    wait_for_stories_node 이후 라우터.
+
+    Returns:
+        "script_personalizer" | "stories_error"
+    """
+    if state.get("next_step") == "stories_timeout":
+        return "stories_error"
+    return "script_personalizer"
+
+
+async def wait_for_stories_node(state: AgentState) -> dict[str, Any]:
+    """
+    Stories 데이터 대기 노드 (TIER 3 완료 후 TIER 4 진입 전).
+
+    _STORIES_WAIT_TIMEOUT(settings.stories.wait_timeout_seconds, 기본 300초) 동안 대기한다.
+    타임아웃 시 next_step: 'stories_timeout'을 반환하여 에러 노드로 라우팅된다.
+    """
+    session_id = state.get("session_id", "")
+    logger.info(
+        "[WaitForStories] 대기 시작 — session_id=%s, timeout=%ds",
+        session_id,
+        _STORIES_WAIT_TIMEOUT,
+    )
+
+    data = await stories_store.wait_for_stories(session_id, float(_STORIES_WAIT_TIMEOUT))
+    stories_store.delete_session(session_id)
+
+    if data is None:
+        logger.warning("[WaitForStories] 타임아웃 — session_id=%s", session_id)
+        return {"next_step": "stories_timeout"}
+
+    logger.info("[WaitForStories] 데이터 수신 완료 — session_id=%s", session_id)
+    return {"stories_context": data, "next_step": ""}
+
+
+async def stories_timeout_error_node(state: AgentState) -> dict[str, Any]:
+    """
+    Stories 타임아웃 에러 응답 노드.
+
+    5분 내 Stories 데이터 미수신 시 에러 응답을 생성하고 파이프라인을 종료한다.
+    """
+    session_id = state.get("session_id", "")
+    logger.error("[StoriesError] Stories 타임아웃 — session_id=%s", session_id)
+    return {
+        "final_output": (
+            "Stories 데이터를 수신하지 못해 처리를 완료할 수 없습니다. 다시 시도해주세요."
+        ),
+        "next_step": "stories_error",
+    }
+
+
 # ===================================================================
 # CRISIS 즉시 응답 노드
 # ===================================================================
@@ -555,6 +610,8 @@ def build_podcast_graph() -> StateGraph:
 
     graph.add_node("batch_validator", _bv_timeout)  # type: ignore[arg-type]
     graph.add_node("script_personalizer", _sp_timeout)  # type: ignore[arg-type]
+    graph.add_node("wait_for_stories", wait_for_stories_node)  # type: ignore[arg-type]
+    graph.add_node("stories_error", stories_timeout_error_node)  # type: ignore[arg-type]
     graph.add_node("crisis_response", crisis_response_node)
     graph.add_node("async_post", async_post_processing_node)
     graph.add_node("increment_iteration", increment_iteration_node)
@@ -575,13 +632,22 @@ def build_podcast_graph() -> StateGraph:
         "batch_validator",
         route_after_tier3_podcast,
         {
-            "tier4_podcast": "script_personalizer",
+            "tier4_podcast": "wait_for_stories",
             "tier2_podcast": "increment_iteration",
             "crisis_response": "crisis_response",
         },
     )
 
     graph.add_edge("increment_iteration", "tier2_podcast")
+    graph.add_conditional_edges(
+        "wait_for_stories",
+        route_after_wait_stories,
+        {
+            "script_personalizer": "script_personalizer",
+            "stories_error": "stories_error",
+        },
+    )
+    graph.add_edge("stories_error", END)
     graph.add_edge("script_personalizer", "async_post")
     graph.add_edge("async_post", END)
     graph.add_edge("crisis_response", END)
@@ -623,6 +689,8 @@ def build_unified_graph() -> StateGraph:
 
     graph.add_node("batch_validator", _batch_validator_with_timeout)  # type: ignore[arg-type]
     graph.add_node("script_personalizer", _script_personalizer_with_timeout)  # type: ignore[arg-type]
+    graph.add_node("wait_for_stories", wait_for_stories_node)  # type: ignore[arg-type]
+    graph.add_node("stories_error", stories_timeout_error_node)  # type: ignore[arg-type]
 
     # --- 공용 노드 ---
     graph.add_node("crisis_response", crisis_response_node)
@@ -652,12 +720,21 @@ def build_unified_graph() -> StateGraph:
         "batch_validator",
         route_after_tier3_podcast,
         {
-            "tier4_podcast": "script_personalizer",
+            "tier4_podcast": "wait_for_stories",
             "tier2_podcast": "increment_iteration_pod",
             "crisis_response": "crisis_response",
         },
     )
     graph.add_edge("increment_iteration_pod", "tier2_podcast")
+    graph.add_conditional_edges(
+        "wait_for_stories",
+        route_after_wait_stories,
+        {
+            "script_personalizer": "script_personalizer",
+            "stories_error": "stories_error",
+        },
+    )
+    graph.add_edge("stories_error", END)
     graph.add_edge("script_personalizer", "async_post")
 
     # === 공용 엣지 ===
