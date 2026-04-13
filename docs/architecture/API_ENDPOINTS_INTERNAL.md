@@ -558,4 +558,86 @@ GET /api/{resource}?user_id={uuid}&type={type}&limit={n}&page={p}
 
 ---
 
+# 16. 지식 문서 원문 조회
+
+| 속성 | 값 |
+|------|---|
+| 상태 | 명세 작성 중 (Backend 확정 필요) |
+| 엔드포인트 | /api/internal/knowledge |
+| 카테고리 | Internal |
+| 타입 | `GET` |
+| 방향 | AI Server → Backend Server |
+
+**EndPoint** : `GET /api/internal/knowledge?ids={chunk_id1},{chunk_id2},...`
+
+**설명** : KnowledgeAgent가 Pinecone 벡터 검색으로 선정한 top_k 청크 ID를 기반으로 Backend RDB의 `knowledge_base` 테이블에서 청크 텍스트 및 메타데이터를 조회한다. 청크 ID는 Pinecone의 `_id`와 동일한 값을 사용한다.
+
+**구현 파일** : `src/agents/podcast/knowledge.py` → `_fetch_documents_from_backend()`
+**리소스 상수** : `RESOURCE_KNOWLEDGE` (`src/api/backend_resources.py`)
+**호출 시점** : `KnowledgeAgent.search()` — Pinecone 검색 직후, TextGen 호출 이전
+
+---
+
+### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `ids` | String (comma-separated) | true | 조회할 청크 ID 목록 (최대 10개, Pinecone `_id` 값과 동일) |
+
+**요청 예시**:
+```
+GET /api/internal/knowledge?ids=cbt_chunk_042,stress_chunk_015
+```
+
+### Response Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `success` | Boolean | true | 성공 여부 |
+| `data` | Array[Object] | true | 청크 목록 |
+| `data[].id` | String | true | 청크 ID (Pinecone ID와 동일) |
+| `data[].title` | String | true | 문서 제목 |
+| `data[].content` | String | true | 청크 텍스트 (PDF에서 추출된 실제 내용) |
+| `data[].page` | Integer | false | 출처 페이지 번호 |
+| `data[].source` | String | true | 원본 PDF 파일명 (예: `cbt_guide.pdf`) |
+| `data[].domain` | String | true | 도메인 (예: `mental_health`) |
+
+**응답 예시**:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "cbt_chunk_042",
+      "title": "CBT 기법 가이드",
+      "content": "인지행동치료에서 인지 왜곡이란 현실을 왜곡하여 지각하는 사고 패턴을 말한다...",
+      "page": 42,
+      "source": "cbt_guide.pdf",
+      "domain": "mental_health"
+    },
+    {
+      "id": "stress_chunk_015",
+      "title": "스트레스 관리 매뉴얼",
+      "content": "직장 내 스트레스의 주요 원인으로는 업무 과부하, 역할 모호성...",
+      "page": 15,
+      "source": "stress_management.pdf",
+      "domain": "mental_health"
+    }
+  ]
+}
+```
+
+### Status Code
+
+| Status | Code | Description |
+|--------|------|-------------|
+| 200 OK | - | 정상 조회 (일부 ID가 없어도 200, 해당 ID 제외하고 반환) |
+| 400 Bad Request | VALIDATION_ERROR | `ids` 파라미터 누락 또는 10개 초과 |
+| 500 Internal Server Error | SERVER_ERROR | Backend 서버 내부 오류 |
+
+> **NOTE**: 요청한 ID 중 일부가 RDB에 없어도 404가 아닌 200으로 응답하고, 존재하는 청크만 `data` 배열에 포함합니다.
+
+---
+
 *[← 수신 API](API_ENDPOINTS_RECEIVING.md) · [API_SPEC.md (인덱스)](API_SPEC.md) · [공통 →](API_COMMON.md)*
+

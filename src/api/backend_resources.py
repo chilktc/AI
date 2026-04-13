@@ -21,6 +21,7 @@ RESOURCE_PODCAST_EPISODES = "podcast_episodes"  # podcast_episodes 수집 API (i
 RESOURCE_CONTENT_ANALYSIS = "content_analyses"  # ContentAnalyzer 분석 결과
 RESOURCE_EMOTION_LOG = "emotion_logs"  # 감정 벡터 데이터 저장
 RESOURCE_VISUALIZATION = "visualizations"  # 시각화(커버 이미지) 메타 저장
+RESOURCE_KNOWLEDGE = "internal/knowledge"  # GET — 지식 문서 청크 원문 조회 (KnowledgeAgent)
 # [제거됨 2026-04-09] _publish_graph_to_backend() 제거로 미사용.
 # 프론트엔드는 /graph_nodes (누적 그래프)를 직접 읽으므로 graph_analyses 불필요.
 # RESOURCE_GRAPH_ANALYSIS = "graph_analyses"

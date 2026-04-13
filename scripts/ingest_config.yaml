@@ -1,0 +1,22 @@
+# Knowledge Base 문서 적재 설정
+# ================================
+# domain: Pinecone 검색 필터에 사용되는 분류값 (필수)
+# title: RDB 저장 시 문서 제목 — 파일명 대신 사람이 읽기 좋은 이름
+#
+# 사용법:
+#   python scripts/ingest_knowledge.py
+#   python scripts/ingest_knowledge.py --config scripts/ingest_config.yaml
+
+# 청킹 설정
+chunk_size: 400       # 청크 크기 (자)
+chunk_overlap: 50     # 청크 오버랩 (자)
+
+# 문서 목록
+documents:
+  - path: scripts/pdfs/cbt_guide.pdf
+    domain: mental_health
+    title: CBT 기법 가이드
+
+  # - path: scripts/pdfs/stress_management.pdf
+  #   domain: mental_health
+  #   title: 스트레스 관리 매뉴얼

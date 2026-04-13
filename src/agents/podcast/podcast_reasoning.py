@@ -582,5 +582,7 @@ async def podcast_reasoning_node(state: AgentState) -> dict[str, Any]:
     """LangGraph 노드 — Podcast Reasoning.
     요청마다 새 인스턴스를 생성하여 동시 요청 간 상태를 격리한다.
     """
-    agent = PodcastReasoningAgent()
+    from src.agents.podcast.knowledge import KnowledgeAgent
+
+    agent = PodcastReasoningAgent(knowledge_agent=KnowledgeAgent())
     return await agent(state)
