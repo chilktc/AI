@@ -162,7 +162,7 @@ class BackendClient:
             response = await self._client.post(
                 f"{self._base_url}/{RESOURCE_MIND_FREQUENCIES}",
                 json={
-                    "sessionId": session_id,   # camelCase — 백엔드 요구 스펙
+                    "session_id": session_id,
                     "keywords": keywords,
                     "description": description,
                 },
