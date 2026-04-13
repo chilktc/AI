@@ -83,11 +83,7 @@ class DeveloperFormatter(logging.Formatter):
         base = super().format(record)
 
         # extra 필드만 추출 (표준 필드 제외)
-        extra_fields = {
-            k: v
-            for k, v in record.__dict__.items()
-            if k not in self._STANDARD_FIELDS
-        }
+        extra_fields = {k: v for k, v in record.__dict__.items() if k not in self._STANDARD_FIELDS}
 
         if extra_fields:
             base += "\n  Context: " + str(extra_fields)
