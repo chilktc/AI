@@ -852,6 +852,7 @@ SaveRequest(
 | **수정** | `dev/local_db/mysql/init.sql` | `podcast_episodes` 컬럼 추가, `podcast_segments` 제거, `content_analyses` 추가 | Task 8, 9 |
 | **수정** | `src/api/client.py` | `ingest_podcast_episodes()` 시그니처 변경: `text: str`만 전달 | Task 8 |
 | **수정** | `src/api/routes/podcasts.py` | `_save_core_data()` 감정 컬럼 추가 + ingest 호출부 수정 | Task 8 |
+| **수정** | `src/api/backend_resources.py` | `RESOURCE_PODCAST_EPISODES` 주석 갱신 | Task 8 |
 | **수정** | `src/agents/podcast/content_analyzer.py` | `publisher.publish()` — `user_summary` 필드만 전송 | Task 9 |
 | **신규** | `docs/architecture/AGENT_IO_DATAFLOW.md` | 이 계획서 내용을 별도 문서로 추출 | Task 7 |
 | **수정** | `tests/` | 관련 테스트 추가/수정 | Task 0, 8, 9 |
@@ -1981,6 +1982,7 @@ pytest tests/ -v --ignore=tests/live -x
 
 ```bash
 git add src/api/client.py src/api/routes/podcasts.py \
+    src/api/backend_resources.py \
     dev/local_db/mysql/init.sql tests/api/test_save_core_data.py
 git commit -m "feat: ingest_podcast_episodes() 백엔드 podcasts 테이블 정합 + podcast_segments 제거 + 감정 컬럼 추가"
 ```
