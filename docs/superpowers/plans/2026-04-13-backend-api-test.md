@@ -125,6 +125,42 @@ f"{self._graph_base_url}/graph_nodes" # /api/v1/graph_nodes → 200
 
 ---
 
+## 코드 수정 완료 현황 (2026-04-13, commit 884c18c)
+
+| 버그 | 파일 | 수정 내용 | 상태 |
+|------|------|----------|------|
+| B-1 | `backend_resources.py` | `RESOURCE_MIND_FREQUENCIES` 경로 수정 | ✅ 완료 (이전 세션) |
+| B-2 | `client.py` | `"session_id"` → `"sessionId"` (camelCase) | ✅ 완료 |
+| B-3 | `client.py`, `routes/podcasts.py` | `title` 파라미터 추가 | ✅ 완료 |
+| B-4 | `client.py` | `_graph_base_url = host/api/v1` 분리, graph_nodes URL 교정 | ✅ 완료 |
+| 추가 | `content_analyzer.py`, `client.py` | `user_summaries` 호출 제거 (mind-frequencies 통합) | ✅ 완료 |
+| 추가 | `api_proxy.py` | `GraphProxyClient.execute_query()` 미구현 엔드포인트 호출 제거 | ✅ 완료 |
+
+---
+
+## graph_nodes 아키텍처 확정 (2026-04-13)
+
+**확인 사항:**
+- Neo4j는 AI 서버 내부 인프라 — 백엔드 경유 불필요
+- `graph/query` 엔드포인트는 백엔드에 없음 (원래부터 미구현) → 제거 완료
+- 백엔드와 통신하는 그래프 관련 API는 **GET/PUT graph_nodes 2개뿐**
+
+**현재 코드 상태 (확정):**
+
+```
+GoT 추론 결과 저장 흐름:
+  podcast_reasoning.py → publish_graph_to_rdb()
+    → BackendClient.load_graph_cumulative()  : GET  http://host/api/v1/graph_nodes
+    → EMA 병합 (src/api/graph_cumulative.py)
+    → BackendClient.put_graph_cumulative()   : PUT  http://host/api/v1/graph_nodes
+```
+
+**GraphProxyClient.execute_query() 동작:**
+- proxy 모드에서 Cypher 쿼리가 호출되면 빈 결과(`[]`) 반환 (HTTP 전송 없음)
+- GoT 에피소드 노드의 Neo4j 직접 저장은 `storage.mode: local/hybrid` 시 활성화
+
+---
+
 ## 운영환경 설정 버그
 
 | 항목 | 이전 값 (잘못됨) | 올바른 값 | 조치 |
