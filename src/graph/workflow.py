@@ -306,8 +306,12 @@ async def tier1_podcast_fan_out(state: AgentState) -> dict[str, Any]:
     tasks = [
         run_with_cancel(safety_node(state), cancel_event, "safety", cancel_reason),
         run_with_cancel(emotion_node(state), cancel_event, "emotion", cancel_reason),
-        run_with_cancel(content_analyzer_node(state), cancel_event, "content_analyzer", cancel_reason),
-        run_with_cancel(podcast_reasoning_node(state), cancel_event, "podcast_reasoning", cancel_reason),
+        run_with_cancel(
+            content_analyzer_node(state), cancel_event, "content_analyzer", cancel_reason
+        ),
+        run_with_cancel(
+            podcast_reasoning_node(state), cancel_event, "podcast_reasoning", cancel_reason
+        ),
     ]
 
     # 타임아웃 시 이미 완료된 에이전트 결과를 보존하기 위한 공유 dict
