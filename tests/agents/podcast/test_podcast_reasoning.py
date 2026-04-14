@@ -921,3 +921,46 @@ def test_build_phase_context_got_memory_count_only(
     assert "1건 발견" in context
     assert "번아웃 에피소드 원문" not in context
     assert "번아웃과 리더십" not in context
+
+
+def test_build_phase_context_tot_metadata_only(
+    agent_with_stubs: PodcastReasoningAgent,
+) -> None:
+    """ToT phase: 에피소드 제목·날짜가 포함되고 원문 텍스트는 포함되지 않는다."""
+    memory_result = {
+        "episodes": [
+            {
+                "text": "안녕하세요. 번아웃 에피소드 원문입니다.",
+                "score": 0.94,
+                "metadata": {
+                    "date": "2026-04-10T14:32:15",
+                    "episode_title": "번아웃과 리더십",
+                },
+            },
+            {
+                "text": "수면 문제 에피소드 원문입니다.",
+                "score": 0.81,
+                "metadata": {
+                    "date": "2026-03-28T09:15:44",
+                    "episode_title": "잠 못 드는 밤",
+                },
+            },
+        ],
+        "summary": "번아웃, 수면 관련 2개 에피소드",
+    }
+    context = agent_with_stubs._build_phase_context(
+        phase="ToT",
+        user_input="요즘 너무 힘들어요.",
+        intent={},
+        memory_result=memory_result,
+    )
+    assert "[과거 에피소드 기억 — 구조 참고]" in context
+    assert "2026-04-10" in context
+    assert "번아웃과 리더십" in context
+    assert "2026-03-28" in context
+    assert "잠 못 드는 밤" in context
+    # 원문 텍스트 미포함
+    assert "번아웃 에피소드 원문" not in context
+    assert "수면 문제 에피소드 원문" not in context
+    # 다양성 가이드 문구 포함
+    assert "다양성" in context

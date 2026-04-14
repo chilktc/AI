@@ -415,10 +415,28 @@ class PodcastReasoningAgent(BaseAgent):
             complexity = intent.get("complexity_score", 0.5)
             parts.append(f"[의도 분류]\n- 의도: {intent_info}\n- 복잡도: {complexity}")
 
-        # 독립 에이전트 결과 — DI 호출 결과 포함
+        # 독립 에이전트 결과 — phase별 역할 분리 (GoT: 오염방지 / ToT: 구조다양성 / CoT: 스타일개인화)
         if memory_result and memory_result.get("episodes"):
-            episode_count = len(memory_result["episodes"])
-            parts.append(f"[과거 에피소드 기억]\n- {episode_count}건 발견")
+            episodes = memory_result["episodes"]
+            episode_count = len(episodes)
+
+            if phase == "GoT":
+                # GoT: 건수만 — 노드 오염 방지
+                parts.append(f"[과거 에피소드 기억]\n- {episode_count}건 발견")
+
+            elif phase == "ToT":
+                # ToT: 메타데이터만 — 구조 다양성 가이드
+                lines = ["[과거 에피소드 기억 — 구조 참고]"]
+                for ep in episodes:
+                    date = ep.get("metadata", {}).get("date", "")[:10]
+                    title = ep.get("metadata", {}).get("episode_title", "제목 없음")
+                    lines.append(f"- {date} '{title}'")
+                lines.append("→ 위 에피소드에서 사용된 구조를 파악하여 대안 생성 시 다양성을 확보하세요.")
+                parts.append("\n".join(lines))
+
+            elif phase == "CoT":
+                # CoT: summary + score 필터 원문 — 스타일 개인화 (Task 4에서 구현)
+                parts.append(f"[과거 에피소드 기억]\n- {episode_count}건 발견")
         if knowledge_result and knowledge_result.get("articles"):
             article_count = len(knowledge_result["articles"])
             parts.append(f"[관련 전문 지식]\n- {article_count}건 발견")
