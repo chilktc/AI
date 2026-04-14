@@ -1,8 +1,8 @@
 # 마스터 계획 인덱스 (Master Plan Index)
 
 **목적**: 모든 기획 문서의 현황 추적 및 상태 관리  
-**버전**: v34
-**마지막 업데이트**: 2026-04-14
+**버전**: v35
+**마지막 업데이트**: 2026-04-14 11:30
 **관리 원칙**:
 - 완료된 계획 → PR 링크 + 간단한 변경 사항 기록
 - 미완료 계획 → 상태 및 다음 액션 기록
@@ -25,7 +25,7 @@
 | 9 | Neo4j 배포 + 프론트엔드 그래프 | `2026-04-02-neo4j-deployment-frontend-graph.md` | ✅ 완료 | #50, #51 | GoT→Neo4j→Backend 완료 |
 | 10 | AWS 환경변수 & 보안 | `2026-04-06-aws-env-remediation.md` | ✅ 완료 | #59 | STORAGE_MODE, BACKEND_API_URL 완료 |
 | 11 | 종합 실행 계획서 (2026-04-06) | `2026-04-06-comprehensive-execution-plan.md` | ✅ 완료 | #52, #57 | Phase 1-2 완료 (mypy, 테스트 격리) |
-| 12 | 미완료 항목 현황 (2026-04-06) | `2026-04-06-pending-items-inventory.md` | 🔶 대부분 완료 | #52 | mypy/테스트 해결. 잔여: ① podcast_reasoning Stub→실제 DI 미연결 ② personalizer empathetic/rational pass, _query_user_profile return None ③ data/cache/ 디렉토리 미생성 |
+| 12 | 미완료 항목 현황 (2026-04-06) | `2026-04-06-pending-items-inventory.md` | 🔶 대부분 완료 | #52 | mypy/테스트 해결. 잔여: ① KnowledgeAgent DI 연결됨, EpisodeMemory DI 미연결 (Stub) ② personalizer empathetic/rational pass ③ _query_user_profile deprecated→_get_user_profile 대체 ④ data/cache/ 미생성 |
 | 13 | 파이프라인 견고성 (아카이브) | `2026-04-06-pipeline-robustness-remediation.md` | 📁 아카이브 | — | v1-v4 이력 보존 |
 | 14 | 파이프라인 견고성 강화 마스터 | `pipeline-robustness-index.md` | ✅ 완료 | #60 | 13개 취약점 수정 |
 | 15 | 파이프라인 견고성 - Phase 1 | `pipeline-robustness-part1.md` | ✅ 완료 | #60 | Changes 1-9 완료 |
@@ -35,10 +35,10 @@
 | 19 | Pinecone 벡터 DB 공통 인프라 | `2026-04-07-pinecone-vector-db-integration.md` | 🔶 대부분 완료 | #64~#68 | Task 1/3/4 완료. KnowledgeAgent+PineconeClient 코드 완전 구현됨 (테스트 32개 통과). ⚠️ 미완: ① EmbeddingClient(KTCloud 어댑터) 미구현 → `knowledge._search_knowledge_base()` fallback 동작 중 ② `podcast_reasoning.py` KnowledgeAgentStub 사용 (DI 미연결) ③ Task 5/6/7(CLI), Task 9(가이드) 미작성 |
 | 20 | Graph Mode B 단일화 리팩터 | `2026-04-07-graph-mode-b-refactor.md` | ✅ 완료 | #69 | Mode A 삭제, publish_graph_to_rdb 단일 경로 확정, EMA를 Backend 책임으로 이관 (538 passed) |
 | 21 | 문서 전수 점검 및 정합성 수정 | *(인라인 — 별도 계획서 없음)* | ✅ 완료 | #70~#80 | 4차 사이클 점검: 대화모드 잔재·링크·날짜·버전 일관성·설계 결정 갱신 전체 완료 |
-| 22 | 에이전트 출력 감사 수정 | `2026-04-08-agent-output-audit-fix.md` | ✅ 완료 | — | v9: IC-1/SP-1/SP-2/schemas 완료(8건) + Task 1-7 구현 완료(SA/EA/CA/SG/VI/BV/횡단). 556 passed |
+| 22 | 에이전트 출력 감사 수정 | `2026-04-08-agent-output-audit-fix.md` | ✅ 완료 | — | v9: IC-1/SP-1/SP-2/schemas 완료(8건) + Task 1-7 구현 완료(SA/EA/CA/SG/VI/BV/횡단). 582 passed |
 | 23 | 에피소드 메모리 저장 트리거 | `_archive/plans/2026-04-08-episode-memory-save-trigger.md` | ✅ 완료 | #86, #87 | AgentState memory_write 필드 추가, Script Personalizer 반환, async_post 트리거 전부 develop에 머지 확인 (6b61763~ea06bd9) |
 | 24 | Mode A 부활 — 누적 그래프 EMA | `_archive/plans/2026-04-09-mode-a-revival-graph-cumulative.md` | ✅ 완료 | #88 | contracts.py GraphCumulativeData, client.py GET/PUT 메서드, graph_cumulative.py Mode B→A 전환, 테스트 27개 (549 passed). BE 3차 테스트: session_id/timestamp 제거 후 PUT ✅ 200, Test 6~8 전체 PASS, E2E(GET→PUT→GET) 검증 완료 |
-| 25 | Agent I/O 통합 및 재가공 에이전트 | `plans/2026-04-13-agent-io-consolidation.md` | 🔶 Task 8 완료 | #96 | Task 8: ingest_podcast_episodes() 정합 + podcast_segments 제거 + 감정 컬럼. Task 9: ingest_user_summary() 추가했으나 Plan #27(884c18c)에서 제거 — mind-frequencies로 통합 확정. ⛔ 보류: PodcastReprocessingAgent/EpisodeSummaryAgent(백엔드 테이블 미확보), AGENT_IO_DATAFLOW.md 추출 |
+| 25 | Agent I/O 통합 및 재가공 에이전트 | `plans/2026-04-13-agent-io-consolidation.md` | 🔶 Task 8~9 완료 | #96 | Task 8: ingest_podcast_episodes() 정합 + podcast_segments 제거 + 감정 컬럼. Task 9: ingest_user_summary() → mind-frequencies 통합 확정(Plan #27, 884c18c). ⛔ 보류: PodcastReprocessingAgent/EpisodeSummaryAgent(백엔드 테이블 미확보), AGENT_IO_DATAFLOW.md 미작성 |
 | 26 | 프로덕션 버그 3종 수정 | `_archive/plans/2026-04-13-production-bugfix.md` | ✅ 완료 | #93, #94, #95 | Task 1: ScriptPersonalizer .segments→.script_text (c8ad23c). Task 2: graph_cumulative 타임스탬프 +00:00 제거 (29f66bf). Task 3: 프롬프트 YAML 5개 force-add (acb8903) |
 | 27 | Backend API 전수 테스트 | `plans/2026-04-13-backend-api-test.md` | 🔶 버그 수정 완료 | 884c18c, a1d3e2f | B-2(session_id 백엔드 수정·원복), B-3(title추가), B-4(graph_nodes /api/v1 경로), user_summaries 제거, graph/query 제거. CLI 재검증 대기. graph_nodes GET/PUT 2개만 백엔드 통신 대상 (Neo4j 내부 확정) |
 | 28 | Git History 민감정보 제거 | `plans/2026-04-13-git-history-cleanup.md` | 🔲 합의 대기 | — | 3인 합의 후 실행. 제거 대상: KT Cloud 토큰/엔드포인트, ALB 도메인, 내부 IP 4종, DB 비밀번호 3종 (총 10종). git-filter-repo --force, remote add 재등록, 전원 re-clone 필요 |
@@ -47,13 +47,16 @@
 | 31 | 로깅 시스템 강화 | `_archive/plans/2026-04-13-logging-enhancement.md` | ✅ 완료 | 0e115d5 (PR #101) | HTTP 이벤트 훅 추가(모든 요청/응답 자동 로깅), 에러 응답 상세 기록, DeveloperFormatter(다중행 가독성), JSON 포맷터 ISO 8601 타임스탬프. `src/api/client.py`, `src/utils/logger.py` |
 | 32 | 테스트 정리 — live 테스트 분리 | *(인라인 — 별도 계획서 없음)* | ✅ 완료 | PR #105 (3b43bc4) | pyproject.toml addopts="-m 'not live'" 추가, test_safety/test_backend_integration 삭제, live fixture 분리, api_client→backend_client 시그니처 수정. 539 passed (live 제외 ~9초). |
 | 33 | KT Cloud RAG 통합 — Knowledge Ingestion Pipeline | `docs/architecture/API_ENDPOINTS_INTERNAL.md` | ✅ 완료 | PR #106 (afc3a56) | jun 개발자. KT Cloud RAG Suite 연동, Knowledge Ingestion 스크립트(`scripts/ingest_knowledge.py`), 지식 청크 적재 파이프라인. `src/agents/podcast/knowledge.py` 확장. |
-| 34 | Stories 데이터 수신 인프라 | `plans/2026-04-13-stories-receive-infra.md` | 🔲 구현 대기 | — | 백엔드 `POST /api/stories/select` 수신 엔드포인트 신규 생성. `load_stories()` 삭제(방향 반대), `personalization-context` 중복 제거. 활용 에이전트·AgentState 주입 시점은 미정 — 수신 인프라만 구현. |
-| 35 | Stories asyncio.Event 수신 인프라 | *(인라인)* | ✅ 완료 | — | asyncio.Event 멀티 구독 패턴 + TIER 4 wait_for_stories_node. Plan #34 대체 (581 passed) |
+| 34 | Stories 데이터 수신 인프라 | `plans/2026-04-13-stories-receive-infra.md` | ⛔ Plan #35로 대체 | — | asyncio.Event 방식(Plan #35)으로 재설계·구현 완료. 원본 계획(REST 폴링 방식)은 미채택. |
+| 35 | Stories asyncio.Event 수신 인프라 | *(인라인)* | ✅ 완료 | PR #110 | asyncio.Event 멀티 구독 패턴 + TIER 4 wait_for_stories_node. Plan #34 대체 (581 passed) |
+| 36 | 로그 시스템 전체 통일 | *(인라인)* | ✅ 완료 | PR #112, #113 | logging.getLogger→get_agent_logger 18개 파일 통일 + 동시성 안전성 강화 (582 passed) |
+| 37 | CRISIS-타임아웃 경합 수정 | *(인라인)* | ✅ 완료 | PR #114 | run_with_cancel() 로그 CRISIS/타임아웃 구분, CRISIS 선저장 경합 방지, TIER 1 타임아웃 120→240s |
 
 **범례:**
 - ✅ 완료 — 코드 구현 완료, PR 머지됨
 - 🔶 대부분 완료 — 핵심 작업 완료, 소규모 잔여 항목 존재
 - 🔲 구현 대기 — 계획서 작성 완료, 구현 명령 대기 중
+- ⛔ 대체됨 — 다른 계획으로 대체 (원본 보존)
 - 📁 아카이브 — 참조용 (독립 구현 목표 없음)
 
 ---
@@ -147,11 +150,11 @@
 
 | # | 작업 | 파일 | 비고 |
 |---|------|------|------|
-| 20 | KTCloudEmbeddingClient 어댑터 + factory.py + KnowledgeAgent DI | `src/db/`, `podcast_reasoning.py` | episode_memory._embed() 추출 ~30줄 |
+| 20 | KTCloudEmbeddingClient 어댑터 + EpisodeMemory DI 연결 | `src/db/`, `podcast_reasoning.py` | KnowledgeAgent DI 완료, EpisodeMemory는 여전히 Stub |
 | 21 | test_knowledge.py 벡터 검색 테스트 추가 | `tests/agents/podcast/test_knowledge.py` | 현재 stub 테스트만 존재 |
 | 22 | script_personalizer empathetic/rational 구현 | `script_personalizer.py:402,405` | 비즈니스 규칙 정의 선행 필요 |
 | 23 | script_personalizer hearing_impairment 구현 | `script_personalizer.py:450` | 비즈니스 규칙 정의 선행 필요 |
-| 24 | _query_user_profile() MySQL 구현 | `script_personalizer.py:275` | DB 연결 선행 필요 |
+| 24 | _query_user_profile() deprecated → _get_user_profile() 구현 완료 | `script_personalizer.py` | backend_client 미설정 시 기본 프로필 반환 |
 | 25 | data/cache/ 디렉토리 생성 | 프로젝트 루트 | episode_memory 런타임 의존 |
 
 ### CLI 스크립트 / 문서 — Plan #19 (개발자 도구, 운영 필수 아님)
@@ -169,7 +172,7 @@
 
 | # | 작업 | 상태 |
 |---|------|------|
-| 30 | 에이전트 출력 스키마 수정 7건 (Plan #22 v9) | ✅ 완료 — Task 1~7 전체 구현 (556 passed) |
+| 30 | 에이전트 출력 스키마 수정 7건 (Plan #22 v9) | ✅ 완료 — Task 1~7 전체 구현 (582 passed) |
 
 ---
 
@@ -211,7 +214,12 @@
 | #88 | feature/reasoning-plan-sync-0409 | Plan #24 Mode A 부활: contracts/settings/resources/client/graph_cumulative + 테스트 27개 (549 passed) (MERGED) |
 | #89 | feature/reasoning-plan-sync-0409 | black 포맷 수정 backend_resources.py — CI lint 통과 (MERGED) |
 | #90 | feature/reasoning-lint-fix-0409 | TestPublishGraphToBackend 삭제 + TestSaveGraphData publish_graph_to_rdb 패치 수정 + PLAN_INDEX v18 (MERGED) |
+| #110 | feature/validation-stories-wait | Stories 수신 인프라 + TIER 4 대기 메커니즘 (Plan #35) |
+| #111 | fix/mind-frequencies-mapping | mind-frequencies 데이터 매핑 수정 (user_summary 기반) |
+| #112 | feature/logging-unification | 로그 시스템 정리 + 동시성 안전성 강화 (Uvicorn 로거 억제, asyncio.Lock) |
+| #113 | feature/logging-unification | 로그 시스템 전체 통일 — logging.getLogger→get_agent_logger 18개 파일 |
+| #114 | feature/validation-crisis-timeout-fix | CRISIS-타임아웃 로그 구분, 경합 조건 수정, TIER 1 타임아웃 240s |
 
 ---
 
-*마스터 인덱스 v34 — 2026-04-14 (Plan #35 완료: Stories asyncio.Event 수신 인프라 + TIER 4 wait_for_stories_node)*
+*마스터 인덱스 v35 — 2026-04-14 11:30 (Plan #36~37 추가: 로그 통일 + CRISIS-타임아웃 경합 수정)*

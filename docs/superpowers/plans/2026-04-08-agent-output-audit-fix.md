@@ -10,9 +10,11 @@
 
 ---
 
-## v9 현황 요약 (2026-04-13)
+## v10 현황 요약 (2026-04-14 11:30)
 
-### 완료 항목 (구현 불필요)
+### ✅ 전체 완료 — Task 1~7 구현 완료 (582 passed)
+
+### 선행 완료 항목
 
 | 구분 | 내용 | 근거 |
 |------|------|------|
@@ -25,23 +27,17 @@
 | content_analyses 협의 | API 테스트 200 OK → 백엔드 테이블 존재 확정 | 2026-04-13 전수 테스트 |
 | graph_analyses 삭제 | 코드·상수·테스트 완전 제거. 로컬 스키마 불필요 | commit `884c18c`, RESOURCE 주석처리 |
 
-### 미완료 Task (7건)
+### 구현 완료 Task (7건)
 
-| # | 이슈 | TIER | 심각도 | 담당 브랜치 |
-|---|------|------|--------|-----------|
-| **Task 1** | SA-1+SA-2: Safety 출력 명시화 | TIER 1 | Medium | `feature/reasoning-*` |
-| **Task 2** | EA-1: Emotion 폴백 하드코딩 제거 | TIER 1 | Low | `feature/reasoning-*` |
-| **Task 3** | CA-1+CA-2+CA-3: `_validate_and_correct()` 화이트리스트 + `_build_db_payload()` | TIER 1 | **Critical** | `feature/validation-*` |
-| **Task 4** | SG-1+SG-2: Mental Health 제거 + `resolution` 폴백 잔존 정리 + error 키 | TIER 2 | Medium | `feature/analysis-*` |
-| **Task 5** | VI-1+VI-2: Visualization None 통과 + 에러 경로 키 누락 | TIER 2 | Medium | `feature/reasoning-*` |
-| **Task 6** | BV-1+BV-2: Batch Validator LLM 통과 저장 + 조기반환 action 키 누락 | TIER 3 | Medium | `feature/validation-*` |
-| **Task 7** | 횡단: type 상수 불일치 + PR SSE 키 이름 버그 | 횡단 | Low | 해당 파일 담당자 |
-
-### 실행 순서
-
-```
-Task 1·2 (병렬) → Task 3 → Task 4 (Task 3 완료 후) → Task 5·6 (병렬) → Task 7
-```
+| # | 이슈 | TIER | 커밋 | 상태 |
+|---|------|------|------|------|
+| **Task 1** | SA-1+SA-2: Safety 출력 명시화 | TIER 1 | `95df839` | ✅ 완료 |
+| **Task 2** | EA-1: Emotion 폴백 하드코딩 제거 | TIER 1 | `5c9604d` | ✅ 완료 |
+| **Task 3** | CA-1+CA-2+CA-3: 화이트리스트 + `_build_db_payload()` | TIER 1 | `7e92d97` | ✅ 완료 |
+| **Task 4** | SG-1+SG-2: Mental Health 제거 + resolution 정리 | TIER 2 | `1f2bbaf` | ✅ 완료 |
+| **Task 5** | VI-1+VI-2: style_type/interpretation str 보장 | TIER 2 | `61d85cf` | ✅ 완료 |
+| **Task 6** | BV-1+BV-2: 명시 필드 추출 + action 키 추가 | TIER 3 | `472e895` | ✅ 완료 |
+| **Task 7** | 횡단: SSE 키 수정 + emotion publisher data_type | 횡단 | `4ab0f07`, `f4b7536` | ✅ 완료 |
 
 ### 백엔드 협의
 
