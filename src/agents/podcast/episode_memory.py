@@ -2,7 +2,6 @@ import os
 import httpx
 import hashlib
 import datetime
-from typing import Any
 
 from src.agents.shared.base_memory import BaseMemoryAgent
 from src.models.agent_state import AgentState
@@ -15,40 +14,29 @@ _SCORE_THRESHOLD = 0.7
 
 class EpisodeMemoryAgent(BaseMemoryAgent):
 
-    def __init__(self) -> None:
+    def __init__(self):
         super().__init__(
             name="episode_memory",
             output_key="memory_results",
-            namespace="mem_podcast_episode",  # base namespace (prefix 개념)
+            namespace="mem_podcast_episode",
         )
 
         self.query_endpoint = os.getenv("KT_CLOUD_QUERY_ENDPOINT", "")
         self.query_token = os.getenv("KT_CLOUD_QUERY_TOKEN", "")
-
         self.passage_endpoint = os.getenv("KT_CLOUD_PASSAGE_ENDPOINT", "")
         self.passage_token = os.getenv("KT_CLOUD_PASSAGE_TOKEN", "")
-
         self.textgen_endpoint = os.getenv("KT_CLOUD_TEXTGEN_ENDPOINT", "")
         self.textgen_token = os.getenv("KT_CLOUD_TEXTGEN_TOKEN", "")
-
         self.pinecone_api_key = os.getenv("PINECONE_API_KEY", "")
         self.pinecone_index_name = os.getenv("PINECONE_INDEX_EPISODE", "")
-
         self.pinecone_host = ""
 
-    # ============================================================
-    # namespace 생성 (핵심 추가)
-    # ============================================================
-    def _build_namespace(self, user_id: str) -> str:
+    def _build_namespace(self, user_id):
         return f"{self._namespace}_{user_id}"
 
-    # ============================================================
-    # MAIN PROCESS
-    # ============================================================
-    async def process(self, state: AgentState) -> dict[str, Any]:
-        user_id = str(state.get("user_id", "anonymous"))
+    async def process(self, state: AgentState):
+        user_id = str(state.get("user_id", "default"))
         query = state.get("memory_query") or str(state.get("user_input", ""))
-
         namespace = self._build_namespace(user_id)
 
         items = await self._retrieve_from_store(query, namespace)
@@ -65,17 +53,15 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
             }
         }
 
-    # ============================================================
-    # SAVE
-    # ============================================================
-    async def _save_to_store(self, text: str, metadata: dict | None = None) -> bool:
+    async def _save_to_store(self, text, metadata=None):
         if not text.strip():
             return False
 
-        user_id = str((metadata or {}).get("user_id", "anonymous"))
+        user_id = (metadata or {}).get("user_id", "default")
         namespace = self._build_namespace(user_id)
 
         chunks = self._split(text)
+        success = False
 
         for i, chunk in enumerate(chunks):
             vec = await self._embed(chunk, "embedding-passage")
@@ -88,17 +74,15 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
                 metadata={
                     "text": chunk,
                     "date": datetime.datetime.now().isoformat(),
-                    "user_id": user_id,  # 핵심 추가
-                    **(metadata or {})
+                    **(metadata or {}),
                 },
-                namespace=namespace
+                namespace=namespace,
             )
-        return True
+            success = True
 
-    # ============================================================
-    # RETRIEVE
-    # ============================================================
-    async def _retrieve_from_store(self, query: str, namespace: str) -> list[dict]:
+        return success
+
+    async def _retrieve_from_store(self, query, namespace):
         if not query.strip():
             return []
 
@@ -108,26 +92,25 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
 
         return await self._query(vec, namespace)
 
-    # ============================================================
-    # EMBEDDING
-    # ============================================================
-    async def _embed(self, text: str, mode: str) -> list[float]:
-        if mode == "embedding-query":
-            endpoint = self.query_endpoint
-            token = self.query_token
-        else:
-            endpoint = self.passage_endpoint
-            token = self.passage_token
+    async def _embed(self, text, mode):
+        endpoint = self.query_endpoint if mode == "embedding-query" else self.passage_endpoint
+        token = self.query_token if mode == "embedding-query" else self.passage_token
 
         if not endpoint or not token:
             return []
 
-        async with httpx.AsyncClient() as client:
-            try:
+        try:
+            async with httpx.AsyncClient() as client:
                 r = await client.post(
-                    endpoint,
-                    headers={"Authorization": f"Bearer {token}"},
-                    json={"input": text},
+                    f"{endpoint}/v1/embeddings",
+                    headers={
+                        "Authorization": f"Bearer {token}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": mode,
+                        "input": text,
+                    },
                     timeout=10.0,
                 )
                 r.raise_for_status()
@@ -138,13 +121,14 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
 
                 return data[0].get("embedding", [])
 
-            except Exception as e:
-                print(f"[Embedding error] {e}")
-                return []
+        except Exception as e:
+            print("[Embedding error]", e)
+            try:
+                print("[Embedding response body]", r.text)
+            except Exception:
+                pass
+            return []
 
-    # ============================================================
-    # PINECONE HOST
-    # ============================================================
     async def _get_host(self):
         if self.pinecone_host:
             return self.pinecone_host
@@ -160,13 +144,10 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
                 self.pinecone_host = r.json()["host"]
                 return self.pinecone_host
         except Exception as e:
-            print(f"[Pinecone host error] {e}")
+            print("[Pinecone host error]", e)
             return ""
 
-    # ============================================================
-    # UPSERT (namespace 추가)
-    # ============================================================
-    async def _upsert(self, id: str, vector: list[float], metadata: dict, namespace: str):
+    async def _upsert(self, id, vector, metadata, namespace):
         host = await self._get_host()
         if not host:
             return
@@ -182,18 +163,15 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
                             "values": vector,
                             "metadata": metadata
                         }],
-                        "namespace": namespace  # 핵심 추가
+                        "namespace": namespace,
                     },
                     timeout=15.0,
                 )
                 r.raise_for_status()
         except Exception as e:
-            print(f"[Upsert error] {e}")
+            print("[Upsert error]", e)
 
-    # ============================================================
-    # QUERY (namespace + 가공)
-    # ============================================================
-    async def _query(self, vector: list[float], namespace: str) -> list[dict]:
+    async def _query(self, vector, namespace):
         host = await self._get_host()
         if not host:
             return []
@@ -207,45 +185,42 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
                         "vector": vector,
                         "topK": _TOP_K,
                         "includeMetadata": True,
-                        "namespace": namespace  # 핵심 추가
+                        "namespace": namespace,
                     },
                     timeout=10.0,
                 )
                 r.raise_for_status()
 
-                matches = r.json().get("matches", [])
+            matches = r.json().get("matches", [])
 
-                results = []
-                for m in matches:
-                    score = m.get("score", 0.0)
-                    metadata = m.get("metadata", {})
-                    text = metadata.get("text", "")
+            results = []
+            for m in matches:
+                score = m.get("score", 0.0)
+                metadata = m.get("metadata", {})
+                text = metadata.get("text", "")
 
-                    if score < _SCORE_THRESHOLD:
-                        continue
-                    if not text.strip():
-                        continue
+                if score < _SCORE_THRESHOLD:
+                    continue
+                if not text.strip():
+                    continue
 
-                    results.append({
-                        "text": text,
-                        "score": score,
-                        "metadata": metadata,
-                    })
+                results.append({
+                    "text": text,
+                    "score": score,
+                    "metadata": metadata,
+                })
 
-                return results
+            return results
 
         except Exception as e:
-            print(f"[Pinecone query error] {e}")
+            print("[Pinecone query error]", e)
             return []
 
-    # ============================================================
-    # TEXT GENERATION
-    # ============================================================
-    async def _generate_summary(self, query: str, items: list[dict]) -> str:
+    async def _generate_summary(self, query, items):
         if not self.textgen_endpoint:
-            return f"{len(items)}개의 기억 발견"
+            return f"{len(items)}개 기억"
 
-        context = "\n".join(f"- {i['text'][:150]}" for i in items)
+        context = "\n".join(i["text"][:100] for i in items)
 
         try:
             async with httpx.AsyncClient() as client:
@@ -262,20 +237,14 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
                 return r.json()["choices"][0]["message"]["content"]
 
         except Exception as e:
-            print(f"[TextGen error] {e}")
-            return f"{len(items)}개의 기억 발견"
+            print("[TextGen error]", e)
+            return f"{len(items)}개 기억"
 
-    # ============================================================
-    # UTILS
-    # ============================================================
-    def _split(self, text: str):
-        chunks = []
-        i = 0
-        while i < len(text):
-            chunks.append(text[i:i + _CHUNK_SIZE])
-            i += _CHUNK_SIZE - _CHUNK_OVERLAP
-        return chunks
+    def _split(self, text):
+        return [
+            text[i:i + _CHUNK_SIZE]
+            for i in range(0, len(text), _CHUNK_SIZE - _CHUNK_OVERLAP)
+        ]
 
-    def _make_id(self, text: str, idx: int):
-        base = hashlib.md5(text.encode()).hexdigest()[:8]
-        return f"{base}_{idx}"
+    def _make_id(self, text, idx):
+        return hashlib.md5(text.encode()).hexdigest()[:8] + f"_{idx}"
