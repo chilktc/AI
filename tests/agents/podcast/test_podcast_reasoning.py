@@ -889,3 +889,35 @@ def test_memory_style_score_threshold_default() -> None:
     agent = PodcastReasoningAgent()
     assert hasattr(agent, "memory_style_score_threshold")
     assert agent.memory_style_score_threshold == 0.9
+
+
+# === 16. _build_phase_context — phase별 메모리 분기 ===
+
+
+def test_build_phase_context_got_memory_count_only(
+    agent_with_stubs: PodcastReasoningAgent,
+) -> None:
+    """GoT phase: memory_result가 있어도 건수 요약만 포함되고 원문은 포함되지 않는다."""
+    memory_result = {
+        "episodes": [
+            {
+                "text": "안녕하세요. 번아웃 에피소드 원문입니다.",
+                "score": 0.94,
+                "metadata": {
+                    "date": "2026-04-10T14:32:15",
+                    "episode_title": "번아웃과 리더십",
+                },
+            }
+        ],
+        "summary": "번아웃 관련 1개 에피소드",
+    }
+    context = agent_with_stubs._build_phase_context(
+        phase="GoT",
+        user_input="요즘 너무 힘들어요.",
+        intent={},
+        memory_result=memory_result,
+    )
+    assert "[과거 에피소드 기억]" in context
+    assert "1건 발견" in context
+    assert "번아웃 에피소드 원문" not in context
+    assert "번아웃과 리더십" not in context
