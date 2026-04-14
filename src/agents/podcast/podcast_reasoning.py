@@ -164,10 +164,12 @@ class PodcastReasoningAgent(BaseAgent):
             {
                 "full_threshold": 0.8,
                 "standard_threshold": 0.5,
+                "memory_style_score_threshold": 0.9,
             }
         )
         self.full_threshold: float = cfg["full_threshold"]
         self.standard_threshold: float = cfg["standard_threshold"]
+        self.memory_style_score_threshold: float = cfg["memory_style_score_threshold"]
 
     # === 추론 깊이 결정 ===
 

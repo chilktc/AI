@@ -879,3 +879,13 @@ class TestPodcastReasoningWithLLM:
 
         assert "reasoning_depth" in rr
         assert rr["reasoning_depth"] in {"full", "standard", "minimal"}
+
+
+# === 15. memory_style_score_threshold 설정 로드 ===
+
+
+def test_memory_style_score_threshold_default() -> None:
+    """memory_style_score_threshold 기본값이 0.9로 로드된다."""
+    agent = PodcastReasoningAgent()
+    assert hasattr(agent, "memory_style_score_threshold")
+    assert agent.memory_style_score_threshold == 0.9
