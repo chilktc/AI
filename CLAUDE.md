@@ -34,18 +34,18 @@ TIER 4 (후처리): Script Personalizer
 
 | # | 에이전트 | TIER | 모델 | 담당 개발자 |
 |---|---------|------|------|------------|
-| 01 | Intent Classifier | TIER 0 | Sonnet 3.7 | 개발자1 |
-| 02 | Safety Agent | TIER 1 (병렬) | Sonnet 3.7 | 개발자2 |
+| 01 | Intent Classifier | TIER 0 | Haiku | 개발자1 |
+| 02 | Safety Agent | TIER 1 (병렬) | Sonnet | 개발자2 |
 | 03 | Emotion Agent | TIER 1 (병렬) | Haiku | 개발자2 |
 | 04 | Content Analyzer | TIER 1 (병렬) | Haiku | 개발자3 |
-| 05 | Podcast Reasoning | TIER 1 (병렬) | Sonnet 3.7 | 개발자3 |
-| 06 | Episode Memory | 독립 (Reasoning 조건부) | Sonnet 3.5 | 개발자2 |
-| 07 | Knowledge Agent | 독립 (Reasoning 조건부) | Sonnet 3.5 | 개발자1 |
+| 05 | Podcast Reasoning | TIER 1 (병렬) | Sonnet | 개발자3 |
+| 06 | Episode Memory | 독립 (Reasoning 조건부) | Sonnet | 개발자2 |
+| 07 | Knowledge Agent | 독립 (Reasoning 조건부) | Sonnet | 개발자1 |
 | 08 | Script Generator | TIER 2 (병렬) | Haiku | 개발자1 |
 | 09 | Visualization | TIER 2 (병렬) / 비동기 | Haiku | 개발자2 |
 | 10 | Batch Validator | TIER 3 | Haiku | 개발자3 |
-| 11 | Script Personalizer | TIER 4 | Sonnet 3.7 | 개발자1 |
-| 부가 | Learning Agent | 비동기 후처리 | Sonnet 3.5 | 개발자3 |
+| 11 | Script Personalizer | TIER 4 | Sonnet | 개발자1 |
+| 부가 | Learning Agent | 비동기 후처리 | Sonnet | 개발자3 |
 
 ### 파일 위치
 
@@ -196,6 +196,12 @@ class AgentState(TypedDict, total=False):
     # === 외부 데이터 ===
     stories_context: dict | None  # Stories 선택 데이터 (keywords, title, description)
 
+    # === 학습/메모리 내부 ===
+    structured_input: dict[str, Any]         # Intent Classifier가 정규화한 입력 구조체
+    learning_pattern: dict[str, Any] | None  # Learning Agent가 추출한 패턴 (비동기 후처리)
+    memory_text: str                          # Episode Memory 검색 쿼리 텍스트
+    memory_metadata: dict[str, Any]           # Episode Memory 검색 메타데이터 (필터 조건 등)
+
     # === 제어 ===
     next_step: str            # 워크플로우 라우팅 플래그
     execution_plan: dict      # Intent Classifier가 결정한 실행 계획
@@ -343,7 +349,7 @@ Content-Type: application/json
 - API 스키마 변경은 백엔드 팀과 합의 후 `src/api/contracts.py`에 반영
 - 리소스 경로 상수: `src/api/backend_resources.py` (RESOURCE_* 상수)
 - Save 타입 상수: `src/api/backend_resources.py` (TYPE_* 상수)
-- 타임아웃: 기본 5초, LLM 관련 30초 (config `api.timeout`, `api.llm_timeout`)
+- 타임아웃: 기본 10초, LLM 관련 60초 (config `api.timeout`, `api.llm_timeout`)
 - Backend URL 기본값: `http://localhost:8080/greenroom/ingest/ai` (`BACKEND_API_URL` 환경변수로 오버라이드)
 - 실패 시 최대 3회 재시도 (exponential backoff)
 - 활성 리소스 (SaveRequest 경유): podcast_metadata, content_analyses, emotion_logs, visualizations, learning
@@ -451,7 +457,7 @@ class ReasoningAgent:
 `config/settings.yaml`의 `prompts.versions` 섹션에서 에이전트별 사용 버전을 핀닝한다.
 
 현재 핀닝 (2026-04-14 settings.yaml 동기화):
-- Content Analyzer: v2.2.0 / Podcast Reasoning: v3.2.0 / Batch Validator: v2.3.0
+- Content Analyzer: v2.2.0 / Podcast Reasoning: v3.2.0 / Batch Validator: v2.3.0 / Visualization: v1.19.0
 
 상세: `docs/guides/PROMPT_VERSIONING.md`
 
@@ -505,7 +511,7 @@ class ReasoningAgent:
 ### 테스트 현황
 
 ```
-583 passed
+596 passed
 ```
 
 ---

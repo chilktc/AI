@@ -225,6 +225,12 @@ async def run_with_cancel(
         if cancel_waiter in done and task not in done:
             # 취소 신호 수신 → 태스크 취소
             task.cancel()
+            try:
+                # cancel() 요청 후 await 해야 태스크의 finally 블록이 실행되고
+                # 내부 리소스(네트워크 연결, Lock 등)가 정상 정리된다.
+                await task
+            except (asyncio.CancelledError, Exception):
+                pass
             reason = (cancel_reason or {}).get("reason", "알 수 없음")
             logger.info("[CANCEL] %s 취소됨 (사유: %s)", name, reason)
             return (name, {})
