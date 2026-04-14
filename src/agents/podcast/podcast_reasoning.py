@@ -428,7 +428,8 @@ class PodcastReasoningAgent(BaseAgent):
                 # ToT: 메타데이터만 — 구조 다양성 가이드
                 lines = ["[과거 에피소드 기억 — 구조 참고]"]
                 for ep in episodes:
-                    date = ep.get("metadata", {}).get("date", "")[:10]
+                    raw_date = ep.get("metadata", {}).get("date", "")
+                    date = raw_date[:10] if raw_date else "날짜 없음"
                     title = ep.get("metadata", {}).get("episode_title", "제목 없음")
                     lines.append(f"- {date} '{title}'")
                 lines.append("→ 위 에피소드에서 사용된 구조를 파악하여 대안 생성 시 다양성을 확보하세요.")
@@ -437,6 +438,7 @@ class PodcastReasoningAgent(BaseAgent):
             elif phase == "CoT":
                 # CoT: summary + score 필터 원문 — 스타일 개인화 (Task 4에서 구현)
                 parts.append(f"[과거 에피소드 기억]\n- {episode_count}건 발견")
+
         if knowledge_result and knowledge_result.get("articles"):
             article_count = len(knowledge_result["articles"])
             parts.append(f"[관련 전문 지식]\n- {article_count}건 발견")
