@@ -7,6 +7,7 @@ settings.yaml 기반 설정 + Bedrock 이미지 모델 + S3 업로드 구조.
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -223,6 +224,123 @@ async def test_error_path_visual_data_has_same_keys_as_normal_path(
     vd = result.get("visual_data", {})
     for key in ["image_url", "style_type", "interpretation"]:
         assert key in vd, f"에러 경로 visual_data에 '{key}' 키 없음"
+
+
+# === 콘텐츠 정책 방어 테스트 ===
+
+
+class TestImagePromptSanitization:
+    """_sanitize_image_prompt()가 금지 키워드를 제거하는지 검증한다."""
+
+    def test_removes_english_blocked_keywords(self) -> None:
+        from src.agents.podcast.visualization import _sanitize_image_prompt
+
+        result = _sanitize_image_prompt("Abstract forms with human face showing violence")
+        assert "human" not in result
+        assert "face" not in result
+        assert "violence" not in result
+        assert "Abstract" in result
+
+    def test_removes_korean_blocked_keywords(self) -> None:
+        from src.agents.podcast.visualization import _sanitize_image_prompt
+
+        result = _sanitize_image_prompt("추상적 형태 사람 얼굴 폭력 표현")
+        assert "사람" not in result
+        assert "얼굴" not in result
+        assert "폭력" not in result
+
+    def test_returns_safe_fallback_when_all_removed(self) -> None:
+        from src.agents.podcast.visualization import SAFE_FALLBACK_PROMPT, _sanitize_image_prompt
+
+        result = _sanitize_image_prompt("human face violence blood")
+        assert result == SAFE_FALLBACK_PROMPT
+
+    def test_preserves_safe_prompt(self) -> None:
+        from src.agents.podcast.visualization import _sanitize_image_prompt
+
+        safe = "Soft gradient with warm beige tones and blurred edges"
+        result = _sanitize_image_prompt(safe)
+        assert result == safe
+
+
+@pytest.mark.asyncio
+async def test_content_blocked_uses_safe_fallback(agent: VisualizationAgent) -> None:
+    """ContentBlockedError 발생 시 SAFE_FALLBACK_PROMPT로 재시도한다."""
+    from src.agents.shared.base_agent import ContentBlockedError
+
+    llm_response = {
+        "image_prompt": "test prompt",
+        "style_type": "soft_blurred",
+        "interpretation": "테스트",
+    }
+    image_gen_response = {"image_binary": b"\x89PNG\r\n\x1a\n"}
+    state = AgentState(
+        user_input="테스트",
+        user_id="u",
+        session_id="s",
+        mode="podcast",
+        emotion_vectors={},
+        content_analysis={},
+    )
+
+    call_count = 0
+
+    async def mock_image_gen(**kwargs: Any) -> dict[str, Any]:
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            raise ContentBlockedError("content blocked")
+        return image_gen_response
+
+    agent.s3_client = MagicMock()
+
+    with (
+        patch.object(agent, "call_llm_json", new_callable=AsyncMock, return_value=llm_response),
+        patch.object(agent, "call_image_gen", side_effect=mock_image_gen),
+    ):
+        result = await agent.process(state)
+
+    assert result["visual_data"]["status"] == "completed"
+    assert call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_content_blocked_after_max_retries_returns_failed(
+    agent: VisualizationAgent,
+) -> None:
+    """재시도 후에도 차단되면 status='failed', error='content_blocked'를 반환한다."""
+    from src.agents.shared.base_agent import ContentBlockedError
+
+    llm_response = {
+        "image_prompt": "test prompt",
+        "style_type": "soft_blurred",
+        "interpretation": "테스트",
+    }
+    state = AgentState(
+        user_input="테스트",
+        user_id="u",
+        session_id="s",
+        mode="podcast",
+        emotion_vectors={},
+        content_analysis={},
+    )
+
+    agent.s3_client = MagicMock()
+
+    with (
+        patch.object(agent, "call_llm_json", new_callable=AsyncMock, return_value=llm_response),
+        patch.object(
+            agent,
+            "call_image_gen",
+            new_callable=AsyncMock,
+            side_effect=ContentBlockedError("blocked"),
+        ),
+    ):
+        result = await agent.process(state)
+
+    vd = result["visual_data"]
+    assert vd["status"] == "failed"
+    assert vd["error"] == "content_blocked"
 
 
 # === LLM 실제 호출 테스트 ===

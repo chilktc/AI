@@ -56,6 +56,10 @@ _active_ab_variant: contextvars.ContextVar[str | None] = contextvars.ContextVar(
 )
 
 
+class ContentBlockedError(Exception):
+    """AWS Bedrock 콘텐츠 정책에 의해 이미지 생성이 차단된 경우."""
+
+
 class BaseAgent(ABC):
     """
     모든 에이전트의 기본 클래스.
@@ -701,7 +705,14 @@ class BaseAgent(ABC):
         )
 
         response_body = json.loads(response["body"].read())
-        image_binary = base64.b64decode(response_body["images"][0])
+
+        images = response_body.get("images", [])
+        if not images:
+            raise ContentBlockedError(
+                response_body.get("error", "이미지가 AWS 콘텐츠 정책에 의해 차단되었습니다")
+            )
+
+        image_binary = base64.b64decode(images[0])
         self.logger.info("Bedrock 이미지 생성 완료: model=%s, region=%s", model, image_region)
         return {"image_binary": image_binary}
 
