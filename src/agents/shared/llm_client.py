@@ -31,8 +31,9 @@ from typing import Any
 import anthropic
 
 from config.loader import get_settings
+from src.utils.logger import get_agent_logger
 
-_cb_logger = logging.getLogger(__name__)
+_cb_logger = get_agent_logger("llm_client")
 
 
 class CircuitOpenError(Exception):

@@ -22,8 +22,9 @@ from src.api.backend_resources import (
 from src.api.client import BackendClient
 from src.api.contracts import SaveRequest
 from src.db.base import BaseGraphClient, BaseRDBClient, BaseStorageClient, BaseVectorClient
+from src.utils.logger import get_agent_logger
 
-logger = logging.getLogger(__name__)
+logger = get_agent_logger("db.api_proxy")
 
 
 class VectorProxyClient(BaseVectorClient):

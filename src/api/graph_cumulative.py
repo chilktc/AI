@@ -21,8 +21,9 @@ from datetime import datetime, timezone
 from typing import Any
 
 from src.api.graph_transformer import validate_group
+from src.utils.logger import get_agent_logger
 
-logger = logging.getLogger(__name__)
+logger = get_agent_logger("graph_cumulative")
 
 _TREND_THRESHOLD: float = 0.05
 

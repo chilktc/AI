@@ -24,8 +24,9 @@ from typing import Any
 from langchain_core.callbacks import BaseCallbackHandler
 
 from src.monitoring.models import AgentMetric, MonitoringEvent, PipelineMetrics
+from src.utils.logger import get_agent_logger
 
-logger = logging.getLogger(__name__)
+logger = get_agent_logger("callbacks")
 
 
 # 에이전트별 TIER 매핑 — 노드 이름으로 TIER 판별

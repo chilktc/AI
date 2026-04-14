@@ -35,8 +35,9 @@ from src.api.external_schemas import (
     SafetyAlertData,
     SlimPodcastResponse,
 )
+from src.utils.logger import get_agent_logger
 
-logger = logging.getLogger(__name__)
+logger = get_agent_logger("routes.podcasts")
 
 router = APIRouter()
 

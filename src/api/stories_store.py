@@ -13,7 +13,9 @@ import asyncio
 import logging
 from typing import Any
 
-logger = logging.getLogger(__name__)
+from src.utils.logger import get_agent_logger
+
+logger = get_agent_logger("stories_store")
 
 
 class StoriesStore:

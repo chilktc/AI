@@ -19,8 +19,9 @@ from fastapi import APIRouter, Query
 
 from src.api.graph_transformer import transform_neo4j_rows_to_graph_data
 from src.db.factory import create_graph_client
+from src.utils.logger import get_agent_logger
 
-logger = logging.getLogger(__name__)
+logger = get_agent_logger("routes.graph")
 
 router = APIRouter(prefix="/internal/graph", tags=["Graph (Internal)"])
 

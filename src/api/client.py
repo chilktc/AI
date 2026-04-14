@@ -24,9 +24,10 @@ from src.api.contracts import (
     SaveRequest,
     SaveResponse,
 )
+from src.utils.logger import get_agent_logger
 from src.utils.retry import with_retry
 
-_logger = logging.getLogger(__name__)
+_logger = get_agent_logger("client")
 
 
 class BackendClient:
