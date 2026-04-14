@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import asyncio
 import functools
-import logging
 from typing import Any, Callable, TypeVar
 
 from src.utils.logger import get_agent_logger

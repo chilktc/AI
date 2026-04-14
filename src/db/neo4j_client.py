@@ -14,7 +14,6 @@ external_schemas.py의 Neo4j 노드/관계 스키마와 연동한다.
 
 from __future__ import annotations
 
-import logging
 import os
 from typing import Any
 

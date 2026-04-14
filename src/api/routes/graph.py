@@ -12,7 +12,6 @@ Backend 전용 그래프 데이터 조회 API.
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 from fastapi import APIRouter, Query

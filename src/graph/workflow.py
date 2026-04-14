@@ -31,7 +31,6 @@ Safety CRISIS 선점:
 from __future__ import annotations
 
 import asyncio
-import logging
 import time
 from typing import Any
 
@@ -380,7 +379,8 @@ async def tier1_podcast_fan_out(state: AgentState) -> dict[str, Any]:
 
         if merged.get("next_step") == "crisis_response":
             logger.warning(
-                "[TIER 1] 타임아웃 (%ds) — CRISIS 감지 상태에서 타임아웃 발생, 위기 응답 노드로 전환",
+                "[TIER 1] 타임아웃 (%ds) — CRISIS 감지 상태에서 타임아웃 발생,"
+                " 위기 응답 노드로 전환",
                 _TIER1_TIMEOUT,
             )
         else:
