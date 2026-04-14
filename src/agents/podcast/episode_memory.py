@@ -76,6 +76,7 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
                 metadata={
                     "text": chunk,
                     "date": datetime.datetime.now().isoformat(),
+                    "user_id": user_id,
                     **(metadata or {}),
                 },
                 namespace=namespace,
