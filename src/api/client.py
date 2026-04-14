@@ -69,7 +69,7 @@ class BackendClient:
     async def _on_request(self, request: httpx.Request) -> None:
         """HTTP 요청 로깅 이벤트 훅."""
         content_length = len(request.content) if request.content else 0
-        _logger.debug(
+        _logger.info(
             "[BackendClient] HTTP 요청",
             extra={
                 "method": request.method,
@@ -79,12 +79,14 @@ class BackendClient:
         )
 
     async def _on_response(self, response: httpx.Response) -> None:
-        """HTTP 응답 로깅 이벤트 훅 (에러 응답 상세 로깅)."""
+        """HTTP 응답 로깅 이벤트 훅 (모든 응답 상세 로깅)."""
+        try:
+            response_body = response.text[:1000]
+        except Exception:
+            response_body = "[응답 본문 읽기 실패]"
+
         if response.status_code >= 400:
-            try:
-                response_body = response.text[:1000]
-            except Exception:
-                response_body = "[응답 본문 읽기 실패]"
+            # 에러 응답: ERROR 레벨
             _logger.error(
                 "[BackendClient] HTTP 에러 응답",
                 extra={
@@ -92,6 +94,17 @@ class BackendClient:
                     "url": str(response.request.url),
                     "response_body": response_body,
                     "headers": dict(response.headers),
+                },
+            )
+        else:
+            # 성공 응답 (200-399): INFO 레벨
+            _logger.info(
+                "[BackendClient] HTTP 성공 응답",
+                extra={
+                    "status_code": response.status_code,
+                    "url": str(response.request.url),
+                    "response_body": response_body,
+                    "content_length": len(response_body),
                 },
             )
 
