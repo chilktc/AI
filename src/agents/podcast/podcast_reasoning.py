@@ -27,6 +27,19 @@ from src.agents.shared.base_agent import BaseAgent
 from src.agents.shared.stubs import EpisodeMemoryStub, KnowledgeAgentStub
 from src.models.agent_state import AgentState
 
+# DI fallback — 실제 에이전트 (lazy import로 순환 참조 방지)
+_EpisodeMemoryAgent: type | None = None
+
+
+def _get_episode_memory_agent_class() -> type:
+    """EpisodeMemoryAgent를 lazy import한다."""
+    global _EpisodeMemoryAgent  # noqa: PLW0603
+    if _EpisodeMemoryAgent is None:
+        from src.agents.podcast.episode_memory import EpisodeMemoryAgent
+
+        _EpisodeMemoryAgent = EpisodeMemoryAgent
+    return _EpisodeMemoryAgent
+
 # 추론 깊이 타입 — complexity_score에 따라 결정
 ReasoningDepth = Literal["full", "standard", "minimal"]
 
@@ -44,7 +57,7 @@ class PodcastReasoningAgent(BaseAgent):
     개인화된 에피소드 경험과 전문 지식을 통합한다.
 
     Args:
-        episode_memory: Episode Memory 에이전트 (DI — 없으면 stub 사용)
+        episode_memory: Episode Memory 에이전트 (DI — 없으면 EpisodeMemoryAgent 사용)
         knowledge_agent: Knowledge Agent (DI — 없으면 stub 사용)
     """
 
@@ -54,8 +67,8 @@ class PodcastReasoningAgent(BaseAgent):
         knowledge_agent: Any | None = None,
     ) -> None:
         super().__init__(name="podcast_reasoning", tier=1)
-        # 의존성 주입 — 통합 전에는 stub 사용
-        self.episode_memory = episode_memory or EpisodeMemoryStub()
+        # 의존성 주입 — DI 미전달 시 실제 에이전트로 fallback
+        self.episode_memory = episode_memory or _get_episode_memory_agent_class()()
         self.knowledge_agent = knowledge_agent or KnowledgeAgentStub()
         self._load_config()
 
@@ -447,15 +460,36 @@ class PodcastReasoningAgent(BaseAgent):
         호출 조건:
             1. execution_plan에서 needs_memory가 True이거나
             2. 복잡도가 0.6 이상인 경우
+
+        어댑터 패턴:
+            EpisodeMemoryAgent.process(state) → Stub 호환 형식 변환.
+            process() 반환: {"memory_results": {"items": [...], "summary": "..."}}
+            변환 결과:     {"episodes": [...], "relevance_scores": [...], "summary": "..."}
         """
         needs_memory = execution_plan.get("needs_memory", False)
 
         if needs_memory or complexity >= 0.6:
             self.logger.info("Episode Memory 조건부 호출 (complexity=%.2f)", complexity)
-            return await self.episode_memory.search(
-                query=user_input,
-                user_id=user_id,
-            )
+
+            memory_state: AgentState = {
+                "user_input": user_input,
+                "user_id": user_id,
+            }
+            result = await self.episode_memory.process(memory_state)
+            memory_data = result.get("memory_results")
+
+            if not memory_data:
+                return None
+
+            # process() → Stub 호환 형식으로 변환
+            items = memory_data.get("items", [])
+            return {
+                "episodes": items,
+                "relevance_scores": [
+                    item.get("score", 0.0) for item in items
+                ],
+                "summary": memory_data.get("summary", ""),
+            }
 
         return None
 
