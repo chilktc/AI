@@ -1,8 +1,8 @@
 # 마스터 계획 인덱스 (Master Plan Index)
 
 **목적**: 모든 기획 문서의 현황 추적 및 상태 관리  
-**버전**: v38
-**마지막 업데이트**: 2026-04-14 18:00
+**버전**: v39
+**마지막 업데이트**: 2026-04-14 19:00
 **관리 원칙**:
 - 완료된 계획 → PR 링크 + 간단한 변경 사항 기록
 - 미완료 계획 → 상태 및 다음 액션 기록
@@ -55,6 +55,8 @@
 | 39 | TIER 타임아웃 확장 + Bedrock throttling 로그 | *(인라인)* | ✅ 완료 | PR #116 | TIER 0/4/비동기 타임아웃 2배 확장, Bedrock throttling 로그 추가 |
 | 40 | CI lint 에러 완전 수정 (Black + Ruff) | *(인라인)* | ✅ 완료 | PR #118, #120 | Black: 5개 파일 포맷 수정. Ruff F401: 미사용 logging import 17개 파일 제거. Ruff E501: workflow.py 줄 길이 초과 수정 (582 passed) |
 | 41 | Docker graceful shutdown — 재배포 시 진행 중 요청 보호 | *(인라인)* | ✅ 완료 | PR #130 | Dockerfile --timeout-graceful-shutdown 300 + docker-compose.yml stop_grace_period 310s. 재배포 시 기본 10초→300초로 확장, LangSmith pending 해소 (582 passed) |
+| 42 | Episode Memory + KT Cloud 연동 정합성 수정 | `_archive/plans/2026-04-14-episode-memory-kt-cloud-remediation.md` | ✅ 완료 | PR #127 | EpisodeMemoryStub→실제 에이전트 어댑터 패턴 DI 전환, .env.example 변수명 수정, settings.yaml index_memory_podcast 제거 |
+| 43 | Episode Memory phase별 컨텍스트 주입 개선 | `_archive/plans/2026-04-14-episode-memory-context-injection.md` | ✅ 완료 | PR #134 | GoT(건수), ToT(메타데이터), CoT(score 필터 원문) 분기, memory_style_score_threshold 설정, podcast_reasoning 프롬프트 v3.2.0 핀닝 |
 
 **범례:**
 - ✅ 완료 — 코드 구현 완료, PR 머지됨
@@ -232,4 +234,4 @@
 
 ---
 
-*마스터 인덱스 v38 — 2026-04-14 18:00 (Plan #40~41 추가: CI lint 수정 + Docker graceful shutdown, PR #120/#130 반영, 완료 plan 파일 archive 이동)*
+*마스터 인덱스 v39 — 2026-04-14 19:00 (Plan #42~43 추가: Episode Memory KT Cloud 정합성 수정 PR #127 + Context Injection PR #134 완료 반영, 완료 plan 파일 archive 이동)*

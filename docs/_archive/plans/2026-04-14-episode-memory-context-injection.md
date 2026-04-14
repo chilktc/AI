@@ -1,5 +1,9 @@
 # Episode Memory 컨텍스트 주입 개선 Implementation Plan
 
+> **상태**: ✅ 완료
+> **완료 PR**: #134 (feat: Episode Memory phase별 컨텍스트 주입 개선 GoT/ToT/CoT 분리)
+> **마지막 업데이트**: 2026-04-14 19:00
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** `_build_phase_context()`를 phase별로 분기하여 GoT는 오염 방지, ToT는 구조 다양성, CoT는 스타일 개인화를 각각 달성한다.
