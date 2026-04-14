@@ -1,8 +1,8 @@
 # 마스터 계획 인덱스 (Master Plan Index)
 
 **목적**: 모든 기획 문서의 현황 추적 및 상태 관리  
-**버전**: v35
-**마지막 업데이트**: 2026-04-14 11:30
+**버전**: v37
+**마지막 업데이트**: 2026-04-14 14:30
 **관리 원칙**:
 - 완료된 계획 → PR 링크 + 간단한 변경 사항 기록
 - 미완료 계획 → 상태 및 다음 액션 기록
@@ -48,9 +48,11 @@
 | 32 | 테스트 정리 — live 테스트 분리 | *(인라인 — 별도 계획서 없음)* | ✅ 완료 | PR #105 (3b43bc4) | pyproject.toml addopts="-m 'not live'" 추가, test_safety/test_backend_integration 삭제, live fixture 분리, api_client→backend_client 시그니처 수정. 539 passed (live 제외 ~9초). |
 | 33 | KT Cloud RAG 통합 — Knowledge Ingestion Pipeline | `docs/architecture/API_ENDPOINTS_INTERNAL.md` | ✅ 완료 | PR #106 (afc3a56) | jun 개발자. KT Cloud RAG Suite 연동, Knowledge Ingestion 스크립트(`scripts/ingest_knowledge.py`), 지식 청크 적재 파이프라인. `src/agents/podcast/knowledge.py` 확장. |
 | 34 | Stories 데이터 수신 인프라 | `plans/2026-04-13-stories-receive-infra.md` | ⛔ Plan #35로 대체 | — | asyncio.Event 방식(Plan #35)으로 재설계·구현 완료. 원본 계획(REST 폴링 방식)은 미채택. |
-| 35 | Stories asyncio.Event 수신 인프라 | *(인라인)* | ✅ 완료 | PR #110 | asyncio.Event 멀티 구독 패턴 + TIER 4 wait_for_stories_node. Plan #34 대체 (581 passed) |
+| 35 | Stories asyncio.Event 수신 인프라 | `plans/2026-04-14-stories-wait-mechanism.md` | ✅ 완료 | PR #110 | asyncio.Event 멀티 구독 패턴 + TIER 4 wait_for_stories_node. Plan #34 대체 (581 passed) |
 | 36 | 로그 시스템 전체 통일 | *(인라인)* | ✅ 완료 | PR #112, #113 | logging.getLogger→get_agent_logger 18개 파일 통일 + 동시성 안전성 강화 (582 passed) |
 | 37 | CRISIS-타임아웃 경합 수정 | *(인라인)* | ✅ 완료 | PR #114 | run_with_cancel() 로그 CRISIS/타임아웃 구분, CRISIS 선저장 경합 방지, TIER 1 타임아웃 120→240s |
+| 38 | S3 Public-Read ACL 추가 | `plans/2026-04-14-s3-public-read-acl.md` | ✅ 완료 | PR #117 | visualization.py put_object에 ACL="public-read" 추가. 브라우저 직접 URL 접근 허용 (583 passed) |
+| 39 | TIER 타임아웃 확장 + Bedrock throttling 로그 | *(인라인)* | ✅ 완료 | PR #116 | TIER 0/4/비동기 타임아웃 2배 확장, Bedrock throttling 로그 추가 |
 
 **범례:**
 - ✅ 완료 — 코드 구현 완료, PR 머지됨
@@ -219,7 +221,11 @@
 | #112 | feature/logging-unification | 로그 시스템 정리 + 동시성 안전성 강화 (Uvicorn 로거 억제, asyncio.Lock) |
 | #113 | feature/logging-unification | 로그 시스템 전체 통일 — logging.getLogger→get_agent_logger 18개 파일 |
 | #114 | feature/validation-crisis-timeout-fix | CRISIS-타임아웃 로그 구분, 경합 조건 수정, TIER 1 타임아웃 240s |
+| #115 | feature/validation-docs-update-0414-2 | 계획 문서 전체 점검 및 업데이트 (v35) |
+| #116 | feature/validation-timeout-throttle-logging | TIER 0/4/비동기 타임아웃 2배 확장 + Bedrock throttling 로그 추가 |
+| #117 | feature/reasoning-s3-public-read | S3 업로드 ACL=public-read 추가 — 브라우저 직접 접근 허용 (583 passed) |
+| #118 | style/black-formatting | Black 포매팅 적용 — CI lint 에러 해결 (5개 파일) |
 
 ---
 
-*마스터 인덱스 v35 — 2026-04-14 11:30 (Plan #36~37 추가: 로그 통일 + CRISIS-타임아웃 경합 수정)*
+*마스터 인덱스 v37 — 2026-04-14 14:30 (Plan #38~39 추가: S3 ACL + TIER 타임아웃 확장, PR #115~#118 반영)*
