@@ -58,6 +58,14 @@ class StoriesStore:
                 timeout,
             )
             return None
+        except asyncio.CancelledError:
+            # HTTP 연결 종료(클라이언트 disconnect 또는 upstream 타임아웃)로
+            # anyio cancel scope가 태스크를 취소한 경우 — 타임아웃과 동일하게 처리한다.
+            logger.info(
+                "[StoriesStore] 취소 — session_id=%s (HTTP 연결 종료)",
+                session_id,
+            )
+            return None
 
     def delete_session(self, session_id: str) -> None:
         """파이프라인 완료 후 메모리 정리. 존재하지 않는 세션은 무시한다."""

@@ -52,6 +52,18 @@ class TestWaitForStories:
         result = await store.wait_for_stories("sess_nonexistent", timeout=0.1)
         assert result is None
 
+    async def test_wait_returns_none_on_cancelled(self, store: StoriesStore) -> None:
+        """HTTP 연결 종료로 태스크가 취소되면 None을 반환한다."""
+
+        async def _cancelled_wait() -> None:
+            await store.wait_for_stories("sess_cancel", timeout=10.0)
+
+        task = asyncio.create_task(_cancelled_wait())
+        await asyncio.sleep(0.02)
+        task.cancel()
+        result = await task  # CancelledError를 삼키고 None 반환해야 함
+        assert result is None
+
 
 class TestDeleteSession:
     def test_delete_removes_entry(self, store: StoriesStore) -> None:
