@@ -173,12 +173,12 @@ graph:
 pipeline:
   max_retries: 1              # TIER 3 → TIER 2 재시도 상한 (FAIL용) — 최악 760s 상한
   max_critical_retries: 2     # CRITICAL_FAIL 전용 재시도 상한 — 최악 1140s 상한
-  tier0_timeout_seconds: 20    # TIER 0: Intent Classifier 단독 (기존 10 × 2)
+  tier0_timeout_seconds: 40    # TIER 0: Intent Classifier 단독 (20 → 40, APAC CRIS 지연 반영)
   tier1_timeout_seconds: 240   # TIER 1: 병렬 4개 — Podcast Reasoning 120초+ 빈도 반영 (120 → 240)
   tier2_timeout_seconds: 280   # TIER 2: Script Generator + Visualization 병렬 (기존 140 × 2)
   tier3_timeout_seconds: 100   # TIER 3: Batch Validator 재시도 포함 (기존 50 × 2)
-  tier4_timeout_seconds: 20    # TIER 4: Script Personalizer (기존 10 × 2)
-  async_timeout_seconds: 60    # 비동기: Visualization + Learning (기존 30 × 2)
+  tier4_timeout_seconds: 40    # TIER 4: Script Personalizer (20 → 40, APAC CRIS 지연 반영)
+  async_timeout_seconds: 120   # 비동기: Visualization + Learning (60 → 120)
 
 # Stories 수신 대기 설정
 stories:
