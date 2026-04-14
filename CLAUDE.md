@@ -480,7 +480,7 @@ class ReasoningAgent:
 > 현재 독립 에이전트 호출은 DI 패턴(직접 메서드 호출)으로 구현되어 엔벨로프가 미사용 상태이다.
 > 백엔드 통신 확장 시 활성화를 검토한다.
 
-### 인프라 강화 (PR #52~#69)
+### 인프라 강화 (PR #52~#114)
 
 | 구분 | 내용 | PR |
 |------|------|-----|
@@ -491,11 +491,15 @@ class ReasoningAgent:
 | 테스트 보강 | Circuit Breaker 9개 + SSE 스트리밍 11개 테스트 | #61 |
 | Neo4j 통합 | GoT→Neo4j 저장, 그래프 API, 누적 그래프, Mode B 단일화 | #50, #51, #53, #69 |
 | Pinecone 인프라 | PineconeClient, CLI 스크립트 3종, 테스트 59개 | #64~#68 |
+| 에이전트 출력 감사 | 7 Task 전체 완료 (SA/EA/CA/SG/VI/BV/횡단) | develop 직접 |
+| Stories 수신 인프라 | asyncio.Event 대기 + TIER 4 wait_for_stories_node | #110 |
+| 로그 시스템 통일 | logging.getLogger→get_agent_logger 18개 파일, JSON 포맷 통일 | #112, #113 |
+| CRISIS-타임아웃 수정 | 로그 구분, 경합 방지, TIER 1 타임아웃 240s | #114 |
 
 ### 테스트 현황
 
 ```
-532 passed
+582 passed
 ```
 
 ---
@@ -523,4 +527,4 @@ class ReasoningAgent:
 
 ---
 
-*마지막 업데이트: 2026-04-07*
+*마지막 업데이트: 2026-04-14 11:30*
