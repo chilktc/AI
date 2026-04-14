@@ -231,6 +231,8 @@ class LLMClient:
 
         # [동시성] 요청별 인스턴스 전제 — 싱글톤 시 다른 요청 토큰 수로 덮어쓰기됨
         self._last_usage: dict[str, int] | None = None
+        # Bedrock 호출 세부 메타데이터 (지연 구간 추적용)
+        self._last_call_metadata: dict[str, Any] = {}
         # [동시성] 요청별 인스턴스 전제 — 싱글톤 시 += 연산이 비원자적이라 값 유실
         self._total_usage: dict[str, int] = {
             "input_tokens": 0,
@@ -313,6 +315,15 @@ class LLMClient:
             {"input_tokens": N, "output_tokens": N, "total_tokens": N} 또는 None
         """
         return self._last_usage.copy() if self._last_usage is not None else None
+
+    @property
+    def last_call_metadata(self) -> dict[str, Any]:
+        """직전 LLM 호출의 세부 메타데이터를 반환한다.
+
+        Bedrock 호출 시: sem_wait_ms, bedrock_call_ms, request_id 포함.
+        다른 프로바이더는 빈 dict.
+        """
+        return self._last_call_metadata.copy()
 
     @property
     def total_usage(self) -> dict[str, int]:
@@ -426,17 +437,35 @@ class LLMClient:
         await breaker.record_success()
         _elapsed_ms = int((time.monotonic() - _start) * 1000)
         _usage = self._last_usage or {}
-        _cb_logger.info(
-            "[LLM 호출 완료] provider=%s, model=%s, latency=%dms, "
-            "input_tokens=%d, output_tokens=%d, cache_read=%d, cache_write=%d",
-            self._provider,
-            self._model_id,
-            _elapsed_ms,
-            _usage.get("input_tokens", 0),
-            _usage.get("output_tokens", 0),
-            _usage.get("cache_read_tokens", 0),
-            _usage.get("cache_write_tokens", 0),
-        )
+        _call_meta = self._last_call_metadata
+        if self._provider == "bedrock" and _call_meta:
+            _cb_logger.info(
+                "[LLM 호출 완료] provider=%s, model=%s, latency=%dms, "
+                "bedrock_call=%dms, sem_wait=%dms, request_id=%s, "
+                "input_tokens=%d, output_tokens=%d, cache_read=%d, cache_write=%d",
+                self._provider,
+                self._model_id,
+                _elapsed_ms,
+                _call_meta.get("bedrock_call_ms", 0),
+                _call_meta.get("sem_wait_ms", 0),
+                _call_meta.get("request_id", "unknown"),
+                _usage.get("input_tokens", 0),
+                _usage.get("output_tokens", 0),
+                _usage.get("cache_read_tokens", 0),
+                _usage.get("cache_write_tokens", 0),
+            )
+        else:
+            _cb_logger.info(
+                "[LLM 호출 완료] provider=%s, model=%s, latency=%dms, "
+                "input_tokens=%d, output_tokens=%d, cache_read=%d, cache_write=%d",
+                self._provider,
+                self._model_id,
+                _elapsed_ms,
+                _usage.get("input_tokens", 0),
+                _usage.get("output_tokens", 0),
+                _usage.get("cache_read_tokens", 0),
+                _usage.get("cache_write_tokens", 0),
+            )
         return result
 
     # temperature를 지원하지 않는 OpenAI 모델 접두사 (reasoning 계열)
@@ -556,38 +585,61 @@ class LLMClient:
             )
 
         # Semaphore로 동시 호출 제한 (None이면 제한 없이 실행)
+        # sem_wait_ms: semaphore acquire 대기시간 측정
+        _sem_wait_ms = 0
+
         async def _call_with_semaphore() -> dict:
+            nonlocal _sem_wait_ms
             if semaphore is not None:
+                _sem_start = time.monotonic()
                 async with semaphore:
-                    return await _call()
+                    _sem_wait_ms = int((time.monotonic() - _sem_start) * 1000)
+                    if _sem_wait_ms > 100:
+                        _cb_logger.warning(
+                            "[Bedrock] semaphore 대기 %dms — model=%s",
+                            _sem_wait_ms,
+                            self._model_id,
+                        )
+                    _bedrock_start = time.monotonic()
+                    result = await _call()
+                    return result
             return await _call()
 
         # ThrottlingException / ServiceUnavailableException → exponential backoff 재시도
         last_error: Exception | None = None
         backoff = initial_backoff
+        _bedrock_call_ms = 0
         for attempt in range(max_attempts):
+            _attempt_start = time.monotonic()
             try:
                 response = await _call_with_semaphore()
+                _bedrock_call_ms = int((time.monotonic() - _attempt_start) * 1000)
                 if attempt > 0:
                     _cb_logger.info(
-                        "[Bedrock] 재시도 성공 — model=%s, attempt=%d/%d",
+                        "[Bedrock] 재시도 성공 — model=%s, attempt=%d/%d, attempt_ms=%d",
                         self._model_id,
                         attempt + 1,
                         max_attempts,
+                        _bedrock_call_ms,
                     )
                 break
             except botocore.exceptions.ClientError as e:
+                _attempt_ms = int((time.monotonic() - _attempt_start) * 1000)
                 error_code = e.response.get("Error", {}).get("Code", "")
+                _err_request_id = e.response.get("ResponseMetadata", {}).get("RequestId", "unknown")
                 if error_code in ("ThrottlingException", "ServiceUnavailableException"):
                     last_error = e
                     wait_time = min(backoff, max_backoff)
                     _cb_logger.warning(
-                        "[Bedrock] %s — model=%s, attempt=%d/%d, backoff=%.1fs",
+                        "[Bedrock] %s — model=%s, attempt=%d/%d, "
+                        "attempt_ms=%d, backoff=%.1fs, request_id=%s",
                         error_code,
                         self._model_id,
                         attempt + 1,
                         max_attempts,
+                        _attempt_ms,
                         wait_time,
+                        _err_request_id,
                     )
                     if attempt < max_attempts - 1:
                         await asyncio.sleep(wait_time)
@@ -596,10 +648,13 @@ class LLMClient:
                 elif error_code == "ModelNotReadyException":
                     last_error = e
                     _cb_logger.warning(
-                        "[Bedrock] ModelNotReadyException — model=%s, attempt=%d/%d, backoff=5s",
+                        "[Bedrock] ModelNotReadyException — model=%s, "
+                        "attempt=%d/%d, attempt_ms=%d, backoff=5s, request_id=%s",
                         self._model_id,
                         attempt + 1,
                         max_attempts,
+                        _attempt_ms,
+                        _err_request_id,
                     )
                     if attempt < max_attempts - 1:
                         await asyncio.sleep(5)
@@ -624,6 +679,18 @@ class LLMClient:
         # 통합 응답 구조 (모든 모델 동일)
         text = response["output"]["message"]["content"][0]["text"]
         usage = response.get("usage", {})
+
+        # ResponseMetadata 캡처 (지연 원인 추적 및 AWS Support 문의용)
+        _meta = response.get("ResponseMetadata", {})
+        _request_id = _meta.get("RequestId", "unknown")
+        self._last_call_metadata = {
+            "sem_wait_ms": _sem_wait_ms,
+            "bedrock_call_ms": _bedrock_call_ms,
+            "request_id": _request_id,
+            "http_status": _meta.get("HTTPStatusCode", 0),
+            "retry_count": attempt,
+        }
+
         self._record_usage(
             input_tokens=usage.get("inputTokens", 0),
             output_tokens=usage.get("outputTokens", 0),
