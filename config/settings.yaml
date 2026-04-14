@@ -162,8 +162,7 @@ storage:
     upload_prefix: "vis"           # TODO(backend): 4-4 prefix 확정
   pinecone:
     index_knowledge: "expert-knowledge"
-
-    index_memory_podcast: "mem-podcast-episode"
+    # Episode Memory 인덱스: 환경변수 PINECONE_INDEX_EPISODE로 관리 (GitHub Secrets)
 
 # 누적 그래프 설정
 graph:
