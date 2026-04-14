@@ -541,17 +541,31 @@ class LLMClient:
         for attempt in range(max_attempts):
             try:
                 response = await _call_with_semaphore()
+                if attempt > 0:
+                    _cb_logger.info(
+                        "[Bedrock] 재시도 성공 — model=%s, attempt=%d/%d",
+                        self._model_id, attempt + 1, max_attempts,
+                    )
                 break
             except botocore.exceptions.ClientError as e:
                 error_code = e.response.get("Error", {}).get("Code", "")
                 if error_code in ("ThrottlingException", "ServiceUnavailableException"):
                     last_error = e
+                    wait_time = min(backoff, max_backoff)
+                    _cb_logger.warning(
+                        "[Bedrock] %s — model=%s, attempt=%d/%d, backoff=%.1fs",
+                        error_code, self._model_id, attempt + 1, max_attempts, wait_time,
+                    )
                     if attempt < max_attempts - 1:
-                        await asyncio.sleep(min(backoff, max_backoff))
+                        await asyncio.sleep(wait_time)
                         backoff *= 2
                     continue
                 elif error_code == "ModelNotReadyException":
                     last_error = e
+                    _cb_logger.warning(
+                        "[Bedrock] ModelNotReadyException — model=%s, attempt=%d/%d, backoff=5s",
+                        self._model_id, attempt + 1, max_attempts,
+                    )
                     if attempt < max_attempts - 1:
                         await asyncio.sleep(5)
                     continue
@@ -562,6 +576,10 @@ class LLMClient:
                 raise
         else:
             # 모든 재시도 소진
+            _cb_logger.error(
+                "[Bedrock] 재시도 소진 — model=%s, attempts=%d, last_error=%s",
+                self._model_id, max_attempts, last_error,
+            )
             raise RuntimeError(
                 f"Bedrock 호출 {max_attempts}회 재시도 후 실패: {last_error}"
             ) from last_error
