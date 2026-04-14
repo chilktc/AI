@@ -704,13 +704,22 @@ class BaseAgent(ABC):
             }
         )
 
-        response = await asyncio.to_thread(
-            bedrock_client.invoke_model,
-            modelId=model,
-            body=request_body,
-            contentType="application/json",
-            accept="application/json",
-        )
+        from botocore.exceptions import ClientError  # type: ignore
+
+        try:
+            response = await asyncio.to_thread(
+                bedrock_client.invoke_model,
+                modelId=model,
+                body=request_body,
+                contentType="application/json",
+                accept="application/json",
+            )
+        except ClientError as e:
+            error_code = e.response["Error"]["Code"]
+            error_msg = e.response["Error"]["Message"]
+            if error_code == "ValidationException" and "blocked" in error_msg.lower():
+                raise ContentBlockedError(error_msg) from e
+            raise
 
         response_body = json.loads(response["body"].read())
 
