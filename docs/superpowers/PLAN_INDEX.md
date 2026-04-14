@@ -32,7 +32,7 @@
 | 16 | 파이프라인 견고성 - Phase 2 | `pipeline-robustness-part2.md` | ✅ 완료 | #60 | get_fallback_output() 추가 |
 | 17 | 독스트링 품질 개선 구현 | `2026-04-07-docs-quality-implementation.md` | ✅ 완료 | #61 (MERGED) | Phase 1-4 구현 + CB/SSE 테스트 추가 (538 passed, 14 skipped — PR #67/#68 Pinecone 테스트 59개 추가 후) |
 | 18 | Neo4j 통합 구현 계획 | `_archive/plans/2026-04-07-neo4j-integration-plan.md` | ✅ 완료 | — | 작업 1(GoT→Neo4j E2E) ✅ 6 passed in 0.59s (AWS SSM 2026-04-09). 작업 2(Mode A) ✅ PR #88. 코드 전체 완료. 부수: seed.py 제약조건 에러 핸들링 개선 필요 |
-| 19 | Pinecone 벡터 DB 공통 인프라 | `2026-04-07-pinecone-vector-db-integration.md` | 🔶 대부분 완료 | #64~#68 | Task 1/3/4 완료. KnowledgeAgent+PineconeClient 코드 완전 구현됨 (테스트 32개 통과). ⚠️ 미완: ① EmbeddingClient(KTCloud 어댑터) 미구현 → `knowledge._search_knowledge_base()` fallback 동작 중 ② `podcast_reasoning.py` KnowledgeAgentStub 사용 (DI 미연결) ③ Task 5/6/7(CLI), Task 9(가이드) 미작성 |
+| 19 | Pinecone 벡터 DB 공통 인프라 | `2026-04-07-pinecone-vector-db-integration.md` | 🔶 대부분 완료 | #64~#68 | Task 1/3/4 완료. EpisodeMemory KT Cloud 임베딩 직접 구현 완료(동작 중). ⚠️ 미완: ① `knowledge._search_knowledge_base()`가 외부 embedding_client DI에 의존 (없으면 빈 결과) — `_embed_query()` 구현됨이나 미연결 ② `podcast_reasoning.py` KnowledgeAgentStub 사용 (DI 미연결) ③ Task 5/6/7(CLI), Task 9(가이드) 미작성 |
 | 20 | Graph Mode B 단일화 리팩터 | `2026-04-07-graph-mode-b-refactor.md` | ✅ 완료 | #69 | Mode A 삭제, publish_graph_to_rdb 단일 경로 확정, EMA를 Backend 책임으로 이관 (538 passed) |
 | 21 | 문서 전수 점검 및 정합성 수정 | *(인라인 — 별도 계획서 없음)* | ✅ 완료 | #70~#80 | 4차 사이클 점검: 대화모드 잔재·링크·날짜·버전 일관성·설계 결정 갱신 전체 완료 |
 | 22 | 에이전트 출력 감사 수정 | `_archive/plans/2026-04-08-agent-output-audit-fix.md` | ✅ 완료 | — | v9: IC-1/SP-1/SP-2/schemas 완료(8건) + Task 1-7 구현 완료(SA/EA/CA/SG/VI/BV/횡단). 582 passed |
@@ -156,7 +156,7 @@
 
 | # | 작업 | 파일 | 비고 |
 |---|------|------|------|
-| 20 | KTCloudEmbeddingClient 어댑터 + EpisodeMemory DI 연결 | `src/db/`, `podcast_reasoning.py` | KnowledgeAgent DI 완료, EpisodeMemory는 여전히 Stub |
+| 20 | KnowledgeAgent embedding 연결 — `_search_knowledge_base()`를 `_embed_query()` 기반으로 전환 | `src/agents/podcast/knowledge.py`, `podcast_reasoning.py` | EpisodeMemory 동작 중. KnowledgeAgent `_embed_query()` 구현됨이나 `_search_knowledge_base()`에서 미사용. `podcast_reasoning.py` KnowledgeAgentStub 사용 중 |
 | 21 | test_knowledge.py 벡터 검색 테스트 추가 | `tests/agents/podcast/test_knowledge.py` | 현재 stub 테스트만 존재 |
 | 22 | script_personalizer empathetic/rational 구현 | `script_personalizer.py:402,405` | 비즈니스 규칙 정의 선행 필요 |
 | 23 | script_personalizer hearing_impairment 구현 | `script_personalizer.py:450` | 비즈니스 규칙 정의 선행 필요 |
