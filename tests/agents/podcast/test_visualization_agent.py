@@ -225,7 +225,6 @@ async def test_error_path_visual_data_has_same_keys_as_normal_path(
         assert key in vd, f"에러 경로 visual_data에 '{key}' 키 없음"
 
 
-
 # === LLM 실제 호출 테스트 ===
 
 

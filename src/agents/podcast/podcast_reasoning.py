@@ -24,7 +24,7 @@ from __future__ import annotations
 from typing import Any, Literal, cast
 
 from src.agents.shared.base_agent import BaseAgent
-from src.agents.shared.stubs import EpisodeMemoryStub, KnowledgeAgentStub
+from src.agents.shared.stubs import KnowledgeAgentStub
 from src.models.agent_state import AgentState
 
 # DI fallback — 실제 에이전트 (lazy import로 순환 참조 방지)
@@ -39,6 +39,7 @@ def _get_episode_memory_agent_class() -> type:
 
         _EpisodeMemoryAgent = EpisodeMemoryAgent
     return _EpisodeMemoryAgent
+
 
 # 추론 깊이 타입 — complexity_score에 따라 결정
 ReasoningDepth = Literal["full", "standard", "minimal"]
@@ -485,9 +486,7 @@ class PodcastReasoningAgent(BaseAgent):
             items = memory_data.get("items", [])
             return {
                 "episodes": items,
-                "relevance_scores": [
-                    item.get("score", 0.0) for item in items
-                ],
+                "relevance_scores": [item.get("score", 0.0) for item in items],
                 "summary": memory_data.get("summary", ""),
             }
 
