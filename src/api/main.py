@@ -7,6 +7,7 @@ API 서버의 뼈대로서 CORS, 예외 핸들링, 라우터 등록 및 Lifespan
 
 from __future__ import annotations
 
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -24,6 +25,19 @@ from src.api.routes import graph, health, podcasts, sessions, stories
 from src.graph.workflow import compile_graph
 from src.monitoring.prometheus import get_metrics_router
 from src.utils.logger import get_agent_logger
+
+# =========================================================================
+# 로깅 설정 통일 (Zone C-1: 구조화 로깅)
+# =========================================================================
+# Uvicorn 접근 로그 억제 (우리 middleware가 담당)
+logging.getLogger("uvicorn.access").disabled = True
+logging.getLogger("uvicorn").setLevel(logging.WARNING)
+
+# FastAPI 기본 로거 억제
+logging.getLogger("fastapi").setLevel(logging.WARNING)
+
+# 루트 로거 설정 (INFO 이상만 표시)
+logging.root.setLevel(logging.INFO)
 
 logger = get_agent_logger("api_server")
 
