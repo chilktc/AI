@@ -225,6 +225,42 @@ async def test_error_path_visual_data_has_same_keys_as_normal_path(
         assert key in vd, f"에러 경로 visual_data에 '{key}' 키 없음"
 
 
+@pytest.mark.asyncio
+async def test_put_object_called_with_public_read_acl(agent: VisualizationAgent) -> None:
+    """S3 업로드 시 ACL='public-read'가 포함되어야 한다."""
+    llm_response = {
+        "image_prompt": "test prompt",
+        "style_type": "organic",
+        "interpretation": "테스트",
+    }
+    image_gen_response = {"image_binary": b"\x89PNG\r\n\x1a\n"}
+    state = AgentState(
+        user_input="테스트",
+        user_id="u",
+        session_id="s",
+        mode="podcast",
+        emotion_vectors={},
+        content_analysis={},
+    )
+
+    mock_s3 = MagicMock()
+    agent.s3_client = mock_s3
+
+    with (
+        patch.object(agent, "call_llm_json", new_callable=AsyncMock, return_value=llm_response),
+        patch.object(
+            agent, "call_image_gen", new_callable=AsyncMock, return_value=image_gen_response
+        ),
+    ):
+        await agent.process(state)
+
+    call_kwargs = mock_s3.put_object.call_args.kwargs
+    mock_s3.put_object.assert_called_once()
+    assert call_kwargs.get("ACL") == "public-read", (
+        f"put_object에 ACL='public-read'가 없음. 실제 kwargs: {call_kwargs}"
+    )
+
+
 # === LLM 실제 호출 테스트 ===
 
 
