@@ -151,11 +151,43 @@ class BatchValidatorAgent(BaseAgent):
             return {"validation_result": result}
 
     def _build_validation_result(self, validation: dict[str, Any]) -> dict[str, Any]:
-        """LLM 응답에서 명시 필드만 추출하고 verdict를 설정한다."""
+        """LLM 응답에서 명시 필드만 추출하고 verdict를 설정한다.
+
+        scores 기반으로 decision을 교차검증하여 LLM hallucination을 보정한다.
+        """
+        PASS_THRESHOLD = 0.65
+        SAFETY_CRITICAL_THRESHOLD = 0.5
+
         action = validation.get("action", {})
         if not isinstance(action, dict):
             action = {}
         decision = action.get("decision", "revise")
+        original_decision = decision
+
+        # 코드 레벨 보정: scores 기반으로 decision 교차검증
+        scores = validation.get("scores", {})
+        if isinstance(scores, dict) and scores:
+            numeric_scores = [
+                float(v) for v in scores.values() if isinstance(v, (int, float))
+            ]
+            safety_score = float(scores.get("safety_compliance", 1.0))
+
+            if safety_score < SAFETY_CRITICAL_THRESHOLD:
+                decision = "escalate"
+            elif numeric_scores and all(s >= PASS_THRESHOLD for s in numeric_scores):
+                decision = "approve"
+            elif numeric_scores and any(s < PASS_THRESHOLD for s in numeric_scores):
+                if decision == "approve":
+                    decision = "revise"
+
+        if decision != original_decision:
+            self.logger.warning(
+                "BV decision 보정: %s → %s (scores=%s)",
+                original_decision,
+                decision,
+                scores,
+            )
+
         verdict_map = {"approve": "PASS", "revise": "FAIL", "escalate": "CRITICAL_FAIL"}
 
         result: dict[str, Any] = {
