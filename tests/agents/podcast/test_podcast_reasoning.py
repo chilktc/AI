@@ -19,6 +19,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from src.agents.podcast.episode_memory import EpisodeMemoryAgent
 from src.agents.podcast.podcast_reasoning import PodcastReasoningAgent
 from src.agents.shared.stubs import EpisodeMemoryStub, KnowledgeAgentStub
 from src.models.agent_state import AgentState
@@ -28,11 +29,13 @@ from src.models.agent_state import AgentState
 
 @pytest.fixture
 def mock_memory() -> AsyncMock:
-    """모의 Episode Memory 에이전트."""
-    mock = AsyncMock(spec=EpisodeMemoryStub)
-    mock.search.return_value = {
-        "episodes": [{"id": "ep_001", "title": "이전 에피소드"}],
-        "relevance_scores": [0.85],
+    """모의 Episode Memory 에이전트 — process() 어댑터 호환."""
+    mock = AsyncMock()
+    mock.process.return_value = {
+        "memory_results": {
+            "items": [{"id": "ep_001", "title": "이전 에피소드", "score": 0.85}],
+            "summary": "이전 에피소드 요약",
+        }
     }
     return mock
 
@@ -324,9 +327,9 @@ async def test_di_call_routing(
         await agent.process(state)
 
     if expect_memory:
-        mock_memory.search.assert_called_once()
+        mock_memory.process.assert_called_once()
     else:
-        mock_memory.search.assert_not_called()
+        mock_memory.process.assert_not_called()
     if expect_knowledge:
         mock_knowledge.search.assert_called_once()
     else:
@@ -367,8 +370,10 @@ async def test_execution_plan_forces_di_call(
     with patch.object(agent, "call_llm_json", AsyncMock(return_value=mock_cot_result)):
         await agent.process(state)
 
-    target = mock_memory if check_mock == "mock_memory" else mock_knowledge
-    target.search.assert_called_once()
+    if check_mock == "mock_memory":
+        mock_memory.process.assert_called_once()
+    else:
+        mock_knowledge.search.assert_called_once()
 
 
 # === 6. DI 주입 패턴 ===
@@ -389,7 +394,7 @@ def test_di_injection(
     """DI 인자 없이 생성하면 stub, 있으면 커스텀 에이전트가 주입된다."""
     if use_stubs:
         agent = PodcastReasoningAgent()
-        assert isinstance(agent.episode_memory, EpisodeMemoryStub)
+        assert isinstance(agent.episode_memory, EpisodeMemoryAgent)
         assert isinstance(agent.knowledge_agent, KnowledgeAgentStub)
     else:
         agent = PodcastReasoningAgent(
@@ -598,7 +603,7 @@ async def test_di_exception_propagation(
 ) -> None:
     """DI 에이전트에서 예외 발생 시 그대로 전파된다."""
     if failing_agent == "memory":
-        mock_memory.search.side_effect = Exception(error_msg)
+        mock_memory.process.side_effect = Exception(error_msg)
     else:
         mock_knowledge.search.side_effect = Exception(error_msg)
 
