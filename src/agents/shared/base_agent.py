@@ -558,11 +558,28 @@ class BaseAgent(ABC):
         audit.llm_calls가 자동으로 집계된다.
         """
         self._llm_call_count += 1
-        return await self._traced_llm_call(
-            system_prompt=system_prompt,
-            user_message=user_message,
-            **kwargs,
-        )
+        call_num = self._llm_call_count
+        _start = time.monotonic()
+        try:
+            result = await self._traced_llm_call(
+                system_prompt=system_prompt,
+                user_message=user_message,
+                **kwargs,
+            )
+            _elapsed_ms = int((time.monotonic() - _start) * 1000)
+            _usage = self.llm_client.last_usage or {}
+            self.logger.info(
+                "LLM 호출 #%d: %dms, input=%d, output=%d",
+                call_num,
+                _elapsed_ms,
+                _usage.get("input_tokens", 0),
+                _usage.get("output_tokens", 0),
+            )
+            return result
+        except Exception:
+            _elapsed_ms = int((time.monotonic() - _start) * 1000)
+            self.logger.warning("LLM 호출 #%d 실패: %dms", call_num, _elapsed_ms)
+            raise
 
     async def call_llm_json(
         self,
@@ -577,12 +594,28 @@ class BaseAgent(ABC):
         audit.llm_calls가 자동으로 집계된다.
         """
         self._llm_call_count += 1
-        raw_text = await self._traced_llm_call(
-            system_prompt=system_prompt,
-            user_message=user_message,
-            **kwargs,
-        )
-        return self.llm_client.parse_json_response(raw_text)
+        call_num = self._llm_call_count
+        _start = time.monotonic()
+        try:
+            raw_text = await self._traced_llm_call(
+                system_prompt=system_prompt,
+                user_message=user_message,
+                **kwargs,
+            )
+            _elapsed_ms = int((time.monotonic() - _start) * 1000)
+            _usage = self.llm_client.last_usage or {}
+            self.logger.info(
+                "LLM 호출 #%d: %dms, input=%d, output=%d",
+                call_num,
+                _elapsed_ms,
+                _usage.get("input_tokens", 0),
+                _usage.get("output_tokens", 0),
+            )
+            return self.llm_client.parse_json_response(raw_text)
+        except Exception:
+            _elapsed_ms = int((time.monotonic() - _start) * 1000)
+            self.logger.warning("LLM 호출 #%d 실패: %dms", call_num, _elapsed_ms)
+            raise
 
     async def call_image_gen(
         self,
