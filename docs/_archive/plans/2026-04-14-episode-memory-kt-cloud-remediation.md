@@ -1,8 +1,9 @@
 # Plan #40: Episode Memory + KT Cloud 연동 정합성 수정
 
-> **상태**: 🔲 구현 대기
-> **마지막 업데이트**: 2026-04-14 15:30
+> **상태**: ✅ 완료
+> **마지막 업데이트**: 2026-04-14 19:00
 > **선행 PR**: #119 (가은 — KT Cloud embedding API), #122 (충돌 해소), #124 (로직 복원), #125 (user_id metadata)
+> **완료 PR**: #127 (EpisodeMemory DI 전환 + 어댑터 패턴), .env.example 변수명 수정, settings.yaml 미사용 index_memory_podcast 제거
 
 ---
 

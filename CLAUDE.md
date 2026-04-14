@@ -450,8 +450,8 @@ class ReasoningAgent:
 에이전트 프롬프트는 `prompts/` 디렉토리의 YAML 파일로 관리하며, 멀티버전 형식을 지원한다.
 `config/settings.yaml`의 `prompts.versions` 섹션에서 에이전트별 사용 버전을 핀닝한다.
 
-현재 핀닝 (2026-03-13 최종 확정, Round 4):
-- Content Analyzer: v2.1.0 / Podcast Reasoning: v3.1.0 / Batch Validator: v2.3.0
+현재 핀닝 (2026-04-14 settings.yaml 동기화):
+- Content Analyzer: v2.2.0 / Podcast Reasoning: v3.2.0 / Batch Validator: v2.3.0
 
 상세: `docs/guides/PROMPT_VERSIONING.md`
 
