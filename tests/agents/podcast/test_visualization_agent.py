@@ -267,7 +267,6 @@ class TestImagePromptSanitization:
 async def test_content_blocked_uses_safe_fallback(agent: VisualizationAgent) -> None:
     """ContentBlockedError 발생 시 SAFE_FALLBACK_PROMPT로 재시도한다."""
     from src.agents.shared.base_agent import ContentBlockedError
-    from src.agents.podcast.visualization import SAFE_FALLBACK_PROMPT
 
     llm_response = {
         "image_prompt": "test prompt",
