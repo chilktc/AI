@@ -66,6 +66,11 @@ class StoriesStore:
                 session_id,
             )
             return None
+        finally:
+            # CancelledError 경로에서도 세션 메모리를 반드시 정리한다.
+            # TimeoutError/정상 경로는 workflow.py가 delete_session()을 추가 호출하지만
+            # pop()은 멱등(idempotent)이므로 이중 호출 무해하다.
+            self.delete_session(session_id)
 
     def delete_session(self, session_id: str) -> None:
         """파이프라인 완료 후 메모리 정리. 존재하지 않는 세션은 무시한다."""

@@ -49,8 +49,14 @@
 | `final_output` | `str` | Script Personalizer | 최종 개인화 스크립트 (JSON) |
 | `next_step` | `str` | Safety Agent (CRISIS 시) | 워크플로우 라우팅 플래그 |
 | `iteration_count` | `int` | workflow.py | TIER 2→3 재시도 카운터 (최대 2) |
+| `stories_context` | `dict[str, Any] \| None` | stories_store / workflow.py | Stories 선택 데이터 (keywords, title, description) |
+| `memory_write` | `bool` | workflow.py | True이면 async_post에서 에피소드 메모리 저장 실행 |
+| `structured_input` | `dict[str, Any]` | Intent Classifier | 정규화된 사용자 입력 구조체 |
+| `learning_pattern` | `dict[str, Any] \| None` | Learning Agent | 추출된 학습 패턴 (비동기 후처리) |
+| `memory_text` | `str` | Podcast Reasoning | Episode Memory 검색 쿼리 텍스트 |
+| `memory_metadata` | `dict[str, Any]` | Podcast Reasoning | Episode Memory 검색 메타데이터 (필터 조건 등) |
 
-**총 20개 필드**
+**총 26개 필드**
 
 ---
 

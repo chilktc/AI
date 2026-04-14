@@ -114,10 +114,14 @@ jobs:
               "printf '"'"'%s\\n'"'"' '"'"'PINECONE_INDEX_EPISODE=${{ secrets.PINECONE_INDEX_EPISODE }}'"'"' >> .env",
               "printf '"'"'%s\\n'"'"' '"'"'PINECONE_API_KEY=${{ secrets.PINECONE_API_KEY }}'"'"' >> .env",
               "printf '"'"'%s\\n'"'"' '"'"'PROMPT_DIR=/app/prompts'"'"' >> .env",
-              "printf '"'"'%s\\n'"'"' '"'"'AI_SERVER_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-ai-server:latest'"'"' >> .env",
+              "printf '"'"'%s\\n'"'"' '"'"'AI_SERVER_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-ai-server:sha-${{ github.sha }}'"'"' >> .env",
+              "chmod 600 /home/ubuntu/app/.env",
               "echo ${{ secrets.GHCR_TOKEN }} | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin",
+              "PREV_IMAGE=$(sudo docker inspect $(sudo docker compose ps -q ai-server 2>/dev/null) --format='{{.Image}}' 2>/dev/null || echo ''); echo \"$PREV_IMAGE\" > /home/ubuntu/app/.prev_image",
               "sudo docker compose pull ai-server",
+              "sudo docker compose stop --timeout 30 ai-server 2>/dev/null || true",
               "sudo docker compose up -d --no-deps ai-server",
+              "for i in $(seq 1 12); do STATUS=$(sudo docker inspect --format='{{.State.Health.Status}}' $(sudo docker compose ps -q ai-server 2>/dev/null) 2>/dev/null || echo 'unknown'); if [ \"$STATUS\" = 'healthy' ]; then echo 'Container healthy'; break; fi; echo \"Waiting... attempt $i/12 (status: $STATUS)\"; sleep 10; if [ $i -eq 12 ]; then echo 'Healthcheck timeout after 120s'; exit 1; fi; done",
               "sudo docker image prune -f --filter \"until=24h\""
             ]' \
             --region ${{ secrets.AWS_REGION }} \
