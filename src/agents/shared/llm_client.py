@@ -24,6 +24,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import time
 from typing import Any
 
@@ -763,7 +764,17 @@ class LLMClient:
         except json.JSONDecodeError:
             pass
 
-        # Fallback: LLM이 JSON 뒤에 추가 텍스트를 붙인 경우
+        # Fallback 1: 인라인 ```json { ... } ``` 마크다운 블록 내 JSON 추출
+        # (LLM이 설명 텍스트 중간에 코드블록을 삽입하는 경우 대응)
+        md_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", cleaned, re.DOTALL)
+        if md_match:
+            try:
+                result = json.loads(md_match.group(1), strict=False)
+                return result
+            except json.JSONDecodeError:
+                pass
+
+        # Fallback 2: LLM이 JSON 뒤에 추가 텍스트를 붙인 경우
         # 첫 번째 '{' ~ 마지막 '}' 사이를 추출하여 재시도한다.
         first_brace = cleaned.find("{")
         last_brace = cleaned.rfind("}")

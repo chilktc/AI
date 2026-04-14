@@ -201,6 +201,7 @@ prompts:
     content_analyzer: "2.2.0"     # 4-키 emotional_journey (opening/development/climax/closing)
     podcast_reasoning: "3.2.0"    # v3.1.0 + Episode Memory 컨텍스트 주입 (tot/cot 참고 지침)
     batch_validator: "2.3.0"      # Round 4 최적 — 감점 규칙 (avg 0.863±0.006)
+    visualization: "1.19.0"      # JSON-only 응답 강제 지시 추가 (파싱 실패 대응)
 
 
 # [보안] PII(개인식별정보) 정제 설정
