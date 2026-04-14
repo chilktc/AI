@@ -1022,7 +1022,8 @@ def test_build_phase_context_cot_excludes_low_score_text(
         intent={},
         memory_result=memory_result,
     )
-    assert "[과거 에피소드 스타일 참고]" in context
+    # 임계값 미달 에피소드만 있고 summary도 없으면 섹션 전체가 생략된다
+    assert "[과거 에피소드 스타일 참고]" not in context
     assert "낮은 유사도 에피소드 원문" not in context
 
 

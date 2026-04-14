@@ -449,11 +449,15 @@ class PodcastReasoningAgent(BaseAgent):
                     date = raw_date[:10] if raw_date else "날짜 없음"
                     title = ep.get("metadata", {}).get("episode_title", "제목 없음")
                     text_preview = ep.get("text", "")[:200]
-                    lines.append(
-                        f"\n[{date}] '{title}' (유사도 {score:.2f})\n{text_preview}..."
-                    )
-                lines.append("→ 내용(주제·구조)이 아닌 스타일(말투·톤)만 참고하세요.")
-                parts.append("\n".join(lines))
+                    if text_preview:
+                        lines.append(
+                            f"\n[{date}] '{title}' (유사도 {score:.2f})\n{text_preview}..."
+                        )
+                # 실제 스타일 참고 내용이 있을 때만 섹션 추가
+                has_content = len(lines) > 1  # 헤더 이상의 내용이 있는지
+                if has_content:
+                    lines.append("→ 내용(주제·구조)이 아닌 스타일(말투·톤)만 참고하세요.")
+                    parts.append("\n".join(lines))
 
         if knowledge_result and knowledge_result.get("articles"):
             article_count = len(knowledge_result["articles"])
