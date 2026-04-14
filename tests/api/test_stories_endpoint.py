@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+_URL = "/api/stories/select"
+
 
 class TestStoriesSelectEndpoint:
     """POST /api/stories/select 엔드포인트 테스트."""
@@ -14,26 +16,26 @@ class TestStoriesSelectEndpoint:
             "title": "나의 이야기",
             "description": "직장 내 갈등 상황",
         }
-        response = test_client.post("/api/stories/select", json=payload)
+        response = test_client.post(_URL, json=payload)
         assert response.status_code == 200
         assert response.json() == {"success": True}
 
     def test_missing_session_id_returns_422(self, test_client) -> None:  # type: ignore[no-untyped-def]
         """session_id 누락 → 422."""
         payload = {"keywords": ["직장"], "title": "T", "description": "D"}
-        response = test_client.post("/api/stories/select", json=payload)
+        response = test_client.post(_URL, json=payload)
         assert response.status_code == 422
 
     def test_missing_title_returns_422(self, test_client) -> None:  # type: ignore[no-untyped-def]
         """title 누락 → 422."""
         payload = {"session_id": "sess_001", "keywords": [], "description": "D"}
-        response = test_client.post("/api/stories/select", json=payload)
+        response = test_client.post(_URL, json=payload)
         assert response.status_code == 422
 
     def test_missing_description_returns_422(self, test_client) -> None:  # type: ignore[no-untyped-def]
         """description 누락 → 422."""
         payload = {"session_id": "sess_001", "keywords": [], "title": "T"}
-        response = test_client.post("/api/stories/select", json=payload)
+        response = test_client.post(_URL, json=payload)
         assert response.status_code == 422
 
     def test_empty_keywords_is_valid(self, test_client) -> None:  # type: ignore[no-untyped-def]
@@ -44,7 +46,7 @@ class TestStoriesSelectEndpoint:
             "title": "T",
             "description": "D",
         }
-        response = test_client.post("/api/stories/select", json=payload)
+        response = test_client.post(_URL, json=payload)
         assert response.status_code == 200
 
     def test_stores_data_in_store(self, test_client) -> None:  # type: ignore[no-untyped-def]
@@ -58,7 +60,7 @@ class TestStoriesSelectEndpoint:
             "title": "감정 이야기",
             "description": "나의 감정",
         }
-        test_client.post("/api/stories/select", json=payload)
+        test_client.post(_URL, json=payload)
 
         stored = stories_store._store.get(session_id)
         assert stored is not None

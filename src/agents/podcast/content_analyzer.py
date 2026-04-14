@@ -133,8 +133,9 @@ class ContentAnalyzerAgent(BaseAgent):
         # mind-frequencies 수집 호출 (fire-and-forget, 콘텐츠 분석 직후)
         backend_client = BackendClient()
         try:
-            keywords: list[str] = validated_analysis.get("sub_themes", [])
-            description: str = validated_analysis.get("main_theme", "")
+            user_summary: dict = validated_analysis.get("user_summary", {})
+            keywords: list[str] = user_summary.get("keywords", [])
+            description: str = user_summary.get("summary", "")
             await backend_client.ingest_mind_frequencies(
                 session_id=session_id,
                 keywords=keywords,
