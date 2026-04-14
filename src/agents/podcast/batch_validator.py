@@ -167,9 +167,7 @@ class BatchValidatorAgent(BaseAgent):
         # 코드 레벨 보정: scores 기반으로 decision 교차검증
         scores = validation.get("scores", {})
         if isinstance(scores, dict) and scores:
-            numeric_scores = [
-                float(v) for v in scores.values() if isinstance(v, (int, float))
-            ]
+            numeric_scores = [float(v) for v in scores.values() if isinstance(v, (int, float))]
             safety_score = float(scores.get("safety_compliance", 1.0))
 
             if safety_score < SAFETY_CRITICAL_THRESHOLD:
