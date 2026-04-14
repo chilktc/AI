@@ -100,7 +100,7 @@
 # - 담당: 하위 테마 분류, 서사 구조 선택, 에피소드 길이 결정, 세그먼트 기획
 # - 비담당: 핵심 주제 요약, 감정 여정, 핵심 메시지, 사용자 요약 (→ Content Analyzer)
 
-default_version: "3.0.0"
+default_version: "3.2.0"
 versions:
   "1.1.0":
     prompts:
