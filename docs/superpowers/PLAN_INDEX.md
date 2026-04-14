@@ -1,8 +1,8 @@
 # 마스터 계획 인덱스 (Master Plan Index)
 
 **목적**: 모든 기획 문서의 현황 추적 및 상태 관리  
-**버전**: v39
-**마지막 업데이트**: 2026-04-14 19:00
+**버전**: v40
+**마지막 업데이트**: 2026-04-15 10:30
 **관리 원칙**:
 - 완료된 계획 → PR 링크 + 간단한 변경 사항 기록
 - 미완료 계획 → 상태 및 다음 액션 기록
@@ -57,6 +57,8 @@
 | 41 | Docker graceful shutdown — 재배포 시 진행 중 요청 보호 | *(인라인)* | ✅ 완료 | PR #130 | Dockerfile --timeout-graceful-shutdown 300 + docker-compose.yml stop_grace_period 310s. 재배포 시 기본 10초→300초로 확장, LangSmith pending 해소 (582 passed) |
 | 42 | Episode Memory + KT Cloud 연동 정합성 수정 | `_archive/plans/2026-04-14-episode-memory-kt-cloud-remediation.md` | ✅ 완료 | PR #127 | EpisodeMemoryStub→실제 에이전트 어댑터 패턴 DI 전환, .env.example 변수명 수정, settings.yaml index_memory_podcast 제거 |
 | 43 | Episode Memory phase별 컨텍스트 주입 개선 | `_archive/plans/2026-04-14-episode-memory-context-injection.md` | ✅ 완료 | PR #134 | GoT(건수), ToT(메타데이터), CoT(score 필터 원문) 분기, memory_style_score_threshold 설정, podcast_reasoning 프롬프트 v3.2.0 핀닝 |
+| 44 | 프로덕션 안정화 핫픽스 10건 | *(인라인)* | ✅ 완료 | PR #128~#140 | Bedrock 지연 추적(#131/#135/#136), 모델 다운그레이드(#137), Visualization 안정화 3종(#133/#138/#139), BV score 보정(#132), CancelledError 수정(#140), CI lint(#128/#129) |
+| 45 | 구조적 취약점 수정 (STRUCTURAL_FIX_PLAN) | `plans/2026-04-15-structural-fix-plan.md` | 🔶 대부분 완료 | PR #142 | 15/18 태스크 완료 (A1/A2/A4~A8/B6/C4/C5/D3/E1~E4). ⚠️ 잔여: A9(pip 캐시 키 통합), B2(ALLOWED_ORIGINS 와일드카드 제거), B4(Neo4j 포트 localhost 바인딩) |
 
 **범례:**
 - ✅ 완료 — 코드 구현 완료, PR 머지됨
@@ -163,6 +165,14 @@
 | 24 | _query_user_profile() deprecated → _get_user_profile() 구현 완료 | `script_personalizer.py` | backend_client 미설정 시 기본 프로필 반환 |
 | 25 | data/cache/ 디렉토리 생성 | 프로젝트 루트 | episode_memory 런타임 의존 |
 
+### 구조적 취약점 잔여 — Plan #45 (3건)
+
+| # | 작업 | 태스크 ID | 비고 |
+|---|------|----------|------|
+| 31 | pip 캐시 키 통합 — lint/test job 캐시 공유 | A9 | ci.yml P2 |
+| 32 | ALLOWED_ORIGINS 와일드카드 기본값 제거 | B2 | loader.py P0 — 공용 인프라 |
+| 33 | Neo4j 포트 localhost 바인딩 | B4 | docker-compose.yml P1 |
+
 ### CLI 스크립트 / 문서 — Plan #19 (개발자 도구, 운영 필수 아님)
 
 | # | 작업 | 파일 |
@@ -231,7 +241,18 @@
 | #118 | feature/validation-black-format-fix | Black 포매팅 적용 — CI lint 에러 해결 (5개 파일) |
 | #120 | feature/validation-ruff-fix | Ruff F401/E501 해결 — 미사용 logging import 17개 파일 제거 + workflow.py 줄 길이 수정 |
 | #130 | feature/validation-graceful-shutdown | Docker graceful shutdown — 재배포 시 진행 중 요청 유실 방지 (Dockerfile + docker-compose.yml) |
+| #131 | feature/validation-llm-latency-logging | LLM 레이턴시 추적 로깅 강화 + JSON 한글 Unicode escape 해결 |
+| #132 | feature/validation-bv-score-fix | Batch Validator score/decision 불일치 보정 — LLM hallucination 방지 |
+| #133 | *(인라인)* | Visualization AWS Titan 콘텐츠 정책 차단 방어 |
+| #134 | *(인라인)* | Episode Memory phase별 컨텍스트 주입 개선 (GoT/ToT/CoT 분리) |
+| #135 | feature/validation-bedrock-latency-tracking-0414 | Bedrock LLM 지연 구간 추적 로깅 + 프롬프트 버전 문서 동기화 |
+| #136 | *(인라인)* | Bedrock 지연 추적 + docs 정리 + gitignore/설정 정비 |
+| #137 | *(인라인)* | sonnet_37 APAC 지연 급증 모델 다운그레이드 |
+| #138 | *(인라인)* | Visualization JSON 파싱 실패 대응 (프롬프트 v1.19.0 + regex fallback) |
+| #139 | *(인라인)* | Titan ValidationException → ContentBlockedError 전환 누락 수정 |
+| #140 | *(인라인)* | HTTP 연결 종료 시 CancelledError 스택 트레이스 제거 |
+| #142 | feature/validation-structural-fix | 구조적 취약점 16개 수정 (CI/CD·동시성·보안·의존성·문서) — Plan #45 |
 
 ---
 
-*마스터 인덱스 v39 — 2026-04-14 19:00 (Plan #42~43 추가: Episode Memory KT Cloud 정합성 수정 PR #127 + Context Injection PR #134 완료 반영, 완료 plan 파일 archive 이동)*
+*마스터 인덱스 v40 — 2026-04-15 10:30 (Plan #44 프로덕션 핫픽스 10건 + Plan #45 구조적 취약점 수정 추가, STRUCTURAL_FIX_PLAN plans/ 이동, PR #131~#142 반영)*

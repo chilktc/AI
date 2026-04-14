@@ -490,7 +490,7 @@ class ReasoningAgent:
 > 현재 독립 에이전트 호출은 DI 패턴(직접 메서드 호출)으로 구현되어 엔벨로프가 미사용 상태이다.
 > 백엔드 통신 확장 시 활성화를 검토한다.
 
-### 인프라 강화 (PR #52~#118)
+### 인프라 강화 (PR #52~#142)
 
 | 구분 | 내용 | PR |
 |------|------|-----|
@@ -507,6 +507,13 @@ class ReasoningAgent:
 | CRISIS-타임아웃 수정 | 로그 구분, 경합 방지, TIER 1 타임아웃 240s | #114 |
 | TIER 타임아웃 확장 | TIER 0/4/비동기 타임아웃 2배 확장, Bedrock throttling 로그 | #116 |
 | S3 ACL 추가 | Visualization put_object에 ACL="public-read" 추가 | #117 |
+| Bedrock 지연 추적 | LLM 호출 구간별 타이밍 로깅, LangSmith 메타데이터 연동 | #131, #135, #136 |
+| BV score 보정 | Batch Validator score/decision LLM hallucination 방지 | #132 |
+| Visualization 안정화 | Titan 콘텐츠 차단 방어, JSON 파싱 fallback, ContentBlockedError 전환 | #133, #138, #139 |
+| 모델 다운그레이드 | sonnet_37 APAC 지연 급증 대응, Haiku/Sonnet 전환 | #137 |
+| Episode Memory 개선 | phase별 컨텍스트 주입 (GoT/ToT/CoT 분리) | #134 |
+| CancelledError 수정 | HTTP 연결 종료 시 스택 트레이스 제거 | #140 |
+| 구조적 취약점 수정 | CI/CD Job 의존성, lint 순서, SHA 태깅, 롤백 스크립트, 한국어 인젝션 패턴, 취소 태스크 정리 등 16건 | #142 |
 
 ### 테스트 현황
 
@@ -539,4 +546,4 @@ class ReasoningAgent:
 
 ---
 
-*마지막 업데이트: 2026-04-14 14:30*
+*마지막 업데이트: 2026-04-15 10:30*
