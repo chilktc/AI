@@ -20,22 +20,77 @@ from src.utils.logger import get_agent_logger
 logger = get_agent_logger("visualization")
 
 # AWS Titan 콘텐츠 정책 위반 키워드 — image_prompt에서 제거
-_BLOCKED_EN: frozenset[str] = frozenset({
-    "person", "people", "human", "face", "portrait", "body",
-    "hand", "hands", "eye", "eyes", "child", "woman", "man",
-    "violence", "blood", "weapon", "gun", "knife", "death",
-    "injury", "harm", "abuse", "kill", "attack",
-    "doctor", "surgery", "hospital", "injection", "medical",
-    "nude", "naked", "sexual",
-})
+_BLOCKED_EN: frozenset[str] = frozenset(
+    {
+        "person",
+        "people",
+        "human",
+        "face",
+        "portrait",
+        "body",
+        "hand",
+        "hands",
+        "eye",
+        "eyes",
+        "child",
+        "woman",
+        "man",
+        "violence",
+        "blood",
+        "weapon",
+        "gun",
+        "knife",
+        "death",
+        "injury",
+        "harm",
+        "abuse",
+        "kill",
+        "attack",
+        "doctor",
+        "surgery",
+        "hospital",
+        "injection",
+        "medical",
+        "nude",
+        "naked",
+        "sexual",
+    }
+)
 
-_BLOCKED_KO: frozenset[str] = frozenset({
-    "사람", "얼굴", "인간", "초상", "신체", "손", "눈",
-    "아이", "여자", "남자", "여성", "남성", "어린이",
-    "폭력", "피", "무기", "총", "칼", "죽음",
-    "부상", "상해", "학대", "살인", "공격",
-    "의사", "수술", "병원", "주사", "의료", "환자",
-})
+_BLOCKED_KO: frozenset[str] = frozenset(
+    {
+        "사람",
+        "얼굴",
+        "인간",
+        "초상",
+        "신체",
+        "손",
+        "눈",
+        "아이",
+        "여자",
+        "남자",
+        "여성",
+        "남성",
+        "어린이",
+        "폭력",
+        "피",
+        "무기",
+        "총",
+        "칼",
+        "죽음",
+        "부상",
+        "상해",
+        "학대",
+        "살인",
+        "공격",
+        "의사",
+        "수술",
+        "병원",
+        "주사",
+        "의료",
+        "환자",
+    }
+)
 
 BLOCKED_KEYWORDS: frozenset[str] = _BLOCKED_EN | _BLOCKED_KO
 
