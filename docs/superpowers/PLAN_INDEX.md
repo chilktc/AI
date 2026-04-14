@@ -1,8 +1,8 @@
 # 마스터 계획 인덱스 (Master Plan Index)
 
 **목적**: 모든 기획 문서의 현황 추적 및 상태 관리  
-**버전**: v37
-**마지막 업데이트**: 2026-04-14 14:30
+**버전**: v38
+**마지막 업데이트**: 2026-04-14 18:00
 **관리 원칙**:
 - 완료된 계획 → PR 링크 + 간단한 변경 사항 기록
 - 미완료 계획 → 상태 및 다음 액션 기록
@@ -35,7 +35,7 @@
 | 19 | Pinecone 벡터 DB 공통 인프라 | `2026-04-07-pinecone-vector-db-integration.md` | 🔶 대부분 완료 | #64~#68 | Task 1/3/4 완료. KnowledgeAgent+PineconeClient 코드 완전 구현됨 (테스트 32개 통과). ⚠️ 미완: ① EmbeddingClient(KTCloud 어댑터) 미구현 → `knowledge._search_knowledge_base()` fallback 동작 중 ② `podcast_reasoning.py` KnowledgeAgentStub 사용 (DI 미연결) ③ Task 5/6/7(CLI), Task 9(가이드) 미작성 |
 | 20 | Graph Mode B 단일화 리팩터 | `2026-04-07-graph-mode-b-refactor.md` | ✅ 완료 | #69 | Mode A 삭제, publish_graph_to_rdb 단일 경로 확정, EMA를 Backend 책임으로 이관 (538 passed) |
 | 21 | 문서 전수 점검 및 정합성 수정 | *(인라인 — 별도 계획서 없음)* | ✅ 완료 | #70~#80 | 4차 사이클 점검: 대화모드 잔재·링크·날짜·버전 일관성·설계 결정 갱신 전체 완료 |
-| 22 | 에이전트 출력 감사 수정 | `2026-04-08-agent-output-audit-fix.md` | ✅ 완료 | — | v9: IC-1/SP-1/SP-2/schemas 완료(8건) + Task 1-7 구현 완료(SA/EA/CA/SG/VI/BV/횡단). 582 passed |
+| 22 | 에이전트 출력 감사 수정 | `_archive/plans/2026-04-08-agent-output-audit-fix.md` | ✅ 완료 | — | v9: IC-1/SP-1/SP-2/schemas 완료(8건) + Task 1-7 구현 완료(SA/EA/CA/SG/VI/BV/횡단). 582 passed |
 | 23 | 에피소드 메모리 저장 트리거 | `_archive/plans/2026-04-08-episode-memory-save-trigger.md` | ✅ 완료 | #86, #87 | AgentState memory_write 필드 추가, Script Personalizer 반환, async_post 트리거 전부 develop에 머지 확인 (6b61763~ea06bd9) |
 | 24 | Mode A 부활 — 누적 그래프 EMA | `_archive/plans/2026-04-09-mode-a-revival-graph-cumulative.md` | ✅ 완료 | #88 | contracts.py GraphCumulativeData, client.py GET/PUT 메서드, graph_cumulative.py Mode B→A 전환, 테스트 27개 (549 passed). BE 3차 테스트: session_id/timestamp 제거 후 PUT ✅ 200, Test 6~8 전체 PASS, E2E(GET→PUT→GET) 검증 완료 |
 | 25 | Agent I/O 통합 및 재가공 에이전트 | `plans/2026-04-13-agent-io-consolidation.md` | 🔶 Task 8~9 완료 | #96 | Task 8: ingest_podcast_episodes() 정합 + podcast_segments 제거 + 감정 컬럼. Task 9: ingest_user_summary() → mind-frequencies 통합 확정(Plan #27, 884c18c). ⛔ 보류: PodcastReprocessingAgent/EpisodeSummaryAgent(백엔드 테이블 미확보), AGENT_IO_DATAFLOW.md 미작성 |
@@ -47,12 +47,14 @@
 | 31 | 로깅 시스템 강화 | `_archive/plans/2026-04-13-logging-enhancement.md` | ✅ 완료 | 0e115d5 (PR #101) | HTTP 이벤트 훅 추가(모든 요청/응답 자동 로깅), 에러 응답 상세 기록, DeveloperFormatter(다중행 가독성), JSON 포맷터 ISO 8601 타임스탬프. `src/api/client.py`, `src/utils/logger.py` |
 | 32 | 테스트 정리 — live 테스트 분리 | *(인라인 — 별도 계획서 없음)* | ✅ 완료 | PR #105 (3b43bc4) | pyproject.toml addopts="-m 'not live'" 추가, test_safety/test_backend_integration 삭제, live fixture 분리, api_client→backend_client 시그니처 수정. 539 passed (live 제외 ~9초). |
 | 33 | KT Cloud RAG 통합 — Knowledge Ingestion Pipeline | `docs/architecture/API_ENDPOINTS_INTERNAL.md` | ✅ 완료 | PR #106 (afc3a56) | jun 개발자. KT Cloud RAG Suite 연동, Knowledge Ingestion 스크립트(`scripts/ingest_knowledge.py`), 지식 청크 적재 파이프라인. `src/agents/podcast/knowledge.py` 확장. |
-| 34 | Stories 데이터 수신 인프라 | `plans/2026-04-13-stories-receive-infra.md` | ⛔ Plan #35로 대체 | — | asyncio.Event 방식(Plan #35)으로 재설계·구현 완료. 원본 계획(REST 폴링 방식)은 미채택. |
-| 35 | Stories asyncio.Event 수신 인프라 | `plans/2026-04-14-stories-wait-mechanism.md` | ✅ 완료 | PR #110 | asyncio.Event 멀티 구독 패턴 + TIER 4 wait_for_stories_node. Plan #34 대체 (581 passed) |
+| 34 | Stories 데이터 수신 인프라 | `_archive/plans/2026-04-13-stories-receive-infra.md` | ⛔ Plan #35로 대체 | — | asyncio.Event 방식(Plan #35)으로 재설계·구현 완료. 원본 계획(REST 폴링 방식)은 미채택. |
+| 35 | Stories asyncio.Event 수신 인프라 | `_archive/plans/2026-04-14-stories-wait-mechanism.md` | ✅ 완료 | PR #110 | asyncio.Event 멀티 구독 패턴 + TIER 4 wait_for_stories_node. Plan #34 대체 (581 passed) |
 | 36 | 로그 시스템 전체 통일 | *(인라인)* | ✅ 완료 | PR #112, #113 | logging.getLogger→get_agent_logger 18개 파일 통일 + 동시성 안전성 강화 (582 passed) |
 | 37 | CRISIS-타임아웃 경합 수정 | *(인라인)* | ✅ 완료 | PR #114 | run_with_cancel() 로그 CRISIS/타임아웃 구분, CRISIS 선저장 경합 방지, TIER 1 타임아웃 120→240s |
-| 38 | S3 Public-Read ACL 추가 | `plans/2026-04-14-s3-public-read-acl.md` | ✅ 완료 | PR #117 | visualization.py put_object에 ACL="public-read" 추가. 브라우저 직접 URL 접근 허용 (583 passed) |
+| 38 | S3 Public-Read ACL 추가 | `_archive/plans/2026-04-14-s3-public-read-acl.md` | ✅ 완료 | PR #117 | visualization.py put_object에 ACL="public-read" 추가. 브라우저 직접 URL 접근 허용 (583 passed) |
 | 39 | TIER 타임아웃 확장 + Bedrock throttling 로그 | *(인라인)* | ✅ 완료 | PR #116 | TIER 0/4/비동기 타임아웃 2배 확장, Bedrock throttling 로그 추가 |
+| 40 | CI lint 에러 완전 수정 (Black + Ruff) | *(인라인)* | ✅ 완료 | PR #118, #120 | Black: 5개 파일 포맷 수정. Ruff F401: 미사용 logging import 17개 파일 제거. Ruff E501: workflow.py 줄 길이 초과 수정 (582 passed) |
+| 41 | Docker graceful shutdown — 재배포 시 진행 중 요청 보호 | *(인라인)* | ✅ 완료 | PR #130 | Dockerfile --timeout-graceful-shutdown 300 + docker-compose.yml stop_grace_period 310s. 재배포 시 기본 10초→300초로 확장, LangSmith pending 해소 (582 passed) |
 
 **범례:**
 - ✅ 완료 — 코드 구현 완료, PR 머지됨
@@ -224,8 +226,10 @@
 | #115 | feature/validation-docs-update-0414-2 | 계획 문서 전체 점검 및 업데이트 (v35) |
 | #116 | feature/validation-timeout-throttle-logging | TIER 0/4/비동기 타임아웃 2배 확장 + Bedrock throttling 로그 추가 |
 | #117 | feature/reasoning-s3-public-read | S3 업로드 ACL=public-read 추가 — 브라우저 직접 접근 허용 (583 passed) |
-| #118 | style/black-formatting | Black 포매팅 적용 — CI lint 에러 해결 (5개 파일) |
+| #118 | feature/validation-black-format-fix | Black 포매팅 적용 — CI lint 에러 해결 (5개 파일) |
+| #120 | feature/validation-ruff-fix | Ruff F401/E501 해결 — 미사용 logging import 17개 파일 제거 + workflow.py 줄 길이 수정 |
+| #130 | feature/validation-graceful-shutdown | Docker graceful shutdown — 재배포 시 진행 중 요청 유실 방지 (Dockerfile + docker-compose.yml) |
 
 ---
 
-*마스터 인덱스 v37 — 2026-04-14 14:30 (Plan #38~39 추가: S3 ACL + TIER 타임아웃 확장, PR #115~#118 반영)*
+*마스터 인덱스 v38 — 2026-04-14 18:00 (Plan #40~41 추가: CI lint 수정 + Docker graceful shutdown, PR #120/#130 반영, 완료 plan 파일 archive 이동)*
