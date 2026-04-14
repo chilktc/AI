@@ -255,6 +255,7 @@ async def test_put_object_called_with_public_read_acl(agent: VisualizationAgent)
         await agent.process(state)
 
     call_kwargs = mock_s3.put_object.call_args.kwargs
+    mock_s3.put_object.assert_called_once()
     assert call_kwargs.get("ACL") == "public-read", (
         f"put_object에 ACL='public-read'가 없음. 실제 kwargs: {call_kwargs}"
     )
