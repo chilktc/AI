@@ -1,12 +1,12 @@
-"""POST /greenroom/ai/stories/select 엔드포인트 테스트."""
+"""POST /api/stories/select 엔드포인트 테스트."""
 
 from __future__ import annotations
 
-_URL = "/greenroom/ai/stories/select"
+_URL = "/api/stories/select"
 
 
 class TestStoriesSelectEndpoint:
-    """POST /greenroom/ai/stories/select 엔드포인트 테스트."""
+    """POST /api/stories/select 엔드포인트 테스트."""
 
     def test_valid_request_returns_200(self, test_client) -> None:  # type: ignore[no-untyped-def]
         """올바른 페이로드 → 200 + success:true."""

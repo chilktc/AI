@@ -1,7 +1,7 @@
 """
 Stories 수신 라우터.
 
-백엔드가 POST /greenroom/ai/stories/select로 Stories 데이터를 푸시한다.
+백엔드가 POST /api/stories/select로 Stories 데이터를 푸시한다.
 수신 즉시 StoriesStore에 저장하고 대기 중인 파이프라인 노드를 깨운다.
 """
 
@@ -18,7 +18,7 @@ router = APIRouter()
 
 
 class StoriesSelectRequest(BaseModel):
-    """POST /greenroom/ai/stories/select 요청 스키마."""
+    """POST /api/stories/select 요청 스키마."""
 
     session_id: str
     keywords: list[str]
