@@ -43,6 +43,7 @@ def _create_json_formatter() -> logging.Formatter:
         fmt="%(asctime)s %(levelname)s %(name)s %(message)s",
         rename_fields={"asctime": "timestamp", "levelname": "level", "name": "logger"},
         datefmt="%Y-%m-%dT%H:%M:%S.000Z",
+        json_ensure_ascii=False,
     )
 
 
