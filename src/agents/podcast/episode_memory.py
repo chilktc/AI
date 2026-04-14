@@ -76,7 +76,6 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
                 metadata={
                     "text": chunk,
                     "date": datetime.datetime.now().isoformat(),
-                    "user_id": user_id,
                     **(metadata or {}),
                 },
                 namespace=namespace,
@@ -126,6 +125,10 @@ class EpisodeMemoryAgent(BaseMemoryAgent):
 
         except Exception as e:
             print(f"[Embedding error] {e}")
+            try:
+                print(f"[Embedding response body] {r.text}")  # noqa: F821
+            except Exception:
+                pass
             return []
 
     async def _get_host(self) -> str:
