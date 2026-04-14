@@ -17,7 +17,6 @@ PyMySQL + asyncio.to_thread() 래핑 패턴 (llm_client.py와 동일).
 from __future__ import annotations
 
 import asyncio
-import logging
 import os
 from typing import Any
 from urllib.parse import urlparse

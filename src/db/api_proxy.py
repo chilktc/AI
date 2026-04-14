@@ -10,7 +10,6 @@ STORAGE_MODE=proxy 또는 hybrid 모드에서 사용.
 
 from __future__ import annotations
 
-import logging
 from datetime import datetime, timezone
 from typing import Any
 

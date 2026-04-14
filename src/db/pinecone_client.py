@@ -23,7 +23,6 @@ BaseMemoryAgent의 벡터 검색과 호환되는 인터페이스를 제공한다
 from __future__ import annotations
 
 import asyncio
-import logging
 import os
 from typing import Any
 
