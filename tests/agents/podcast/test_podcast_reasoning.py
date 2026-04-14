@@ -879,3 +879,189 @@ class TestPodcastReasoningWithLLM:
 
         assert "reasoning_depth" in rr
         assert rr["reasoning_depth"] in {"full", "standard", "minimal"}
+
+
+# === 15. memory_style_score_threshold 설정 로드 ===
+
+
+def test_memory_style_score_threshold_default() -> None:
+    """memory_style_score_threshold 기본값이 0.9로 로드된다."""
+    agent = PodcastReasoningAgent()
+    assert hasattr(agent, "memory_style_score_threshold")
+    assert agent.memory_style_score_threshold == 0.9
+
+
+# === 16. _build_phase_context — phase별 메모리 분기 ===
+
+
+def test_build_phase_context_got_memory_count_only(
+    agent_with_stubs: PodcastReasoningAgent,
+) -> None:
+    """GoT phase: memory_result가 있어도 건수 요약만 포함되고 원문은 포함되지 않는다."""
+    memory_result = {
+        "episodes": [
+            {
+                "text": "안녕하세요. 번아웃 에피소드 원문입니다.",
+                "score": 0.94,
+                "metadata": {
+                    "date": "2026-04-10T14:32:15",
+                    "episode_title": "번아웃과 리더십",
+                },
+            }
+        ],
+        "summary": "번아웃 관련 1개 에피소드",
+    }
+    context = agent_with_stubs._build_phase_context(
+        phase="GoT",
+        user_input="요즘 너무 힘들어요.",
+        intent={},
+        memory_result=memory_result,
+    )
+    assert "[과거 에피소드 기억]" in context
+    assert "1건 발견" in context
+    assert "번아웃 에피소드 원문" not in context
+    assert "번아웃과 리더십" not in context
+
+
+def test_build_phase_context_tot_metadata_only(
+    agent_with_stubs: PodcastReasoningAgent,
+) -> None:
+    """ToT phase: 에피소드 제목·날짜가 포함되고 원문 텍스트는 포함되지 않는다."""
+    memory_result = {
+        "episodes": [
+            {
+                "text": "안녕하세요. 번아웃 에피소드 원문입니다.",
+                "score": 0.94,
+                "metadata": {
+                    "date": "2026-04-10T14:32:15",
+                    "episode_title": "번아웃과 리더십",
+                },
+            },
+            {
+                "text": "수면 문제 에피소드 원문입니다.",
+                "score": 0.81,
+                "metadata": {
+                    "date": "2026-03-28T09:15:44",
+                    "episode_title": "잠 못 드는 밤",
+                },
+            },
+        ],
+        "summary": "번아웃, 수면 관련 2개 에피소드",
+    }
+    context = agent_with_stubs._build_phase_context(
+        phase="ToT",
+        user_input="요즘 너무 힘들어요.",
+        intent={},
+        memory_result=memory_result,
+    )
+    assert "[과거 에피소드 기억 — 구조 참고]" in context
+    assert "2026-04-10" in context
+    assert "번아웃과 리더십" in context
+    assert "2026-03-28" in context
+    assert "잠 못 드는 밤" in context
+    # 원문 텍스트 미포함
+    assert "번아웃 에피소드 원문" not in context
+    assert "수면 문제 에피소드 원문" not in context
+    # 다양성 가이드 문구 포함
+    assert "다양성" in context
+
+
+def test_build_phase_context_tot_missing_date_fallback(
+    agent_with_stubs: PodcastReasoningAgent,
+) -> None:
+    """ToT phase: metadata.date 없을 때 '날짜 없음' 폴백이 적용된다."""
+    memory_result = {
+        "episodes": [
+            {
+                "text": "날짜 없는 에피소드.",
+                "score": 0.85,
+                "metadata": {
+                    "episode_title": "날짜 없는 에피소드",
+                },
+            }
+        ],
+        "summary": "",
+    }
+    context = agent_with_stubs._build_phase_context(
+        phase="ToT",
+        user_input="요즘 너무 힘들어요.",
+        intent={},
+        memory_result=memory_result,
+    )
+    assert "날짜 없음" in context
+    assert "날짜 없는 에피소드" in context
+
+
+def test_build_phase_context_cot_includes_high_score_text(
+    agent_with_stubs: PodcastReasoningAgent,
+) -> None:
+    """CoT phase: score >= threshold 에피소드의 원문 발췌가 포함된다."""
+    agent_with_stubs.memory_style_score_threshold = 0.9
+    memory_result = {
+        "episodes": [
+            {
+                "text": "안녕하세요. 번아웃 에피소드 원문입니다. 긴 텍스트가 여기 있습니다.",
+                "score": 0.94,
+                "metadata": {
+                    "date": "2026-04-10T14:32:15",
+                    "episode_title": "번아웃과 리더십",
+                },
+            }
+        ],
+        "summary": "번아웃 관련 1개 에피소드",
+    }
+    context = agent_with_stubs._build_phase_context(
+        phase="CoT",
+        user_input="요즘 너무 힘들어요.",
+        intent={},
+        memory_result=memory_result,
+    )
+    assert "[과거 에피소드 스타일 참고]" in context
+    assert "요약: 번아웃 관련 1개 에피소드" in context
+    assert "번아웃과 리더십" in context
+    assert "0.94" in context
+    assert "번아웃 에피소드 원문" in context
+    assert "스타일" in context
+
+
+def test_build_phase_context_cot_excludes_low_score_text(
+    agent_with_stubs: PodcastReasoningAgent,
+) -> None:
+    """CoT phase: score < threshold 에피소드의 원문 발췌는 포함되지 않는다."""
+    agent_with_stubs.memory_style_score_threshold = 0.9
+    memory_result = {
+        "episodes": [
+            {
+                "text": "낮은 유사도 에피소드 원문입니다.",
+                "score": 0.75,
+                "metadata": {
+                    "date": "2026-03-01T10:00:00",
+                    "episode_title": "낮은 유사도 에피소드",
+                },
+            }
+        ],
+        "summary": "",
+    }
+    context = agent_with_stubs._build_phase_context(
+        phase="CoT",
+        user_input="요즘 너무 힘들어요.",
+        intent={},
+        memory_result=memory_result,
+    )
+    # 임계값 미달 에피소드만 있고 summary도 없으면 섹션 전체가 생략된다
+    assert "[과거 에피소드 스타일 참고]" not in context
+    assert "낮은 유사도 에피소드 원문" not in context
+
+
+def test_build_phase_context_cot_no_memory(
+    agent_with_stubs: PodcastReasoningAgent,
+) -> None:
+    """CoT phase: memory_result=None이면 메모리 섹션이 없다."""
+    context = agent_with_stubs._build_phase_context(
+        phase="CoT",
+        user_input="요즘 너무 힘들어요.",
+        intent={},
+        memory_result=None,
+    )
+    assert "[과거 에피소드 스타일 참고]" not in context
+    assert "[과거 에피소드 기억]" not in context

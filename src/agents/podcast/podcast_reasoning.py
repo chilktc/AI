@@ -159,15 +159,17 @@ class PodcastReasoningAgent(BaseAgent):
     # === 설정 로드 ===
 
     def _load_config(self) -> None:
-        """settings.yaml에서 추론 깊이 임계값을 로드한다. 실패 시 기본값 사용."""
+        """settings.yaml에서 추론 깊이 임계값 및 스타일 참고 임계값을 로드한다."""
         cfg = self._load_agent_config(
             {
                 "full_threshold": 0.8,
                 "standard_threshold": 0.5,
+                "memory_style_score_threshold": 0.9,
             }
         )
         self.full_threshold: float = cfg["full_threshold"]
         self.standard_threshold: float = cfg["standard_threshold"]
+        self.memory_style_score_threshold: float = cfg["memory_style_score_threshold"]
 
     # === 추론 깊이 결정 ===
 
@@ -413,10 +415,53 @@ class PodcastReasoningAgent(BaseAgent):
             complexity = intent.get("complexity_score", 0.5)
             parts.append(f"[의도 분류]\n- 의도: {intent_info}\n- 복잡도: {complexity}")
 
-        # 독립 에이전트 결과 — DI 호출 결과 포함
+        # 독립 에이전트 결과 — phase별 역할 분리
+        # GoT: 오염방지 / ToT: 구조다양성 / CoT: 스타일개인화
         if memory_result and memory_result.get("episodes"):
-            episode_count = len(memory_result["episodes"])
-            parts.append(f"[과거 에피소드 기억]\n- {episode_count}건 발견")
+            episodes = memory_result["episodes"]
+            episode_count = len(episodes)
+
+            if phase == "GoT":
+                # GoT: 건수만 — 노드 오염 방지
+                parts.append(f"[과거 에피소드 기억]\n- {episode_count}건 발견")
+
+            elif phase == "ToT":
+                # ToT: 메타데이터만 — 구조 다양성 가이드
+                lines = ["[과거 에피소드 기억 — 구조 참고]"]
+                for ep in episodes:
+                    raw_date = ep.get("metadata", {}).get("date", "")
+                    date = raw_date[:10] if raw_date else "날짜 없음"
+                    title = ep.get("metadata", {}).get("episode_title", "제목 없음")
+                    lines.append(f"- {date} '{title}'")
+                lines.append(
+                    "→ 위 에피소드에서 사용된 구조를 파악하여 대안 생성 시 다양성을 확보하세요."
+                )
+                parts.append("\n".join(lines))
+
+            elif phase == "CoT":
+                # CoT: summary + score 필터 원문 — 스타일 개인화
+                lines = ["[과거 에피소드 스타일 참고]"]
+                summary = memory_result.get("summary", "")
+                if summary:
+                    lines.append(f"요약: {summary}")
+                for ep in episodes:
+                    score = ep.get("score", 0.0)
+                    if score < self.memory_style_score_threshold:
+                        continue
+                    raw_date = ep.get("metadata", {}).get("date", "")
+                    date = raw_date[:10] if raw_date else "날짜 없음"
+                    title = ep.get("metadata", {}).get("episode_title", "제목 없음")
+                    text_preview = ep.get("text", "")[:200]
+                    if text_preview:
+                        lines.append(
+                            f"\n[{date}] '{title}' (유사도 {score:.2f})\n{text_preview}..."
+                        )
+                # 실제 스타일 참고 내용이 있을 때만 섹션 추가
+                has_content = len(lines) > 1  # 헤더 이상의 내용이 있는지
+                if has_content:
+                    lines.append("→ 내용(주제·구조)이 아닌 스타일(말투·톤)만 참고하세요.")
+                    parts.append("\n".join(lines))
+
         if knowledge_result and knowledge_result.get("articles"):
             article_count = len(knowledge_result["articles"])
             parts.append(f"[관련 전문 지식]\n- {article_count}건 발견")

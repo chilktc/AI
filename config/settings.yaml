@@ -116,6 +116,7 @@ agents:
     temperature: 0.3
     full_threshold: 0.0      # complexity ≥ 이 값 → full GoT/ToT/CoT 추론 (0.0=항상 full)
     standard_threshold: 0.0  # complexity ≥ 이 값 → standard 추론 (미만 → lightweight)
+    memory_style_score_threshold: 0.9  # CoT 스타일 참고용 에피소드 최소 유사도 (0.0~1.0)
 
   # ──────────────────────────────────────
   # 팟캐스트모드 TIER 1 독립 에이전트
@@ -198,7 +199,7 @@ prompts:
   versions:
     default: "1.0.0"
     content_analyzer: "2.2.0"     # 4-키 emotional_journey (opening/development/climax/closing)
-    podcast_reasoning: "3.1.0"    # v3.0.0 + GoT group 필드 (6개 직장 카테고리)
+    podcast_reasoning: "3.2.0"    # v3.1.0 + Episode Memory 컨텍스트 주입 (tot/cot 참고 지침)
     batch_validator: "2.3.0"      # Round 4 최적 — 감점 규칙 (avg 0.863±0.006)
 
 
