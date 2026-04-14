@@ -196,6 +196,7 @@ async def run_with_cancel(
     coro: Any,
     cancel_event: asyncio.Event,
     name: str,
+    cancel_reason: dict[str, str] | None = None,
 ) -> tuple[str, dict[str, Any]]:
     """
     asyncio.Event 기반 취소 가능 코루틴 래퍼.
@@ -207,6 +208,8 @@ async def run_with_cancel(
         coro: 실행할 코루틴
         cancel_event: 취소 신호 이벤트
         name: 태스크 식별자 (로깅용)
+        cancel_reason: 취소 사유 공유 dict ({"reason": "..."}).
+            CRISIS 선점과 타임아웃을 로그에서 구분하기 위해 사용.
 
     Returns:
         (name, result) 튜플
@@ -223,7 +226,8 @@ async def run_with_cancel(
         if cancel_waiter in done and task not in done:
             # 취소 신호 수신 → 태스크 취소
             task.cancel()
-            logger.info("[CANCEL] %s 취소됨 (CRISIS 선점)", name)
+            reason = (cancel_reason or {}).get("reason", "알 수 없음")
+            logger.info("[CANCEL] %s 취소됨 (사유: %s)", name, reason)
             return (name, {})
 
         result = task.result()
@@ -286,6 +290,7 @@ async def tier1_podcast_fan_out(state: AgentState) -> dict[str, Any]:
     """
     writer = _get_writer()
     cancel_event = asyncio.Event()
+    cancel_reason: dict[str, str] = {"reason": ""}
     tier_start = time.monotonic()
     agent_names = ["safety", "emotion", "content_analyzer", "podcast_reasoning"]
 
@@ -299,10 +304,10 @@ async def tier1_podcast_fan_out(state: AgentState) -> dict[str, Any]:
     )
 
     tasks = [
-        run_with_cancel(safety_node(state), cancel_event, "safety"),
-        run_with_cancel(emotion_node(state), cancel_event, "emotion"),
-        run_with_cancel(content_analyzer_node(state), cancel_event, "content_analyzer"),
-        run_with_cancel(podcast_reasoning_node(state), cancel_event, "podcast_reasoning"),
+        run_with_cancel(safety_node(state), cancel_event, "safety", cancel_reason),
+        run_with_cancel(emotion_node(state), cancel_event, "emotion", cancel_reason),
+        run_with_cancel(content_analyzer_node(state), cancel_event, "content_analyzer", cancel_reason),
+        run_with_cancel(podcast_reasoning_node(state), cancel_event, "podcast_reasoning", cancel_reason),
     ]
 
     # 타임아웃 시 이미 완료된 에이전트 결과를 보존하기 위한 공유 dict
@@ -317,7 +322,17 @@ async def tier1_podcast_fan_out(state: AgentState) -> dict[str, Any]:
             elapsed_ms = int((time.monotonic() - tier_start) * 1000)
 
             if name == "safety" and result.get("safety_flags", {}).get("status") == "crisis":
+                cancel_reason["reason"] = "CRISIS 선점"
                 cancel_event.set()
+
+                # CRISIS 상태를 partial_results에 먼저 저장 (타임아웃 경합 방지)
+                # _safety_deep_crisis() 실행 중 타임아웃 발생 시에도
+                # partial_results에 next_step이 보존되어 crisis_response로 라우팅됨
+                partial_results["safety_flags"] = result.get("safety_flags", {})
+                partial_results["risk_level"] = result.get("risk_level", 4)
+                partial_results["risk_score"] = result.get("risk_score", 1.0)
+                partial_results["next_step"] = "crisis_response"
+
                 writer(
                     {
                         "event": "crisis_detected",
@@ -355,12 +370,20 @@ async def tier1_podcast_fan_out(state: AgentState) -> dict[str, Any]:
     try:
         merged = await asyncio.wait_for(_run_tier1_pod(), timeout=_TIER1_TIMEOUT)
     except asyncio.TimeoutError:
-        logger.warning(
-            "[TIER 1] 팟캐스트모드 타임아웃 (%ds) — 부분 결과로 계속 진행",
-            _TIER1_TIMEOUT,
-        )
+        cancel_reason["reason"] = f"TIER 1 타임아웃 ({_TIER1_TIMEOUT}s)"
         cancel_event.set()
         merged = partial_results
+
+        if merged.get("next_step") == "crisis_response":
+            logger.warning(
+                "[TIER 1] 타임아웃 (%ds) — CRISIS 감지 상태에서 타임아웃 발생, 위기 응답 노드로 전환",
+                _TIER1_TIMEOUT,
+            )
+        else:
+            logger.warning(
+                "[TIER 1] 팟캐스트모드 타임아웃 (%ds) — 부분 결과로 계속 진행",
+                _TIER1_TIMEOUT,
+            )
 
     writer(
         {
