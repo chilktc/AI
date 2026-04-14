@@ -966,6 +966,32 @@ def test_build_phase_context_tot_metadata_only(
     assert "다양성" in context
 
 
+def test_build_phase_context_tot_missing_date_fallback(
+    agent_with_stubs: PodcastReasoningAgent,
+) -> None:
+    """ToT phase: metadata.date 없을 때 '날짜 없음' 폴백이 적용된다."""
+    memory_result = {
+        "episodes": [
+            {
+                "text": "날짜 없는 에피소드.",
+                "score": 0.85,
+                "metadata": {
+                    "episode_title": "날짜 없는 에피소드",
+                },
+            }
+        ],
+        "summary": "",
+    }
+    context = agent_with_stubs._build_phase_context(
+        phase="ToT",
+        user_input="요즘 너무 힘들어요.",
+        intent={},
+        memory_result=memory_result,
+    )
+    assert "날짜 없음" in context
+    assert "날짜 없는 에피소드" in context
+
+
 def test_build_phase_context_cot_includes_high_score_text(
     agent_with_stubs: PodcastReasoningAgent,
 ) -> None:

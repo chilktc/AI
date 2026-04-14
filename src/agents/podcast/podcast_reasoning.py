@@ -159,7 +159,7 @@ class PodcastReasoningAgent(BaseAgent):
     # === 설정 로드 ===
 
     def _load_config(self) -> None:
-        """settings.yaml에서 추론 깊이 임계값을 로드한다. 실패 시 기본값 사용."""
+        """settings.yaml에서 추론 깊이 임계값 및 스타일 참고 임계값을 로드한다. 실패 시 기본값 사용."""
         cfg = self._load_agent_config(
             {
                 "full_threshold": 0.8,
