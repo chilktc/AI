@@ -26,7 +26,9 @@ import logging
 import re
 from typing import Any
 
-logger = logging.getLogger(__name__)
+from src.utils.logger import get_agent_logger
+
+logger = get_agent_logger("output_sanitizer")
 
 # ============================================================
 # PII 패턴 정의

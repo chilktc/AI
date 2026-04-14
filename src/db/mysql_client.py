@@ -26,8 +26,9 @@ import pymysql
 import pymysql.cursors
 
 from src.db.base import BaseRDBClient
+from src.utils.logger import get_agent_logger
 
-logger = logging.getLogger(__name__)
+logger = get_agent_logger("db.mysql_client")
 
 
 def _parse_mysql_url(url: str) -> dict[str, Any]:

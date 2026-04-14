@@ -12,7 +12,9 @@ import functools
 import logging
 from typing import Any, Callable, TypeVar
 
-logger = logging.getLogger("mind-log.utils.retry")
+from src.utils.logger import get_agent_logger
+
+logger = get_agent_logger("retry")
 
 F = TypeVar("F", bound=Callable[..., Any])
 

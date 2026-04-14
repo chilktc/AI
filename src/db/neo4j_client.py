@@ -21,8 +21,9 @@ from typing import Any
 from neo4j import AsyncGraphDatabase
 
 from src.db.base import BaseGraphClient
+from src.utils.logger import get_agent_logger
 
-logger = logging.getLogger(__name__)
+logger = get_agent_logger("db.neo4j_client")
 
 
 class Neo4jClient(BaseGraphClient):

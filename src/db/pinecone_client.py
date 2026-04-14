@@ -30,8 +30,9 @@ from typing import Any
 from pinecone import Pinecone
 
 from src.db.base import BaseVectorClient
+from src.utils.logger import get_agent_logger
 
-logger = logging.getLogger(__name__)
+logger = get_agent_logger("db.pinecone_client")
 
 
 class PineconeClient(BaseVectorClient):

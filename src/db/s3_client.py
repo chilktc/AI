@@ -21,8 +21,9 @@ from typing import Any
 import boto3
 
 from src.db.base import BaseStorageClient
+from src.utils.logger import get_agent_logger
 
-logger = logging.getLogger(__name__)
+logger = get_agent_logger("db.s3_client")
 
 
 class S3Client(BaseStorageClient):

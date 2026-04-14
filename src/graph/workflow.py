@@ -40,8 +40,9 @@ from langgraph.graph import END, StateGraph
 from config.loader import get_settings
 from src.api.stories_store import stories_store
 from src.models.agent_state import AgentState
+from src.utils.logger import get_agent_logger
 
-logger = logging.getLogger(__name__)
+logger = get_agent_logger("workflow")
 
 
 # ---------------------------------------------------------------------------

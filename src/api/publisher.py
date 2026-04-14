@@ -29,8 +29,9 @@ from datetime import datetime, timezone
 from typing import Any
 
 from src.api.contracts import SaveRequest
+from src.utils.logger import get_agent_logger
 
-logger = logging.getLogger(__name__)
+logger = get_agent_logger("publisher")
 
 
 class AgentDataPublisher:

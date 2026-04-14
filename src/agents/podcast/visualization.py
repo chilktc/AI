@@ -16,8 +16,9 @@ import boto3  # type: ignore
 from config.loader import get_settings
 from src.agents.shared.base_agent import BaseAgent
 from src.models.agent_state import AgentState
+from src.utils.logger import get_agent_logger
 
-logger = logging.getLogger(__name__)
+logger = get_agent_logger("visualization")
 
 
 class VisualizationAgent(BaseAgent):
