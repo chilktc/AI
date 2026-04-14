@@ -159,7 +159,7 @@ class PodcastReasoningAgent(BaseAgent):
     # === 설정 로드 ===
 
     def _load_config(self) -> None:
-        """settings.yaml에서 추론 깊이 임계값 및 스타일 참고 임계값을 로드한다. 실패 시 기본값 사용."""
+        """settings.yaml에서 추론 깊이 임계값 및 스타일 참고 임계값을 로드한다."""
         cfg = self._load_agent_config(
             {
                 "full_threshold": 0.8,
@@ -415,7 +415,8 @@ class PodcastReasoningAgent(BaseAgent):
             complexity = intent.get("complexity_score", 0.5)
             parts.append(f"[의도 분류]\n- 의도: {intent_info}\n- 복잡도: {complexity}")
 
-        # 독립 에이전트 결과 — phase별 역할 분리 (GoT: 오염방지 / ToT: 구조다양성 / CoT: 스타일개인화)
+        # 독립 에이전트 결과 — phase별 역할 분리
+        # GoT: 오염방지 / ToT: 구조다양성 / CoT: 스타일개인화
         if memory_result and memory_result.get("episodes"):
             episodes = memory_result["episodes"]
             episode_count = len(episodes)
@@ -432,7 +433,9 @@ class PodcastReasoningAgent(BaseAgent):
                     date = raw_date[:10] if raw_date else "날짜 없음"
                     title = ep.get("metadata", {}).get("episode_title", "제목 없음")
                     lines.append(f"- {date} '{title}'")
-                lines.append("→ 위 에피소드에서 사용된 구조를 파악하여 대안 생성 시 다양성을 확보하세요.")
+                lines.append(
+                    "→ 위 에피소드에서 사용된 구조를 파악하여 대안 생성 시 다양성을 확보하세요."
+                )
                 parts.append("\n".join(lines))
 
             elif phase == "CoT":
