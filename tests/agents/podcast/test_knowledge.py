@@ -64,3 +64,40 @@ async def test_agent_process_empty_input(agent: KnowledgeAgent) -> None:
 
     assert "knowledge_results" in result
     assert isinstance(result["knowledge_results"]["documents"], list)
+
+
+# === LLM 실제 호출 테스트 ===
+
+
+@pytest.mark.live
+class TestKnowledgeWithLLM:
+    """KnowledgeAgent 실제 호출 테스트 (Pinecone 환경 필요)."""
+
+    @pytest.fixture
+    def agent(self) -> KnowledgeAgent:
+        import os
+
+        if not os.getenv("PINECONE_API_KEY"):
+            pytest.skip("PINECONE_API_KEY not configured — Pinecone 환경 아님")
+        db_mock = AsyncMock()
+        pinecone_mock = AsyncMock()
+        embedding_mock = AsyncMock()
+        return KnowledgeAgent(
+            db_client=db_mock,
+            pinecone_client=pinecone_mock,
+            embedding_client=embedding_mock,
+        )
+
+    @pytest.mark.asyncio
+    async def test_knowledge_search_returns_results(self, agent: KnowledgeAgent) -> None:
+        """Pinecone 환경에서 knowledge_results 구조를 반환한다."""
+        import time
+
+        state = {"user_input": "번아웃 회복 방법을 알고 싶어요"}
+        start = time.time()
+        result = await agent.process(state)
+        elapsed = time.time() - start
+
+        print(f"\n[Knowledge] ⏱️ {elapsed:.2f}초")
+        assert "knowledge_results" in result
+        assert isinstance(result["knowledge_results"], dict)

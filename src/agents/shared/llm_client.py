@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import logging
 import os
 import time
 from typing import Any
@@ -31,8 +30,9 @@ from typing import Any
 import anthropic
 
 from config.loader import get_settings
+from src.utils.logger import get_agent_logger
 
-_cb_logger = logging.getLogger(__name__)
+_cb_logger = get_agent_logger("llm_client")
 
 
 class CircuitOpenError(Exception):
@@ -385,6 +385,13 @@ class LLMClient:
         breaker = self._get_breaker(self._provider)
         await breaker.check()
 
+        _start = time.monotonic()
+        _cb_logger.info(
+            "[LLM 호출 시작] provider=%s, model=%s",
+            self._provider,
+            self._model_id,
+        )
+
         try:
             if self._provider in self._custom_providers:
                 result: str = await self._custom_provider_instance.generate(
@@ -404,11 +411,32 @@ class LLMClient:
                 )
         except CircuitOpenError:
             raise
-        except Exception:
+        except Exception as e:
+            _elapsed_ms = int((time.monotonic() - _start) * 1000)
+            _cb_logger.error(
+                "[LLM 호출 실패] provider=%s, model=%s, latency=%dms, error=%s",
+                self._provider,
+                self._model_id,
+                _elapsed_ms,
+                type(e).__name__,
+            )
             await breaker.record_failure()
             raise
 
         await breaker.record_success()
+        _elapsed_ms = int((time.monotonic() - _start) * 1000)
+        _usage = self._last_usage or {}
+        _cb_logger.info(
+            "[LLM 호출 완료] provider=%s, model=%s, latency=%dms, "
+            "input_tokens=%d, output_tokens=%d, cache_read=%d, cache_write=%d",
+            self._provider,
+            self._model_id,
+            _elapsed_ms,
+            _usage.get("input_tokens", 0),
+            _usage.get("output_tokens", 0),
+            _usage.get("cache_read_tokens", 0),
+            _usage.get("cache_write_tokens", 0),
+        )
         return result
 
     # temperature를 지원하지 않는 OpenAI 모델 접두사 (reasoning 계열)
@@ -540,17 +568,39 @@ class LLMClient:
         for attempt in range(max_attempts):
             try:
                 response = await _call_with_semaphore()
+                if attempt > 0:
+                    _cb_logger.info(
+                        "[Bedrock] 재시도 성공 — model=%s, attempt=%d/%d",
+                        self._model_id,
+                        attempt + 1,
+                        max_attempts,
+                    )
                 break
             except botocore.exceptions.ClientError as e:
                 error_code = e.response.get("Error", {}).get("Code", "")
                 if error_code in ("ThrottlingException", "ServiceUnavailableException"):
                     last_error = e
+                    wait_time = min(backoff, max_backoff)
+                    _cb_logger.warning(
+                        "[Bedrock] %s — model=%s, attempt=%d/%d, backoff=%.1fs",
+                        error_code,
+                        self._model_id,
+                        attempt + 1,
+                        max_attempts,
+                        wait_time,
+                    )
                     if attempt < max_attempts - 1:
-                        await asyncio.sleep(min(backoff, max_backoff))
+                        await asyncio.sleep(wait_time)
                         backoff *= 2
                     continue
                 elif error_code == "ModelNotReadyException":
                     last_error = e
+                    _cb_logger.warning(
+                        "[Bedrock] ModelNotReadyException — model=%s, attempt=%d/%d, backoff=5s",
+                        self._model_id,
+                        attempt + 1,
+                        max_attempts,
+                    )
                     if attempt < max_attempts - 1:
                         await asyncio.sleep(5)
                     continue
@@ -561,6 +611,12 @@ class LLMClient:
                 raise
         else:
             # 모든 재시도 소진
+            _cb_logger.error(
+                "[Bedrock] 재시도 소진 — model=%s, attempts=%d, last_error=%s",
+                self._model_id,
+                max_attempts,
+                last_error,
+            )
             raise RuntimeError(
                 f"Bedrock 호출 {max_attempts}회 재시도 후 실패: {last_error}"
             ) from last_error

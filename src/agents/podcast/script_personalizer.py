@@ -23,8 +23,8 @@ from config.app_config import (
     FORMALITY_REPLACEMENTS,
     STYLE_MAPPINGS,
 )
-from src.api.client import BackendClient
 from src.agents.shared.base_agent import BaseAgent
+from src.api.client import BackendClient
 from src.models.agent_state import AgentState
 from src.models.schemas import (
     EmotionalJourney,
@@ -109,33 +109,28 @@ class ScriptPersonalizerAgent(BaseAgent):
                             themes=script_data.get("themes", []),
                         )
                 except Exception as pydantic_err:
-                    self.logger.warning(
-                        "[ScriptPersonalizer] Pydantic 실패: %s", pydantic_err
-                    )
+                    self.logger.warning("[ScriptPersonalizer] Pydantic 실패: %s", pydantic_err)
 
             # AgentState에서 감정적 여정 정보 추출
+            # SP-1: AgentState 미정의 키 폴백 제거 (최상위 emotional_journey 참조 없음)
             content_analysis = state.get("content_analysis", {})
-            emotional_journey_data = content_analysis.get(
-                "emotional_journey", state.get("emotional_journey")
-            )
+            emotional_journey_data = content_analysis.get("emotional_journey")
 
             emotional_journey = None
-            if emotional_journey_data:
+            if emotional_journey_data and isinstance(emotional_journey_data, dict):
                 try:
                     emotional_journey = EmotionalJourney(
-                        opening=emotional_journey_data.get(
-                            "opening", emotional_journey_data.get("start_emotion", "차분함")
-                        ),
+                        opening=emotional_journey_data.get("opening", "차분함"),
                         development=emotional_journey_data.get("development", "공감"),
-                        resolution=emotional_journey_data.get(
-                            "resolution", emotional_journey_data.get("resolution_emotion", "따뜻함")
-                        ),
+                        climax=emotional_journey_data.get("climax", ""),  # v2.2.0: 핵심 전환점
+                        closing=emotional_journey_data.get(
+                            "closing", "따뜻함"
+                        ),  # v2.2.0: resolution 대체
+                        # SP-2: start_emotion/resolution_emotion/resolution 레거시 폴백 전부 제거
                         journey_type=emotional_journey_data.get("journey_type", "healing"),
                     )
                 except Exception as e:
-                    self.logger.warning(
-                        "[ScriptPersonalizer] Failed to parse EmotionalJourney: %s", e
-                    )
+                    self.logger.warning("[ScriptPersonalizer] EmotionalJourney 생성 실패: %s", e)
 
             # 에피소드 ID 생성
             episode_id = f"ep_{uuid.uuid4().hex[:12]}"
@@ -149,7 +144,7 @@ class ScriptPersonalizerAgent(BaseAgent):
                 raise ValueError("validated_script is required but not provided")
 
             # STEP 1: 사용자 프로필 조회 및 스타일 전략 결정
-            user_profile = self._get_user_profile(user_id)
+            user_profile = await self._get_user_profile(user_id)
             personalization_strategy = self._determine_strategy(user_profile)
 
             self.logger.info("[ScriptPersonalizer] Strategy: %s", personalization_strategy)
@@ -183,10 +178,8 @@ class ScriptPersonalizerAgent(BaseAgent):
             processing_time = (datetime.now() - start_time).total_seconds() * 1000
             self.logger.info("[ScriptPersonalizer] Completed in %.2fms", processing_time)
 
-            # 메모리 저장용 에피소드 텍스트 추출 (세그먼트 텍스트 연결)
-            memory_text = "\n\n".join(
-                seg.script_text for seg in personalized_script.segments if seg.script_text
-            )
+            # 메모리 저장용 에피소드 텍스트 추출
+            memory_text = personalized_script.script_text or ""
 
             return {
                 "final_output": personalized_script.model_dump_json(),
@@ -216,9 +209,7 @@ class ScriptPersonalizerAgent(BaseAgent):
                 )
                 fallback = fallback_script.model_dump_json()
                 try:
-                    fallback_memory_text = "\n\n".join(
-                        seg.script_text for seg in validated_script.segments if seg.script_text
-                    )
+                    fallback_memory_text = validated_script.script_text or ""
                     fallback_metadata["episode_id"] = fallback_script.episode_id
                     fallback_metadata["episode_title"] = fallback_script.episode_title
                 except Exception:
@@ -235,18 +226,20 @@ class ScriptPersonalizerAgent(BaseAgent):
     # STEP 1: 사용자 프로필 조회 및 스타일 전략 결정
     # =========================================================================
 
-    def _get_user_profile(self, user_id: str) -> UserProfile:
+    async def _get_user_profile(self, user_id: str) -> UserProfile:
         """
         사용자 프로필 조회 (Backend API 연동)
         """
 
         if self.backend_client:
             try:
-                profile = self.backend_client.get_user_profile(user_id)
+                profile = await self.backend_client.get_user_profile(user_id)
                 if profile:
-                    return profile
+                    return UserProfile.model_validate(profile)  # type: ignore[no-any-return]
             except Exception as e:
-                self.logger.warning("[ScriptPersonalizer] Failed to fetch user profile via API: %s", e)
+                self.logger.warning(
+                    "[ScriptPersonalizer] Failed to fetch user profile via API: %s", e
+                )
 
         # 기본 프로필 반환
         self.logger.info("[ScriptPersonalizer] Using default profile for user=%s", user_id)
@@ -423,9 +416,7 @@ class ScriptPersonalizerAgent(BaseAgent):
             )
 
         except Exception as e:
-            self.logger.warning(
-                f"[ScriptPersonalizer] LLM personalization failed: {str(e)}"
-            )
+            self.logger.warning(f"[ScriptPersonalizer] LLM personalization failed: {str(e)}")
             return script
 
     async def _personalize_integrated_script_with_llm(
@@ -446,7 +437,8 @@ class ScriptPersonalizerAgent(BaseAgent):
 Emotional Journey:
 - Opening: {emotional_journey.opening}
 - Development: {emotional_journey.development}
-- Resolution: {emotional_journey.resolution}
+- Climax: {emotional_journey.climax}
+- Closing: {emotional_journey.closing}
 - Type: {emotional_journey.journey_type}
 """
 

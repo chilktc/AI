@@ -42,8 +42,54 @@ def _create_json_formatter() -> logging.Formatter:
     return JsonFormatter(  # type: ignore[no-any-return]
         fmt="%(asctime)s %(levelname)s %(name)s %(message)s",
         rename_fields={"asctime": "timestamp", "levelname": "level", "name": "logger"},
-        datefmt="%Y-%m-%dT%H:%M:%S",
+        datefmt="%Y-%m-%dT%H:%M:%S.000Z",
+        json_ensure_ascii=False,
     )
+
+
+class DeveloperFormatter(logging.Formatter):
+    """개발자용 다중행 읽기 가능한 포맷터.
+
+    기본 로그 정보와 extra 필드를 보기 좋게 표시한다.
+    """
+
+    # 표준 로깅 필드들 (extra 딕셔너리에서 제외할 필드)
+    _STANDARD_FIELDS = {
+        "name",
+        "msg",
+        "args",
+        "created",
+        "filename",
+        "funcName",
+        "levelname",
+        "levelno",
+        "lineno",
+        "module",
+        "msecs",
+        "message",
+        "pathname",
+        "process",
+        "processName",
+        "relativeCreated",
+        "thread",
+        "threadName",
+        "exc_info",
+        "exc_text",
+        "stack_info",
+        "asctime",
+    }
+
+    def format(self, record: logging.LogRecord) -> str:
+        """로그 레코드를 포맷한다."""
+        base = super().format(record)
+
+        # extra 필드만 추출 (표준 필드 제외)
+        extra_fields = {k: v for k, v in record.__dict__.items() if k not in self._STANDARD_FIELDS}
+
+        if extra_fields:
+            base += "\n  Context: " + str(extra_fields)
+
+        return base
 
 
 def _create_formatter() -> logging.Formatter:
@@ -52,7 +98,7 @@ def _create_formatter() -> logging.Formatter:
         return _create_json_formatter()
     fmt = "[%(asctime)s] %(levelname)-8s [%(name)s] %(message)s"
     datefmt = "%Y-%m-%d %H:%M:%S"
-    return logging.Formatter(fmt, datefmt=datefmt)
+    return DeveloperFormatter(fmt, datefmt=datefmt)
 
 
 def get_agent_logger(agent_name: str) -> logging.Logger:

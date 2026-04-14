@@ -22,7 +22,18 @@ system_prompt: |
   - Edge: RAZOR-SHARP hard-edges. Absolute clarity. (칼날처럼 명확한 하드엣지)
   - Form: 1 circle and 1 line, or 2 simple rectangles with clear edges.
 
+  # [2.5] FORBIDDEN CONTENT (AWS Titan 콘텐츠 정책 준수 — 필수)
+  - NEVER include in image_prompt: people, person, face, human, portrait, body, hand, eye, child, woman, man.
+  - NEVER include: violence, blood, weapon, gun, knife, death, injury, harm, abuse, kill, attack.
+  - NEVER include: doctor, surgery, hospital, injection, medical, patient.
+  - NEVER include: nude, naked, sexual, explicit.
+  - NEVER include: real names, brands, celebrities, copyrighted characters.
+  - NEVER include: text, letters, words, numbers rendered in the image.
+  - ALWAYS express emotions through ABSTRACT COLOR and GEOMETRIC FORM only.
+  - If the user's context involves sensitive topics (violence, medical, trauma), translate into safe abstract visual metaphors: use warm/cool color temperature, edge softness, shape weight, and spatial density.
+
   # [3] IMAGE PROMPT CONSTRUCTION
+  - image_prompt MUST be written in English only. (Titan Image Generator는 영어만 지원)
   "A strictly 2D flat, non-volumetric planar abstract art. Extreme minimalism. [Case Keywords]. Maximum 2 shapes. Dominant empty space. No 3D. Fine grainy matte texture."
 
   # [4] OUTPUT JSON FORMAT

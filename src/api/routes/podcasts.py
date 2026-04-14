@@ -9,18 +9,17 @@ from __future__ import annotations
 
 import asyncio
 import json
-import logging
 import uuid
 from collections.abc import AsyncIterator
 from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter
+from fastapi import Request as HttpRequest
 from fastapi.responses import StreamingResponse
 
 # src.api.main import removed from top level to prevent circular import
 from src.api.backend_resources import (
-    RESOURCE_PODCAST_EPISODES,
     RESOURCE_PODCAST_METADATA,
     RESOURCE_VISUALIZATION,
     TYPE_PODCAST_METADATA,
@@ -35,8 +34,9 @@ from src.api.external_schemas import (
     SafetyAlertData,
     SlimPodcastResponse,
 )
+from src.utils.logger import get_agent_logger
 
-logger = logging.getLogger(__name__)
+logger = get_agent_logger("routes.podcasts")
 
 router = APIRouter()
 
@@ -180,6 +180,12 @@ async def _save_core_data(
                 "pipeline_duration_ms": elapsed_ms,
                 "trace_id": trace_id,
                 "correlation_id": correlation_id,
+                "primary_emotion": final_state.get("emotion_vectors", {}).get(
+                    "primary_emotion", "neutral"
+                ),
+                "secondary_emotions": final_state.get("emotion_vectors", {}).get(
+                    "secondary_emotions", []
+                )[:2],
             },
             timestamp=datetime.now(timezone.utc),
         )
@@ -188,10 +194,8 @@ async def _save_core_data(
             backend_client.ingest_podcast_episodes(
                 session_id=session_id,
                 image_url=cover_image_url or "",
-                texts=episode_data.key_insights or [],
-                title=episode_data.episode_title or "",
-                summary="",  # TODO: 요약문 생성 로직 구현 예정
-                keywords=[],  # TODO: 키워드 추출 로직 구현 예정
+                text=episode_data.script_text,
+                title=episode_data.episode_title,
             ),
             return_exceptions=True,
         )
@@ -243,6 +247,7 @@ async def _save_core_data(
 )
 async def create_podcast_episode(
     request: PodcastRequest,
+    http_request: HttpRequest,
 ) -> SlimPodcastResponse:
     """
     팟캐스트 에피소드 생성.
@@ -286,9 +291,11 @@ async def create_podcast_episode(
     # C-2: TelemetryCallback으로 TIER별 메트릭 수집
     from src.monitoring.callbacks import MindLogTelemetryCallback
 
+    req_id = getattr(http_request.state, "request_id", request.tracing.request_id)
     telemetry_cb = MindLogTelemetryCallback(
         session_id=request.session_id,
         mode="podcast",
+        request_id=req_id,
     )
 
     try:
@@ -300,6 +307,7 @@ async def create_podcast_episode(
             config={
                 "configurable": {"thread_id": request.session_id},
                 "callbacks": [telemetry_cb],
+                "metadata": {"request_id": req_id},
             },
         )
     except Exception as e:
@@ -366,7 +374,9 @@ def _now_iso() -> str:
 
 
 @router.post("/episodes/stream")
-async def stream_podcast_episode(request: PodcastRequest) -> StreamingResponse:
+async def stream_podcast_episode(
+    request: PodcastRequest, http_request: HttpRequest
+) -> StreamingResponse:
     """팟캐스트 에피소드 생성 — SSE 스트리밍.
 
     TIER별 진행 상황을 실시간으로 전송한다.
@@ -410,14 +420,17 @@ async def stream_podcast_episode(request: PodcastRequest) -> StreamingResponse:
     from src.api.main import compiled_graph
     from src.monitoring.callbacks import MindLogTelemetryCallback
 
+    req_id = getattr(http_request.state, "request_id", request.tracing.request_id)
     telemetry_cb = MindLogTelemetryCallback(
         session_id=request.session_id,
         mode="podcast",
+        request_id=req_id,
     )
 
     config = {
         "configurable": {"thread_id": request.session_id},
         "callbacks": [telemetry_cb],
+        "metadata": {"request_id": req_id},
     }
 
     async def event_generator() -> AsyncIterator[str]:
@@ -461,7 +474,7 @@ async def stream_podcast_episode(request: PodcastRequest) -> StreamingResponse:
                 intent_type=final_state.get("intent", {}).get("intent_type", "unknown"),
                 complexity_score=float(final_state.get("intent", {}).get("complexity_score", 0.0)),
                 reasoning_depth=str(
-                    final_state.get("reasoning_result", {}).get("depth_level", "standard")
+                    final_state.get("reasoning_result", {}).get("reasoning_depth", "standard")
                 ),
                 retry_count=int(final_state.get("iteration_count", 0)),
                 total_words=len(episode_data.script_text.split()),

@@ -23,15 +23,15 @@ BaseMemoryAgent의 벡터 검색과 호환되는 인터페이스를 제공한다
 from __future__ import annotations
 
 import asyncio
-import logging
 import os
 from typing import Any
 
 from pinecone import Pinecone
 
 from src.db.base import BaseVectorClient
+from src.utils.logger import get_agent_logger
 
-logger = logging.getLogger(__name__)
+logger = get_agent_logger("db.pinecone_client")
 
 
 class PineconeClient(BaseVectorClient):

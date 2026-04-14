@@ -116,6 +116,7 @@ agents:
     temperature: 0.3
     full_threshold: 0.0      # complexity ≥ 이 값 → full GoT/ToT/CoT 추론 (0.0=항상 full)
     standard_threshold: 0.0  # complexity ≥ 이 값 → standard 추론 (미만 → lightweight)
+    memory_style_score_threshold: 0.9  # CoT 스타일 참고용 에피소드 최소 유사도 (0.0~1.0)
 
   # ──────────────────────────────────────
   # 팟캐스트모드 TIER 1 독립 에이전트
@@ -162,8 +163,7 @@ storage:
     upload_prefix: "vis"           # TODO(backend): 4-4 prefix 확정
   pinecone:
     index_knowledge: "expert-knowledge"
-
-    index_memory_podcast: "mem-podcast-episode"
+    # Episode Memory 인덱스: 환경변수 PINECONE_INDEX_EPISODE로 관리 (GitHub Secrets)
 
 # 누적 그래프 설정
 graph:
@@ -173,12 +173,16 @@ graph:
 pipeline:
   max_retries: 1              # TIER 3 → TIER 2 재시도 상한 (FAIL용) — 최악 760s 상한
   max_critical_retries: 2     # CRITICAL_FAIL 전용 재시도 상한 — 최악 1140s 상한
-  tier0_timeout_seconds: 20    # TIER 0: Intent Classifier 단독 (기존 10 × 2)
-  tier1_timeout_seconds: 60    # TIER 1: 병렬 4개 — Bedrock 기준 (기존 30 × 2)
+  tier0_timeout_seconds: 40    # TIER 0: Intent Classifier 단독 (20 → 40, APAC CRIS 지연 반영)
+  tier1_timeout_seconds: 240   # TIER 1: 병렬 4개 — Podcast Reasoning 120초+ 빈도 반영 (120 → 240)
   tier2_timeout_seconds: 280   # TIER 2: Script Generator + Visualization 병렬 (기존 140 × 2)
   tier3_timeout_seconds: 100   # TIER 3: Batch Validator 재시도 포함 (기존 50 × 2)
-  tier4_timeout_seconds: 20    # TIER 4: Script Personalizer (기존 10 × 2)
-  async_timeout_seconds: 60    # 비동기: Visualization + Learning (기존 30 × 2)
+  tier4_timeout_seconds: 40    # TIER 4: Script Personalizer (20 → 40, APAC CRIS 지연 반영)
+  async_timeout_seconds: 120   # 비동기: Visualization + Learning (60 → 120)
+
+# Stories 수신 대기 설정
+stories:
+  wait_timeout_seconds: 300  # 최대 5분 대기
 
 # 백엔드 API 설정
 api:
@@ -194,8 +198,8 @@ prompts:
   # 미지정 에이전트는 YAML 내부 default_version 사용
   versions:
     default: "1.0.0"
-    content_analyzer: "2.1.0"     # Round 4 최적 조합 A (OpenAI)
-    podcast_reasoning: "3.1.0"    # v3.0.0 + GoT group 필드 (6개 직장 카테고리)
+    content_analyzer: "2.2.0"     # 4-키 emotional_journey (opening/development/climax/closing)
+    podcast_reasoning: "3.2.0"    # v3.1.0 + Episode Memory 컨텍스트 주입 (tot/cot 참고 지침)
     batch_validator: "2.3.0"      # Round 4 최적 — 감점 규칙 (avg 0.863±0.006)
 
 

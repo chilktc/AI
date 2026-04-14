@@ -193,10 +193,14 @@ class AgentState(TypedDict, total=False):
     final_output: str         # Script Personalizer → 최종 응답
     visual_data: dict         # Visualization → 시각화 메타데이터
 
+    # === 외부 데이터 ===
+    stories_context: dict | None  # Stories 선택 데이터 (keywords, title, description)
+
     # === 제어 ===
     next_step: str            # 워크플로우 라우팅 플래그
     execution_plan: dict      # Intent Classifier가 결정한 실행 계획
     iteration_count: int      # 피드백 루프 카운터 (최대 2회 재시도)
+    memory_write: bool        # True이면 async_post에서 에피소드 메모리 저장 실행
 ```
 
 ### 필드 접근 규칙
@@ -468,7 +472,7 @@ class ReasoningAgent:
 
 ---
 
-## 구현 현황 (2026-04-07 기준)
+## 구현 현황 (2026-04-14 기준)
 
 | 구분 | 구현 에이전트 | 진행률 |
 |------|------------|--------|
@@ -480,7 +484,7 @@ class ReasoningAgent:
 > 현재 독립 에이전트 호출은 DI 패턴(직접 메서드 호출)으로 구현되어 엔벨로프가 미사용 상태이다.
 > 백엔드 통신 확장 시 활성화를 검토한다.
 
-### 인프라 강화 (PR #52~#69)
+### 인프라 강화 (PR #52~#118)
 
 | 구분 | 내용 | PR |
 |------|------|-----|
@@ -491,11 +495,17 @@ class ReasoningAgent:
 | 테스트 보강 | Circuit Breaker 9개 + SSE 스트리밍 11개 테스트 | #61 |
 | Neo4j 통합 | GoT→Neo4j 저장, 그래프 API, 누적 그래프, Mode B 단일화 | #50, #51, #53, #69 |
 | Pinecone 인프라 | PineconeClient, CLI 스크립트 3종, 테스트 59개 | #64~#68 |
+| 에이전트 출력 감사 | 7 Task 전체 완료 (SA/EA/CA/SG/VI/BV/횡단) | develop 직접 |
+| Stories 수신 인프라 | asyncio.Event 대기 + TIER 4 wait_for_stories_node | #110 |
+| 로그 시스템 통일 | logging.getLogger→get_agent_logger 18개 파일, JSON 포맷 통일 | #112, #113 |
+| CRISIS-타임아웃 수정 | 로그 구분, 경합 방지, TIER 1 타임아웃 240s | #114 |
+| TIER 타임아웃 확장 | TIER 0/4/비동기 타임아웃 2배 확장, Bedrock throttling 로그 | #116 |
+| S3 ACL 추가 | Visualization put_object에 ACL="public-read" 추가 | #117 |
 
 ### 테스트 현황
 
 ```
-532 passed
+583 passed
 ```
 
 ---
@@ -523,4 +533,4 @@ class ReasoningAgent:
 
 ---
 
-*마지막 업데이트: 2026-04-07*
+*마지막 업데이트: 2026-04-14 14:30*

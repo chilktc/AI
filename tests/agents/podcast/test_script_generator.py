@@ -8,7 +8,8 @@ from src.models.agent_state import AgentState
 
 
 @pytest.fixture
-def agent(llm_client):
+def live_agent(llm_client):
+    """Ollama LLM을 사용하는 라이브 테스트용 에이전트."""
     if llm_client is None:
         pytest.skip("Ollama client not available")
     agent = ScriptGeneratorAgent()
@@ -18,9 +19,9 @@ def agent(llm_client):
 
 @pytest.mark.live
 @pytest.mark.asyncio
-async def test_script_generator_title_generation(agent):
+async def test_script_generator_title_generation(live_agent):
     start_time = time.time()
-    title = await agent._generate_title("Mental Health", ["CBT"], {"start_emotion": "sad"})
+    title = await live_agent._generate_title("Mental Health", ["CBT"], {"start_emotion": "sad"})
     elapsed_time = time.time() - start_time
     print(f"\n[Generate Title] ⏱️ 추론 시간: {elapsed_time:.2f}초")
     assert isinstance(title, str)
@@ -29,10 +30,10 @@ async def test_script_generator_title_generation(agent):
 
 @pytest.mark.live
 @pytest.mark.asyncio
-async def test_script_generator_insights_extraction(agent):
+async def test_script_generator_insights_extraction(live_agent):
     segments = [{"script_text": "첫 번째로 번아웃은 누구에게나 올 수 있는 흔한 증상입니다."}]
     start_time = time.time()
-    insights = await agent._extract_insights(segments)
+    insights = await live_agent._extract_insights(segments)
     elapsed_time = time.time() - start_time
     print(f"\n[Extract Insights] ⏱️ 추론 시간: {elapsed_time:.2f}초")
 
@@ -41,9 +42,14 @@ async def test_script_generator_insights_extraction(agent):
 
 @pytest.mark.live
 @pytest.mark.asyncio
-async def test_script_generator_process(agent):
+async def test_script_generator_process(live_agent):
     state = {
-        "main_theme": "Mental Health",
+        "content_analysis": {
+            "main_theme": "마음 건강",
+            "sub_themes": [],
+            "emotional_journey": {},
+            "target_duration": 3,
+        },
         "segment_plan": [
             {
                 "segment_id": "seg_001",
@@ -58,27 +64,31 @@ async def test_script_generator_process(agent):
     }
 
     start_time = time.time()
-    result = await agent.process(state)
+    result = await live_agent.process(state)
     elapsed_time = time.time() - start_time
     print(f"\n[Script Generator Process] ⏱️ 추론 시간: {elapsed_time:.2f}초")
 
     assert "script_draft" in result
     draft = result["script_draft"]
     assert "episode_title" in draft
-    assert len(draft["segments"]) == 1
-    assert "script_text" in draft["segments"][0]
+    assert "script_text" in draft
     assert isinstance(draft["key_insights"], list)
 
 
 @pytest.mark.live
 @pytest.mark.asyncio
-async def test_script_generator_includes_safety_context_when_warning(agent):
+async def test_script_generator_includes_safety_context_when_warning(live_agent):
     """Safety warning 상태일 때 safety_context가 스크립트 메타데이터에 포함된다."""
     state = {
         "content_analysis": {
             "main_theme": "스트레스 관리",
             "sub_themes": ["번아웃"],
-            "emotional_journey": {"opening": "불안", "resolution": "안정"},
+            "emotional_journey": {
+                "opening": "불안",
+                "development": "이해",
+                "climax": "전환",
+                "closing": "안정",
+            },
             "target_duration": 3,
         },
         "safety_flags": {
@@ -100,7 +110,7 @@ async def test_script_generator_includes_safety_context_when_warning(agent):
         ],
         "knowledge_context": {},
     }
-    result = await agent.process(state)
+    result = await live_agent.process(state)
     draft = result["script_draft"]
     assert "safety_context" in draft["metadata"]
     assert draft["metadata"]["safety_context"]["status"] == "warning"
@@ -109,7 +119,7 @@ async def test_script_generator_includes_safety_context_when_warning(agent):
 
 @pytest.mark.live
 @pytest.mark.asyncio
-async def test_script_generator_no_safety_context_when_safe(agent):
+async def test_script_generator_no_safety_context_when_safe(live_agent):
     """Safety safe 상태일 때 safety_context.status가 'safe'이다."""
     state = {
         "content_analysis": {
@@ -132,7 +142,7 @@ async def test_script_generator_no_safety_context_when_safe(agent):
         ],
         "knowledge_context": {},
     }
-    result = await agent.process(state)
+    result = await live_agent.process(state)
     draft = result["script_draft"]
     assert draft["metadata"]["safety_context"]["status"] == "safe"
 
@@ -195,6 +205,7 @@ async def test_no_revision_feedback_on_first_attempt():
         session_id="s1",
         mode="podcast",
         iteration_count=0,
+        content_analysis={"main_theme": "테스트 주제", "sub_themes": [], "target_duration": 5},
     )
 
     with (
@@ -243,5 +254,38 @@ async def test_missing_content_analysis_uses_empty_dict_not_state():
         }
         result = await agent.process(state)
 
-    # state 전체가 아닌 기본값으로 처리됨 — script_draft가 정상 반환되어야 함
+    # content_analysis 없음 → main_theme 빈 문자열 → 조기 반환
     assert "script_draft" in result
+    assert result["script_draft"].get("_error") == "main_theme_missing"
+    assert "error" not in result  # top-level error 키 없음
+
+
+def test_script_generator_source_has_no_mental_health_hardcode() -> None:
+    """ScriptGeneratorAgent 소스에 'Mental Health' 하드코딩 없다 (SG-1)."""
+    import inspect
+
+    source = inspect.getsource(ScriptGeneratorAgent)
+    assert "Mental Health" not in source, "SG-1: Mental Health 하드코딩 발견됨"
+
+
+@pytest.mark.asyncio
+async def test_script_generator_error_path_no_top_level_error_key():
+    """실패 시 top-level 'error' 키 대신 script_draft 내부에 _error 포함 (SG-2)."""
+    agent = ScriptGeneratorAgent()
+    state = AgentState(
+        user_input="오늘 하루",
+        user_id="u",
+        session_id="s",
+        mode="podcast",
+        content_analysis={"main_theme": "스트레스"},
+    )
+
+    # _generate_title에서 예외 발생 → except 블록 진입
+    with patch.object(
+        agent, "_generate_title", new_callable=AsyncMock, side_effect=RuntimeError("test error")
+    ):
+        result = await agent.process(state)
+
+    assert "error" not in result, "top-level 'error' 키는 AgentState 미정의"
+    assert "script_draft" in result
+    assert "_error" in result["script_draft"]

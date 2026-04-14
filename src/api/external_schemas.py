@@ -537,8 +537,6 @@ class PodcastEpisodeData(BaseModel):
     created_at: datetime = Field(default_factory=_now_utc, description="에피소드 생성 시각")
 
 
-
-
 class TTSMarkerData(BaseModel):
     """TTS 마커 — 스크립트 특정 위치의 음성 제어 지시."""
 
@@ -786,8 +784,6 @@ class MySQLPodcastEpisode(BaseModel):
     trace_id: str = Field(description="분산 추적 ID")
     correlation_id: str = Field(description="상관관계 ID")
     created_at: datetime = Field(default_factory=_now_utc, description="생성 시각")
-
-
 
 
 class MySQLLearningPattern(BaseModel):

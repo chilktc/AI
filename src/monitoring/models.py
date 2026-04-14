@@ -51,6 +51,7 @@ class PipelineMetrics:
     """
 
     run_id: str
+    request_id: str = ""
     session_id: str = ""
     mode: str = ""  # podcast
     total_duration_ms: int = 0

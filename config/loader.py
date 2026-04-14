@@ -256,6 +256,11 @@ class Settings:
         """비동기 작업 타임아웃 (초)."""
         return int(self._config.get("pipeline", {}).get("async_timeout_seconds", 30))
 
+    @property
+    def stories_wait_timeout(self) -> int:
+        """Stories 데이터 수신 최대 대기 시간 (초). 기본 300초(5분)."""
+        return int(self._config.get("stories", {}).get("wait_timeout_seconds", 300))
+
     # --- API 설정 ---
 
     @property

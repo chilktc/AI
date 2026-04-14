@@ -96,15 +96,7 @@ async def test_pass_routes_to_script_personalizer(
     assert result["validation_result"]["verdict"] == "PASS"
     assert result["validation_result"]["overall_score"] == 0.85
     assert "iteration_count" not in result
-    # 5가지 기준 키 보존 확인
-    expected_keys = {
-        "structure_completeness",
-        "safety_compliance",
-        "tone_consistency",
-        "timing_appropriateness",
-        "content_safety",
-    }
-    assert set(result["validation_result"]["criteria"].keys()) == expected_keys
+    assert "action" in result["validation_result"]
 
 
 @pytest.mark.parametrize(
@@ -344,3 +336,124 @@ async def test_llm_call_failure_returns_fail_verdict(agent: BatchValidatorAgent)
     vr = result["validation_result"]
     assert vr["verdict"] == "FAIL"
     assert vr.get("error") == "llm_call_failed"
+
+
+# === BV-1/BV-2 출력 명시 필드 추출 테스트 ===
+
+
+@pytest.mark.asyncio
+async def test_validation_result_excludes_llm_extra_fields(
+    agent: BatchValidatorAgent,
+) -> None:
+    """validation_result에 LLM 임의 필드가 포함되지 않는다 (BV-1)."""
+    llm_response = {
+        "overall_score": 0.85,
+        "action": {"decision": "approve", "revision_instructions": "", "priority_fixes": []},
+        "extra_llm_field": "유입 금지",
+        "debug_info": "무시 대상",
+    }
+    state = AgentState(
+        user_input="테스트",
+        user_id="u",
+        session_id="s",
+        mode="podcast",
+        script_draft={"segments": [{"script_text": "내용"}]},
+        iteration_count=0,
+    )
+
+    with patch.object(agent, "call_llm_json", new_callable=AsyncMock, return_value=llm_response):
+        result = await agent.process(state)
+
+    vr = result["validation_result"]
+    assert "extra_llm_field" not in vr
+    assert "debug_info" not in vr
+    assert "verdict" in vr
+    assert "overall_score" in vr
+    assert "action" in vr
+
+
+@pytest.mark.asyncio
+async def test_early_return_has_action_field(
+    agent: BatchValidatorAgent,
+) -> None:
+    """빈 script_draft 조기 반환에도 action 필드 있다 (BV-2)."""
+    state = AgentState(
+        user_input="테스트",
+        user_id="u",
+        session_id="s",
+        mode="podcast",
+        script_draft={},
+        iteration_count=0,
+    )
+
+    result = await agent.process(state)
+    vr = result["validation_result"]
+
+    assert "action" in vr, "BV-2: 조기 반환에 action 없음"
+    assert "verdict" in vr
+    assert "overall_score" in vr
+
+
+# === LLM 실제 호출 테스트 ===
+
+
+@pytest.mark.live
+class TestBatchValidatorWithLLM:
+    """BatchValidatorAgent LLM 실제 호출 테스트."""
+
+    @pytest.fixture
+    def agent(self, llm_client) -> BatchValidatorAgent:
+        if llm_client is None:
+            pytest.skip("LLM client not available")
+        ag = BatchValidatorAgent()
+        ag.llm_client = llm_client
+        return ag
+
+    @pytest.mark.asyncio
+    async def test_llm_validation_result_structure(self, agent: BatchValidatorAgent) -> None:
+        """실제 LLM이 올바른 validation_result 구조를 반환한다 (BV-1 확인 포함)."""
+        import time
+
+        state = AgentState(
+            user_input="직장 스트레스",
+            user_id="u",
+            session_id="s",
+            mode="podcast",
+            script_draft={
+                "episode_title": "번아웃을 극복하는 방법",
+                "segments": [
+                    {
+                        "script_text": "안녕하세요, 오늘은 번아웃에 대해 이야기해봅시다.",
+                        "duration_minutes": 1,
+                    },
+                    {
+                        "script_text": "번아웃은 현대인에게 매우 흔한 증상입니다.",
+                        "duration_minutes": 2,
+                    },
+                    {
+                        "script_text": "오늘 함께 알아본 내용이 도움이 되셨으면 좋겠습니다.",
+                        "duration_minutes": 1,
+                    },
+                ],
+            },
+            content_analysis={"main_theme": "번아웃", "target_duration": 4},
+            reasoning_result={"episode_structure": []},
+            safety_flags={"status": "safe"},
+            emotion_vectors={"primary_emotion": "fatigue", "intensity": 0.7},
+            iteration_count=0,
+        )
+        start = time.time()
+        result = await agent.process(state)
+        elapsed = time.time() - start
+
+        vr = result["validation_result"]
+        print(f"\n[BatchValidator] ⏱️ {elapsed:.2f}초")
+        print(f"  verdict={vr.get('verdict')}, score={vr.get('overall_score')}")
+
+        assert "verdict" in vr
+        assert vr["verdict"] in {"PASS", "FAIL", "CRITICAL_FAIL"}
+        assert "overall_score" in vr
+        assert "action" in vr
+        # BV-1: LLM 임의 필드 차단 확인
+        assert "extra_llm_field" not in vr
+        assert "debug_info" not in vr

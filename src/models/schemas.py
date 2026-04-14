@@ -51,20 +51,20 @@ class IntentClassifierOutput(BaseModel):
 
 
 class EmotionalJourney(BaseModel):
-    """감정적 여정 구조 (Content Analyzer에서 생성).
+    """감정 여정 구조 — CA v2.2.0 출력 기반.
 
-    Content Analyzer 실제 출력 키:
-        { "opening": "도입 감정", "development": "전개 감정", "resolution": "해소 감정" }
+    백엔드 API 계약 확정 구조 (2026-04-09):
+        opening(공감/인정) → development(원인 탐색) → climax(해결 전략) → closing(희망/동기부여)
 
     Note:
         - Podcast Reasoning은 emotional_journey를 list[str]로 출력하므로
           이 모델은 Content Analyzer의 dict 출력에만 해당한다.
-        - Script Generator는 opening/start_emotion 양쪽 키를 fallback으로 처리.
     """
 
     opening: str = Field(..., description="도입 감정")
     development: str = Field(..., description="전개 감정")
-    resolution: str = Field(..., description="해소 감정")
+    climax: str = Field(default="", description="핵심 전환점 — 해결 전략")
+    closing: str = Field(default="", description="마무리 감정 — 희망/동기부여")
     journey_type: str = Field(default="healing", description="여정 유형")
 
 

@@ -151,3 +151,38 @@ class TestEpisodeMemoryNode:
             result = await episode_memory_node(minimal_state)
 
         assert isinstance(result, dict)
+
+
+# === LLM 실제 호출 테스트 ===
+
+
+@pytest.mark.live
+class TestEpisodeMemoryWithLLM:
+    """EpisodeMemoryAgent 실제 호출 테스트 (KT Cloud 환경 필요)."""
+
+    @pytest.fixture
+    def agent(self) -> EpisodeMemoryAgent:
+        import os
+
+        if not os.getenv("KT_CLOUD_QUERY_ENDPOINT"):
+            pytest.skip("KT_CLOUD_QUERY_ENDPOINT not configured — KT Cloud 환경 아님")
+        return EpisodeMemoryAgent()
+
+    @pytest.mark.asyncio
+    async def test_memory_search_returns_results(self, agent: EpisodeMemoryAgent) -> None:
+        """KT Cloud 환경에서 memory_results 구조를 반환한다."""
+        import time
+
+        state = AgentState(
+            user_input="지난 주에 스트레스를 많이 받았어요.",
+            user_id="test_user",
+            session_id="test_session",
+            mode="podcast",
+        )
+        start = time.time()
+        result = await agent.process(state)
+        elapsed = time.time() - start
+
+        print(f"\n[EpisodeMemory] ⏱️ {elapsed:.2f}초")
+        assert "memory_results" in result
+        assert isinstance(result["memory_results"], dict)

@@ -6,7 +6,6 @@ Visualization Agent — AWS Bedrock & S3 실전 연동 버전.
 from __future__ import annotations
 
 import asyncio
-import logging
 import os
 import uuid
 from typing import Any
@@ -14,10 +13,100 @@ from typing import Any
 import boto3  # type: ignore
 
 from config.loader import get_settings
-from src.agents.shared.base_agent import BaseAgent
+from src.agents.shared.base_agent import BaseAgent, ContentBlockedError
 from src.models.agent_state import AgentState
+from src.utils.logger import get_agent_logger
 
-logger = logging.getLogger(__name__)
+logger = get_agent_logger("visualization")
+
+# AWS Titan 콘텐츠 정책 위반 키워드 — image_prompt에서 제거
+_BLOCKED_EN: frozenset[str] = frozenset(
+    {
+        "person",
+        "people",
+        "human",
+        "face",
+        "portrait",
+        "body",
+        "hand",
+        "hands",
+        "eye",
+        "eyes",
+        "child",
+        "woman",
+        "man",
+        "violence",
+        "blood",
+        "weapon",
+        "gun",
+        "knife",
+        "death",
+        "injury",
+        "harm",
+        "abuse",
+        "kill",
+        "attack",
+        "doctor",
+        "surgery",
+        "hospital",
+        "injection",
+        "medical",
+        "nude",
+        "naked",
+        "sexual",
+    }
+)
+
+_BLOCKED_KO: frozenset[str] = frozenset(
+    {
+        "사람",
+        "얼굴",
+        "인간",
+        "초상",
+        "신체",
+        "손",
+        "눈",
+        "아이",
+        "여자",
+        "남자",
+        "여성",
+        "남성",
+        "어린이",
+        "폭력",
+        "피",
+        "무기",
+        "총",
+        "칼",
+        "죽음",
+        "부상",
+        "상해",
+        "학대",
+        "살인",
+        "공격",
+        "의사",
+        "수술",
+        "병원",
+        "주사",
+        "의료",
+        "환자",
+    }
+)
+
+BLOCKED_KEYWORDS: frozenset[str] = _BLOCKED_EN | _BLOCKED_KO
+
+SAFE_FALLBACK_PROMPT = (
+    "A strictly 2D flat abstract art. Extreme minimalism. "
+    "Soft muted gradient with 2 simple geometric shapes. "
+    "Dominant empty space. Fine grainy matte texture."
+)
+
+
+def _sanitize_image_prompt(prompt: str) -> str:
+    """image_prompt에서 AWS 콘텐츠 정책 위반 키워드를 제거한다."""
+    words = prompt.split()
+    sanitized = [w for w in words if w.lower().strip(".,;:!?\"'()") not in BLOCKED_KEYWORDS]
+    result = " ".join(sanitized)
+    return result if result.strip() else SAFE_FALLBACK_PROMPT
 
 
 class VisualizationAgent(BaseAgent):
@@ -60,9 +149,13 @@ class VisualizationAgent(BaseAgent):
                     "status": "failed",
                     "error": "llm_call_failed",
                     "image_url": None,
+                    "style_type": "abstract",
+                    "interpretation": "",
+                    "color_palette": [],
                 }
             }
         image_prompt: str = planning.get("image_prompt") or ""
+        image_prompt = _sanitize_image_prompt(image_prompt)
 
         # 2. [생성 및 검증] 자체 재시도 로직 가동
         result = await self._internal_generate_flow(image_prompt, user_id)
@@ -74,8 +167,8 @@ class VisualizationAgent(BaseAgent):
                 "status": result.get("status"),
                 "retry_count": result.get("retry_count"),
                 "error": result.get("error"),
-                "style_type": planning.get("style_type"),
-                "interpretation": planning.get("interpretation"),
+                "style_type": str(planning.get("style_type") or "abstract"),
+                "interpretation": str(planning.get("interpretation") or ""),
                 "original_prompt": image_prompt,
             }
         }
@@ -112,6 +205,24 @@ class VisualizationAgent(BaseAgent):
                 "url": f"https://{self.bucket_name}.s3.amazonaws.com/{s3_key}",
                 "s3_key": s3_key,
                 "status": "completed",
+                "retry_count": current_retry,
+            }
+
+        except ContentBlockedError as e:
+            self.logger.warning(
+                "AWS 콘텐츠 정책 차단 — 안전 프롬프트로 재시도 (%d/%d): %s",
+                current_retry + 1,
+                self.max_retries,
+                e,
+            )
+            if current_retry < self.max_retries:
+                return await self._internal_generate_flow(
+                    SAFE_FALLBACK_PROMPT, user_id, current_retry + 1
+                )
+            return {
+                "url": None,
+                "status": "failed",
+                "error": "content_blocked",
                 "retry_count": current_retry,
             }
 

@@ -49,19 +49,25 @@ def base_state() -> AgentState:
 
 @pytest.fixture
 def mock_llm_response() -> dict[str, Any]:
-    """LLM이 반환할 모의 분석 결과."""
+    """LLM v2.2.0이 반환할 모의 분석 결과 (9개 필드)."""
     return {
         "main_theme": "스트레스 해소와 마음 돌봄",
-        "sub_themes": ["스트레스 관리", "자기돌봄", "감정 인식"],
-        "emotional_journey": {
-            "start_emotion": "피로",
-            "peak_emotion": "인식",
-            "resolution_emotion": "안도",
-            "journey_type": "healing",
+        "user_summary": {
+            "keywords": ["스트레스", "피로"],
+            "summary": "스트레스와 피로를 호소하는 사용자",
         },
+        "emotional_journey": {
+            "opening": "피로와 무기력",
+            "development": "원인 인식",
+            "climax": "대처 전략 발견",
+            "closing": "희망과 안도",
+        },
+        "key_messages": ["나를 돌보는 것은 이기적이지 않다", "작은 변화가 큰 차이를 만든다"],
+        "depth_level": "moderate",
+        "sub_themes": ["직장 스트레스", "감정 조절", "자기돌봄"],
         "target_duration": 4,
         "narrative_structure": "reflection",
-        "key_messages": ["나를 돌보는 것은 이기적이지 않다", "작은 변화가 큰 차이를 만든다"],
+        "confidence": 0.85,
     }
 
 
@@ -248,18 +254,18 @@ def test_validate_main_theme(
         ),
         pytest.param(
             {"themes": ["테마1", "테마2"]},
-            lambda r: r["sub_themes"] == ["테마1", "테마2"],
-            id="fallback_to_themes",
+            lambda r: len(r["sub_themes"]) >= 3 and r["sub_themes"][:2] == ["테마1", "테마2"],
+            id="fallback_to_themes_with_min_fill",
         ),
         pytest.param(
             {"sub_themes": "not_a_list"},
-            lambda r: r["sub_themes"] == [],
-            id="invalid_type_fallback",
+            lambda r: len(r["sub_themes"]) >= 3,
+            id="invalid_type_min_fill",
         ),
     ],
 )
 def test_validate_sub_themes(agent: ContentAnalyzerAgent, analysis: dict, check_fn) -> None:
-    """sub_themes 후처리 — 잘라내기, 폴백, 타입 보정."""
+    """sub_themes 후처리 — 잘라내기, 폴백, 타입 보정, min 보장."""
     result = agent._validate_and_correct(analysis, "moderate")
     assert check_fn(result)
 
@@ -384,3 +390,295 @@ async def test_missing_or_empty_user_input_returns_fallback(agent: ContentAnalyz
     result2 = await agent.process(state_empty)
     ca2 = result2["content_analysis"]
     assert ca2.get("error") == "user_input_missing"
+
+
+# === CA-1/CA-2/CA-3 출력 필드 화이트리스트 + min_sub_themes 보장 ===
+
+
+def test_validate_and_correct_excludes_unexpected_fields(
+    agent: ContentAnalyzerAgent,
+) -> None:
+    """_validate_and_correct가 예상 외 LLM 필드를 결과에 포함하지 않는다 (CA-1)."""
+    analysis = {
+        "user_summary": {"keywords": ["스트레스"], "summary": "힘든 사용자"},
+        "main_theme": "스트레스 관리",
+        "emotional_journey": {
+            "opening": "피로",
+            "development": "인식",
+            "climax": "전환",
+            "closing": "안도",
+        },
+        "key_messages": ["자기돌봄이 중요"],
+        "depth_level": "moderate",
+        "sub_themes": ["스트레스", "감정", "관계"],
+        "unknown_new_field": "임의 LLM 추가 필드",
+        "debug_info": {"tokens": 125},
+    }
+    result = agent._validate_and_correct(analysis, depth_level="moderate")
+
+    assert "unknown_new_field" not in result, "임의 LLM 필드 유입 금지"
+    assert "debug_info" not in result, "디버그 필드 유입 금지"
+    assert "sub_themes" in result
+    assert len(result["sub_themes"]) >= 3, "min_sub_themes 보장"
+
+
+def test_validate_and_correct_enforces_min_sub_themes(
+    agent: ContentAnalyzerAgent,
+) -> None:
+    """LLM이 sub_themes를 빈 배열로 반환하면 min_sub_themes 보정 (CA-2)."""
+    analysis = {
+        "user_summary": {"keywords": ["스트레스"], "summary": "힘든 사용자"},
+        "main_theme": "스트레스 관리",
+        "emotional_journey": {
+            "opening": "피로",
+            "development": "인식",
+            "climax": "전환",
+            "closing": "안도",
+        },
+        "key_messages": ["자기돌봄이 중요"],
+        "depth_level": "moderate",
+        "sub_themes": [],
+    }
+    result = agent._validate_and_correct(analysis, depth_level="moderate")
+
+    assert (
+        len(result["sub_themes"]) >= agent.min_sub_themes
+    ), f"sub_themes 최소 {agent.min_sub_themes}개 보장 실패"
+
+
+def test_build_db_payload_includes_trace_id(
+    agent: ContentAnalyzerAgent,
+) -> None:
+    """_build_db_payload가 trace_id를 포함한다."""
+    validated = {
+        "user_summary": {"keywords": ["스트레스"], "summary": "힘든 사용자"},
+        "main_theme": "스트레스 관리",
+        "emotional_journey": {
+            "opening": "피로",
+            "development": "인식",
+            "climax": "전환",
+            "closing": "안도",
+        },
+        "key_messages": ["자기돌봄이 중요"],
+        "depth_level": "moderate",
+        "sub_themes": ["직장 스트레스", "감정 조절", "자기돌봄"],
+        "target_duration": 5,
+        "narrative_structure": "reflection",
+        "confidence": 0.85,
+    }
+    db_payload = agent._build_db_payload(validated, trace_id="trace_abc")
+
+    assert db_payload["trace_id"] == "trace_abc"
+    assert db_payload["main_theme"] == "스트레스 관리"
+    assert db_payload["sub_themes"] == ["직장 스트레스", "감정 조절", "자기돌봄"]
+
+
+def test_validate_and_correct_validates_user_summary_type(
+    agent: ContentAnalyzerAgent,
+) -> None:
+    """user_summary가 dict 아닐 때 빈 구조로 보정한다 (CA-1)."""
+    analysis = {
+        "user_summary": "문자열로 잘못 반환",
+        "main_theme": "주제",
+        "emotional_journey": {
+            "opening": "피로",
+            "development": "인식",
+            "climax": "전환",
+            "closing": "안도",
+        },
+        "key_messages": [],
+    }
+    result = agent._validate_and_correct(analysis, depth_level="light")
+
+    assert isinstance(result["user_summary"], dict)
+    assert "keywords" in result["user_summary"]
+    assert isinstance(result["user_summary"]["keywords"], list)
+
+
+def test_validate_and_correct_validates_emotional_journey_type(
+    agent: ContentAnalyzerAgent,
+) -> None:
+    """emotional_journey가 dict 아닐 때 4-키 빈 구조로 보정한다 (CA-1, CA-3)."""
+    analysis = {
+        "user_summary": {},
+        "main_theme": "주제",
+        "emotional_journey": "문자열로 잘못 반환",
+        "key_messages": [],
+    }
+    result = agent._validate_and_correct(analysis, depth_level="light")
+
+    ej = result["emotional_journey"]
+    assert isinstance(ej, dict)
+    assert set(ej.keys()) == {"opening", "development", "climax", "closing"}
+
+
+def test_validate_and_correct_ensures_confidence_is_float(
+    agent: ContentAnalyzerAgent,
+) -> None:
+    """confidence 필드가 항상 0.0~1.0 float으로 보정된다 (CA-3)."""
+    analysis_str = {
+        "main_theme": "주제",
+        "user_summary": {},
+        "emotional_journey": {},
+        "key_messages": [],
+        "confidence": "0.9",
+    }
+    result_str = agent._validate_and_correct(analysis_str, depth_level="light")
+    assert isinstance(result_str["confidence"], float)
+    assert 0.0 <= result_str["confidence"] <= 1.0
+
+    analysis_missing = {
+        "main_theme": "주제",
+        "user_summary": {},
+        "emotional_journey": {},
+        "key_messages": [],
+    }
+    result_missing = agent._validate_and_correct(analysis_missing, depth_level="light")
+    assert isinstance(result_missing["confidence"], float)
+
+
+def test_validate_and_correct_limits_key_messages_to_five(
+    agent: ContentAnalyzerAgent,
+) -> None:
+    """key_messages는 최대 5개 제한, dict 타입이면 빈 리스트 반환 (CA-1)."""
+    analysis_over = {
+        "user_summary": {},
+        "main_theme": "주제",
+        "emotional_journey": {},
+        "key_messages": ["a", "b", "c", "d", "e", "f"],
+    }
+    result = agent._validate_and_correct(analysis_over, depth_level="light")
+    assert len(result["key_messages"]) <= 5
+
+    analysis_bad = {
+        "user_summary": {},
+        "main_theme": "주제",
+        "emotional_journey": {},
+        "key_messages": {"잘못된": "타입"},
+    }
+    result_bad = agent._validate_and_correct(analysis_bad, depth_level="light")
+    assert result_bad["key_messages"] == []
+
+
+@pytest.mark.asyncio
+async def test_mind_frequencies_uses_user_summary(
+    agent: ContentAnalyzerAgent,
+    base_state: AgentState,
+    mock_llm_response: dict[str, Any],
+) -> None:
+    """ingest_mind_frequencies는 user_summary.keywords/summary를 전송한다."""
+    with patch.object(
+        agent, "call_llm_json", new_callable=AsyncMock, return_value=mock_llm_response
+    ):
+        with patch("src.agents.podcast.content_analyzer.AgentDataPublisher") as mock_pub:
+            mock_pub.return_value.publish = AsyncMock(return_value=True)
+            with patch("src.agents.podcast.content_analyzer.BackendClient") as mock_bc:
+                mock_bc.return_value.ingest_mind_frequencies = AsyncMock()
+                mock_bc.return_value.close = AsyncMock()
+                await agent.process(base_state)
+
+    mock_bc.return_value.ingest_mind_frequencies.assert_called_once_with(
+        session_id="sess_test_001",
+        keywords=["스트레스", "피로"],
+        description="스트레스와 피로를 호소하는 사용자",
+    )
+
+
+@pytest.mark.asyncio
+async def test_error_path_emotional_journey_has_four_keys(
+    agent: ContentAnalyzerAgent,
+) -> None:
+    """user_input 누락 에러 경로의 emotional_journey가 4-키 구조다 (CA-3)."""
+    state = AgentState(user_input="", user_id="u", session_id="s", mode="podcast")
+    result = await agent.process(state)
+    ej = result["content_analysis"]["emotional_journey"]
+    assert set(ej.keys()) == {"opening", "development", "climax", "closing"}
+
+
+# === LLM 실제 호출 테스트 ===
+
+
+@pytest.mark.live
+class TestContentAnalyzerWithLLM:
+    """ContentAnalyzerAgent LLM 실제 호출 테스트."""
+
+    @pytest.fixture
+    def agent(self, llm_client) -> ContentAnalyzerAgent:
+        if llm_client is None:
+            pytest.skip("LLM client not available")
+        ag = ContentAnalyzerAgent()
+        ag.llm_client = llm_client
+        return ag
+
+    @pytest.mark.asyncio
+    async def test_llm_content_analysis_structure(self, agent: ContentAnalyzerAgent) -> None:
+        """실제 LLM이 올바른 content_analysis 9-필드 구조를 반환한다."""
+        import time
+
+        user_txt = (
+            "요즘 직장 스트레스가 너무 심해서 번아웃이 올 것 같아요. "
+            "매일 야근하고 주말도 없어요."
+        )
+        state = AgentState(
+            user_input=user_txt,
+            user_id="u",
+            session_id="s",
+            mode="podcast",
+        )
+        with patch("src.agents.podcast.content_analyzer.AgentDataPublisher") as mock_pub:
+            mock_pub.return_value.publish = AsyncMock(return_value=True)
+            with patch("src.agents.podcast.content_analyzer.BackendClient") as mock_bc:
+                mock_bc.return_value.ingest_mind_frequencies = AsyncMock()
+                mock_bc.return_value.close = AsyncMock()
+                start = time.time()
+                result = await agent.process(state)
+                elapsed = time.time() - start
+
+        ca = result["content_analysis"]
+        print(f"\n[ContentAnalyzer] ⏱️ {elapsed:.2f}초")
+        print(f"  main_theme={ca.get('main_theme')}, sub_themes={ca.get('sub_themes')}")
+        print(f"  target_duration={ca.get('target_duration')}, confidence={ca.get('confidence')}")
+
+        assert "main_theme" in ca
+        assert isinstance(ca["main_theme"], str) and len(ca["main_theme"]) > 0
+        assert isinstance(ca.get("sub_themes"), list)
+        assert 3 <= ca.get("target_duration", 0) <= 5
+        ej = ca.get("emotional_journey", {})
+        assert set(ej.keys()) >= {"opening", "development", "climax", "closing"}
+
+    @pytest.mark.asyncio
+    async def test_llm_whitelist_no_extra_fields(self, agent: ContentAnalyzerAgent) -> None:
+        """LLM 응답에 임의 필드가 있어도 content_analysis는 9개 허용 키만 포함한다."""
+        import time
+
+        state = AgentState(
+            user_input="불안한 마음이 드는 날이에요.",
+            user_id="u",
+            session_id="s",
+            mode="podcast",
+        )
+        allowed_keys = {
+            "main_theme",
+            "sub_themes",
+            "emotional_journey",
+            "user_summary",
+            "target_duration",
+            "key_messages",
+            "content_complexity",
+            "narrative_structure",
+            "confidence",
+            "depth_level",  # _validate_and_correct()가 코드에서 직접 설정
+        }
+        with patch("src.agents.podcast.content_analyzer.AgentDataPublisher") as mock_pub:
+            mock_pub.return_value.publish = AsyncMock(return_value=True)
+            with patch("src.agents.podcast.content_analyzer.BackendClient") as mock_bc:
+                mock_bc.return_value.ingest_mind_frequencies = AsyncMock()
+                mock_bc.return_value.close = AsyncMock()
+                start = time.time()
+                result = await agent.process(state)
+                elapsed = time.time() - start
+
+        ca = result["content_analysis"]
+        print(f"\n[ContentAnalyzer whitelist] ⏱️ {elapsed:.2f}초")
+        extra = set(ca.keys()) - allowed_keys
+        assert extra == set(), f"허용되지 않은 필드 발견: {extra}"

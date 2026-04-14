@@ -4,6 +4,7 @@
 
 | 버전 | 파일 | 요약 |
 |------|------|------|
+| v29+ | PLAN_INDEX.md 참조 | v29 이후 변경사항은 `docs/superpowers/PLAN_INDEX.md` (현재 v33, 2026-04-13)에서 추적. Plan #31 로깅 강화, Plan #32 테스트 정리, Plan #33 백엔드 API 테스트, Plan #34 KT Cloud RAG 통합, Plan #22 에이전트 출력 감사 수정 포함 |
 | v28 | [CHANGELOG_v28.md](CHANGELOG_v28.md) | 문서 전수 점검 4사이클 — 대화모드 잔재, 링크/앵커, Pinecone 인덱스명, 설계 결정 갱신 (PR #70~#80) |
 | v27 | [CHANGELOG_v27.md](CHANGELOG_v27.md) | 동시성 격리 리팩토링 — 10개 에이전트 싱글톤→요청별 인스턴스 + 문서 정비 |
 | v26 | [CHANGELOG_v26.md](CHANGELOG_v26.md) | Docker 배포 차단 해제 + Visualization settings 기반 전환 + Bedrock Converse API + CRISIS 버그 수정 |
@@ -24,4 +25,4 @@
 
 ---
 
-*마지막 업데이트: 2026-04-08*
+*마지막 업데이트: 2026-04-14 11:00*

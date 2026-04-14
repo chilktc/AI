@@ -48,9 +48,13 @@ class ScriptGeneratorAgent(BaseAgent):
         content_analysis: dict[str, Any] = cast(dict[str, Any], state.get("content_analysis", {}))
         if not content_analysis:
             self.logger.warning("[ScriptGenerator] content_analysis 없음 — 기본값으로 생성")
-        main_theme: str = str(
-            content_analysis.get("main_theme", state.get("main_theme", "Mental Health"))
-        )
+        main_theme: str = str(content_analysis.get("main_theme", ""))
+        if not main_theme:
+            self.logger.error(
+                "[ScriptGenerator] main_theme 누락 — content_analysis 유효성: %s",
+                bool(content_analysis),
+            )
+            return {"script_draft": {"_error": "main_theme_missing", "segments": []}}
         sub_themes: list[str] = cast(
             list[str], content_analysis.get("sub_themes", state.get("sub_themes", []))
         )
@@ -206,7 +210,7 @@ class ScriptGeneratorAgent(BaseAgent):
 
         except Exception as e:
             self.logger.error("[ScriptGenerator] 스크립트 작성 중 에러 발생: %s", e)
-            return {"script_draft": {}, "error": str(e)}
+            return {"script_draft": {"_error": str(e), "segments": []}}
 
     async def _generate_title(
         self, main_theme: str, sub_themes: list[str], emotional_journey: dict
@@ -216,17 +220,13 @@ class ScriptGeneratorAgent(BaseAgent):
         Args:
             main_theme: 에피소드 메인 테마
             sub_themes: 서브 테마 목록
-            emotional_journey: 감정 여정 dict (opening, resolution 등)
+            emotional_journey: 감정 여정 dict (opening/development/climax/closing)
 
         Returns:
             생성된 에피소드 제목 문자열
         """
-        start_emotion = emotional_journey.get(
-            "opening", emotional_journey.get("start_emotion", "None")
-        )
-        resolution_emotion = emotional_journey.get(
-            "resolution", emotional_journey.get("resolution_emotion", "None")
-        )
+        start_emotion = emotional_journey.get("opening", "")
+        resolution_emotion = emotional_journey.get("closing", "")
 
         # yaml 내에 user_prompt 도 정의해 두었거나,
         # 기존처럼 코드 내에 유지하되 yaml의 system_prompt 만

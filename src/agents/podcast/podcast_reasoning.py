@@ -24,8 +24,22 @@ from __future__ import annotations
 from typing import Any, Literal, cast
 
 from src.agents.shared.base_agent import BaseAgent
-from src.agents.shared.stubs import EpisodeMemoryStub, KnowledgeAgentStub
+from src.agents.shared.stubs import KnowledgeAgentStub
 from src.models.agent_state import AgentState
+
+# DI fallback — 실제 에이전트 (lazy import로 순환 참조 방지)
+_EpisodeMemoryAgent: type | None = None
+
+
+def _get_episode_memory_agent_class() -> type:
+    """EpisodeMemoryAgent를 lazy import한다."""
+    global _EpisodeMemoryAgent  # noqa: PLW0603
+    if _EpisodeMemoryAgent is None:
+        from src.agents.podcast.episode_memory import EpisodeMemoryAgent
+
+        _EpisodeMemoryAgent = EpisodeMemoryAgent
+    return _EpisodeMemoryAgent
+
 
 # 추론 깊이 타입 — complexity_score에 따라 결정
 ReasoningDepth = Literal["full", "standard", "minimal"]
@@ -44,7 +58,7 @@ class PodcastReasoningAgent(BaseAgent):
     개인화된 에피소드 경험과 전문 지식을 통합한다.
 
     Args:
-        episode_memory: Episode Memory 에이전트 (DI — 없으면 stub 사용)
+        episode_memory: Episode Memory 에이전트 (DI — 없으면 EpisodeMemoryAgent 사용)
         knowledge_agent: Knowledge Agent (DI — 없으면 stub 사용)
     """
 
@@ -54,8 +68,8 @@ class PodcastReasoningAgent(BaseAgent):
         knowledge_agent: Any | None = None,
     ) -> None:
         super().__init__(name="podcast_reasoning", tier=1)
-        # 의존성 주입 — 통합 전에는 stub 사용
-        self.episode_memory = episode_memory or EpisodeMemoryStub()
+        # 의존성 주입 — DI 미전달 시 실제 에이전트로 fallback
+        self.episode_memory = episode_memory or _get_episode_memory_agent_class()()
         self.knowledge_agent = knowledge_agent or KnowledgeAgentStub()
         self._load_config()
 
@@ -145,15 +159,17 @@ class PodcastReasoningAgent(BaseAgent):
     # === 설정 로드 ===
 
     def _load_config(self) -> None:
-        """settings.yaml에서 추론 깊이 임계값을 로드한다. 실패 시 기본값 사용."""
+        """settings.yaml에서 추론 깊이 임계값 및 스타일 참고 임계값을 로드한다."""
         cfg = self._load_agent_config(
             {
                 "full_threshold": 0.8,
                 "standard_threshold": 0.5,
+                "memory_style_score_threshold": 0.9,
             }
         )
         self.full_threshold: float = cfg["full_threshold"]
         self.standard_threshold: float = cfg["standard_threshold"]
+        self.memory_style_score_threshold: float = cfg["memory_style_score_threshold"]
 
     # === 추론 깊이 결정 ===
 
@@ -399,10 +415,53 @@ class PodcastReasoningAgent(BaseAgent):
             complexity = intent.get("complexity_score", 0.5)
             parts.append(f"[의도 분류]\n- 의도: {intent_info}\n- 복잡도: {complexity}")
 
-        # 독립 에이전트 결과 — DI 호출 결과 포함
+        # 독립 에이전트 결과 — phase별 역할 분리
+        # GoT: 오염방지 / ToT: 구조다양성 / CoT: 스타일개인화
         if memory_result and memory_result.get("episodes"):
-            episode_count = len(memory_result["episodes"])
-            parts.append(f"[과거 에피소드 기억]\n- {episode_count}건 발견")
+            episodes = memory_result["episodes"]
+            episode_count = len(episodes)
+
+            if phase == "GoT":
+                # GoT: 건수만 — 노드 오염 방지
+                parts.append(f"[과거 에피소드 기억]\n- {episode_count}건 발견")
+
+            elif phase == "ToT":
+                # ToT: 메타데이터만 — 구조 다양성 가이드
+                lines = ["[과거 에피소드 기억 — 구조 참고]"]
+                for ep in episodes:
+                    raw_date = ep.get("metadata", {}).get("date", "")
+                    date = raw_date[:10] if raw_date else "날짜 없음"
+                    title = ep.get("metadata", {}).get("episode_title", "제목 없음")
+                    lines.append(f"- {date} '{title}'")
+                lines.append(
+                    "→ 위 에피소드에서 사용된 구조를 파악하여 대안 생성 시 다양성을 확보하세요."
+                )
+                parts.append("\n".join(lines))
+
+            elif phase == "CoT":
+                # CoT: summary + score 필터 원문 — 스타일 개인화
+                lines = ["[과거 에피소드 스타일 참고]"]
+                summary = memory_result.get("summary", "")
+                if summary:
+                    lines.append(f"요약: {summary}")
+                for ep in episodes:
+                    score = ep.get("score", 0.0)
+                    if score < self.memory_style_score_threshold:
+                        continue
+                    raw_date = ep.get("metadata", {}).get("date", "")
+                    date = raw_date[:10] if raw_date else "날짜 없음"
+                    title = ep.get("metadata", {}).get("episode_title", "제목 없음")
+                    text_preview = ep.get("text", "")[:200]
+                    if text_preview:
+                        lines.append(
+                            f"\n[{date}] '{title}' (유사도 {score:.2f})\n{text_preview}..."
+                        )
+                # 실제 스타일 참고 내용이 있을 때만 섹션 추가
+                has_content = len(lines) > 1  # 헤더 이상의 내용이 있는지
+                if has_content:
+                    lines.append("→ 내용(주제·구조)이 아닌 스타일(말투·톤)만 참고하세요.")
+                    parts.append("\n".join(lines))
+
         if knowledge_result and knowledge_result.get("articles"):
             article_count = len(knowledge_result["articles"])
             parts.append(f"[관련 전문 지식]\n- {article_count}건 발견")
@@ -447,15 +506,34 @@ class PodcastReasoningAgent(BaseAgent):
         호출 조건:
             1. execution_plan에서 needs_memory가 True이거나
             2. 복잡도가 0.6 이상인 경우
+
+        어댑터 패턴:
+            EpisodeMemoryAgent.process(state) → Stub 호환 형식 변환.
+            process() 반환: {"memory_results": {"items": [...], "summary": "..."}}
+            변환 결과:     {"episodes": [...], "relevance_scores": [...], "summary": "..."}
         """
         needs_memory = execution_plan.get("needs_memory", False)
 
         if needs_memory or complexity >= 0.6:
             self.logger.info("Episode Memory 조건부 호출 (complexity=%.2f)", complexity)
-            return await self.episode_memory.search(
-                query=user_input,
-                user_id=user_id,
-            )
+
+            memory_state: AgentState = {
+                "user_input": user_input,
+                "user_id": user_id,
+            }
+            result = await self.episode_memory.process(memory_state)
+            memory_data = result.get("memory_results")
+
+            if not memory_data:
+                return None
+
+            # process() → Stub 호환 형식으로 변환
+            items = memory_data.get("items", [])
+            return {
+                "episodes": items,
+                "relevance_scores": [item.get("score", 0.0) for item in items],
+                "summary": memory_data.get("summary", ""),
+            }
 
         return None
 

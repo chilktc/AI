@@ -14,15 +14,15 @@ external_schemas.py의 Neo4j 노드/관계 스키마와 연동한다.
 
 from __future__ import annotations
 
-import logging
 import os
 from typing import Any
 
 from neo4j import AsyncGraphDatabase
 
 from src.db.base import BaseGraphClient
+from src.utils.logger import get_agent_logger
 
-logger = logging.getLogger(__name__)
+logger = get_agent_logger("db.neo4j_client")
 
 
 class Neo4jClient(BaseGraphClient):

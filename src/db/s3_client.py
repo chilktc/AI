@@ -14,15 +14,15 @@ boto3는 동기 라이브러리이므로 asyncio.to_thread()로 래핑한다.
 from __future__ import annotations
 
 import asyncio
-import logging
 import os
 from typing import Any
 
 import boto3
 
 from src.db.base import BaseStorageClient
+from src.utils.logger import get_agent_logger
 
-logger = logging.getLogger(__name__)
+logger = get_agent_logger("db.s3_client")
 
 
 class S3Client(BaseStorageClient):

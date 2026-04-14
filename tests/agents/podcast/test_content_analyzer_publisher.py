@@ -85,8 +85,11 @@ class TestContentAnalyzerPublish:
         # user/session 검증
         assert call_kwargs["user_id"] == "user_456"
         assert call_kwargs["session_id"] == "sess_def"
-        # data 검증
-        assert call_kwargs["data"] == result["content_analysis"]
+        # data 검증 — _build_db_payload로 trace_id가 추가된 상태
+        published_data = call_kwargs["data"]
+        for key in result["content_analysis"]:
+            assert key in published_data
+        assert "trace_id" in published_data
 
     @pytest.mark.asyncio
     async def test_publish_called_with_empty_user_session_when_missing(
@@ -191,3 +194,58 @@ class TestContentAnalyzerPublishFailure:
 
         # AgentState 계약: content_analysis 키만 반환
         assert set(result.keys()) == {"content_analysis"}
+
+
+# ---------------------------------------------------------------------------
+# Tests: ingest_mind_frequencies 호출 검증
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_content_analyzer_calls_mind_frequencies_only():
+    """publisher.publish() + ingest_mind_frequencies() 호출 검증.
+
+    user_summaries 엔드포인트는 mind-frequencies로 통합됨 (2026-04-13).
+    ingest_user_summary는 더 이상 호출되지 않아야 한다.
+    """
+    from src.agents.podcast.content_analyzer import ContentAnalyzerAgent
+
+    mock_llm_return = {
+        "main_theme": "직장 스트레스",
+        "user_summary": {
+            "keywords": ["번아웃", "스트레스", "직장"],
+            "summary": "직장 스트레스로 인한 번아웃 위기",
+        },
+        "sub_themes": ["번아웃"],
+        "target_duration": 4,
+        "narrative_structure": "reflection",
+    }
+    agent = ContentAnalyzerAgent()
+    with (
+        patch.object(agent, "call_llm_json", new=AsyncMock(return_value=mock_llm_return)),
+        patch("src.agents.podcast.content_analyzer.AgentDataPublisher") as mock_pub_cls,
+        patch("src.agents.podcast.content_analyzer.BackendClient") as mock_bc_cls,
+    ):
+        mock_pub_cls.return_value.publish = AsyncMock(return_value=True)
+        mock_bc_cls.return_value.ingest_mind_frequencies = AsyncMock()
+        mock_bc_cls.return_value.close = AsyncMock()
+        await agent({"user_input": "직장 스트레스", "user_id": "u1", "session_id": "s1"})
+
+    # publisher: 1회 (전체 validated_analysis)
+    mock_pub_cls.return_value.publish.assert_called_once()
+    pub_kwargs = mock_pub_cls.return_value.publish.call_args.kwargs
+    assert pub_kwargs["resource"] == "content_analyses"
+    assert "main_theme" in pub_kwargs["data"]
+
+    # ingest_mind_frequencies: 1회, user_summary 기반 인자
+    mock_bc_cls.return_value.ingest_mind_frequencies.assert_called_once()
+    mf_kwargs = mock_bc_cls.return_value.ingest_mind_frequencies.call_args.kwargs
+    assert mf_kwargs["session_id"] == "s1"
+    assert mf_kwargs["keywords"] == ["번아웃", "스트레스", "직장"]
+    assert mf_kwargs["description"] == "직장 스트레스로 인한 번아웃 위기"
+
+    # ingest_user_summary: 호출되지 않아야 함 (제거됨)
+    assert (
+        not hasattr(mock_bc_cls.return_value, "ingest_user_summary")
+        or not mock_bc_cls.return_value.ingest_user_summary.called
+    )

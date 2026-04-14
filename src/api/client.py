@@ -7,23 +7,26 @@
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 from urllib.parse import urlparse
 
 import httpx
 
 from config.loader import get_settings
-from src.api.backend_resources import RESOURCE_MIND_FREQUENCIES, RESOURCE_PODCAST_EPISODES
+from src.api.backend_resources import (
+    RESOURCE_MIND_FREQUENCIES,
+    RESOURCE_PODCAST_EPISODES,
+)
 from src.api.contracts import (
     GraphCumulativeData,
     LoadResponse,
     SaveRequest,
     SaveResponse,
 )
+from src.utils.logger import get_agent_logger
 from src.utils.retry import with_retry
 
-_logger = logging.getLogger(__name__)
+_logger = get_agent_logger("client")
 
 
 class BackendClient:
@@ -49,12 +52,61 @@ class BackendClient:
         self._base_url = base_url or settings.api_base_url
         parsed = urlparse(self._base_url)
         self._profile_base_url = f"{parsed.scheme}://{parsed.netloc}"
+        self._graph_base_url = f"{parsed.scheme}://{parsed.netloc}/api/v1"
         self._timeout = settings.api_timeout
-        self._client = httpx.AsyncClient(timeout=self._timeout)
+        self._client = httpx.AsyncClient(
+            timeout=self._timeout,
+            event_hooks={
+                "request": [self._on_request],
+                "response": [self._on_response],
+            },
+        )
 
     async def close(self) -> None:
         """HTTP 클라이언트 리소스를 정리한다."""
         await self._client.aclose()
+
+    async def _on_request(self, request: httpx.Request) -> None:
+        """HTTP 요청 로깅 이벤트 훅."""
+        content_length = len(request.content) if request.content else 0
+        _logger.info(
+            "[BackendClient] HTTP 요청",
+            extra={
+                "method": request.method,
+                "url": str(request.url),
+                "content_length": content_length,
+            },
+        )
+
+    async def _on_response(self, response: httpx.Response) -> None:
+        """HTTP 응답 로깅 이벤트 훅 (모든 응답 상세 로깅)."""
+        try:
+            response_body = response.text[:1000]
+        except Exception:
+            response_body = "[응답 본문 읽기 실패]"
+
+        if response.status_code >= 400:
+            # 에러 응답: ERROR 레벨
+            _logger.error(
+                "[BackendClient] HTTP 에러 응답",
+                extra={
+                    "status_code": response.status_code,
+                    "url": str(response.request.url),
+                    "response_body": response_body,
+                    "headers": dict(response.headers),
+                },
+            )
+        else:
+            # 성공 응답 (200-399): INFO 레벨
+            _logger.info(
+                "[BackendClient] HTTP 성공 응답",
+                extra={
+                    "status_code": response.status_code,
+                    "url": str(response.request.url),
+                    "response_body": response_body,
+                    "content_length": len(response_body),
+                },
+            )
 
     @with_retry(max_retries=3, base_delay=1.0)
     async def save(self, resource: str, data: SaveRequest) -> SaveResponse:
@@ -151,8 +203,8 @@ class BackendClient:
     ) -> None:
         """mind-frequencies 수집 엔드포인트 호출 (fire-and-forget).
 
-        POST {base_url}/tickets/mind-frequencies
-        실패 시 로그만 기록하고 파이프라인에 영향을 주지 않는다.
+        POST {base_url}/mind-frequencies
+        실패 시 ERROR 로그만 기록하고 파이프라인에 영향을 주지 않는다.
         """
         try:
             response = await self._client.post(
@@ -164,40 +216,82 @@ class BackendClient:
                 },
             )
             response.raise_for_status()
+            _logger.info(
+                "[BackendClient] ingest_mind_frequencies OK (session=%s, keywords=%d개)",
+                session_id,
+                len(keywords),
+            )
         except Exception as e:
-            _logger.warning("[BackendClient] ingest_mind_frequencies failed (ignored): %s", e)
+            _logger.error(
+                "[BackendClient] ingest_mind_frequencies FAILED (session=%s): %s",
+                session_id,
+                e,
+            )
 
     async def ingest_podcast_episodes(
         self,
         session_id: str,
         image_url: str,
-        texts: list[str],
-        title: str,
-        summary: str,
-        keywords: list[str],
+        text: str,
+        title: str = "",
     ) -> None:
-        """podcast_episodes 수집 엔드포인트 호출.
+        """podcast_episodes 수집 → 백엔드 podcasts 테이블.
 
         POST {base_url}/podcast_episodes
+        백엔드 자동 채움: id(PK,UUID), user_id, created_at
+        AI 서버 전송: session_id, image_url, text, title
         """
-        response = await self._client.post(
-            f"{self._base_url}/{RESOURCE_PODCAST_EPISODES}",
-            json={
-                "session_id": session_id,
-                "image_url": image_url,
-                "texts": texts,
-                "title": title,
-                "summary": summary,
-                "keywords": keywords,
-            },
-        )
-        response.raise_for_status()
+        payload = {
+            "session_id": session_id,
+            "image_url": image_url,
+            "text": text,
+            "title": title,
+        }
+        try:
+            response = await self._client.post(
+                f"{self._base_url}/{RESOURCE_PODCAST_EPISODES}",
+                json=payload,
+            )
+            response.raise_for_status()
+            _logger.info(
+                "[ingest_podcast_episodes] 성공",
+                extra={
+                    "session_id": session_id,
+                    "status_code": response.status_code,
+                },
+            )
+        except httpx.HTTPStatusError as e:
+            try:
+                response_body = e.response.text[:1000]
+            except Exception:
+                response_body = "[응답 본문 읽기 실패]"
+            _logger.error(
+                "[ingest_podcast_episodes] HTTP 에러",
+                extra={
+                    "status_code": e.response.status_code,
+                    "endpoint": RESOURCE_PODCAST_EPISODES,
+                    "response_body": response_body,
+                    "session_id": session_id,
+                    "payload_keys": list(payload.keys()),
+                },
+            )
+            raise
+        except Exception as e:
+            _logger.error(
+                "[ingest_podcast_episodes] 예외 발생",
+                extra={
+                    "error_type": type(e).__name__,
+                    "error_message": str(e),
+                    "session_id": session_id,
+                },
+            )
+            raise
 
     async def load_graph_cumulative(self, user_id: str) -> GraphCumulativeData | None:
         """사용자의 누적 그래프 데이터를 조회한다."""
         try:
             response = await self._client.get(
-                f"{self._base_url}/graph_nodes",
+                f"{self._graph_base_url}/graph_nodes",
                 params={"user_id": user_id},
             )
             response.raise_for_status()
@@ -216,7 +310,7 @@ class BackendClient:
                 "data": data.data,
             }
             response = await self._client.put(
-                f"{self._base_url}/graph_nodes",
+                f"{self._graph_base_url}/graph_nodes",
                 json=body,
             )
             response.raise_for_status()

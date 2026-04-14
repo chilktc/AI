@@ -31,16 +31,17 @@ Safety CRISIS 선점:
 from __future__ import annotations
 
 import asyncio
-import logging
 import time
 from typing import Any
 
 from langgraph.graph import END, StateGraph
 
 from config.loader import get_settings
+from src.api.stories_store import stories_store
 from src.models.agent_state import AgentState
+from src.utils.logger import get_agent_logger
 
-logger = logging.getLogger(__name__)
+logger = get_agent_logger("workflow")
 
 
 # ---------------------------------------------------------------------------
@@ -71,6 +72,7 @@ _TIER2_TIMEOUT: int = _settings.tier2_timeout
 _TIER3_TIMEOUT: int = _settings.tier3_timeout
 _TIER4_TIMEOUT: int = _settings.tier4_timeout
 _ASYNC_TIMEOUT: int = _settings.async_timeout
+_STORIES_WAIT_TIMEOUT: int = _settings.stories_wait_timeout
 
 
 async def _with_timeout(
@@ -193,6 +195,7 @@ async def run_with_cancel(
     coro: Any,
     cancel_event: asyncio.Event,
     name: str,
+    cancel_reason: dict[str, str] | None = None,
 ) -> tuple[str, dict[str, Any]]:
     """
     asyncio.Event 기반 취소 가능 코루틴 래퍼.
@@ -204,6 +207,8 @@ async def run_with_cancel(
         coro: 실행할 코루틴
         cancel_event: 취소 신호 이벤트
         name: 태스크 식별자 (로깅용)
+        cancel_reason: 취소 사유 공유 dict ({"reason": "..."}).
+            CRISIS 선점과 타임아웃을 로그에서 구분하기 위해 사용.
 
     Returns:
         (name, result) 튜플
@@ -220,7 +225,8 @@ async def run_with_cancel(
         if cancel_waiter in done and task not in done:
             # 취소 신호 수신 → 태스크 취소
             task.cancel()
-            logger.info("[CANCEL] %s 취소됨 (CRISIS 선점)", name)
+            reason = (cancel_reason or {}).get("reason", "알 수 없음")
+            logger.info("[CANCEL] %s 취소됨 (사유: %s)", name, reason)
             return (name, {})
 
         result = task.result()
@@ -283,6 +289,7 @@ async def tier1_podcast_fan_out(state: AgentState) -> dict[str, Any]:
     """
     writer = _get_writer()
     cancel_event = asyncio.Event()
+    cancel_reason: dict[str, str] = {"reason": ""}
     tier_start = time.monotonic()
     agent_names = ["safety", "emotion", "content_analyzer", "podcast_reasoning"]
 
@@ -296,10 +303,14 @@ async def tier1_podcast_fan_out(state: AgentState) -> dict[str, Any]:
     )
 
     tasks = [
-        run_with_cancel(safety_node(state), cancel_event, "safety"),
-        run_with_cancel(emotion_node(state), cancel_event, "emotion"),
-        run_with_cancel(content_analyzer_node(state), cancel_event, "content_analyzer"),
-        run_with_cancel(podcast_reasoning_node(state), cancel_event, "podcast_reasoning"),
+        run_with_cancel(safety_node(state), cancel_event, "safety", cancel_reason),
+        run_with_cancel(emotion_node(state), cancel_event, "emotion", cancel_reason),
+        run_with_cancel(
+            content_analyzer_node(state), cancel_event, "content_analyzer", cancel_reason
+        ),
+        run_with_cancel(
+            podcast_reasoning_node(state), cancel_event, "podcast_reasoning", cancel_reason
+        ),
     ]
 
     # 타임아웃 시 이미 완료된 에이전트 결과를 보존하기 위한 공유 dict
@@ -314,7 +325,17 @@ async def tier1_podcast_fan_out(state: AgentState) -> dict[str, Any]:
             elapsed_ms = int((time.monotonic() - tier_start) * 1000)
 
             if name == "safety" and result.get("safety_flags", {}).get("status") == "crisis":
+                cancel_reason["reason"] = "CRISIS 선점"
                 cancel_event.set()
+
+                # CRISIS 상태를 partial_results에 먼저 저장 (타임아웃 경합 방지)
+                # _safety_deep_crisis() 실행 중 타임아웃 발생 시에도
+                # partial_results에 next_step이 보존되어 crisis_response로 라우팅됨
+                partial_results["safety_flags"] = result.get("safety_flags", {})
+                partial_results["risk_level"] = result.get("risk_level", 4)
+                partial_results["risk_score"] = result.get("risk_score", 1.0)
+                partial_results["next_step"] = "crisis_response"
+
                 writer(
                     {
                         "event": "crisis_detected",
@@ -352,12 +373,21 @@ async def tier1_podcast_fan_out(state: AgentState) -> dict[str, Any]:
     try:
         merged = await asyncio.wait_for(_run_tier1_pod(), timeout=_TIER1_TIMEOUT)
     except asyncio.TimeoutError:
-        logger.warning(
-            "[TIER 1] 팟캐스트모드 타임아웃 (%ds) — 부분 결과로 계속 진행",
-            _TIER1_TIMEOUT,
-        )
+        cancel_reason["reason"] = f"TIER 1 타임아웃 ({_TIER1_TIMEOUT}s)"
         cancel_event.set()
         merged = partial_results
+
+        if merged.get("next_step") == "crisis_response":
+            logger.warning(
+                "[TIER 1] 타임아웃 (%ds) — CRISIS 감지 상태에서 타임아웃 발생,"
+                " 위기 응답 노드로 전환",
+                _TIER1_TIMEOUT,
+            )
+        else:
+            logger.warning(
+                "[TIER 1] 팟캐스트모드 타임아웃 (%ds) — 부분 결과로 계속 진행",
+                _TIER1_TIMEOUT,
+            )
 
     writer(
         {
@@ -500,6 +530,59 @@ def route_after_tier3_podcast(state: AgentState) -> str:
     return "tier4_podcast"
 
 
+def route_after_wait_stories(state: AgentState) -> str:
+    """
+    wait_for_stories_node 이후 라우터.
+
+    Returns:
+        "script_personalizer" | "stories_error"
+    """
+    if state.get("next_step") == "stories_timeout":
+        return "stories_error"
+    return "script_personalizer"
+
+
+async def wait_for_stories_node(state: AgentState) -> dict[str, Any]:
+    """
+    Stories 데이터 대기 노드 (TIER 3 완료 후 TIER 4 진입 전).
+
+    _STORIES_WAIT_TIMEOUT(settings.stories.wait_timeout_seconds, 기본 300초) 동안 대기한다.
+    타임아웃 시 next_step: 'stories_timeout'을 반환하여 에러 노드로 라우팅된다.
+    """
+    session_id = state.get("session_id", "")
+    logger.info(
+        "[WaitForStories] 대기 시작 — session_id=%s, timeout=%ds",
+        session_id,
+        _STORIES_WAIT_TIMEOUT,
+    )
+
+    data = await stories_store.wait_for_stories(session_id, float(_STORIES_WAIT_TIMEOUT))
+    stories_store.delete_session(session_id)
+
+    if data is None:
+        logger.warning("[WaitForStories] 타임아웃 — session_id=%s", session_id)
+        return {"next_step": "stories_timeout"}
+
+    logger.info("[WaitForStories] 데이터 수신 완료 — session_id=%s", session_id)
+    return {"stories_context": data, "next_step": ""}
+
+
+async def stories_timeout_error_node(state: AgentState) -> dict[str, Any]:
+    """
+    Stories 타임아웃 에러 응답 노드.
+
+    5분 내 Stories 데이터 미수신 시 에러 응답을 생성하고 파이프라인을 종료한다.
+    """
+    session_id = state.get("session_id", "")
+    logger.error("[StoriesError] Stories 타임아웃 — session_id=%s", session_id)
+    return {
+        "final_output": (
+            "Stories 데이터를 수신하지 못해 처리를 완료할 수 없습니다. 다시 시도해주세요."
+        ),
+        "next_step": "stories_error",
+    }
+
+
 # ===================================================================
 # CRISIS 즉시 응답 노드
 # ===================================================================
@@ -555,6 +638,8 @@ def build_podcast_graph() -> StateGraph:
 
     graph.add_node("batch_validator", _bv_timeout)  # type: ignore[arg-type]
     graph.add_node("script_personalizer", _sp_timeout)  # type: ignore[arg-type]
+    graph.add_node("wait_for_stories", wait_for_stories_node)  # type: ignore[arg-type]
+    graph.add_node("stories_error", stories_timeout_error_node)  # type: ignore[arg-type]
     graph.add_node("crisis_response", crisis_response_node)
     graph.add_node("async_post", async_post_processing_node)
     graph.add_node("increment_iteration", increment_iteration_node)
@@ -575,13 +660,22 @@ def build_podcast_graph() -> StateGraph:
         "batch_validator",
         route_after_tier3_podcast,
         {
-            "tier4_podcast": "script_personalizer",
+            "tier4_podcast": "wait_for_stories",
             "tier2_podcast": "increment_iteration",
             "crisis_response": "crisis_response",
         },
     )
 
     graph.add_edge("increment_iteration", "tier2_podcast")
+    graph.add_conditional_edges(
+        "wait_for_stories",
+        route_after_wait_stories,
+        {
+            "script_personalizer": "script_personalizer",
+            "stories_error": "stories_error",
+        },
+    )
+    graph.add_edge("stories_error", END)
     graph.add_edge("script_personalizer", "async_post")
     graph.add_edge("async_post", END)
     graph.add_edge("crisis_response", END)
@@ -623,6 +717,8 @@ def build_unified_graph() -> StateGraph:
 
     graph.add_node("batch_validator", _batch_validator_with_timeout)  # type: ignore[arg-type]
     graph.add_node("script_personalizer", _script_personalizer_with_timeout)  # type: ignore[arg-type]
+    graph.add_node("wait_for_stories", wait_for_stories_node)  # type: ignore[arg-type]
+    graph.add_node("stories_error", stories_timeout_error_node)  # type: ignore[arg-type]
 
     # --- 공용 노드 ---
     graph.add_node("crisis_response", crisis_response_node)
@@ -652,12 +748,21 @@ def build_unified_graph() -> StateGraph:
         "batch_validator",
         route_after_tier3_podcast,
         {
-            "tier4_podcast": "script_personalizer",
+            "tier4_podcast": "wait_for_stories",
             "tier2_podcast": "increment_iteration_pod",
             "crisis_response": "crisis_response",
         },
     )
     graph.add_edge("increment_iteration_pod", "tier2_podcast")
+    graph.add_conditional_edges(
+        "wait_for_stories",
+        route_after_wait_stories,
+        {
+            "script_personalizer": "script_personalizer",
+            "stories_error": "stories_error",
+        },
+    )
+    graph.add_edge("stories_error", END)
     graph.add_edge("script_personalizer", "async_post")
 
     # === 공용 엣지 ===

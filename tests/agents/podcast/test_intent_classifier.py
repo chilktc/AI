@@ -12,39 +12,6 @@ import pytest
 
 from src.agents.podcast.intent_classifier import IntentClassifierAgent
 
-# =============================================================================
-# 테스트 데이터
-# =============================================================================
-
-TEST_INPUTS = {
-    "casual_chat": [
-        "오늘 날씨가 좋네요",
-        "안녕하세요",
-    ],
-    "emotional_support": [
-        "요즘 너무 힘들어요",
-        "우울해요",
-    ],
-    "counseling": [
-        "직장 상사 때문에 고민이에요",
-    ],
-    "crisis": [
-        "죽고 싶어요",
-        "자해하고 싶어요",
-    ],
-    "information": [
-        "번아웃이 뭐야?",
-    ],
-    "podcast_request": [
-        "번아웃에 대한 팟캐스트 만들어줘",
-    ],
-}
-
-
-# =============================================================================
-# 결과 출력 함수
-# =============================================================================
-
 
 def print_result(user_input: str, result: dict, elapsed_time: float = None):
     """테스트 결과 출력"""
@@ -223,26 +190,3 @@ async def test_intent_field_has_no_internal_pydantic_fields() -> None:
     assert "reasoning" in intent
     assert "trace_id" in intent
     assert "classified_at" in intent
-
-
-# =============================================================================
-# 직접 실행
-# =============================================================================
-
-if __name__ == "__main__":
-    print("\n🚀 Intent Classifier 직접 테스트")
-    print("=" * 60)
-
-    # LLM 없이 테스트
-    print("\n📌 규칙 기반 테스트")
-    agent = IntentClassifierAgent(llm_client=None, use_redis=False)
-
-    for category, inputs in TEST_INPUTS.items():
-        for user_input in inputs[:1]:  # 각 카테고리에서 1개만
-            state = {"user_input": user_input, "user_id": "test", "session_id": "test"}
-            result = agent.process(state)
-            print_result(user_input, result)
-
-    # LLM 사용 테스트 — conftest.py의 llm_client 픽스처 또는
-    # dev/ollama_bootstrap.py의 register_ollama()를 사용하세요.
-    # 예: pytest tests/ -v (llm_client 세션 픽스처 자동 적용)

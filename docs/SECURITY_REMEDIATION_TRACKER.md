@@ -13,8 +13,8 @@
 | # | 시크릿 | 노출 경로 | 담당 | 조치 | 완료 여부 |
 |---|--------|----------|------|------|----------|
 | 1 | **KT Cloud API 토큰** | git history (커밋 `1d099b6` 이전) | 개발자2 | KT Cloud 콘솔에서 즉시 새 토큰 발급 → `.env`의 `KT_CLOUD_API_TOKEN` 업데이트 | [ ] |
-| 2 | **OpenAI API 키** (`sk-proj-...`) | 로컬 `.env` (비추적) | AI팀 | OpenAI 대시보드에서 새 키 발급 → `.env`의 `OPENAI_API_KEY` 업데이트 | [ ] |
-| 3 | **LangSmith API 키** (`lsv2_pt_...`) | 로컬 `.env` (비추적) | AI팀 | LangSmith 설정에서 새 키 발급 → `.env`의 `LANGCHAIN_API_KEY` 업데이트 | [ ] |
+| 2 | **OpenAI API 키** (`sk-proj-...`) | 로컬 `.env` (비추적) | AI팀 | ⚠️ **배포 환경(Bedrock)에서는 불필요**. 로컬 개발에서만 사용 시 로테이션 불필요. OpenAI 프로바이더 전환 시에만 조치 필요. | [N/A] |
+| 3 | **LangSmith API 키** (`lsv2_pt_...`) | **git history 노출** (커밋 `ffa54f8` — `306176b`에서 파일 제거, history에 잔존) + 로컬 `.env` (비추적) | AI팀 | LangSmith 설정에서 새 키 발급 → `.env`의 `LANGCHAIN_API_KEY` 업데이트 → GitHub Secrets `LANGCHAIN_API_KEY` 업데이트. ※ 현재 GitHub Secret에 구 키가 존재하여 추적은 정상 동작 중이나, git history 노출로 인해 로테이션 필요. | [ ] |
 | 4 | **Grafana/OpenSearch 비밀번호** | 문서에서 제거됨, 실서버 변경 필요 | 인프라팀 | app-1 SSM 접속 → Grafana/OpenSearch admin 비밀번호 변경 | [ ] |
 | 5 | **로컬 DB 비밀번호** | `docker-compose.db.yml`에서 제거됨 | 각 개발자 | 로컬 `.env.db` 재설정 (`dev/local_db/.env.db.example` 참조) | [ ] |
 
@@ -32,7 +32,7 @@
 | 4 | `AWS_REGION` | ❌ 불필요 | 비밀정보 아님 |
 | 5 | `AWS_INSTANCE_ID` | ❌ 불필요 | 미노출 |
 | 6 | `LANGCHAIN_TRACING_V2` | ❌ 불필요 | 비밀정보 아님 |
-| 7 | **`LANGCHAIN_API_KEY`** | **✅ 변경 필수** | 로컬 `.env`에서 실제 키 노출. 로테이션 후 반드시 업데이트 |
+| 7 | **`LANGCHAIN_API_KEY`** | **✅ 변경 필수** | git history에 실제 키 노출 (커밋 `ffa54f8`). 현재 Secret에 구 키가 저장되어 있어 추적은 동작 중이나 로테이션 후 반드시 업데이트 필요. |
 | 8 | `LANGCHAIN_PROJECT` | ❌ 불필요 | 비밀정보 아님 |
 | 9 | `AWS_S3_BUCKET` | ⚠️ 확인 필요 | 버킷명 설정파일 노출. 버킷명 변경 시 업데이트 |
 | 10 | `APP_ENV` | ❌ 불필요 | 비밀정보 아님 |
@@ -49,7 +49,7 @@
 | 1 | `MYSQL_URL` | 운영 DB 접속 필요 시 Secrets 추가 + deploy.yml 라인 추가 |
 | 2 | `KT_CLOUD_ENDPOINT` | Episode Memory 운영 시 Secrets 추가 + deploy.yml 라인 추가 |
 | 3 | `KT_CLOUD_API_TOKEN` | 토큰 로테이션 후 새 토큰으로 Secrets 추가 |
-| 4 | `OPENAI_API_KEY` | 운영에서 OpenAI 사용 시 추가 (bedrock 사용 시 불필요) |
+| 4 | `OPENAI_API_KEY` | ❌ **배포 환경 불필요** — 운영은 Bedrock 사용. 로컬 개발 전용. |
 | 5 | `ANTHROPIC_API_KEY` | 운영에서 직접 API 사용 시 추가 (bedrock 사용 시 불필요) |
 | 6 | `PINECONE_API_KEY` | Pinecone 연동 시 추가 필요 |
 
@@ -137,4 +137,4 @@ KT Cloud 토큰이 git history에 잔존한다. 완전 제거 절차:
 
 ---
 
-*마지막 업데이트: 2026-04-06*
+*마지막 업데이트: 2026-04-14 11:00*
