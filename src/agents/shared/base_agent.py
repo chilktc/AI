@@ -531,7 +531,8 @@ class BaseAgent(ABC):
                 **kwargs,
             )
             usage = self.llm_client.last_usage or {}
-            return {
+            call_meta = self.llm_client.last_call_metadata
+            result_dict: dict[str, Any] = {
                 "text": text,
                 "usage_metadata": {
                     "input_tokens": usage.get("input_tokens", 0),
@@ -539,6 +540,13 @@ class BaseAgent(ABC):
                     "total_tokens": usage.get("total_tokens", 0),
                 },
             }
+            if call_meta:
+                result_dict["metadata"] = {
+                    "sem_wait_ms": call_meta.get("sem_wait_ms", 0),
+                    "bedrock_call_ms": call_meta.get("bedrock_call_ms", 0),
+                    "request_id": call_meta.get("request_id", ""),
+                }
+            return result_dict
 
         result = await _llm_run(
             messages=[
