@@ -27,6 +27,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    stop_grace_period: 310s
     restart: unless-stopped
     logging:
       driver: "json-file"
