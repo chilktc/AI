@@ -1,6 +1,11 @@
 # Worktrees
 .worktrees/
 
+# Office / Presentation files
+*.pptx
+*.xlsx
+*.docx
+
 # Python
 __pycache__/
 *.py[cod]

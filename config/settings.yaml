@@ -40,7 +40,7 @@ llm:
       max_attempts: 3           # ThrottlingException/ServiceUnavailableException 재시도 상한
       initial_backoff_seconds: 1
       max_backoff_seconds: 8
-    concurrency_limit: 10       # 동시 Bedrock 호출 상한 (Semaphore)
+    concurrency_limit: 100      # 동시 Bedrock 호출 상한 (Semaphore)
 
   # Circuit Breaker — LLM 프로바이더 장애 시 cascading failure 방지
   circuit_breaker:
