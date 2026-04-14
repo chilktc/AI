@@ -109,8 +109,6 @@ class VisualizationAgent(BaseAgent):
                 Key=s3_key,
                 Body=raw_res["image_binary"],
                 ContentType="image/png",
-                # 버킷의 Object Ownership이 ACL 활성화 상태여야 한다 (AWS 콘솔에서 확인 필요)
-                ACL="public-read",
             )
 
             return {
