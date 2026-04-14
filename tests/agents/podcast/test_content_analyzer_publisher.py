@@ -212,6 +212,10 @@ async def test_content_analyzer_calls_mind_frequencies_only():
 
     mock_llm_return = {
         "main_theme": "직장 스트레스",
+        "user_summary": {
+            "keywords": ["번아웃", "스트레스", "직장"],
+            "summary": "직장 스트레스로 인한 번아웃 위기",
+        },
         "sub_themes": ["번아웃"],
         "target_duration": 4,
         "narrative_structure": "reflection",
@@ -233,13 +237,12 @@ async def test_content_analyzer_calls_mind_frequencies_only():
     assert pub_kwargs["resource"] == "content_analyses"
     assert "main_theme" in pub_kwargs["data"]
 
-    # ingest_mind_frequencies: 1회, 올바른 인자
+    # ingest_mind_frequencies: 1회, user_summary 기반 인자
     mock_bc_cls.return_value.ingest_mind_frequencies.assert_called_once()
     mf_kwargs = mock_bc_cls.return_value.ingest_mind_frequencies.call_args.kwargs
     assert mf_kwargs["session_id"] == "s1"
-    assert "번아웃" in mf_kwargs["keywords"]
-    assert len(mf_kwargs["keywords"]) >= 3  # min_sub_themes 보장
-    assert mf_kwargs["description"] == "직장 스트레스"
+    assert mf_kwargs["keywords"] == ["번아웃", "스트레스", "직장"]
+    assert mf_kwargs["description"] == "직장 스트레스로 인한 번아웃 위기"
 
     # ingest_user_summary: 호출되지 않아야 함 (제거됨)
     assert (

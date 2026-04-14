@@ -561,6 +561,28 @@ def test_validate_and_correct_limits_key_messages_to_five(
 
 
 @pytest.mark.asyncio
+async def test_mind_frequencies_uses_user_summary(
+    agent: ContentAnalyzerAgent,
+    base_state: AgentState,
+    mock_llm_response: dict[str, Any],
+) -> None:
+    """ingest_mind_frequencies는 user_summary.keywords/summary를 전송한다."""
+    with patch.object(agent, "call_llm_json", new_callable=AsyncMock, return_value=mock_llm_response):
+        with patch("src.agents.podcast.content_analyzer.AgentDataPublisher") as mock_pub:
+            mock_pub.return_value.publish = AsyncMock(return_value=True)
+            with patch("src.agents.podcast.content_analyzer.BackendClient") as mock_bc:
+                mock_bc.return_value.ingest_mind_frequencies = AsyncMock()
+                mock_bc.return_value.close = AsyncMock()
+                await agent.process(base_state)
+
+    mock_bc.return_value.ingest_mind_frequencies.assert_called_once_with(
+        session_id="sess_test_001",
+        keywords=["스트레스", "피로"],
+        description="스트레스와 피로를 호소하는 사용자",
+    )
+
+
+@pytest.mark.asyncio
 async def test_error_path_emotional_journey_has_four_keys(
     agent: ContentAnalyzerAgent,
 ) -> None:
