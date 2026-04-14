@@ -21,7 +21,7 @@ import pytest
 
 from src.agents.podcast.episode_memory import EpisodeMemoryAgent
 from src.agents.podcast.podcast_reasoning import PodcastReasoningAgent
-from src.agents.shared.stubs import EpisodeMemoryStub, KnowledgeAgentStub
+from src.agents.shared.stubs import KnowledgeAgentStub
 from src.models.agent_state import AgentState
 
 # === 공용 픽스처 ===
