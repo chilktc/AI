@@ -436,8 +436,24 @@ class PodcastReasoningAgent(BaseAgent):
                 parts.append("\n".join(lines))
 
             elif phase == "CoT":
-                # CoT: summary + score 필터 원문 — 스타일 개인화 (Task 4에서 구현)
-                parts.append(f"[과거 에피소드 기억]\n- {episode_count}건 발견")
+                # CoT: summary + score 필터 원문 — 스타일 개인화
+                lines = ["[과거 에피소드 스타일 참고]"]
+                summary = memory_result.get("summary", "")
+                if summary:
+                    lines.append(f"요약: {summary}")
+                for ep in episodes:
+                    score = ep.get("score", 0.0)
+                    if score < self.memory_style_score_threshold:
+                        continue
+                    raw_date = ep.get("metadata", {}).get("date", "")
+                    date = raw_date[:10] if raw_date else "날짜 없음"
+                    title = ep.get("metadata", {}).get("episode_title", "제목 없음")
+                    text_preview = ep.get("text", "")[:200]
+                    lines.append(
+                        f"\n[{date}] '{title}' (유사도 {score:.2f})\n{text_preview}..."
+                    )
+                lines.append("→ 내용(주제·구조)이 아닌 스타일(말투·톤)만 참고하세요.")
+                parts.append("\n".join(lines))
 
         if knowledge_result and knowledge_result.get("articles"):
             article_count = len(knowledge_result["articles"])

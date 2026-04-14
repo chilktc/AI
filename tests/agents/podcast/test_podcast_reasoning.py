@@ -964,3 +964,77 @@ def test_build_phase_context_tot_metadata_only(
     assert "수면 문제 에피소드 원문" not in context
     # 다양성 가이드 문구 포함
     assert "다양성" in context
+
+
+def test_build_phase_context_cot_includes_high_score_text(
+    agent_with_stubs: PodcastReasoningAgent,
+) -> None:
+    """CoT phase: score >= threshold 에피소드의 원문 발췌가 포함된다."""
+    agent_with_stubs.memory_style_score_threshold = 0.9
+    memory_result = {
+        "episodes": [
+            {
+                "text": "안녕하세요. 번아웃 에피소드 원문입니다. 긴 텍스트가 여기 있습니다.",
+                "score": 0.94,
+                "metadata": {
+                    "date": "2026-04-10T14:32:15",
+                    "episode_title": "번아웃과 리더십",
+                },
+            }
+        ],
+        "summary": "번아웃 관련 1개 에피소드",
+    }
+    context = agent_with_stubs._build_phase_context(
+        phase="CoT",
+        user_input="요즘 너무 힘들어요.",
+        intent={},
+        memory_result=memory_result,
+    )
+    assert "[과거 에피소드 스타일 참고]" in context
+    assert "요약: 번아웃 관련 1개 에피소드" in context
+    assert "번아웃과 리더십" in context
+    assert "0.94" in context
+    assert "번아웃 에피소드 원문" in context
+    assert "스타일" in context
+
+
+def test_build_phase_context_cot_excludes_low_score_text(
+    agent_with_stubs: PodcastReasoningAgent,
+) -> None:
+    """CoT phase: score < threshold 에피소드의 원문 발췌는 포함되지 않는다."""
+    agent_with_stubs.memory_style_score_threshold = 0.9
+    memory_result = {
+        "episodes": [
+            {
+                "text": "낮은 유사도 에피소드 원문입니다.",
+                "score": 0.75,
+                "metadata": {
+                    "date": "2026-03-01T10:00:00",
+                    "episode_title": "낮은 유사도 에피소드",
+                },
+            }
+        ],
+        "summary": "",
+    }
+    context = agent_with_stubs._build_phase_context(
+        phase="CoT",
+        user_input="요즘 너무 힘들어요.",
+        intent={},
+        memory_result=memory_result,
+    )
+    assert "[과거 에피소드 스타일 참고]" in context
+    assert "낮은 유사도 에피소드 원문" not in context
+
+
+def test_build_phase_context_cot_no_memory(
+    agent_with_stubs: PodcastReasoningAgent,
+) -> None:
+    """CoT phase: memory_result=None이면 메모리 섹션이 없다."""
+    context = agent_with_stubs._build_phase_context(
+        phase="CoT",
+        user_input="요즘 너무 힘들어요.",
+        intent={},
+        memory_result=None,
+    )
+    assert "[과거 에피소드 스타일 참고]" not in context
+    assert "[과거 에피소드 기억]" not in context
