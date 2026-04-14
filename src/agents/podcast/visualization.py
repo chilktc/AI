@@ -110,6 +110,7 @@ class VisualizationAgent(BaseAgent):
                 Key=s3_key,
                 Body=raw_res["image_binary"],
                 ContentType="image/png",
+                ACL="public-read",
             )
 
             return {
