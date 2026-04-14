@@ -200,7 +200,7 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
 app.include_router(health.router, tags=["Health Check"])
 app.include_router(sessions.router, prefix="/api/sessions", tags=["Sessions"])
 app.include_router(podcasts.router, prefix="/api/podcasts", tags=["Podcasts"])
-app.include_router(stories.router, prefix="/api/stories", tags=["Stories"])
+app.include_router(stories.router, prefix="/greenroom/ai/stories", tags=["Stories"])
 # [이관 주석] Neo4j 이관 시 아래 graph 라우터 등록을 삭제.
 app.include_router(graph.router)
 
