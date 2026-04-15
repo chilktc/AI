@@ -45,14 +45,19 @@ class BackendClient:
 
         Args:
             base_url: API 기본 URL (None이면 설정에서 자동 로드).
-                      내부 저장 API 경로 (e.g. /greenroom/ingest/ai) 기준.
+                      내부 저장 API 경로 기준.
                       사용자 프로필 조회는 별도 _profile_base_url(호스트만) 사용.
+                      지식 문서 조회/적재는 별도 _knowledge_base_url 사용.
         """
         settings = get_settings()
         self._base_url = base_url or settings.api_base_url
         parsed = urlparse(self._base_url)
         self._profile_base_url = f"{parsed.scheme}://{parsed.netloc}"
         self._graph_base_url = f"{parsed.scheme}://{parsed.netloc}/api/v1"
+        # 지식 문서 전용 URL: BACKEND_API_URL의 경로와 무관하게 호스트 기준으로 고정
+        # GET /api/internal/knowledge?ids=...  (KnowledgeAgent 조회)
+        # POST /api/internal/knowledge         (ingest 적재)
+        self._knowledge_base_url = f"{parsed.scheme}://{parsed.netloc}/api/internal/knowledge"
         self._timeout = settings.api_timeout
         self._client = httpx.AsyncClient(
             timeout=self._timeout,
@@ -286,6 +291,65 @@ class BackendClient:
                 },
             )
             raise
+
+    async def fetch_knowledge_documents(self, chunk_ids: list[str]) -> list[dict[str, Any]]:
+        """
+        지식 문서 청크 원문을 Backend RDB에서 조회한다.
+
+        GET {host}/api/internal/knowledge?ids=id1,id2,...
+
+        Args:
+            chunk_ids: Pinecone에서 검색된 청크 ID 목록
+
+        Returns:
+            문서 데이터 목록. 실패 시 빈 리스트 반환 (graceful degradation)
+        """
+        if not chunk_ids:
+            return []
+        try:
+            response = await self._client.get(
+                self._knowledge_base_url,
+                params={"ids": ",".join(chunk_ids)},
+                timeout=10.0,
+            )
+            response.raise_for_status()
+            data: dict[str, Any] = response.json()
+            return data.get("data", [])  # type: ignore[no-any-return]
+        except Exception:
+            _logger.error(
+                "[BackendClient] 지식 문서 조회 실패 (요청=%d건)", len(chunk_ids), exc_info=True
+            )
+            return []
+
+    async def ingest_knowledge_chunk(
+        self,
+        chunk_id: str,
+        title: str,
+        content: str,
+        page: int,
+        source: str,
+        domain: str,
+    ) -> None:
+        """
+        지식 문서 청크를 Backend RDB에 적재한다.
+
+        POST {host}/api/internal/knowledge
+
+        실패 시 ERROR 로그만 기록하고 예외를 전파한다 (ingest 스크립트에서 개별 처리).
+        """
+        response = await self._client.post(
+            self._knowledge_base_url,
+            json={
+                "id": chunk_id,
+                "title": title,
+                "content": content,
+                "page": page,
+                "source": source,
+                "domain": domain,
+            },
+            timeout=10.0,
+        )
+        response.raise_for_status()
 
     async def load_graph_cumulative(self, user_id: str) -> GraphCumulativeData | None:
         """사용자의 누적 그래프 데이터를 조회한다."""
