@@ -16,6 +16,7 @@ from typing import Any, cast
 
 import httpx
 
+from config.loader import get_settings
 from src.agents.shared.base_agent import BaseAgent
 from src.models.agent_state import AgentState
 
@@ -51,6 +52,13 @@ class KnowledgeAgent(BaseAgent):
         self.kt_pinecone_api_key = os.getenv("PINECONE_API_KEY", "")
         self.kt_pinecone_index = os.getenv("PINECONE_INDEX_KNOWLEDGE", "expert-knowledge")
         self.kt_pinecone_host = ""
+
+        # Pinecone 유사도 필터 임계값 (settings.yaml: agents.knowledge.pinecone_score_threshold)
+        try:
+            cfg = get_settings().get_agent_config("knowledge")
+        except Exception:
+            cfg = {}
+        self.pinecone_score_threshold: float = float(cfg.get("pinecone_score_threshold", 0.7))
 
     async def process(self, state: AgentState) -> dict:
         """
@@ -311,7 +319,11 @@ class KnowledgeAgent(BaseAgent):
             {"articles": [...], "guidelines": []} 구조의 검색 결과
         """
         if not self.kt_embedding_endpoint or not self.kt_embedding_token:
-            self.logger.warning("[KnowledgeAgent] KT RAG Suite 미설정 — 빈 결과 반환")
+            self.logger.warning(
+                "[KnowledgeAgent] KT RAG Suite 미설정 — 빈 결과 반환 " "(domain=%s, query_len=%d)",
+                domain,
+                len(query),
+            )
             return {"articles": [], "guidelines": []}
 
         try:
@@ -321,13 +333,23 @@ class KnowledgeAgent(BaseAgent):
             # 2. Embedding: 벡터 변환
             vector = await self._embed_query(parsed_query)
             if not vector:
-                self.logger.warning("[KnowledgeAgent] 임베딩 실패 — 빈 결과 반환")
+                self.logger.warning(
+                    "[KnowledgeAgent] 임베딩 실패 — 빈 결과 반환 " "(domain=%s, parsed_len=%d)",
+                    domain,
+                    len(parsed_query),
+                )
                 return {"articles": [], "guidelines": []}
 
             # 3. Pinecone: 벡터 검색
             matches = await self._query_pinecone(vector, domain)
             if not matches:
-                self.logger.info("[KnowledgeAgent] Pinecone 검색 결과 없음")
+                self.logger.info(
+                    "[KnowledgeAgent] Pinecone 검색 결과 없음 "
+                    "(domain=%s, threshold=%.2f, vector_dim=%d)",
+                    domain,
+                    self.pinecone_score_threshold,
+                    len(vector),
+                )
                 return {"articles": [], "guidelines": []}
 
             # 3-1. Backend RDB: Pinecone top_k chunk_id로 원문 조회
@@ -366,13 +388,45 @@ class KnowledgeAgent(BaseAgent):
                 )
 
             self.logger.info(
-                "[KnowledgeAgent] KT RAG Suite search 완료 — %d건 반환",
+                "[KnowledgeAgent] KT RAG Suite search 완료 — %d건 반환 (domain=%s)",
                 len(articles),
+                domain,
             )
             return {"articles": articles, "guidelines": []}
 
+        except httpx.TimeoutException as e:
+            self.logger.error(
+                "[KnowledgeAgent] KT RAG Suite search 타임아웃 (domain=%s): %s", domain, e
+            )
+            return {"articles": [], "guidelines": []}
+        except httpx.HTTPStatusError as e:
+            self.logger.error(
+                "[KnowledgeAgent] KT RAG Suite search HTTP 오류 " "(domain=%s, status=%d): %s",
+                domain,
+                e.response.status_code,
+                e,
+            )
+            return {"articles": [], "guidelines": []}
+        except httpx.RequestError as e:
+            self.logger.error(
+                "[KnowledgeAgent] KT RAG Suite search 네트워크 오류 (domain=%s): %s",
+                domain,
+                e,
+            )
+            return {"articles": [], "guidelines": []}
+        except (KeyError, ValueError, json.JSONDecodeError) as e:
+            self.logger.error(
+                "[KnowledgeAgent] KT RAG Suite search 응답 파싱 실패 (domain=%s): %s",
+                domain,
+                e,
+            )
+            return {"articles": [], "guidelines": []}
         except Exception as e:
-            self.logger.error("[KnowledgeAgent] KT RAG Suite search 실패: %s", e)
+            self.logger.error(
+                "[KnowledgeAgent] KT RAG Suite search 예기치 않은 실패 (domain=%s): %s",
+                domain,
+                e,
+            )
             return {"articles": [], "guidelines": []}
 
     # ============================================================
@@ -402,8 +456,24 @@ class KnowledgeAgent(BaseAgent):
                     "[KnowledgeAgent] Parser 완료: '%s' → '%s'", query[:50], parsed[:50]
                 )
                 return str(parsed)
+        except httpx.TimeoutException as e:
+            self.logger.warning("[KnowledgeAgent] Parser 타임아웃 — 원본 쿼리 사용: %s", e)
+            return query
+        except httpx.HTTPStatusError as e:
+            self.logger.warning(
+                "[KnowledgeAgent] Parser HTTP 오류(%d) — 원본 쿼리 사용: %s",
+                e.response.status_code,
+                e,
+            )
+            return query
+        except httpx.RequestError as e:
+            self.logger.warning("[KnowledgeAgent] Parser 네트워크 오류 — 원본 쿼리 사용: %s", e)
+            return query
+        except (KeyError, ValueError, json.JSONDecodeError) as e:
+            self.logger.warning("[KnowledgeAgent] Parser 응답 파싱 실패 — 원본 쿼리 사용: %s", e)
+            return query
         except Exception as e:
-            self.logger.warning("[KnowledgeAgent] Parser 실패 — 원본 쿼리 사용: %s", e)
+            self.logger.warning("[KnowledgeAgent] Parser 예기치 않은 실패 — 원본 쿼리 사용: %s", e)
             return query
 
     async def _embed_query(self, text: str) -> list[float]:
@@ -427,8 +497,22 @@ class KnowledgeAgent(BaseAgent):
                 if not data:
                     return []
                 return data[0].get("embedding", [])  # type: ignore[no-any-return]
+        except httpx.TimeoutException as e:
+            self.logger.error("[KnowledgeAgent] Embedding 타임아웃: %s", e)
+            return []
+        except httpx.HTTPStatusError as e:
+            self.logger.error(
+                "[KnowledgeAgent] Embedding HTTP 오류(%d): %s", e.response.status_code, e
+            )
+            return []
+        except httpx.RequestError as e:
+            self.logger.error("[KnowledgeAgent] Embedding 네트워크 오류: %s", e)
+            return []
+        except (KeyError, ValueError, json.JSONDecodeError) as e:
+            self.logger.error("[KnowledgeAgent] Embedding 응답 파싱 실패: %s", e)
+            return []
         except Exception as e:
-            self.logger.error("[KnowledgeAgent] Embedding 실패: %s", e)
+            self.logger.error("[KnowledgeAgent] Embedding 예기치 않은 실패: %s", e)
             return []
 
     async def _get_pinecone_host(self) -> str:
@@ -449,8 +533,24 @@ class KnowledgeAgent(BaseAgent):
                 r.raise_for_status()
                 self.kt_pinecone_host = r.json()["host"]
                 return self.kt_pinecone_host
+        except httpx.TimeoutException as e:
+            self.logger.error("[KnowledgeAgent] Pinecone host 조회 타임아웃: %s", e)
+            return ""
+        except httpx.HTTPStatusError as e:
+            self.logger.error(
+                "[KnowledgeAgent] Pinecone host 조회 HTTP 오류(%d): %s",
+                e.response.status_code,
+                e,
+            )
+            return ""
+        except httpx.RequestError as e:
+            self.logger.error("[KnowledgeAgent] Pinecone host 조회 네트워크 오류: %s", e)
+            return ""
+        except (KeyError, ValueError, json.JSONDecodeError) as e:
+            self.logger.error("[KnowledgeAgent] Pinecone host 응답 파싱 실패: %s", e)
+            return ""
         except Exception as e:
-            self.logger.error("[KnowledgeAgent] Pinecone host 조회 실패: %s", e)
+            self.logger.error("[KnowledgeAgent] Pinecone host 조회 예기치 않은 실패: %s", e)
             return ""
 
     async def _query_pinecone(self, vector: list[float], domain: str, top_k: int = 5) -> list[dict]:
@@ -479,10 +579,34 @@ class KnowledgeAgent(BaseAgent):
                 r.raise_for_status()
                 matches = r.json().get("matches", [])
 
-                # 유사도 0.7 이상의 결과만 필터링하여 반환
-                return [m for m in matches if m.get("score", 0.0) >= 0.7]
+                # 유사도 임계값 이상 결과만 필터링 (settings.yaml: pinecone_score_threshold)
+                threshold = self.pinecone_score_threshold
+                return [m for m in matches if m.get("score", 0.0) >= threshold]
+        except httpx.TimeoutException as e:
+            self.logger.error("[KnowledgeAgent] Pinecone query 타임아웃 (domain=%s): %s", domain, e)
+            return []
+        except httpx.HTTPStatusError as e:
+            self.logger.error(
+                "[KnowledgeAgent] Pinecone query HTTP 오류 (domain=%s, status=%d): %s",
+                domain,
+                e.response.status_code,
+                e,
+            )
+            return []
+        except httpx.RequestError as e:
+            self.logger.error(
+                "[KnowledgeAgent] Pinecone query 네트워크 오류 (domain=%s): %s", domain, e
+            )
+            return []
+        except (KeyError, ValueError, json.JSONDecodeError) as e:
+            self.logger.error(
+                "[KnowledgeAgent] Pinecone query 응답 파싱 실패 (domain=%s): %s", domain, e
+            )
+            return []
         except Exception as e:
-            self.logger.error("[KnowledgeAgent] Pinecone query 실패: %s", e)
+            self.logger.error(
+                "[KnowledgeAgent] Pinecone query 예기치 않은 실패 (domain=%s): %s", domain, e
+            )
             return []
 
     async def _generate_synthesis(self, query: str, articles: list[dict]) -> str:
@@ -519,8 +643,22 @@ class KnowledgeAgent(BaseAgent):
                 )
                 r.raise_for_status()
                 return str(r.json()["choices"][0]["message"]["content"])
+        except httpx.TimeoutException as e:
+            self.logger.warning("[KnowledgeAgent] TextGen 요약 타임아웃: %s", e)
+            return ""
+        except httpx.HTTPStatusError as e:
+            self.logger.warning(
+                "[KnowledgeAgent] TextGen 요약 HTTP 오류(%d): %s", e.response.status_code, e
+            )
+            return ""
+        except httpx.RequestError as e:
+            self.logger.warning("[KnowledgeAgent] TextGen 요약 네트워크 오류: %s", e)
+            return ""
+        except (KeyError, IndexError, ValueError, json.JSONDecodeError) as e:
+            self.logger.warning("[KnowledgeAgent] TextGen 요약 응답 파싱 실패: %s", e)
+            return ""
         except Exception as e:
-            self.logger.warning("[KnowledgeAgent] TextGen 요약 실패: %s", e)
+            self.logger.warning("[KnowledgeAgent] TextGen 요약 예기치 않은 실패: %s", e)
             return ""
 
     async def _fetch_documents_from_backend(self, chunk_ids: list[str]) -> list[dict]:
@@ -546,12 +684,44 @@ class KnowledgeAgent(BaseAgent):
                 data = r.json()
                 documents = data.get("data", [])
                 self.logger.info(
-                    "[KnowledgeAgent] RDB 원문 조회 완료 — %d건",
+                    "[KnowledgeAgent] RDB 원문 조회 완료 — %d건 (요청=%d건)",
                     len(documents),
+                    len(chunk_ids),
                 )
                 return documents  # type: ignore[no-any-return]
+        except httpx.TimeoutException as e:
+            self.logger.error(
+                "[KnowledgeAgent] RDB 원문 조회 타임아웃 (요청=%d건): %s", len(chunk_ids), e
+            )
+            return []
+        except httpx.HTTPStatusError as e:
+            self.logger.error(
+                "[KnowledgeAgent] RDB 원문 조회 HTTP 오류 (요청=%d건, status=%d): %s",
+                len(chunk_ids),
+                e.response.status_code,
+                e,
+            )
+            return []
+        except httpx.RequestError as e:
+            self.logger.error(
+                "[KnowledgeAgent] RDB 원문 조회 네트워크 오류 (요청=%d건): %s",
+                len(chunk_ids),
+                e,
+            )
+            return []
+        except (KeyError, ValueError, json.JSONDecodeError) as e:
+            self.logger.error(
+                "[KnowledgeAgent] RDB 원문 조회 응답 파싱 실패 (요청=%d건): %s",
+                len(chunk_ids),
+                e,
+            )
+            return []
         except Exception as e:
-            self.logger.error("[KnowledgeAgent] RDB 원문 조회 실패: %s", e)
+            self.logger.error(
+                "[KnowledgeAgent] RDB 원문 조회 예기치 않은 실패 (요청=%d건): %s",
+                len(chunk_ids),
+                e,
+            )
             return []
 
     def _build_output(
