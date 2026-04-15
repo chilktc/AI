@@ -687,7 +687,7 @@ class KnowledgeAgent(BaseAgent):
             return []
 
         backend_url = os.getenv("BACKEND_API_URL", "http://localhost:8080/api")
-        url = f"{backend_url}/internal/knowledge"
+        url = f"{backend_url}/ai/internal/knowledge"
 
         try:
             async with httpx.AsyncClient() as client:

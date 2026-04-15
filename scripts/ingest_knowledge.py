@@ -209,7 +209,7 @@ async def save_to_backend(
     """
     async with httpx.AsyncClient() as client:
         r = await client.post(
-            f"{backend_url}/internal/knowledge",
+            f"{backend_url}/ai/internal/knowledge",
             json={
                 "id": chunk_id,
                 "title": title,
