@@ -107,12 +107,23 @@ class ContentAnalyzerAgent(BaseAgent):
         context_info = self._build_context_info(intent, complexity_score, depth_level)
 
         # STEP 2: LLM 호출로 콘텐츠 분석 수행
-        analysis = await self.call_llm_json(
-            system_prompt=self.get_prompt("system_prompt"),
-            user_message=(
-                f"사용자 입력: {normalized_input}{context_info}\n\n" f"[분석 깊이: {depth_level}]"
-            ),
-        )
+        try:
+            analysis = await self.call_llm_json(
+                system_prompt=self.get_prompt("system_prompt"),
+                user_message=(
+                    f"사용자 입력: {normalized_input}{context_info}\n\n"
+                    f"[분석 깊이: {depth_level}]"
+                ),
+            )
+        except Exception as e:
+            # LLM이 빈 응답 또는 비JSON 응답을 반환할 때 발생.
+            # CRISIS 여부와 무관하게 최소 폴백으로 진행하여 TIER 1 붕괴를 방지한다.
+            # 이후 백엔드 전송은 _validate_and_correct({}) 결과로 정상 실행된다.
+            self.logger.warning(
+                "[ContentAnalyzer] LLM 응답 파싱 실패 — 최소 폴백으로 계속 (백엔드 전송 유지): %s",
+                type(e).__name__,
+            )
+            analysis = {}
 
         # STEP 3: 결과 검증 및 보정 — 스펙 기준에 맞게 후처리
         validated_analysis = self._validate_and_correct(analysis, depth_level)
