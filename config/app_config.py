@@ -114,6 +114,62 @@ ATTITUDE_SETTINGS = {
 DEFAULT_ATTITUDE = "balanced"
 
 # =============================================================================
+# Podcast Host Persona 설정 (8종)
+# =============================================================================
+
+# 백엔드/프론트엔드 라벨(title)과 시스템 파라미터 매핑
+PERSONA_STRATEGY_MAP = {
+    "따뜻한 공감자": {
+        "description": "부드러운 목소리로 마음을 안아주며 위로를 전하는 스타일",
+        "keywords": ["#위로", "#따뜻함", "#공감"],
+        "formality": "medium",
+        "attitude": "empathetic",
+    },
+    "이성적인 분석가": {
+        "description": "복잡한 상황을 논리적으로 분석해 명확한 해법을 제시하는 스타일",
+        "keywords": ["#논리", "#해결책", "#정리"],
+        "formality": "high",
+        "attitude": "rational",
+    },
+    "열정적인 코치": {
+        "description": "에너지가 넘치고 동기부여를 주며 강력하게 응원하는 스타일",
+        "keywords": ["#응원", "#변화", "#열정"],
+        "formality": "low",
+        "attitude": "energetic",
+    },
+    "고요한 새벽지기": {
+        "description": "명상하듯 차분하고 깊이 있는 통찰을 나누는 스타일",
+        "keywords": ["#통찰", "#차분함", "#깊이"],
+        "formality": "medium",
+        "attitude": "calm",
+    },
+    "유쾌한 팩트폭격기": {
+        "description": "재치 있는 농담과 함께 현실적인 조언을 건네는 스타일",
+        "keywords": ["#재치", "#솔직함", "#유머"],
+        "formality": "low",
+        "attitude": "witty",
+    },
+    "몰입형 이야기꾼": {
+        "description": "은유와 비유를 활용해 영화 같은 서사를 들려주는 스타일",
+        "keywords": ["#기승전결", "#몰입", "#비유"],
+        "formality": "medium",
+        "attitude": "narrative",
+    },
+    "신뢰의 전문가": {
+        "description": "격식과 권위 있는 말투로 신뢰감 있는 조언을 하는 스타일",
+        "keywords": ["#전문성", "#신뢰", "#가이드"],
+        "formality": "high",
+        "attitude": "professional",
+    },
+    "편안한 동네 친구": {
+        "description": "친한 선후배나 친구처럼 다정하고 소탈하게 이야기하는 스타일",
+        "keywords": ["#친근함", "#소탈함", "#편안함"],
+        "formality": "low",
+        "attitude": "casual",
+    },
+}
+
+# =============================================================================
 # Redis 설정 (Intent Classifier 캐시)
 # =============================================================================
 

@@ -22,8 +22,8 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from enum import StrEnum
-from typing import Any, Literal
+from enum import Enum
+from typing import Any, Literal, Optional, Union
 
 from pydantic import BaseModel, Field
 
@@ -630,7 +630,7 @@ class PodcastEpisodeSummary(BaseModel):
 # ───────────────────────────────────────────────
 
 
-class StreamEventType(StrEnum):
+class StreamEventType(str, Enum):
     """스트리밍 이벤트 유형."""
 
     TIER_START = "tier_start"  # TIER 실행 시작

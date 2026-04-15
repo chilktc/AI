@@ -11,7 +11,7 @@ total=False 설정으로 모든 필드는 선택적이며, 에이전트 노드�
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any, Literal, Optional, Union
 
 from typing_extensions import TypedDict
 
@@ -34,7 +34,7 @@ class AgentState(TypedDict, total=False):
     user_id: str  # 사용자 고유 ID
     session_id: str  # 세션 고유 ID
     mode: Literal["podcast"]  # 실행 모드
-    learning_pattern: dict[str, Any] | None  # 백엔드 Push 사용자 학습 패턴 (nullable)
+    learning_pattern: Optional[dict[str, Any]]  # 백엔드 Push 사용자 학습 패턴 (nullable)
 
     # === 분석 필드 ===
     intent: dict[str, Any]  # Intent Classifier → 의도 분류 결과
@@ -54,7 +54,7 @@ class AgentState(TypedDict, total=False):
     validation_result: dict[str, Any]  # Batch Validator → 검증 결과
     final_output: str  # Script Personalizer → 최종 응답
     visual_data: dict[str, Any]  # Visualization Agent → 시각화 메타데이터
-    stories_context: dict[str, Any] | None  # Stories 선택 데이터 (keywords, title, description)
+    stories_context: Optional[dict[str, Any]]  # Stories 선택 데이터 (keywords, title, description)
 
     # === 메모리 저장 트리거 (Script Personalizer → async_post) ===
     memory_write: bool  # True이면 async_post에서 에피소드 메모리 저장 실행
