@@ -680,65 +680,32 @@ class KnowledgeAgent(BaseAgent):
     async def _fetch_documents_from_backend(self, chunk_ids: list[str]) -> list[dict]:
         """Backend RDB에서 Pinecone top_k 청크 원문을 조회한다.
 
-        GET /api/internal/knowledge?ids=id1,id2,...
+        BackendClient._knowledge_base_url을 사용하여 호스트 기준으로 URL을 고정한다.
+        ({host}/api/internal/knowledge?ids=id1,id2,...)
         실패 시 빈 리스트 반환 (graceful degradation).
         """
         if not chunk_ids:
             return []
 
-        backend_url = os.getenv("BACKEND_API_URL", "http://localhost:8080/api")
-        url = f"{backend_url}/ai/internal/knowledge"
+        from src.api.client import BackendClient
 
+        client = BackendClient()
         try:
-            async with httpx.AsyncClient() as client:
-                r = await client.get(
-                    url,
-                    params={"ids": ",".join(chunk_ids)},
-                    timeout=10.0,
-                )
-                r.raise_for_status()
-                data = r.json()
-                documents = data.get("data", [])
-                self.logger.info(
-                    "[KnowledgeAgent] RDB 원문 조회 완료 — %d건 (요청=%d건)",
-                    len(documents),
-                    len(chunk_ids),
-                )
-                return documents  # type: ignore[no-any-return]
-        except httpx.TimeoutException as e:
-            self.logger.error(
-                "[KnowledgeAgent] RDB 원문 조회 타임아웃 (요청=%d건): %s", len(chunk_ids), e
-            )
-            return []
-        except httpx.HTTPStatusError as e:
-            self.logger.error(
-                "[KnowledgeAgent] RDB 원문 조회 HTTP 오류 (요청=%d건, status=%d): %s",
+            documents = await client.fetch_knowledge_documents(chunk_ids)
+            self.logger.info(
+                "[KnowledgeAgent] RDB 원문 조회 완료 — %d건 (요청=%d건)",
+                len(documents),
                 len(chunk_ids),
-                e.response.status_code,
-                e,
             )
-            return []
-        except httpx.RequestError as e:
-            self.logger.error(
-                "[KnowledgeAgent] RDB 원문 조회 네트워크 오류 (요청=%d건): %s",
-                len(chunk_ids),
-                e,
-            )
-            return []
-        except (KeyError, ValueError, json.JSONDecodeError) as e:
-            self.logger.error(
-                "[KnowledgeAgent] RDB 원문 조회 응답 파싱 실패 (요청=%d건): %s",
-                len(chunk_ids),
-                e,
-            )
-            return []
+            return documents
         except Exception as e:
             self.logger.error(
-                "[KnowledgeAgent] RDB 원문 조회 예기치 않은 실패 (요청=%d건): %s",
-                len(chunk_ids),
-                e,
+                "[KnowledgeAgent] RDB 원문 조회 실패 (요청=%d건): %s", len(chunk_ids), e
             )
             return []
+        finally:
+            await client.close()
+
 
     def _build_output(
         self,

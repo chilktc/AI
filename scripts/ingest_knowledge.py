@@ -194,7 +194,6 @@ async def upsert_pinecone(
 
 
 async def save_to_backend(
-    backend_url: str,
     chunk_id: str,
     text: str,
     page: int,
@@ -204,23 +203,27 @@ async def save_to_backend(
 ) -> None:
     """Backend RDB에 청크 데이터를 저장한다.
 
-    POST /api/internal/knowledge
-    Backend팀이 저장 엔드포인트를 구현한 뒤 동작한다.
+    BackendClient._knowledge_base_url을 사용하여 URL을 호스트 기준으로 고정한다.
+    ({host}/api/internal/knowledge)
     """
-    async with httpx.AsyncClient() as client:
-        r = await client.post(
-            f"{backend_url}/ai/internal/knowledge",
-            json={
-                "id": chunk_id,
-                "title": title,
-                "content": text,
-                "page": page,
-                "source": source,
-                "domain": domain,
-            },
-            timeout=10.0,
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from src.api.client import BackendClient
+
+    client = BackendClient()
+    try:
+        await client.ingest_knowledge_chunk(
+            chunk_id=chunk_id,
+            title=title,
+            content=text,
+            page=page,
+            source=source,
+            domain=domain,
         )
-        r.raise_for_status()
+    finally:
+        await client.close()
+
 
 
 # ============================================================
@@ -305,7 +308,6 @@ async def ingest_document(
             # Backend RDB 저장
             try:
                 await save_to_backend(
-                    backend_url=backend_url,
                     chunk_id=chunk["chunk_id"],
                     text=chunk["text"],
                     page=chunk["page"],
