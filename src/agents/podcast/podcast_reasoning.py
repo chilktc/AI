@@ -473,8 +473,50 @@ class PodcastReasoningAgent(BaseAgent):
                     parts.append("\n".join(lines))
 
         if knowledge_result and knowledge_result.get("articles"):
-            article_count = len(knowledge_result["articles"])
-            parts.append(f"[관련 전문 지식]\n- {article_count}건 발견")
+            articles = knowledge_result["articles"]
+            article_count = len(articles)
+
+            if phase == "GoT":
+                # GoT: 건수만 — 그래프 노드 오염 방지 (memory와 동일 원칙)
+                parts.append(f"[관련 전문 지식]\n- {article_count}건 발견")
+
+            elif phase == "ToT":
+                # ToT: 제목 목록 — 구조 다양성 힌트 (상위 5건까지)
+                lines = ["[관련 전문 지식 — 제목 참고]"]
+                for a in articles[:5]:
+                    title = a.get("title") or "제목 없음"
+                    lines.append(f"- {title}")
+                lines.append(
+                    "→ 위 전문 자료에서 다루는 관점을 대안 생성 시 참고하되, "
+                    "구조 다양성을 유지하세요."
+                )
+                parts.append("\n".join(lines))
+
+            elif phase == "CoT":
+                # CoT: 근거 주입 — _synthesis 기사 우선, 없으면 상위 기사 요약 (상위 3건)
+                lines = ["[관련 전문 지식 — 근거]"]
+                synthesis_article = next(
+                    (a for a in articles if a.get("id") == "_synthesis"),
+                    None,
+                )
+                if synthesis_article:
+                    summary_text = str(synthesis_article.get("content", ""))[:500]
+                    if summary_text:
+                        lines.append(f"[종합 요약]\n{summary_text}")
+                else:
+                    for a in articles[:3]:
+                        title = a.get("title") or "제목 없음"
+                        content = str(a.get("content", ""))[:200]
+                        source = a.get("source") or "출처 불명"
+                        if content:
+                            lines.append(f"\n- [{title}] {content}... (출처: {source})")
+
+                # 헤더만 있고 실제 근거가 없으면 섹션 생략
+                if len(lines) > 1:
+                    lines.append(
+                        "→ 위 전문 자료에 기반하여 근거 있는 스크립트 핵심 메시지를 구성하세요."
+                    )
+                    parts.append("\n".join(lines))
 
         # 이전 phase 결과 — 누적 전달
         if got_result is not None:

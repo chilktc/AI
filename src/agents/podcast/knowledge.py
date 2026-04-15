@@ -59,6 +59,7 @@ class KnowledgeAgent(BaseAgent):
         except Exception:
             cfg = {}
         self.pinecone_score_threshold: float = float(cfg.get("pinecone_score_threshold", 0.7))
+        self.pinecone_top_k: int = int(cfg.get("pinecone_top_k", 5))
 
     async def process(self, state: AgentState) -> dict:
         """
@@ -357,6 +358,17 @@ class KnowledgeAgent(BaseAgent):
             score_map = {m.get("id"): m.get("score", 0.0) for m in matches if m.get("id")}
             documents = await self._fetch_documents_from_backend(chunk_ids)  # type: ignore[arg-type]
 
+            # 관측성: vector match는 있으나 RDB 원문 조회 결과 0건인 경우
+            # (Backend 장애 / Pinecone-RDB 인덱스 불일치 의심)
+            if chunk_ids and not documents:
+                self.logger.warning(
+                    "[KnowledgeAgent] Pinecone match가 있으나 Backend RDB 원문 조회 0건 "
+                    "(matches=%d, documents=0, domain=%s). "
+                    "Pinecone-RDB 인덱스 정합성 또는 Backend 연결 상태 점검 필요.",
+                    len(chunk_ids),
+                    domain,
+                )
+
             # 4. 결과를 articles 구조로 매핑 (Pinecone metadata 대신 RDB 원문 사용)
             articles = [
                 {
@@ -553,12 +565,16 @@ class KnowledgeAgent(BaseAgent):
             self.logger.error("[KnowledgeAgent] Pinecone host 조회 예기치 않은 실패: %s", e)
             return ""
 
-    async def _query_pinecone(self, vector: list[float], domain: str, top_k: int = 5) -> list[dict]:
+    async def _query_pinecone(
+        self, vector: list[float], domain: str, top_k: int | None = None
+    ) -> list[dict]:
         """Pinecone에서 벡터 유사도 검색을 수행한다.
 
         EpisodeMemoryAgent._query()와 동일한 패턴.
         domain 필터를 metadata filter로 적용한다.
+        top_k 미지정 시 settings.yaml의 agents.knowledge.pinecone_top_k 사용.
         """
+        effective_top_k = top_k if top_k is not None else self.pinecone_top_k
         host = await self._get_pinecone_host()
         if not host:
             return []
@@ -570,7 +586,7 @@ class KnowledgeAgent(BaseAgent):
                     headers={"Api-Key": self.kt_pinecone_api_key},
                     json={
                         "vector": vector,
-                        "topK": top_k,
+                        "topK": effective_top_k,
                         "includeMetadata": True,
                         "filter": {"domain": {"$eq": domain}},
                     },

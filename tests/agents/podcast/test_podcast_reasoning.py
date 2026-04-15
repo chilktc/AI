@@ -1070,3 +1070,122 @@ def test_build_phase_context_cot_no_memory(
     )
     assert "[과거 에피소드 스타일 참고]" not in context
     assert "[과거 에피소드 기억]" not in context
+
+
+# === Knowledge Result — phase별 주입 ===
+
+
+def test_build_phase_context_got_knowledge_count_only(
+    agent_with_stubs: PodcastReasoningAgent,
+) -> None:
+    """GoT phase: knowledge_result가 있어도 건수만 포함되고 원문·제목은 포함되지 않는다."""
+    knowledge_result = {
+        "articles": [
+            {
+                "id": "doc1",
+                "title": "CBT 인지왜곡",
+                "content": "인지왜곡은 자동적 사고의 일종으로 ...",
+                "score": 0.88,
+                "source": "CBT Handbook",
+            }
+        ],
+        "guidelines": [],
+    }
+    context = agent_with_stubs._build_phase_context(
+        phase="GoT",
+        user_input="요즘 너무 힘들어요.",
+        intent={},
+        knowledge_result=knowledge_result,
+    )
+    assert "[관련 전문 지식]" in context
+    assert "1건 발견" in context
+    # GoT은 건수만 — 제목/본문 노출 금지 (노드 오염 방지)
+    assert "CBT 인지왜곡" not in context
+    assert "인지왜곡은 자동적 사고" not in context
+
+
+def test_build_phase_context_tot_knowledge_titles(
+    agent_with_stubs: PodcastReasoningAgent,
+) -> None:
+    """ToT phase: 기사 제목이 포함되지만 본문은 포함되지 않는다."""
+    knowledge_result = {
+        "articles": [
+            {"id": "doc1", "title": "CBT 인지왜곡", "content": "본문A", "source": "A"},
+            {"id": "doc2", "title": "DBT 감정조절", "content": "본문B", "source": "B"},
+        ],
+        "guidelines": [],
+    }
+    context = agent_with_stubs._build_phase_context(
+        phase="ToT",
+        user_input="요즘 너무 힘들어요.",
+        intent={},
+        knowledge_result=knowledge_result,
+    )
+    assert "[관련 전문 지식 — 제목 참고]" in context
+    assert "CBT 인지왜곡" in context
+    assert "DBT 감정조절" in context
+    # 본문은 ToT에 주입 금지
+    assert "본문A" not in context
+    assert "본문B" not in context
+
+
+def test_build_phase_context_cot_knowledge_with_synthesis(
+    agent_with_stubs: PodcastReasoningAgent,
+) -> None:
+    """CoT phase: _synthesis 기사가 있으면 그 content를 요약 근거로 사용한다."""
+    knowledge_result = {
+        "articles": [
+            {
+                "id": "_synthesis",
+                "title": "검색 결과 종합",
+                "content": "번아웃은 만성 스트레스 누적으로 발생하며 CBT가 효과적이다.",
+                "score": 1.0,
+                "source": "KT RAG Suite TextGen",
+            },
+            {"id": "doc1", "title": "CBT 인지왜곡", "content": "본문A", "source": "A"},
+        ],
+        "guidelines": [],
+    }
+    context = agent_with_stubs._build_phase_context(
+        phase="CoT",
+        user_input="요즘 너무 힘들어요.",
+        intent={},
+        knowledge_result=knowledge_result,
+    )
+    assert "[관련 전문 지식 — 근거]" in context
+    assert "번아웃은 만성 스트레스" in context  # synthesis content 주입
+
+
+def test_build_phase_context_cot_knowledge_fallback_to_top_articles(
+    agent_with_stubs: PodcastReasoningAgent,
+) -> None:
+    """CoT phase: _synthesis 없으면 상위 기사 title+content 일부를 근거로 주입한다."""
+    knowledge_result = {
+        "articles": [
+            {
+                "id": "doc1",
+                "title": "CBT 인지왜곡",
+                "content": "인지왜곡은 자동적 사고의 일종입니다. " * 30,  # 200자 넘김
+                "score": 0.88,
+                "source": "CBT Handbook",
+            },
+            {
+                "id": "doc2",
+                "title": "DBT 감정조절",
+                "content": "DBT는 변증법적 행동치료입니다.",
+                "score": 0.75,
+                "source": "DBT Manual",
+            },
+        ],
+        "guidelines": [],
+    }
+    context = agent_with_stubs._build_phase_context(
+        phase="CoT",
+        user_input="요즘 너무 힘들어요.",
+        intent={},
+        knowledge_result=knowledge_result,
+    )
+    assert "[관련 전문 지식 — 근거]" in context
+    assert "CBT 인지왜곡" in context
+    assert "CBT Handbook" in context
+    assert "DBT 감정조절" in context
