@@ -10,7 +10,7 @@ API 모델은 변경될 수 있으므로 유연하게 설계한다.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -36,10 +36,10 @@ class SaveResponse(BaseModel):
     두 형식 모두 수용하도록 유연하게 설계.
     """
 
-    success: bool | None = None  # 성공 여부 (선택, 백엔드 형식 변경 대응)
-    code: str | None = None  # 응답 코드 ('ok', 'error' 등)
-    id: str | None = None  # 생성된 리소스 ID
-    message: str | None = None  # 응답 메시지
+    success: Optional[bool] = None  # 성공 여부 (선택, 백엔드 형식 변경 대응)
+    code: Optional[str] = None  # 응답 코드 ('ok', 'error' 등)
+    id: Optional[str] = None  # 생성된 리소스 ID
+    message: Optional[str] = None  # 응답 메시지
 
 
 class LoadResponse(BaseModel):

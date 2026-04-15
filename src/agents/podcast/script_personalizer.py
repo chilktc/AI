@@ -21,6 +21,7 @@ from config.app_config import (
     ATTITUDE_SETTINGS,
     DEFAULT_ATTITUDE,
     FORMALITY_REPLACEMENTS,
+    PERSONA_STRATEGY_MAP,
     STYLE_MAPPINGS,
 )
 from src.agents.shared.base_agent import BaseAgent
@@ -145,7 +146,7 @@ class ScriptPersonalizerAgent(BaseAgent):
 
             # STEP 1: 사용자 프로필 조회 및 스타일 전략 결정
             user_profile = await self._get_user_profile(user_id)
-            personalization_strategy = self._determine_strategy(user_profile)
+            personalization_strategy = self._determine_strategy(user_profile, state)
 
             self.logger.info("[ScriptPersonalizer] Strategy: %s", personalization_strategy)
 
@@ -255,9 +256,9 @@ class ScriptPersonalizerAgent(BaseAgent):
         """(Deprecated) Backend API 사용으로 전환됨."""
         return None
 
-    def _determine_strategy(self, user_profile: UserProfile) -> dict[str, Any]:
+    def _determine_strategy(self, user_profile: UserProfile, state: AgentState) -> dict[str, Any]:
         """
-        사용자 프로필 기반 개인화 전략 결정
+        사용자 프로필 기반 개인화 전략 결정 (호스트 페르소나 우선 적용)
         """
 
         strategy = {
@@ -266,6 +267,7 @@ class ScriptPersonalizerAgent(BaseAgent):
             "sentence_length": "medium",
             "explanation_depth": "moderate",
             "attitude": DEFAULT_ATTITUDE,
+            "host_info": None,
         }
 
         # 1. 연령대 기반 기본 스타일 적용
@@ -286,8 +288,28 @@ class ScriptPersonalizerAgent(BaseAgent):
 
         # 4. 상호작용 이력 기반 조정 (경험 있는 사용자)
         if len(user_profile.interaction_history) >= 3:
-            # 더 자세한 설명 제공
             strategy["explanation_depth"] = "detailed"
+
+        # 5. [핵심] 호스트 페르소나 선택 시 최우선 오버라이드
+        stories_context = state.get("stories_context")
+        if stories_context and isinstance(stories_context, dict):
+            host_title = stories_context.get("title")
+            if host_title in PERSONA_STRATEGY_MAP:
+                persona_cfg = PERSONA_STRATEGY_MAP[host_title]
+                self.logger.info(f"[ScriptPersonalizer] Applying host persona: {host_title}")
+
+                # 페르소나 설정으로 덮어쓰기 (우선순위 1등)
+                strategy["formality"] = persona_cfg.get("formality", strategy["formality"])
+                strategy["attitude"] = persona_cfg.get("attitude", strategy["attitude"])
+
+                # 프롬프트 전달용 메타데이터 저장
+                strategy["host_info"] = {
+                    "title": host_title,
+                    "description": stories_context.get(
+                        "description", persona_cfg.get("description")
+                    ),
+                    "keywords": stories_context.get("keywords", persona_cfg.get("keywords")),
+                }
 
         return strategy
 
@@ -442,6 +464,19 @@ Emotional Journey:
 - Type: {emotional_journey.journey_type}
 """
 
+        # 호스트 페르소나 정보 추출
+        host_info = strategy.get("host_info")
+        host_context = ""
+        if host_info:
+            host_context = f"""
+## Podcast Host Profile (CRITICAL)
+- Persona: {host_info['title']}
+- Description: {host_info['description']}
+- Style Keywords: {", ".join(host_info['keywords'])}
+- Instruction: 이야기할 때 위 호스트의 성격과 말투를 완벽하게 연기하세요.
+  '친근한 존댓말'을 기본으로 하되, 호스트의 개성이 드러나야 합니다.
+"""
+
         user_prompt = self._prompt_loader.load_user_prompt("podcast", "script_personalizer")
         prompt = user_prompt.format(
             full_script_text=full_script_text,
@@ -453,6 +488,7 @@ Emotional Journey:
             formality=strategy.get("formality", "medium"),
             attitude=strategy.get("attitude", "balanced"),
             explanation_depth=strategy.get("explanation_depth", "moderate"),
+            host_context=host_context,
         )
 
         try:

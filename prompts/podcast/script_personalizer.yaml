@@ -6,7 +6,9 @@ system_prompt: |
   Do NOT return the script broken down by segments (e.g., skip structural tags like [opening] or [education]); instead, ensure the entire script flows naturally as one continuous, immersive episode.
 
 user_prompt: |
-  Rewrite the following podcast script for the user profile below.
+  Rewrite the following podcast script for the user profile and chosen host persona below.
+
+  {host_context}
 
   ## User Profile
   - Age group: {age_group}
@@ -23,4 +25,5 @@ user_prompt: |
   ## Original Script
   {full_script_text}
 
-  Rewrite the script as a single flowing episode that matches the user's profile and strategy above.
+  Rewrite the script as a single flowing, immersive episode that matches the host persona, user's profile, and strategy above. 
+  Ensure the host's unique personality and tone are consistently reflected throughout the entire script.
