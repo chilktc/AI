@@ -76,9 +76,9 @@ class TestPineconeClientIndexCaching:
         mock_index = MagicMock()
         client._pc.Index.return_value = mock_index
 
-        result = client._get_index("expert-knowledge")
+        result = client._get_index("rag-suite-knowledge")
 
-        client._pc.Index.assert_called_once_with("expert-knowledge")
+        client._pc.Index.assert_called_once_with("rag-suite-knowledge")
         assert result is mock_index
 
     def test_get_index_caches_on_second_call(self):
@@ -86,10 +86,10 @@ class TestPineconeClientIndexCaching:
         mock_index = MagicMock()
         client._pc.Index.return_value = mock_index
 
-        client._get_index("expert-knowledge")
-        client._get_index("expert-knowledge")
+        client._get_index("rag-suite-knowledge")
+        client._get_index("rag-suite-knowledge")
 
-        client._pc.Index.assert_called_once_with("expert-knowledge")
+        client._pc.Index.assert_called_once_with("rag-suite-knowledge")
 
     def test_different_indexes_cached_separately(self):
         client = _get_fresh_client()
@@ -97,7 +97,7 @@ class TestPineconeClientIndexCaching:
         mock_idx_b = MagicMock(name="idx_b")
         client._pc.Index.side_effect = [mock_idx_a, mock_idx_b]
 
-        result_a = client._get_index("expert-knowledge")
+        result_a = client._get_index("rag-suite-knowledge")
         result_b = client._get_index("mem-podcast-episode")
 
         assert result_a is mock_idx_a
@@ -121,7 +121,7 @@ class TestPineconeClientQuery:
         client._pc.Index.return_value = mock_index
 
         result = await client.query(
-            index="expert-knowledge",
+            index="rag-suite-knowledge",
             vector=[0.1] * 4096,
             filter={"domain": {"$in": ["psychology"]}},
             top_k=3,
@@ -140,7 +140,7 @@ class TestPineconeClientQuery:
         client._pc.Index.return_value = mock_index
 
         result = await client.query(
-            index="expert-knowledge",
+            index="rag-suite-knowledge",
             vector=[0.1] * 4096,
             filter={},
         )
@@ -157,7 +157,7 @@ class TestPineconeClientQuery:
         client._pc.Index.return_value = mock_index
 
         await client.query(
-            index="expert-knowledge",
+            index="rag-suite-knowledge",
             vector=[0.0],
             filter={},
             top_k=10,
@@ -190,7 +190,7 @@ class TestPineconeClientUpsert:
         ]
 
         result = await client.upsert(
-            index="expert-knowledge",
+            index="rag-suite-knowledge",
             vectors=vectors,
             namespace="test",
         )
@@ -211,7 +211,7 @@ class TestPineconeClientUpsert:
         client._pc.Index.return_value = mock_index
 
         await client.upsert(
-            index="expert-knowledge",
+            index="rag-suite-knowledge",
             vectors=[{"id": "v1", "values": [0.1]}],
         )
 
@@ -229,7 +229,7 @@ class TestPineconeClientClose:
         client = _get_fresh_client()
         client._pc.Index.return_value = MagicMock()
 
-        client._get_index("expert-knowledge")
+        client._get_index("rag-suite-knowledge")
         assert len(client._indexes) == 1
 
         await client.close()

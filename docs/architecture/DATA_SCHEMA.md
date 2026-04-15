@@ -245,7 +245,7 @@ Pinecone은 원본 텍스트를 저장하지 않는다. MySQL PK를 참조하며
 | `themes` | Array | 테마 태그 (필터링용) |
 | `primary_emotion` | String (nullable) | 주요 감정 |
 
-### 3-2. expert-knowledge
+### 3-2. rag-suite-knowledge
 
 전문 지식 검색용. Knowledge Agent가 관련 지식 탐색에 사용.
 

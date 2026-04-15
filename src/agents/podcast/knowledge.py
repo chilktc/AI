@@ -50,7 +50,7 @@ class KnowledgeAgent(BaseAgent):
         self.kt_textgen_token = os.getenv("KT_CLOUD_KNOWLEDGE_TEXTGEN_TOKEN", "")
         # Pinecone: 벡터 DB
         self.kt_pinecone_api_key = os.getenv("PINECONE_API_KEY", "")
-        self.kt_pinecone_index = os.getenv("PINECONE_INDEX_KNOWLEDGE", "expert-knowledge")
+        self.kt_pinecone_index = os.getenv("PINECONE_INDEX_KNOWLEDGE", "rag-suite-knowledge")
         self.kt_pinecone_host = ""
 
         # Pinecone 유사도 필터 임계값 (settings.yaml: agents.knowledge.pinecone_score_threshold)
@@ -159,7 +159,7 @@ class KnowledgeAgent(BaseAgent):
             embedding = await self.embedding_client.get_embedding(query)
 
             results = await self.pinecone_client.query(
-                index="expert-knowledge",
+                index="rag-suite-knowledge",
                 vector=embedding,
                 filter={"domain": {"$in": domains}},
                 top_k=5,
@@ -309,7 +309,7 @@ class KnowledgeAgent(BaseAgent):
         파이프라인:
             1. Parser API  → 쿼리를 전문 심리 용어로 전처리/정제
             2. Embedding API → 전처리된 쿼리를 벡터로 변환
-            3. Pinecone      → expert-knowledge 인덱스에서 유사 문서 검색
+            3. Pinecone      → rag-suite-knowledge 인덱스에서 유사 문서 검색
             4. TextGen API   → 검색된 문서들을 바탕으로 요약문 생성
 
         Args:

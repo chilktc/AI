@@ -1,8 +1,8 @@
 # 마스터 계획 인덱스 (Master Plan Index)
 
 **목적**: 모든 기획 문서의 현황 추적 및 상태 관리  
-**버전**: v41
-**마지막 업데이트**: 2026-04-15 13:55
+**버전**: v42
+**마지막 업데이트**: 2026-04-15 16:30
 **관리 원칙**:
 - 완료된 계획 → PR 링크 + 간단한 변경 사항 기록
 - 미완료 계획 → 상태 및 다음 액션 기록
@@ -32,7 +32,7 @@
 | 16 | 파이프라인 견고성 - Phase 2 | `pipeline-robustness-part2.md` | ✅ 완료 | #60 | get_fallback_output() 추가 |
 | 17 | 독스트링 품질 개선 구현 | `2026-04-07-docs-quality-implementation.md` | ✅ 완료 | #61 (MERGED) | Phase 1-4 구현 + CB/SSE 테스트 추가 (538 passed, 14 skipped — PR #67/#68 Pinecone 테스트 59개 추가 후) |
 | 18 | Neo4j 통합 구현 계획 | `_archive/plans/2026-04-07-neo4j-integration-plan.md` | ✅ 완료 | — | 작업 1(GoT→Neo4j E2E) ✅ 6 passed in 0.59s (AWS SSM 2026-04-09). 작업 2(Mode A) ✅ PR #88. 코드 전체 완료. 부수: seed.py 제약조건 에러 핸들링 개선 필요 |
-| 19 | Pinecone 벡터 DB 공통 인프라 | `2026-04-07-pinecone-vector-db-integration.md` | 🔶 대부분 완료 | #64~#68, #145, #146 | Task 1/3/4 완료. EpisodeMemory KT Cloud 임베딩 직접 구현 완료(동작 중). Knowledge RAG KT Cloud Suite 연결 완료 (PR #145/#146). Pinecone score threshold 외부화 완료 (PR #146). ⚠️ 미완: Task 5/6/7(CLI), Task 9(가이드) 미작성 |
+| 19 | Pinecone 벡터 DB 공통 인프라 | `2026-04-07-pinecone-vector-db-integration.md` | 🔶 대부분 완료 (재정합 2026-04-15) | #64~#68, #145, #146, #147, #151 | Task 1/3/4/7 완료. **Task 2(Bedrock)** ⛔ 폐기 — KT Cloud Embedding 선회. **Task 7** ✅ `scripts/ingest_knowledge.py`로 대체 완료. Task 8 594 passed. ⚠️ 잔여: ① Task 5/6/9(KT Cloud 기반 재설계 필요, 개발자 CLI·가이드, 운영 선택) ② ★ `ingest_config.yaml`에 `domain=mental_health` 적재 (Plan #47 Phase 4 선행 필수) |
 | 20 | Graph Mode B 단일화 리팩터 | `2026-04-07-graph-mode-b-refactor.md` | ✅ 완료 | #69 | Mode A 삭제, publish_graph_to_rdb 단일 경로 확정, EMA를 Backend 책임으로 이관 (538 passed) |
 | 21 | 문서 전수 점검 및 정합성 수정 | *(인라인 — 별도 계획서 없음)* | ✅ 완료 | #70~#80 | 4차 사이클 점검: 대화모드 잔재·링크·날짜·버전 일관성·설계 결정 갱신 전체 완료 |
 | 22 | 에이전트 출력 감사 수정 | `_archive/plans/2026-04-08-agent-output-audit-fix.md` | ✅ 완료 | — | v9: IC-1/SP-1/SP-2/schemas 완료(8건) + Task 1-7 구현 완료(SA/EA/CA/SG/VI/BV/횡단). 582 passed |
@@ -60,7 +60,10 @@
 | 44 | 프로덕션 안정화 핫픽스 10건 | *(인라인)* | ✅ 완료 | PR #128~#140 | Bedrock 지연 추적(#131/#135/#136), 모델 다운그레이드(#137), Visualization 안정화 3종(#133/#138/#139), BV score 보정(#132), CancelledError 수정(#140), CI lint(#128/#129) |
 | 45 | 구조적 취약점 수정 (STRUCTURAL_FIX_PLAN) | `plans/2026-04-15-structural-fix-plan.md` | 🔶 대부분 완료 | PR #142 | 15/18 태스크 완료 (A1/A2/A4~A8/B6/C4/C5/D3/E1~E4). ⚠️ 잔여: A9(pip 캐시 키 통합), B2(ALLOWED_ORIGINS 와일드카드 제거), B4(Neo4j 포트 localhost 바인딩) |
 | 46 | PR #145 Knowledge RAG Follow-up | `plans/2026-04-15-pr145-knowledge-rag-followup.md` | ✅ 종결 | PR #145, #146 | F1 isort, F2 .env.example 중복 제거, F3 docstring, F4 f-string, F5 test_rag_synthesis 이동 — 전부 PR #145/#146에서 통합 처리 완료 |
-| 47 | Knowledge Agent 정식 활성화 + 운영 검증 | `plans/2026-04-15-knowledge-agent-activation-and-verification.md` | 🔶 Phase 1-2 완료 | PR #<TBD> | Phase 1(Stub 정식 제거) 완료, Phase 2(follow-up) PR #145/#146로 기처리됨. Phase 3(머지) 대기, Phase 4(AWS SSM 크롬 MCP 검증) 대기, Phase 5(INDEX/CLAUDE.md 정리) 진행 중 |
+| 47 | Knowledge Agent 정식 활성화 + 운영 검증 | `plans/2026-04-15-knowledge-agent-activation-and-verification.md` | 🔶 Phase 1-3/5 완료 | PR #147 | Phase 1(Stub 정식 제거) + Phase 3(머지/배포) 완료, Phase 5(INDEX/CLAUDE.md 정리) 완료. **잔여**: Phase 4 AWS SSM 운영 검증 — `articles_count >= 1` 실호출 확인 미수행. |
+| 48 | KT Cloud Knowledge RAG 환경변수 회귀 수정 | `plans/2026-04-15-knowledge-rag-pr148-regression-fix.md` | ✅ 완료 | PR #148, #149, #150 | PARSE/PARSER env 네이밍 혼선 → `PARSE_*`로 통일 (GitHub Secrets 정합). Phase A 완료. Phase B(Pinecone 인덱스 생성/적재) 및 Phase C(`articles_count ≥ 1` 재검증)은 Plan #47 Phase 4에 통합. |
+| 49 | Knowledge RAG 결과 파이프라인 연결 수정 | `plans/2026-04-15-knowledge-rag-wiring-fix.md` | ✅ 완료 | PR #151 | Part A/B/C 전부 완료: (A) PodcastReasoning `_build_phase_context`에서 ToT=제목/CoT=원문 phase별 주입(e81f795), (B) ScriptGenerator `state["knowledge_results"]` 정합 + articles 구조 읽기(3bfc204), (C) KnowledgeAgent 관측성 경고 + `pinecone_top_k` 외부화(529e474). |
+| 50 | Plan #8 재분류 — api_proxy Dead Code 정리 | `plans/2026-04-15-plan8-apiproxy-cleanup-plan.md` | 🔲 구현 대기 (보류) | — | Option C(PLAN_INDEX #8 숫자 정정 21→15) + Option A(`src/db/api_proxy.py` 제거, factory proxy 분기 정리, backend_resources 4개 상수 제거). 사용자 메모 [project_plan8_deferred]: "이슈 위험 높음, 보류" 결정. 계획 작성만 완료. |
 
 **범례:**
 - ✅ 완료 — 코드 구현 완료, PR 머지됨
@@ -255,7 +258,15 @@
 | #140 | *(인라인)* | HTTP 연결 종료 시 CancelledError 스택 트레이스 제거 |
 | #142 | feature/validation-structural-fix | 구조적 취약점 16개 수정 (CI/CD·동시성·보안·의존성·문서) — Plan #45 |
 | #143 | *(인라인)* | deploy.yml SSM 배포 신뢰성 강화 — 싱글쿼트 파싱 오류 수정, 15초×40회 폴링 교체, unhealthy 즉시 실패 감지 |
+| #144 | feature/validation-dockerignore-cleanup | .dockerignore 재점검 및 정리 + PR #143 문서 반영 |
+| #145 | jun-RAG | KT Cloud RAG Suite 통합 (Document Parse / Embedding Passage·Query / Qwen3-32B 텍스트생성) + `scripts/ingest_knowledge.py` |
+| #146 | feature/analysis-rag-pr145-fix | PR #145 follow-up — isort/docstring/f-string + KnowledgeAgent 임계값 외부화 + try/except 세분화 + 에러 흐름 로깅 |
+| #147 | feature/validation-knowledge-activation | KnowledgeAgentStub 정식 제거 + podcast_reasoning.py lazy import 전환 + 계획서 체크박스 정리 (Plan #47 Phase 1/5) |
+| #148 | feature/validation-knowledge-env-fix | KT Cloud Knowledge RAG 환경변수 주입 및 코드 정합성 수정 (PARSER→PARSE 정렬 1차 시도) |
+| #149 | feature/validation-knowledge-parser-revert | PR #148 회귀 복원 — PARSER_* 네이밍 원복 (중간 단계) |
+| #150 | feature/validation-knowledge-parse-secret-align | 시크릿 실제 등록값(`KT_CLOUD_KNOWLEDGE_PARSE_*`)에 맞춰 코드·배포 정렬 (Plan #48 Phase A 완료) |
+| #151 | feature/analysis-knowledge-script-wiring | Knowledge RAG 결과 파이프라인 연결 (Plan #49 Part A/B/C) — Podcast Reasoning phase별 주입 + ScriptGenerator state 키 정합 + Pinecone 관측성/top_k 외부화 |
 
 ---
 
-*마스터 인덱스 v41 — 2026-04-15 11:00 (PR #143 deploy.yml SSM 배포 신뢰성 강화 반영)*
+*마스터 인덱스 v42 — 2026-04-15 16:30 (PR #144~#151 반영, 신규 계획 #48/#49/#50 추가, Plan #47 Phase 4 잔여 명시)*

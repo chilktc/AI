@@ -80,7 +80,7 @@ class TestPineconeConnectionHelpers:
 
         mock_pc = MagicMock()
         mock_pc.list_indexes.return_value = [
-            {"name": "expert-knowledge"},
+            {"name": "rag-suite-knowledge"},
             {"name": "mem-podcast-episode"},
         ]
 
@@ -107,7 +107,7 @@ class TestPineconeConnectionHelpers:
 
         mock_pc = MagicMock()
         mock_pc.list_indexes.return_value = [
-            {"name": "expert-knowledge"},
+            {"name": "rag-suite-knowledge"},
             {"name": "mem-podcast-episode"},
         ]
         mock_index = MagicMock()
@@ -117,7 +117,7 @@ class TestPineconeConnectionHelpers:
         }
         mock_pc.Index.return_value = mock_index
 
-        result = test_index_exists(mock_pc, ["expert-knowledge", "mem-podcast-episode"])
+        result = test_index_exists(mock_pc, ["rag-suite-knowledge", "mem-podcast-episode"])
 
         assert result is True
 
@@ -125,9 +125,9 @@ class TestPineconeConnectionHelpers:
         from dev.scripts.test_pinecone_connection import test_index_exists
 
         mock_pc = MagicMock()
-        mock_pc.list_indexes.return_value = [{"name": "expert-knowledge"}]
+        mock_pc.list_indexes.return_value = [{"name": "rag-suite-knowledge"}]
 
-        result = test_index_exists(mock_pc, ["expert-knowledge", "mem-podcast-episode"])
+        result = test_index_exists(mock_pc, ["rag-suite-knowledge", "mem-podcast-episode"])
 
         assert result is False
         captured = capsys.readouterr()
@@ -138,12 +138,12 @@ class TestPineconeConnectionHelpers:
         from dev.scripts.test_pinecone_connection import test_dummy_query
 
         mock_pc = MagicMock()
-        mock_pc.list_indexes.return_value = [{"name": "expert-knowledge"}]
+        mock_pc.list_indexes.return_value = [{"name": "rag-suite-knowledge"}]
         mock_index = MagicMock()
         mock_index.query.return_value = {"matches": []}
         mock_pc.Index.return_value = mock_index
 
-        result = test_dummy_query(mock_pc, "expert-knowledge", dimension=4096)
+        result = test_dummy_query(mock_pc, "rag-suite-knowledge", dimension=4096)
 
         assert result is True
         mock_index.query.assert_called_once()
@@ -154,7 +154,7 @@ class TestPineconeConnectionHelpers:
         mock_pc = MagicMock()
         mock_pc.list_indexes.return_value = []
 
-        result = test_dummy_query(mock_pc, "expert-knowledge")
+        result = test_dummy_query(mock_pc, "rag-suite-knowledge")
 
         assert result is True
         captured = capsys.readouterr()
@@ -164,12 +164,12 @@ class TestPineconeConnectionHelpers:
         from dev.scripts.test_pinecone_connection import test_dummy_query
 
         mock_pc = MagicMock()
-        mock_pc.list_indexes.return_value = [{"name": "expert-knowledge"}]
+        mock_pc.list_indexes.return_value = [{"name": "rag-suite-knowledge"}]
         mock_index = MagicMock()
         mock_index.query.side_effect = Exception("Timeout")
         mock_pc.Index.return_value = mock_index
 
-        result = test_dummy_query(mock_pc, "expert-knowledge")
+        result = test_dummy_query(mock_pc, "rag-suite-knowledge")
 
         assert result is False
         captured = capsys.readouterr()
@@ -190,7 +190,7 @@ class TestCreatePineconeIndexesConfig:
         assert len(INDEXES) == 2
 
         names = {idx["name"] for idx in INDEXES}
-        assert names == {"expert-knowledge", "mem-podcast-episode"}
+        assert names == {"rag-suite-knowledge", "mem-podcast-episode"}
 
         for idx in INDEXES:
             assert idx["dimension"] == 4096
