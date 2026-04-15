@@ -33,23 +33,19 @@
 
 ## 2. 실제 미완료 항목
 
-### A. Stub → 실제 에이전트 전환 (파이프라인 핵심 갭)
+### A. Stub → 실제 에이전트 전환 (파이프라인 핵심 갭) ✅ 종결 (2026-04-15)
 
-`PodcastReasoningAgent`가 **실제 에이전트 대신 빈 결과를 반환하는 stub을 사용** 중.
-실제 에이전트(EpisodeMemoryAgent, KnowledgeAgent)는 구현 완료되어 있으나 **연결되지 않은 상태**.
+> **2026-04-15 종결**: PR #145/#146로 KnowledgeAgent 본체 완성, feature/validation-knowledge-activation (PR #<TBD>)로
+> Stub 잔존 경로 정식 제거. EpisodeMemoryAgent는 이미 lazy import fallback으로 실제 에이전트 사용 중.
+> 후속 운영 검증은 `2026-04-15-knowledge-agent-activation-and-verification.md` Phase 4 (AWS SSM + docker exec) 참조.
 
 | 항목 | 현재 코드 | 갭 |
 |------|----------|-----|
-| `podcast_reasoning_node()` (line 573) | `PodcastReasoningAgent()` — 인자 없이 생성 | stub 폴백 |
-| `EpisodeMemoryStub.search()` | `{"episodes": [], "relevance_scores": []}` 반환 | 실제 에피소드 검색 안 됨 |
-| `KnowledgeAgentStub.search()` | `{"articles": [], "guidelines": []}` 반환 | 실제 전문 지식 검색 안 됨 |
-| **인터페이스 불일치** | Stub은 `search(query, user_id)`, 실제 에이전트는 `process(state)` | 어댑터 필요 |
-| **DB 클라이언트 미주입** | KnowledgeAgent 생성자에 db_client, pinecone_client, embedding_client 필요 | factory 연결 필요 |
-
-> `src/db/factory.py`의 `create_vector_client()`, `create_graph_client()` 등은 구현 완료.
-> `podcast_reasoning_node()`에서 factory를 통해 클라이언트를 생성하고 실제 에이전트에 주입하면 전환 가능.
->
-> **2026-04-09 업데이트**: Pinecone EC2 연결 완료(인덱스 차원 4096 확정). 메모리 에이전트 사전작업(PR #85 feature/agents-gaeun) 완료로 간주. EpisodeMemory 저장 트리거 구현은 **Plan #23** 참조.
+| ~~`podcast_reasoning_node()`~~ | `PodcastReasoningAgent()` — DI 미전달 시 실제 KnowledgeAgent/EpisodeMemoryAgent로 fallback | ✅ 해결 |
+| ~~`EpisodeMemoryStub.search()`~~ | 실제 `EpisodeMemoryAgent.process()` 사용 (어댑터로 기존 인터페이스 호환) | ✅ 해결 |
+| ~~`KnowledgeAgentStub.search()`~~ | 클래스 삭제됨 (`src/agents/shared/stubs.py`). 실제 `KnowledgeAgent.search()` 사용 | ✅ 해결 |
+| ~~인터페이스 불일치~~ | `podcast_reasoning.py` 내부 어댑터로 흡수 (Line 520~536) | ✅ 해결 |
+| ~~DB 클라이언트 미주입~~ | PR #145/#146에서 KnowledgeAgent 생성자 최적화, KT Cloud RAG Suite 경로 구현 | ✅ 해결 |
 
 ### B. script_personalizer 미구현 분기
 

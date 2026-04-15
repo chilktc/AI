@@ -20,8 +20,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from src.agents.podcast.episode_memory import EpisodeMemoryAgent
+from src.agents.podcast.knowledge import KnowledgeAgent
 from src.agents.podcast.podcast_reasoning import PodcastReasoningAgent
-from src.agents.shared.stubs import KnowledgeAgentStub
 from src.models.agent_state import AgentState
 
 # === 공용 픽스처 ===
@@ -43,7 +43,7 @@ def mock_memory() -> AsyncMock:
 @pytest.fixture
 def mock_knowledge() -> AsyncMock:
     """모의 Knowledge Agent."""
-    mock = AsyncMock(spec=KnowledgeAgentStub)
+    mock = AsyncMock(spec=KnowledgeAgent)
     mock.search.return_value = {
         "articles": [{"id": "art_001", "title": "스트레스 관리 가이드"}],
         "guidelines": ["충분한 수면", "규칙적인 운동"],
@@ -62,7 +62,12 @@ def agent(mock_memory: AsyncMock, mock_knowledge: AsyncMock) -> PodcastReasoning
 
 @pytest.fixture
 def agent_with_stubs() -> PodcastReasoningAgent:
-    """Stub을 사용하는 기본 Podcast Reasoning 인스턴스."""
+    """기본 Podcast Reasoning 인스턴스.
+
+    DI fallback으로 실제 EpisodeMemoryAgent/KnowledgeAgent가 주입된다.
+    내부 헬퍼 메서드(_determine_reasoning_depth, _build_phase_context 등) 테스트 전용.
+    외부 호출이 없는 순수 로직 검증이므로 실제 에이전트 fallback이어도 안전하다.
+    """
     return PodcastReasoningAgent()
 
 
@@ -380,22 +385,22 @@ async def test_execution_plan_forces_di_call(
 
 
 @pytest.mark.parametrize(
-    "use_stubs",
+    "use_default",
     [
-        pytest.param(True, id="default_stubs"),
+        pytest.param(True, id="default_fallback"),
         pytest.param(False, id="custom_agents"),
     ],
 )
 def test_di_injection(
     mock_memory: AsyncMock,
     mock_knowledge: AsyncMock,
-    use_stubs: bool,
+    use_default: bool,
 ) -> None:
-    """DI 인자 없이 생성하면 stub, 있으면 커스텀 에이전트가 주입된다."""
-    if use_stubs:
+    """DI 인자 없이 생성하면 실제 에이전트로 fallback, 있으면 커스텀 에이전트가 주입된다."""
+    if use_default:
         agent = PodcastReasoningAgent()
         assert isinstance(agent.episode_memory, EpisodeMemoryAgent)
-        assert isinstance(agent.knowledge_agent, KnowledgeAgentStub)
+        assert isinstance(agent.knowledge_agent, KnowledgeAgent)
     else:
         agent = PodcastReasoningAgent(
             episode_memory=mock_memory,

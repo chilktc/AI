@@ -3,9 +3,9 @@
 
 Reasoning 계열 에이전트가 조건부로 호출하는 독립 에이전트의 stub 구현.
 - Episode Memory (개발자2) — 팟캐스트모드
-- Knowledge Agent (개발자1) — 팟캐스트모드
 
-git main 통합 시 실제 에이전트로 교체한다.
+KnowledgeAgentStub은 2026-04-15 실제 KnowledgeAgent 정식 활성화와 함께 제거됨.
+(PR #145/#146 완료 → feature/validation-knowledge-activation)
 
 인터페이스 계약:
     - search(query, ...) -> dict
@@ -40,36 +40,4 @@ class EpisodeMemoryStub:
         return {
             "episodes": [],
             "relevance_scores": [],
-        }
-
-
-class KnowledgeAgentStub:
-    """
-    Knowledge Agent의 stub 구현.
-
-    실제 에이전트는 전문 지식 벡터 DB를 검색하지만,
-    stub은 빈 결과를 반환한다.
-
-    인터페이스 계약:
-        async def search(query: str, domain: str) -> dict
-    """
-
-    async def search(
-        self,
-        query: str,
-        domain: str = "mental_health",
-    ) -> dict:
-        """
-        전문 지식 검색 (stub — 빈 결과 반환).
-
-        Args:
-            query: 검색 쿼리
-            domain: 지식 도메인 (기본: mental_health)
-
-        Returns:
-            빈 검색 결과 dict
-        """
-        return {
-            "articles": [],
-            "guidelines": [],
         }

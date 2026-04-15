@@ -190,30 +190,33 @@ T0 + β    1인 리뷰 승인 → develop 머지 → lint 복구
 
 ## 3. 체크리스트 (follow-up PR 단위)
 
-### 3.1 구현
+### 3.1 구현 ✅ 완료 (2026-04-15, PR #145/#146 통합 처리)
 
-- [ ] `feature/analysis-rag-pr145-fix` 브랜치 생성 (`develop` 기준)
-- [ ] **F1** `isort tests/test_rag_synthesis.py` — *단, F5에서 이동하면 이 단계 생략 가능. 이동 후 이동된 파일에 대해 isort 실행.*
-- [ ] **F5** `git mv tests/test_rag_synthesis.py dev/live_tests/manual_rag_check.py` + 상단 docstring 1줄 추가
-- [ ] **F2** `.env.example` 중복 블록 제거 + §0.3의 10개 변수(주석 포함) 반영
-- [ ] **F3** `scripts/ingest_knowledge.py` docstring L18-23 갱신 + `--dry-run` 사용법 1줄
-- [ ] **F4** `scripts/ingest_knowledge.py` 3곳 f-string → 일반 문자열
-- [ ] (선택) `black scripts/ingest_knowledge.py dev/live_tests/manual_rag_check.py .env.example` — 건드린 파일에만
+- [x] ~~`feature/analysis-rag-pr145-fix` 브랜치 생성~~ → PR #146 (`feature/analysis-rag-pr145-fix`) 머지 완료
+- [x] **F1** isort 정렬 → PR #146에서 lint 통과 상태 (`isort --check-only .` 통과 확인 2026-04-15)
+- [x] **F5** `tests/test_rag_synthesis.py` → `dev/live_tests/manual_rag_check.py` 이동 완료
+- [x] **F2** `.env.example` 중복 블록 제거, KT_CLOUD_KNOWLEDGE 10건, 구 `KT_CLOUD_KNOWLEDGE_EMBEDDING_ENDPOINT` 0건 확인
+- [x] **F3** `scripts/ingest_knowledge.py` docstring 갱신 + `--dry-run` 사용법 반영 완료
+- [x] **F4** `scripts/ingest_knowledge.py` f-string 정리 (`ruff --select F541` 0건 확인)
+- [x] (선택) `black --check` 통과 확인
 
-### 3.2 검증
+### 3.2 검증 ✅ 완료 (2026-04-15)
 
-- [ ] `pytest tests/ -v` → **596 passed** 유지 (F5 이동 후 수집 수 감소 없음 확인 — 원래 해당 파일은 유효한 테스트가 아니었으므로 숫자 변동 없어야 정상)
-- [ ] `isort --check-only .` → 통과
-- [ ] `ruff check .` → F541 0건
-- [ ] `black --check` (건드린 파일만) → 통과
-- [ ] `grep -c "KT_CLOUD_KNOWLEDGE" .env.example` → 10
-- [ ] `grep "KT_CLOUD_KNOWLEDGE_EMBEDDING_ENDPOINT" .env.example` → **0건** (구 이름 제거 확인)
-- [ ] follow-up PR CI 4개 잡 전부 green
+- [x] `pytest tests/ -v` → 594 passed (Stub 테스트 2건 제거로 596→594)
+- [x] `isort --check-only .` → 통과
+- [x] `ruff check .` → 통과 (F541 0건)
+- [x] `black --check` → 통과
+- [x] `grep -c "KT_CLOUD_KNOWLEDGE" .env.example` → **10**
+- [x] `grep "KT_CLOUD_KNOWLEDGE_EMBEDDING_ENDPOINT" .env.example` → **0건**
+- [x] CI green (PR #146 머지)
 
-### 3.3 리뷰 & 머지
+### 3.3 리뷰 & 머지 ✅ 완료
 
-- [ ] 개발자2 또는 3 리뷰 1건 이상
-- [ ] 사용자 최종 "머지" 지시 후 develop 머지
+- [x] 리뷰 반영 후 PR #146 develop 머지 완료 (e2f6a35)
+- [x] 사용자 지시에 따라 develop 머지 완료
+
+> **종결**: F1~F5 항목은 PR #145/#146 과정에서 통합 처리되어 follow-up 별도 PR 불필요.
+> 잔여 정리(Stub 정식 제거)는 `2026-04-15-knowledge-agent-activation-and-verification.md` Phase 1에서 처리.
 
 ---
 
