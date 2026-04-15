@@ -1,8 +1,8 @@
 # 마스터 계획 인덱스 (Master Plan Index)
 
 **목적**: 모든 기획 문서의 현황 추적 및 상태 관리  
-**버전**: v42
-**마지막 업데이트**: 2026-04-15 16:30
+**버전**: v43
+**마지막 업데이트**: 2026-04-15 17:30
 **관리 원칙**:
 - 완료된 계획 → PR 링크 + 간단한 변경 사항 기록
 - 미완료 계획 → 상태 및 다음 액션 기록
@@ -32,7 +32,7 @@
 | 16 | 파이프라인 견고성 - Phase 2 | `pipeline-robustness-part2.md` | ✅ 완료 | #60 | get_fallback_output() 추가 |
 | 17 | 독스트링 품질 개선 구현 | `2026-04-07-docs-quality-implementation.md` | ✅ 완료 | #61 (MERGED) | Phase 1-4 구현 + CB/SSE 테스트 추가 (538 passed, 14 skipped — PR #67/#68 Pinecone 테스트 59개 추가 후) |
 | 18 | Neo4j 통합 구현 계획 | `_archive/plans/2026-04-07-neo4j-integration-plan.md` | ✅ 완료 | — | 작업 1(GoT→Neo4j E2E) ✅ 6 passed in 0.59s (AWS SSM 2026-04-09). 작업 2(Mode A) ✅ PR #88. 코드 전체 완료. 부수: seed.py 제약조건 에러 핸들링 개선 필요 |
-| 19 | Pinecone 벡터 DB 공통 인프라 | `2026-04-07-pinecone-vector-db-integration.md` | 🔶 대부분 완료 (재정합 2026-04-15) | #64~#68, #145, #146, #147, #151 | Task 1/3/4/7 완료. **Task 2(Bedrock)** ⛔ 폐기 — KT Cloud Embedding 선회. **Task 7** ✅ `scripts/ingest_knowledge.py`로 대체 완료. Task 8 594 passed. ⚠️ 잔여: ① Task 5/6/9(KT Cloud 기반 재설계 필요, 개발자 CLI·가이드, 운영 선택) ② ★ `ingest_config.yaml`에 `domain=mental_health` 적재 (Plan #47 Phase 4 선행 필수) |
+| 19 | Pinecone 벡터 DB 공통 인프라 | `2026-04-07-pinecone-vector-db-integration.md` | 🔶 대부분 완료 (재정합 2026-04-15) | #64~#68, #145, #146, #147, #151 | Task 1/3/4/7 완료. **Task 2(Bedrock)** ⛔ 폐기 — KT Cloud Embedding 선회. **Task 7** ✅ `scripts/ingest_knowledge.py`로 대체 완료. Task 8 612 passed. ⚠️ 잔여: ① Task 5/6/9(KT Cloud 기반 재설계 필요, 개발자 CLI·가이드, 운영 선택) ② ★ `ingest_config.yaml`에 `domain=mental_health` 적재 (Plan #47 Phase 4 선행 필수) |
 | 20 | Graph Mode B 단일화 리팩터 | `2026-04-07-graph-mode-b-refactor.md` | ✅ 완료 | #69 | Mode A 삭제, publish_graph_to_rdb 단일 경로 확정, EMA를 Backend 책임으로 이관 (538 passed) |
 | 21 | 문서 전수 점검 및 정합성 수정 | *(인라인 — 별도 계획서 없음)* | ✅ 완료 | #70~#80 | 4차 사이클 점검: 대화모드 잔재·링크·날짜·버전 일관성·설계 결정 갱신 전체 완료 |
 | 22 | 에이전트 출력 감사 수정 | `_archive/plans/2026-04-08-agent-output-audit-fix.md` | ✅ 완료 | — | v9: IC-1/SP-1/SP-2/schemas 완료(8건) + Task 1-7 구현 완료(SA/EA/CA/SG/VI/BV/횡단). 582 passed |
@@ -64,6 +64,8 @@
 | 48 | KT Cloud Knowledge RAG 환경변수 회귀 수정 | `plans/2026-04-15-knowledge-rag-pr148-regression-fix.md` | ✅ 완료 | PR #148, #149, #150 | PARSE/PARSER env 네이밍 혼선 → `PARSE_*`로 통일 (GitHub Secrets 정합). Phase A 완료. Phase B(Pinecone 인덱스 생성/적재) 및 Phase C(`articles_count ≥ 1` 재검증)은 Plan #47 Phase 4에 통합. |
 | 49 | Knowledge RAG 결과 파이프라인 연결 수정 | `plans/2026-04-15-knowledge-rag-wiring-fix.md` | ✅ 완료 | PR #151 | Part A/B/C 전부 완료: (A) PodcastReasoning `_build_phase_context`에서 ToT=제목/CoT=원문 phase별 주입(e81f795), (B) ScriptGenerator `state["knowledge_results"]` 정합 + articles 구조 읽기(3bfc204), (C) KnowledgeAgent 관측성 경고 + `pinecone_top_k` 외부화(529e474). |
 | 50 | Plan #8 재분류 — api_proxy Dead Code 정리 | `plans/2026-04-15-plan8-apiproxy-cleanup-plan.md` | 🔲 구현 대기 (보류) | — | Option C(PLAN_INDEX #8 숫자 정정 21→15) + Option A(`src/db/api_proxy.py` 제거, factory proxy 분기 정리, backend_resources 4개 상수 제거). 사용자 메모 [project_plan8_deferred]: "이슈 위험 높음, 보류" 결정. 계획 작성만 완료. |
+| 51 | CRISIS 파이프라인 출력 정상화 | `plans/2026-04-15-crisis-output-fix.md` | ✅ 완료 | PR #159 | TIER 1 cancel_event 제거, route_after_tier1 "tier2" 고정, TIER 2~4 LLM 폴백 하드코딩(ScriptGenerator/Visualization/BatchValidator/ScriptPersonalizer), wait_for_stories CRISIS 바이패스, StoriesStore 정리. CRISIS 단위 테스트 18건 추가 (612 passed) |
+| 52 | Git 히스토리 정리 v2 — 브랜치 정리 + main 동기화 | `plans/2026-04-15-git-history-cleanup-v2.md` | 🔲 Phase A 즉시 가능 | — | Phase A(stale 원격 브랜치 3개 삭제) 즉시 실행 가능. Phase B(로컬 브랜치 확인 후). Phase C(main ← develop 453 커밋 동기화) 3인 합의 필요, AWS 오픈 후 진행. |
 
 **범례:**
 - ✅ 완료 — 코드 구현 완료, PR 머지됨
@@ -266,7 +268,15 @@
 | #149 | feature/validation-knowledge-parser-revert | PR #148 회귀 복원 — PARSER_* 네이밍 원복 (중간 단계) |
 | #150 | feature/validation-knowledge-parse-secret-align | 시크릿 실제 등록값(`KT_CLOUD_KNOWLEDGE_PARSE_*`)에 맞춰 코드·배포 정렬 (Plan #48 Phase A 완료) |
 | #151 | feature/analysis-knowledge-script-wiring | Knowledge RAG 결과 파이프라인 연결 (Plan #49 Part A/B/C) — Podcast Reasoning phase별 주입 + ScriptGenerator state 키 정합 + Pinecone 관측성/top_k 외부화 |
+| #152 | jun-RAG | 8종 호스트 페르소나 ScriptPersonalizer 연동 + Python 3.9 하위 호환성 강화 (Union/Optional 타입 힌트 호환) |
+| #153 | feature/analysis-knowledge-script-wiring | refactor: Pinecone 인덱스명 rag-suite-knowledge 전체 통일 (코드·config·tests·docs·scripts) |
+| #154 | feature/analysis-knowledge-ingest-passage-env | fix(deploy): PASSAGE Embedding env 2변수(KT_CLOUD_KNOWLEDGE_EMBEDDING_PASSAGE_*) deploy.yml 주입 누락 복원 |
+| #155 | feature/analysis-knowledge-threshold-tune | fix: Knowledge Pinecone 임계값 0.7→0.25 (KT Cloud Query↔Passage 실측 score 0.20~0.35 반영) |
+| #156 | jun-RAG | fix(api): 지식 데이터 엔드포인트 URL 경로 수정 (/ai/internal/knowledge) |
+| #157 | jun-RAG | fix(api): BackendClient._knowledge_base_url 도입 — 지식 문서 전용 URL 분리 |
+| #158 | jun-RAG | fix(knowledge): search()에서 Parser 단계 제거 (텍스트 쿼리에 PDF 파싱 불필요) + Black/F821 lint 수정 |
+| #159 | feature/analysis-crisis-output-fix | fix: CRISIS 파이프라인 출력 정상화 (Plan #51) — TIER 1 취소 제거, TIER 2~4 하드코딩 폴백, StoriesStore 정리, CRISIS 단위 테스트 18건 |
 
 ---
 
-*마스터 인덱스 v42 — 2026-04-15 16:30 (PR #144~#151 반영, 신규 계획 #48/#49/#50 추가, Plan #47 Phase 4 잔여 명시)*
+*마스터 인덱스 v43 — 2026-04-15 17:30 (PR #152~#159 반영, Plan #51 CRISIS 출력 정상화 완료 추가)*

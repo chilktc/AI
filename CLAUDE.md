@@ -292,7 +292,7 @@ Memory와 Knowledge는 StateGraph 노드가 아닌 **독립 에이전트**로, R
 
 ---
 
-## 구현 현황 (2026-04-14 기준)
+## 구현 현황 (2026-04-15 기준)
 
 | 구분 | 구현 에이전트 | 진행률 |
 |------|------------|--------|
@@ -331,14 +331,22 @@ Memory와 Knowledge는 StateGraph 노드가 아닌 **독립 에이전트**로, R
 | deploy.yml SSM 배포 신뢰성 강화 | SSM 싱글쿼트 파싱 오류 수정, 15초×40회 폴링 교체, unhealthy 즉시 실패 감지 | #143 |
 | Knowledge RAG 1차 구현 | KT Cloud RAG Suite 연동 (Parser/Embedding/TextGen), scripts/ingest_knowledge.py | #145 |
 | Knowledge Agent 리팩터링 | Pinecone 임계값 외부화(settings.yaml), try/except 세분화, 에러 흐름 로깅 강화 | #146 |
-| KnowledgeAgentStub 정식 제거 | podcast_reasoning.py에서 실제 KnowledgeAgent로 fallback 전환, shared/stubs.py에서 Stub 클래스 제거 | #<TBD> |
+| KnowledgeAgentStub 정식 제거 | podcast_reasoning.py에서 실제 KnowledgeAgent로 fallback 전환, shared/stubs.py에서 Stub 클래스 제거 | #147 |
+| Knowledge RAG env 회귀 수정 | PARSER→PARSE 네이밍 정렬, PASSAGE Embedding env 주입 복원, GitHub Secrets 정합 | #148, #149, #150 |
+| Knowledge RAG 파이프라인 연결 | Reasoning phase별 주입(ToT/CoT), ScriptGenerator state 키 정합, Pinecone 관측성/top_k 외부화 | #151 |
+| 호스트 페르소나 8종 연동 | 8종 호스트 페르소나 script_personalizer 연동 + Python 3.9 하위 호환성 강화 | #152 |
+| Pinecone 인덱스명 통일 | rag-suite-knowledge 단일 인덱스명 통일 (코드·config·테스트·문서 전체) | #153 |
+| Knowledge Pinecone 임계값 조정 | 임계값 0.7→0.25 (KT Cloud Query↔Passage 실측 score 0.20~0.35 반영) | #155 |
+| Knowledge Backend API URL 수정 | BackendClient._knowledge_base_url 도입, /api/internal/knowledge 엔드포인트 분리 | #156, #157 |
+| Knowledge search() 정리 | Parser 단계 제거 (텍스트 쿼리에 불필요), F821 lint 수정 | #158 |
+| CRISIS 파이프라인 출력 정상화 | TIER 1 cancel_event 제거, TIER 2~4 LLM 폴백 하드코딩, StoriesStore 정리 | #159 |
 
 ### 테스트 현황
 
 ```
-594 passed
+612 passed
 ```
-*596 → 594: KnowledgeAgentStub 단위 테스트 2건 제거 (2026-04-15, Stub 정식 제거 반영)*
+*594 → 612: CRISIS 폴백 단위 테스트 18건 추가 (#159, 2026-04-15)*
 
 ---
 
@@ -365,4 +373,4 @@ Memory와 Knowledge는 StateGraph 노드가 아닌 **독립 에이전트**로, R
 
 ---
 
-*마지막 업데이트: 2026-04-15 10:30*
+*마지막 업데이트: 2026-04-15 17:30*

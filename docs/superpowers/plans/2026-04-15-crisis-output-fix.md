@@ -98,7 +98,7 @@ CRISIS 완료 → StoriesStore.delete_session(session_id) 정리 ✓
 
 ## Task 1: 브랜치 생성
 
-- [ ] **Step 1-1: feature 브랜치 생성**
+- [x] **Step 1-1: feature 브랜치 생성**
 
 ```bash
 git fetch origin
@@ -1150,4 +1150,4 @@ workflow.py (Task 4)
   podcasts.py: CRISIS → stories_store.delete_session() ✓
 ```
 
-*계획서 최종 업데이트: 2026-04-15 14:30*
+*계획서 최종 업데이트: 2026-04-15 17:30 — 전 태스크 완료, PR #159 develop 머지 (`5388f0c`)*
