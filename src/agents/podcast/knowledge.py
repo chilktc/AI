@@ -291,8 +291,8 @@ class KnowledgeAgent(BaseAgent):
             }
 
     # ============================================================
-    # KT Cloud RAG Suite — search() 인터페이스 (신규)
-    # PodcastReasoningAgent DI 호출용. KnowledgeAgentStub과 동일한 시그니처.
+    # KT Cloud RAG Suite — search() 인터페이스
+    # PodcastReasoningAgent DI 호출용.
     # 기존 process() Legacy 로직과 완전 독립.
     #
     # 파이프라인: Parser → Embedding → Pinecone → TextGen

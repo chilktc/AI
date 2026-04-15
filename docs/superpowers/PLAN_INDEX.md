@@ -1,8 +1,8 @@
 # 마스터 계획 인덱스 (Master Plan Index)
 
 **목적**: 모든 기획 문서의 현황 추적 및 상태 관리  
-**버전**: v40
-**마지막 업데이트**: 2026-04-15 10:30
+**버전**: v41
+**마지막 업데이트**: 2026-04-15 13:55
 **관리 원칙**:
 - 완료된 계획 → PR 링크 + 간단한 변경 사항 기록
 - 미완료 계획 → 상태 및 다음 액션 기록
@@ -25,14 +25,14 @@
 | 9 | Neo4j 배포 + 프론트엔드 그래프 | `2026-04-02-neo4j-deployment-frontend-graph.md` | ✅ 완료 | #50, #51 | GoT→Neo4j→Backend 완료 |
 | 10 | AWS 환경변수 & 보안 | `2026-04-06-aws-env-remediation.md` | ✅ 완료 | #59 | STORAGE_MODE, BACKEND_API_URL 완료 |
 | 11 | 종합 실행 계획서 (2026-04-06) | `2026-04-06-comprehensive-execution-plan.md` | ✅ 완료 | #52, #57 | Phase 1-2 완료 (mypy, 테스트 격리) |
-| 12 | 미완료 항목 현황 (2026-04-06) | `2026-04-06-pending-items-inventory.md` | 🔶 대부분 완료 | #52 | mypy/테스트 해결. 잔여: ① KnowledgeAgent DI 연결됨, EpisodeMemory DI 미연결 (Stub) ② personalizer empathetic/rational pass ③ _query_user_profile deprecated→_get_user_profile 대체 ④ data/cache/ 미생성 |
+| 12 | 미완료 항목 현황 (2026-04-06) | `2026-04-06-pending-items-inventory.md` | 🔶 대부분 완료 | #52, #145, #146, #<TBD> | mypy/테스트 해결. Section A(Stub→실제 전환) ✅ 종결(2026-04-15). 잔여: ① personalizer empathetic/rational pass ② _query_user_profile deprecated→_get_user_profile 대체 ③ data/cache/ 미생성 |
 | 13 | 파이프라인 견고성 (아카이브) | `2026-04-06-pipeline-robustness-remediation.md` | 📁 아카이브 | — | v1-v4 이력 보존 |
 | 14 | 파이프라인 견고성 강화 마스터 | `pipeline-robustness-index.md` | ✅ 완료 | #60 | 13개 취약점 수정 |
 | 15 | 파이프라인 견고성 - Phase 1 | `pipeline-robustness-part1.md` | ✅ 완료 | #60 | Changes 1-9 완료 |
 | 16 | 파이프라인 견고성 - Phase 2 | `pipeline-robustness-part2.md` | ✅ 완료 | #60 | get_fallback_output() 추가 |
 | 17 | 독스트링 품질 개선 구현 | `2026-04-07-docs-quality-implementation.md` | ✅ 완료 | #61 (MERGED) | Phase 1-4 구현 + CB/SSE 테스트 추가 (538 passed, 14 skipped — PR #67/#68 Pinecone 테스트 59개 추가 후) |
 | 18 | Neo4j 통합 구현 계획 | `_archive/plans/2026-04-07-neo4j-integration-plan.md` | ✅ 완료 | — | 작업 1(GoT→Neo4j E2E) ✅ 6 passed in 0.59s (AWS SSM 2026-04-09). 작업 2(Mode A) ✅ PR #88. 코드 전체 완료. 부수: seed.py 제약조건 에러 핸들링 개선 필요 |
-| 19 | Pinecone 벡터 DB 공통 인프라 | `2026-04-07-pinecone-vector-db-integration.md` | 🔶 대부분 완료 | #64~#68 | Task 1/3/4 완료. EpisodeMemory KT Cloud 임베딩 직접 구현 완료(동작 중). ⚠️ 미완: ① `knowledge._search_knowledge_base()`가 외부 embedding_client DI에 의존 (없으면 빈 결과) — `_embed_query()` 구현됨이나 미연결 ② `podcast_reasoning.py` KnowledgeAgentStub 사용 (DI 미연결) ③ Task 5/6/7(CLI), Task 9(가이드) 미작성 |
+| 19 | Pinecone 벡터 DB 공통 인프라 | `2026-04-07-pinecone-vector-db-integration.md` | 🔶 대부분 완료 | #64~#68, #145, #146 | Task 1/3/4 완료. EpisodeMemory KT Cloud 임베딩 직접 구현 완료(동작 중). Knowledge RAG KT Cloud Suite 연결 완료 (PR #145/#146). Pinecone score threshold 외부화 완료 (PR #146). ⚠️ 미완: Task 5/6/7(CLI), Task 9(가이드) 미작성 |
 | 20 | Graph Mode B 단일화 리팩터 | `2026-04-07-graph-mode-b-refactor.md` | ✅ 완료 | #69 | Mode A 삭제, publish_graph_to_rdb 단일 경로 확정, EMA를 Backend 책임으로 이관 (538 passed) |
 | 21 | 문서 전수 점검 및 정합성 수정 | *(인라인 — 별도 계획서 없음)* | ✅ 완료 | #70~#80 | 4차 사이클 점검: 대화모드 잔재·링크·날짜·버전 일관성·설계 결정 갱신 전체 완료 |
 | 22 | 에이전트 출력 감사 수정 | `_archive/plans/2026-04-08-agent-output-audit-fix.md` | ✅ 완료 | — | v9: IC-1/SP-1/SP-2/schemas 완료(8건) + Task 1-7 구현 완료(SA/EA/CA/SG/VI/BV/횡단). 582 passed |
@@ -59,6 +59,8 @@
 | 43 | Episode Memory phase별 컨텍스트 주입 개선 | `_archive/plans/2026-04-14-episode-memory-context-injection.md` | ✅ 완료 | PR #134 | GoT(건수), ToT(메타데이터), CoT(score 필터 원문) 분기, memory_style_score_threshold 설정, podcast_reasoning 프롬프트 v3.2.0 핀닝 |
 | 44 | 프로덕션 안정화 핫픽스 10건 | *(인라인)* | ✅ 완료 | PR #128~#140 | Bedrock 지연 추적(#131/#135/#136), 모델 다운그레이드(#137), Visualization 안정화 3종(#133/#138/#139), BV score 보정(#132), CancelledError 수정(#140), CI lint(#128/#129) |
 | 45 | 구조적 취약점 수정 (STRUCTURAL_FIX_PLAN) | `plans/2026-04-15-structural-fix-plan.md` | 🔶 대부분 완료 | PR #142 | 15/18 태스크 완료 (A1/A2/A4~A8/B6/C4/C5/D3/E1~E4). ⚠️ 잔여: A9(pip 캐시 키 통합), B2(ALLOWED_ORIGINS 와일드카드 제거), B4(Neo4j 포트 localhost 바인딩) |
+| 46 | PR #145 Knowledge RAG Follow-up | `plans/2026-04-15-pr145-knowledge-rag-followup.md` | ✅ 종결 | PR #145, #146 | F1 isort, F2 .env.example 중복 제거, F3 docstring, F4 f-string, F5 test_rag_synthesis 이동 — 전부 PR #145/#146에서 통합 처리 완료 |
+| 47 | Knowledge Agent 정식 활성화 + 운영 검증 | `plans/2026-04-15-knowledge-agent-activation-and-verification.md` | 🔶 Phase 1-2 완료 | PR #<TBD> | Phase 1(Stub 정식 제거) 완료, Phase 2(follow-up) PR #145/#146로 기처리됨. Phase 3(머지) 대기, Phase 4(AWS SSM 크롬 MCP 검증) 대기, Phase 5(INDEX/CLAUDE.md 정리) 진행 중 |
 
 **범례:**
 - ✅ 완료 — 코드 구현 완료, PR 머지됨

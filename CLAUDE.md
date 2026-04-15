@@ -329,12 +329,16 @@ Memory와 Knowledge는 StateGraph 노드가 아닌 **독립 에이전트**로, R
 | CancelledError 수정 | HTTP 연결 종료 시 스택 트레이스 제거 | #140 |
 | 구조적 취약점 수정 | CI/CD Job 의존성, lint 순서, SHA 태깅, 롤백 스크립트, 한국어 인젝션 패턴, 취소 태스크 정리 등 16건 | #142 |
 | deploy.yml SSM 배포 신뢰성 강화 | SSM 싱글쿼트 파싱 오류 수정, 15초×40회 폴링 교체, unhealthy 즉시 실패 감지 | #143 |
+| Knowledge RAG 1차 구현 | KT Cloud RAG Suite 연동 (Parser/Embedding/TextGen), scripts/ingest_knowledge.py | #145 |
+| Knowledge Agent 리팩터링 | Pinecone 임계값 외부화(settings.yaml), try/except 세분화, 에러 흐름 로깅 강화 | #146 |
+| KnowledgeAgentStub 정식 제거 | podcast_reasoning.py에서 실제 KnowledgeAgent로 fallback 전환, shared/stubs.py에서 Stub 클래스 제거 | #<TBD> |
 
 ### 테스트 현황
 
 ```
-596 passed
+594 passed
 ```
+*596 → 594: KnowledgeAgentStub 단위 테스트 2건 제거 (2026-04-15, Stub 정식 제거 반영)*
 
 ---
 
