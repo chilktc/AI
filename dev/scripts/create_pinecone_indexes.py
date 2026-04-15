@@ -3,7 +3,7 @@
 Pinecone 인덱스 생성 스크립트 (1회성 실행).
 
 인덱스:
-  expert-knowledge    : Knowledge Agent — 심리상담 전문 지식 (4096차원)
+  rag-suite-knowledge    : Knowledge Agent — 심리상담 전문 지식 (4096차원)
   mem-podcast-episode : Episode Memory  — 사용자 에피소드 기억 (4096차원)
 
 실행 (호스트):
@@ -28,7 +28,7 @@ REGION = "us-east-1"
 
 INDEXES = [
     {
-        "name": "expert-knowledge",
+        "name": "rag-suite-knowledge",
         "dimension": 4096,
         "metric": "cosine",
         "description": "Knowledge Agent — 심리상담 전문 지식 벡터",

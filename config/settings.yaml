@@ -164,7 +164,7 @@ storage:
     # region은 별도 정의 안 함 — 기존 llm.bedrock.region / AWS_REGION 재사용
     upload_prefix: "vis"           # TODO(backend): 4-4 prefix 확정
   pinecone:
-    index_knowledge: "expert-knowledge"
+    index_knowledge: "rag-suite-knowledge"
     # Episode Memory 인덱스: 환경변수 PINECONE_INDEX_EPISODE로 관리 (GitHub Secrets)
 
 # 누적 그래프 설정
