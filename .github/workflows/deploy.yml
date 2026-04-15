@@ -115,6 +115,8 @@ jobs:
               "printf '"'"'%s\\n'"'"' '"'"'KT_CLOUD_KNOWLEDGE_PARSE_TOKEN=${{ secrets.KT_CLOUD_KNOWLEDGE_PARSE_TOKEN }}'"'"' >> .env",
               "printf '"'"'%s\\n'"'"' '"'"'KT_CLOUD_KNOWLEDGE_EMBEDDING_QUERY_ENDPOINT=${{ secrets.KT_CLOUD_KNOWLEDGE_EMBEDDING_QUERY_ENDPOINT }}'"'"' >> .env",
               "printf '"'"'%s\\n'"'"' '"'"'KT_CLOUD_KNOWLEDGE_EMBEDDING_QUERY_TOKEN=${{ secrets.KT_CLOUD_KNOWLEDGE_EMBEDDING_QUERY_TOKEN }}'"'"' >> .env",
+              "printf '"'"'%s\\n'"'"' '"'"'KT_CLOUD_KNOWLEDGE_EMBEDDING_PASSAGE_ENDPOINT=${{ secrets.KT_CLOUD_KNOWLEDGE_EMBEDDING_PASSAGE_ENDPOINT }}'"'"' >> .env",
+              "printf '"'"'%s\\n'"'"' '"'"'KT_CLOUD_KNOWLEDGE_EMBEDDING_PASSAGE_TOKEN=${{ secrets.KT_CLOUD_KNOWLEDGE_EMBEDDING_PASSAGE_TOKEN }}'"'"' >> .env",
               "printf '"'"'%s\\n'"'"' '"'"'KT_CLOUD_KNOWLEDGE_TEXTGEN_ENDPOINT=${{ secrets.KT_CLOUD_KNOWLEDGE_TEXTGEN_ENDPOINT }}'"'"' >> .env",
               "printf '"'"'%s\\n'"'"' '"'"'KT_CLOUD_KNOWLEDGE_TEXTGEN_TOKEN=${{ secrets.KT_CLOUD_KNOWLEDGE_TEXTGEN_TOKEN }}'"'"' >> .env",
               "printf '"'"'%s\\n'"'"' '"'"'PINECONE_INDEX_EPISODE=${{ secrets.PINECONE_INDEX_EPISODE }}'"'"' >> .env",

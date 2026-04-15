@@ -14,7 +14,7 @@ chunk_overlap: 50 # 청크 오버랩 (자)
 # 문서 목록
 documents:
   - path: scripts/pdfs/상담성과_지속성_분석.pdf
-    domain: personal_counsel
+    domain: mental_health
     title: 상담성과_지속성_분석
 
   # - path: scripts/pdfs/stress_management.pdf
