@@ -41,10 +41,10 @@ class KnowledgeAgent(BaseAgent):
         # Parser: 쿼리 전처리/정제
         self.parser_endpoint = os.getenv("KT_CLOUD_KNOWLEDGE_PARSER_ENDPOINT", "")
         self.parser_token = os.getenv("KT_CLOUD_KNOWLEDGE_PARSER_TOKEN", "")
-        # Embedding: 벡터 변환
-        self.kt_embedding_endpoint = os.getenv("KT_CLOUD_KNOWLEDGE_EMBEDDING_ENDPOINT", "")
-        self.kt_embedding_token = os.getenv("KT_CLOUD_KNOWLEDGE_EMBEDDING_TOKEN", "")
-        # TextGen: 검색 결과 요약/합성
+        # Embedding (Query): 벡터 분산 변환
+        self.kt_embedding_endpoint = os.getenv("KT_CLOUD_KNOWLEDGE_EMBEDDING_QUERY_ENDPOINT", "")
+        self.kt_embedding_token = os.getenv("KT_CLOUD_KNOWLEDGE_EMBEDDING_QUERY_TOKEN", "")
+        # TextGen (Qwen3): 검색 결과 요약/합성
         self.kt_textgen_endpoint = os.getenv("KT_CLOUD_KNOWLEDGE_TEXTGEN_ENDPOINT", "")
         self.kt_textgen_token = os.getenv("KT_CLOUD_KNOWLEDGE_TEXTGEN_TOKEN", "")
         # Pinecone: 벡터 DB
@@ -311,7 +311,9 @@ class KnowledgeAgent(BaseAgent):
             {"articles": [...], "guidelines": []} 구조의 검색 결과
         """
         if not self.kt_embedding_endpoint or not self.kt_embedding_token:
-            self.logger.warning("[KnowledgeAgent] KT RAG Suite 미설정 — 빈 결과 반환")
+            self.logger.warning(
+                "[KnowledgeAgent] KT RAG Suite 미설정 — 빈 결과 반환"
+            )
             return {"articles": [], "guidelines": []}
 
         try:
@@ -333,7 +335,7 @@ class KnowledgeAgent(BaseAgent):
             # 3-1. Backend RDB: Pinecone top_k chunk_id로 원문 조회
             chunk_ids = [m.get("id") for m in matches if m.get("id")]
             score_map = {m.get("id"): m.get("score", 0.0) for m in matches if m.get("id")}
-            documents = await self._fetch_documents_from_backend(chunk_ids)  # type: ignore[arg-type]
+            documents = await self._fetch_documents_from_backend(chunk_ids)
 
             # 4. 결과를 articles 구조로 매핑 (Pinecone metadata 대신 RDB 원문 사용)
             articles = [
@@ -352,18 +354,15 @@ class KnowledgeAgent(BaseAgent):
             # 5. TextGen: 검색 결과 요약 (선택적 — 미설정 시 스킵)
             summary = await self._generate_synthesis(query, articles)
             if summary:
-                articles.insert(
-                    0,
-                    {
-                        "id": "_synthesis",
-                        "title": "검색 결과 종합",
-                        "content": summary,
-                        "score": 1.0,
-                        "domain": domain,
-                        "source": "KT RAG Suite TextGen",
-                        "evidence_level": "synthesis",
-                    },
-                )
+                articles.insert(0, {
+                    "id": "_synthesis",
+                    "title": "검색 결과 종합",
+                    "content": summary,
+                    "score": 1.0,
+                    "domain": domain,
+                    "source": "KT RAG Suite TextGen",
+                    "evidence_level": "synthesis",
+                })
 
             self.logger.info(
                 "[KnowledgeAgent] KT RAG Suite search 완료 — %d건 반환",
@@ -372,7 +371,9 @@ class KnowledgeAgent(BaseAgent):
             return {"articles": articles, "guidelines": []}
 
         except Exception as e:
-            self.logger.error("[KnowledgeAgent] KT RAG Suite search 실패: %s", e)
+            self.logger.error(
+                "[KnowledgeAgent] KT RAG Suite search 실패: %s", e
+            )
             return {"articles": [], "guidelines": []}
 
     # ============================================================
@@ -398,9 +399,7 @@ class KnowledgeAgent(BaseAgent):
                 )
                 r.raise_for_status()
                 parsed = r.json().get("parsed_text", query)
-                self.logger.info(
-                    "[KnowledgeAgent] Parser 완료: '%s' → '%s'", query[:50], parsed[:50]
-                )
+                self.logger.info("[KnowledgeAgent] Parser 완료: '%s' → '%s'", query[:50], parsed[:50])
                 return str(parsed)
         except Exception as e:
             self.logger.warning("[KnowledgeAgent] Parser 실패 — 원본 쿼리 사용: %s", e)
@@ -419,7 +418,7 @@ class KnowledgeAgent(BaseAgent):
                 r = await client.post(
                     self.kt_embedding_endpoint,
                     headers={"Authorization": f"Bearer {self.kt_embedding_token}"},
-                    json={"input": text},
+                    json={"model": "embedding-query", "input": text},
                     timeout=10.0,
                 )
                 r.raise_for_status()
@@ -453,7 +452,9 @@ class KnowledgeAgent(BaseAgent):
             self.logger.error("[KnowledgeAgent] Pinecone host 조회 실패: %s", e)
             return ""
 
-    async def _query_pinecone(self, vector: list[float], domain: str, top_k: int = 5) -> list[dict]:
+    async def _query_pinecone(
+        self, vector: list[float], domain: str, top_k: int = 5
+    ) -> list[dict]:
         """Pinecone에서 벡터 유사도 검색을 수행한다.
 
         EpisodeMemoryAgent._query()와 동일한 패턴.
@@ -478,6 +479,8 @@ class KnowledgeAgent(BaseAgent):
                 )
                 r.raise_for_status()
                 matches = r.json().get("matches", [])
+                
+                # 유사도 0.7 이상의 결과만 필터링하여 반환
                 return [m for m in matches if m.get("score", 0.0) >= 0.7]
         except Exception as e:
             self.logger.error("[KnowledgeAgent] Pinecone query 실패: %s", e)
@@ -495,7 +498,8 @@ class KnowledgeAgent(BaseAgent):
             return ""
 
         context = "\n".join(
-            f"- [{a.get('title', '제목 없음')}] {a.get('content', '')[:200]}" for a in articles
+            f"- [{a.get('title', '제목 없음')}] {a.get('content', '')[:200]}"
+            for a in articles
         )
         prompt = (
             f"다음은 '{query}'에 관련된 전문 심리 지식 검색 결과입니다.\n\n"
@@ -509,7 +513,8 @@ class KnowledgeAgent(BaseAgent):
                     self.kt_textgen_endpoint,
                     headers={"Authorization": f"Bearer {self.kt_textgen_token}"},
                     json={
-                        "model": "solar-mini",
+                        "model": "Qwen/Qwen3-32B",
+                        "chat_template_kwargs": {"enable_thinking": False},
                         "messages": [{"role": "user", "content": prompt}],
                     },
                     timeout=15.0,
@@ -546,10 +551,11 @@ class KnowledgeAgent(BaseAgent):
                     "[KnowledgeAgent] RDB 원문 조회 완료 — %d건",
                     len(documents),
                 )
-                return documents  # type: ignore[no-any-return]
+                return documents
         except Exception as e:
             self.logger.error("[KnowledgeAgent] RDB 원문 조회 실패: %s", e)
             return []
+
 
     def _build_output(
         self,

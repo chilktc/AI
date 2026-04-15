@@ -8,14 +8,14 @@
 #   python scripts/ingest_knowledge.py --config scripts/ingest_config.yaml
 
 # 청킹 설정
-chunk_size: 400       # 청크 크기 (자)
-chunk_overlap: 50     # 청크 오버랩 (자)
+chunk_size: 400 # 청크 크기 (자)
+chunk_overlap: 50 # 청크 오버랩 (자)
 
 # 문서 목록
 documents:
-  - path: scripts/pdfs/cbt_guide.pdf
-    domain: mental_health
-    title: CBT 기법 가이드
+  - path: scripts/pdfs/상담성과_지속성_분석.pdf
+    domain: personal_counsel
+    title: 상담성과_지속성_분석
 
   # - path: scripts/pdfs/stress_management.pdf
   #   domain: mental_health
