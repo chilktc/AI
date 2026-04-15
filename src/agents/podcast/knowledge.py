@@ -333,9 +333,9 @@ class KnowledgeAgent(BaseAgent):
             vector = await self._embed_query(query)
             if not vector:
                 self.logger.warning(
-                    "[KnowledgeAgent] 임베딩 실패 — 빈 결과 반환 " "(domain=%s, parsed_len=%d)",
+                    "[KnowledgeAgent] 임베딩 실패 — 빈 결과 반환 " "(domain=%s, query_len=%d)",
                     domain,
-                    len(parsed_query),
+                    len(query),
                 )
                 return {"articles": [], "guidelines": []}
 
@@ -703,7 +703,6 @@ class KnowledgeAgent(BaseAgent):
             return []
         finally:
             await client.close()
-
 
     def _build_output(
         self,
