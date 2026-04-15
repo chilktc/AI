@@ -136,7 +136,6 @@ def make_crisis_pipeline_result(**overrides: Any) -> dict[str, Any]:
     import uuid as _uuid
 
     from src.agents.shared.safety_constants import (
-        CRISIS_FALLBACK_IMAGE_URL,
         CRISIS_FALLBACK_VALUES,
         SAFETY_MESSAGES,
     )

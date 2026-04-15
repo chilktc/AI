@@ -204,9 +204,7 @@ def mock_crisis_nodes(monkeypatch):
     monkeypatch.setattr(
         wf,
         "batch_validator_node",
-        AsyncMock(
-            return_value={"validation_result": CRISIS_FALLBACK_VALUES["validation_result"]}
-        ),
+        AsyncMock(return_value={"validation_result": CRISIS_FALLBACK_VALUES["validation_result"]}),
     )
     # script_personalizer_node: CRISIS PersonalizedScript JSON 반환
     crisis_final_output = _json.dumps(

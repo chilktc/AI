@@ -105,9 +105,7 @@ class ScriptPersonalizerAgent(BaseAgent):
                     attitude_applied="crisis",
                 ),
             )
-            self.logger.info(
-                "[ScriptPersonalizer] CRISIS 폴백 — episode_id=%s", crisis_episode_id
-            )
+            self.logger.info("[ScriptPersonalizer] CRISIS 폴백 — episode_id=%s", crisis_episode_id)
             return {
                 "final_output": crisis_script.model_dump_json(),
                 "memory_write": False,

@@ -3,6 +3,7 @@
 각 에이전트가 safety_flags.status="crisis" 상태에서 LLM 미호출 + 올바른 CRISIS 폴백 값을
 반환하는지 검증한다. LLM 호출 여부는 call_llm_json/call_llm 모킹으로 확인한다.
 """
+
 from __future__ import annotations
 
 import json
@@ -68,11 +69,13 @@ class TestScriptGeneratorCrisisFallback:
     async def test_crisis_returns_hardcoded_script_draft(self) -> None:
         """CRISIS 상태에서 script_draft가 CRISIS 하드코딩 값으로 반환된다."""
         from src.agents.podcast.script_generator import ScriptGeneratorAgent
-        from src.agents.shared.safety_constants import CRISIS_FALLBACK_VALUES, SAFETY_MESSAGES
+        from src.agents.shared.safety_constants import SAFETY_MESSAGES
 
         agent = ScriptGeneratorAgent()
-        with patch.object(agent, "call_llm_json", new_callable=AsyncMock) as mock_llm_json, \
-             patch.object(agent, "call_llm", new_callable=AsyncMock) as mock_llm:
+        with (
+            patch.object(agent, "call_llm_json", new_callable=AsyncMock) as mock_llm_json,
+            patch.object(agent, "call_llm", new_callable=AsyncMock) as mock_llm,
+        ):
             result = await agent.process(_make_crisis_state())
 
         # LLM 미호출 검증
@@ -132,8 +135,10 @@ class TestVisualizationCrisisFallback:
         agent.tier = 2
         agent.logger = MagicMock()
 
-        with patch.object(agent, "call_llm_json", new_callable=AsyncMock) as mock_llm, \
-             patch.object(agent, "call_image_gen", new_callable=AsyncMock) as mock_img:
+        with (
+            patch.object(agent, "call_llm_json", new_callable=AsyncMock) as mock_llm,
+            patch.object(agent, "call_image_gen", new_callable=AsyncMock) as mock_img,
+        ):
             result = await agent.process(_make_crisis_state())
 
         # LLM/이미지 생성 미호출
@@ -201,8 +206,10 @@ class TestScriptPersonalizerCrisisFallback:
             }
         )
 
-        with patch.object(agent, "_apply_deep_personalization", new_callable=AsyncMock) as mock_deep, \
-             patch.object(agent, "_get_user_profile", new_callable=AsyncMock) as mock_profile:
+        with (
+            patch.object(agent, "_apply_deep_personalization", new_callable=AsyncMock) as mock_deep,
+            patch.object(agent, "_get_user_profile", new_callable=AsyncMock),
+        ):
             result = await agent.process(state)
 
         # LLM 심화 개인화 미호출
@@ -214,16 +221,15 @@ class TestScriptPersonalizerCrisisFallback:
         assert final_json != "", "final_output이 빈 문자열"
 
         parsed = json.loads(final_json)
-        assert parsed["episode_id"].startswith("ep_crisis_"), (
-            f"episode_id가 ep_crisis_로 시작하지 않음: {parsed['episode_id']!r}"
-        )
+        assert parsed["episode_id"].startswith(
+            "ep_crisis_"
+        ), f"episode_id가 ep_crisis_로 시작하지 않음: {parsed['episode_id']!r}"
         assert SAFETY_MESSAGES["crisis"][:20] in parsed["script_text"]
         assert parsed["personalization_meta"]["attitude_applied"] == "crisis"
 
     @pytest.mark.asyncio
     async def test_crisis_final_output_parseable_by_build_episode_data(self) -> None:
         """CRISIS final_output이 _build_episode_data()에서 파싱 가능하다."""
-        import json as _json
 
         from src.agents.podcast.script_personalizer import ScriptPersonalizerAgent
         from src.agents.shared.safety_constants import SAFETY_MESSAGES

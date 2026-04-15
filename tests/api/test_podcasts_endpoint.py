@@ -197,9 +197,7 @@ class TestCrisisPodcastEndpoint:
         """
         from tests.api.conftest import make_crisis_pipeline_result
 
-        mock_compiled_graph.ainvoke = AsyncMock(
-            return_value=make_crisis_pipeline_result()
-        )
+        mock_compiled_graph.ainvoke = AsyncMock(return_value=make_crisis_pipeline_result())
         response = test_client.post(
             "/api/podcasts/episodes",
             json=self._valid_request(),
@@ -207,9 +205,9 @@ class TestCrisisPodcastEndpoint:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["episode_id"].startswith("ep_crisis_"), (
-            f"ep_fallback 또는 잘못된 ID: {data['episode_id']!r}"
-        )
+        assert data["episode_id"].startswith(
+            "ep_crisis_"
+        ), f"ep_fallback 또는 잘못된 ID: {data['episode_id']!r}"
         assert data["safety_alert"]["status"] == "crisis"
         assert data["safety_alert"]["show_emergency_button"] is True
 
@@ -220,12 +218,10 @@ class TestCrisisPodcastEndpoint:
         mock_backend_client,
     ) -> None:
         """CRISIS 시 _save_core_data()가 비어 있지 않은 script_text와 image_url로 호출된다."""
-        from src.agents.shared.safety_constants import CRISIS_FALLBACK_IMAGE_URL, SAFETY_MESSAGES
+        from src.agents.shared.safety_constants import SAFETY_MESSAGES
         from tests.api.conftest import make_crisis_pipeline_result
 
-        mock_compiled_graph.ainvoke = AsyncMock(
-            return_value=make_crisis_pipeline_result()
-        )
+        mock_compiled_graph.ainvoke = AsyncMock(return_value=make_crisis_pipeline_result())
         test_client.post(
             "/api/podcasts/episodes",
             json=self._valid_request(),
@@ -242,9 +238,9 @@ class TestCrisisPodcastEndpoint:
         # ingest_podcast_episodes image_url 검증
         mock_backend_client.ingest_podcast_episodes.assert_called()
         img_call_kwargs = mock_backend_client.ingest_podcast_episodes.call_args.kwargs
-        assert img_call_kwargs.get("image_url", "") != "", (
-            "CRISIS 시 image_url 빈 문자열 — 백엔드 오류 발생"
-        )
+        assert (
+            img_call_kwargs.get("image_url", "") != ""
+        ), "CRISIS 시 image_url 빈 문자열 — 백엔드 오류 발생"
 
     def test_crisis_deletes_stories_store_session(
         self,
@@ -256,9 +252,7 @@ class TestCrisisPodcastEndpoint:
 
         from tests.api.conftest import make_crisis_pipeline_result
 
-        mock_compiled_graph.ainvoke = AsyncMock(
-            return_value=make_crisis_pipeline_result()
-        )
+        mock_compiled_graph.ainvoke = AsyncMock(return_value=make_crisis_pipeline_result())
         with patch("src.api.routes.podcasts.stories_store") as mock_store:
             test_client.post(
                 "/api/podcasts/episodes",

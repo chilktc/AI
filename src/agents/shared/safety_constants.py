@@ -31,9 +31,7 @@ SAFETY_MESSAGES = {
 
 # Visualization CRISIS 폴백 이미지 URL (실제 이미지 미생성 시 placeholder)
 # settings.yaml crisis.fallback_image_url에서도 동일 URL 관리
-CRISIS_FALLBACK_IMAGE_URL = (
-    "https://mindlog-images.s3.amazonaws.com/vis/crisis_placeholder.png"
-)
+CRISIS_FALLBACK_IMAGE_URL = "https://mindlog-images.s3.amazonaws.com/vis/crisis_placeholder.png"
 
 CRISIS_FALLBACK_VALUES: dict = {
     # Script Generator CRISIS 폴백 (TIER 2)
