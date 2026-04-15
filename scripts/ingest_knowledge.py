@@ -4,6 +4,12 @@ Knowledge Base PDF 적재 스크립트.
 PDF 문서를 읽어 청킹 → Embedding → Pinecone + Backend RDB에 적재한다.
 EpisodeMemoryAgent의 적재 패턴(Embedding → Pinecone upsert)을 재사용한다.
 
+실행 환경:
+    수동 실행용 스크립트. .env 또는 로컬 export로 환경변수를 주입한다.
+    컨테이너(mindlog-ai-service) 런타임에서 호출되지 않으므로 .github/workflows/deploy.yml의
+    env 주입 대상이 아니다. Runtime(src/agents/podcast/knowledge.py)이 사용하는 PARSER_* 변수와
+    혼동 금지 — 두 변수는 서로 다른 API를 가리킨다 (.env.example L43-45 주석 참조).
+
 사용법:
     # YAML 설정 파일 기반 (기본)
     python scripts/ingest_knowledge.py
