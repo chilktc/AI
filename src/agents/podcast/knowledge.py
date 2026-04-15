@@ -328,16 +328,14 @@ class KnowledgeAgent(BaseAgent):
             return {"articles": [], "guidelines": []}
 
         try:
-            # 1. Parser: 쿼리 전처리 (선택적 — 미설정 시 원본 쿼리 사용)
-            parsed_query = await self._parse_query(query)
-
-            # 2. Embedding: 벡터 변환
-            vector = await self._embed_query(parsed_query)
+            # 1. Embedding: 벡터 변환 (쿼리 원본 그대로, Passage 모델 사용)
+            # Parser API는 PDF 파싱 전용이므로 텍스트 쿼리에는 사용하지 않음
+            vector = await self._embed_query(query)
             if not vector:
                 self.logger.warning(
-                    "[KnowledgeAgent] 임베딩 실패 — 빈 결과 반환 " "(domain=%s, parsed_len=%d)",
+                    "[KnowledgeAgent] 임베딩 실패 — 빈 결과 반환 " "(domain=%s, query_len=%d)",
                     domain,
-                    len(parsed_query),
+                    len(query),
                 )
                 return {"articles": [], "guidelines": []}
 
@@ -705,7 +703,6 @@ class KnowledgeAgent(BaseAgent):
             return []
         finally:
             await client.close()
-
 
     def _build_output(
         self,
