@@ -39,9 +39,9 @@ class KnowledgeAgent(BaseAgent):
         self.embedding_client = embedding_client
 
         # KT Cloud RAG Suite 설정 (search() 메서드에서 사용)
-        # Parser: 쿼리 전처리/정제
-        self.parser_endpoint = os.getenv("KT_CLOUD_KNOWLEDGE_PARSER_ENDPOINT", "")
-        self.parser_token = os.getenv("KT_CLOUD_KNOWLEDGE_PARSER_TOKEN", "")
+        # Parser: 쿼리 전처리/정제 (운영 시크릿은 PARSE_* 이름으로 등록되어 있어 맞춰 사용)
+        self.parser_endpoint = os.getenv("KT_CLOUD_KNOWLEDGE_PARSE_ENDPOINT", "")
+        self.parser_token = os.getenv("KT_CLOUD_KNOWLEDGE_PARSE_TOKEN", "")
         # Embedding (Query): 벡터 분산 변환
         self.kt_embedding_endpoint = os.getenv("KT_CLOUD_KNOWLEDGE_EMBEDDING_QUERY_ENDPOINT", "")
         self.kt_embedding_token = os.getenv("KT_CLOUD_KNOWLEDGE_EMBEDDING_QUERY_TOKEN", "")

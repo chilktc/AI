@@ -5,6 +5,11 @@
   - Pinecone 인덱스 미생성 시 **개발자3가 직접 생성** (이전에 수행 경험 있음, Episode Memory 인덱스와 동일 스펙)
   - D2 (MEMORY.md 업데이트) 제외
   - 모든 단계 **리뷰 진행 필수** (코드 수정 / PR / 시크릿 / 인덱스 생성 / 재검증 각 단계별)
+**개정**: 2026-04-15 16:10 — SSM 재검증 후 방향 전환
+  - PR #149 `PARSER_*`로 revert 적용 → 배포 후 컨테이너 env 확인 결과 **값이 빈 문자열**(0 chars)
+  - GitHub Secrets 실제 등록 네이밍은 `KT_CLOUD_KNOWLEDGE_PARSE_*` (E 하나)로 확인됨
+  - 사용자 결정: **시크릿 네이밍(PARSE_*)에 맞춰 코드/배포 정렬** (PR #148 방향이 운영과 정합)
+  - 후속 PR(feature/validation-knowledge-parse-secret-align)에서 `knowledge.py`/`deploy.yml`/`.env.example` 모두 `PARSE_*`로 통일
 **작성자**: 개발자3 (feature/validation-*)
 **기반 근거**:
 - `docs/superpowers/plans/2026-04-15-pr145-knowledge-rag-followup.md` (원저자 지침)
