@@ -564,10 +564,11 @@ class PodcastReasoningAgent(BaseAgent):
 
         if needs_knowledge or complexity >= 0.5:
             self.logger.info("Knowledge Agent 조건부 호출 (complexity=%.2f)", complexity)
-            return await self.knowledge_agent.search(
+            result = await self.knowledge_agent.search(
                 query=user_input,
                 domain="mental_health",
             )
+            return cast("dict[str, Any]", result)
 
         return None
 

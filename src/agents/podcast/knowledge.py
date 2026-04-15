@@ -301,7 +301,7 @@ class KnowledgeAgent(BaseAgent):
         self,
         query: str,
         domain: str = "mental_health",
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         KT Cloud RAG Suite + Pinecone을 통한 전문 지식 검색.
 
