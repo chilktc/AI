@@ -79,7 +79,7 @@ def main() -> None:
     from pinecone import Pinecone
 
     pc = Pinecone(api_key=api_key)
-    required = ["expert-knowledge", "mem-podcast-episode"]
+    required = ["rag-suite-knowledge", "mem-podcast-episode"]
     results: list[bool] = []
 
     print("=== 1. API 연결 ===")

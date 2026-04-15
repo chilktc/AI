@@ -10,27 +10,46 @@
 
 ---
 
-## 현재 완료 현황 (2026-04-09 업데이트)
+## 현재 완료 현황 (2026-04-15 16:50 재정합)
+
+> **⚠️ 방향 전환 공지 (2026-04-15)**: 본 계획서는 초기(2026-04-07) **Amazon Bedrock Titan Embeddings v2** 기준으로 설계되었으나,
+> 2026-04-15 기준 실제 구현은 **KT Cloud Embedding Passage/Query API + Qwen3-32B TextGen** 으로 확정되었다(PR #145/#146/#150).
+> 따라서 Task 2(BedrockEmbeddingClient)는 **폐기**, Task 5/6/7/9는 KT Cloud 기반으로 **재설계 필요**.
 
 | Task | 상태 | PR | 비고 |
 |------|------|-----|------|
 | Task 1: 환경변수 검증 스크립트 | ✅ 완료 | #64 | `validate_pinecone_env.py` 작성, 테스트 5개 통과 |
-| Task 2: BedrockEmbeddingClient | ❌ 미완료 | — | 미구현 — 팩토리 연동 포함 |
+| Task 2: BedrockEmbeddingClient | ⛔ **폐기** | — | KT Cloud Embedding으로 선회(PR #145). 별도 클라이언트 클래스 불필요 — `src/agents/podcast/knowledge.py`가 직접 KT Cloud API 호출 |
 | Task 3: Pinecone 인덱스 생성 스크립트 | ✅ 완료 | #64, #67 | `create_pinecone_indexes.py`, EC2 인덱스 생성 확인. **차원 4096 확정** |
 | Task 4: Pinecone 연결 상태 테스트 스크립트 | ✅ 완료 | #64, #67 | `test_pinecone_connection.py`, EC2 헬스체크 통과 |
-| Task 5: 임베딩 생성 테스트 스크립트 | ❌ 미완료 | — | `test_embedding.py` 미작성 |
-| Task 6: 벡터 저장 → 검색 E2E 테스트 | ❌ 미완료 | — | `test_vector_roundtrip.py` 미작성 |
-| Task 7: 지식 데이터 초기 적재 스크립트 | ❌ 미완료 | — | `ingest_knowledge_base.py` 미작성 |
-| Task 8: 전체 회귀 테스트 | 🔶 일부 완료 | #67 | tests/db/ 59개 통과, 전체 479 passed 유지 |
-| Task 9: 개발자 가이드 | ❌ 미완료 | — | `PINECONE_DEVELOPER_GUIDE.md` 미작성 |
+| Task 5: 임베딩 생성 테스트 스크립트 | 🔶 **재설계 필요** | — | 기존 Bedrock 전제 → **KT Cloud Embedding Query API** 호출 스크립트로 재작성 필요 |
+| Task 6: 벡터 저장 → 검색 E2E 테스트 | 🔶 **재설계 필요** | — | KT Cloud 임베딩 → Pinecone upsert → query E2E 로직으로 재작성 필요 |
+| Task 7: 지식 데이터 초기 적재 스크립트 | ✅ **대체 구현 완료** | #145 | `scripts/ingest_knowledge.py` + `scripts/ingest_config.yaml` (KT Cloud Parser + Embedding Passage + Pinecone upsert). ⚠️ 현재 `domain=personal_counsel` 1건만 적재 설정 — 운영 쿼리(`domain=mental_health`)와 불일치 |
+| Task 8: 전체 회귀 테스트 | 🔶 일부 완료 | #67 | tests/db/ 59개 통과, 전체 594 passed 유지(2026-04-15) |
+| Task 9: 개발자 가이드 | ❌ 미완료 | — | `PINECONE_DEVELOPER_GUIDE.md` 미작성 — **KT Cloud + Pinecone 기준으로 신규 작성 필요** (임베딩 차원 2560 등 실값 반영) |
 
-**추가 완료 (2026-04-09 기준):**
+**추가 완료 (2026-04-15 기준):**
 - EC2 Docker 환경 Pinecone 연결 검증 완료 (PR #65, #66 선행 필요 수정 포함)
 - 인덱스명 하이픈 규칙 적용: `expert-knowledge`, `mem-podcast-episode`
-- `knowledge.py:135` 인덱스명 하드코딩 수정 (`expert_knowledge` → `expert-knowledge`)
+- `knowledge.py` 인덱스명: 기본값 `expert-knowledge` (`PINECONE_INDEX_KNOWLEDGE` 환경변수로 오버라이드)
 - **인덱스 차원 1024 → 4096 변경**: `create_pinecone_indexes.py`, `test_pinecone_connection.py`, `tests/db/test_pinecone_*.py` 일괄 수정 완료
+  - ⚠️ 실제 KT Cloud Embedding은 2560차원 반환 가능 — 인덱스 차원 정합성 운영 검증 필요(Plan #47 Phase 4)
 - **Pinecone DB 연결 완료**: EC2 환경에서 실제 인덱스 생성 및 연결 확인
-- **PR #85(feature/agents-gaeun) 머지 완료** (2026-04-08 07:54): EpisodeMemoryAgent._save_to_store() 실제 구현 반영. EpisodeMemory 저장 트리거 구현은 Plan #23 즉시 실행 가능
+- **PR #85(feature/agents-gaeun) 머지 완료** (2026-04-08 07:54): EpisodeMemoryAgent._save_to_store() 실제 구현 반영. EpisodeMemory 저장 트리거 구현은 Plan #23 완료
+- **KT Cloud RAG Suite 통합 완료** (PR #145, 2026-04-15): Document Parse API, Embedding Passage/Query API, Qwen3-32B TextGen 연동. `scripts/ingest_knowledge.py` + `scripts/ingest_config.yaml` 적재 파이프라인 완성
+- **KnowledgeAgent 임계값 외부화** (PR #146): `pinecone_score_threshold`, `pinecone_top_k` settings.yaml 외부화
+- **KnowledgeAgentStub 정식 제거** (PR #147): 실제 KnowledgeAgent로 fallback 전환
+- **환경변수 네이밍 정합** (PR #148~#150): `KT_CLOUD_KNOWLEDGE_PARSE_*`로 통일 (GitHub Secrets 정합)
+- **RAG 결과 파이프라인 연결** (PR #151): Reasoning phase별 주입, ScriptGenerator state 키 정합, 관측성 경고 추가
+
+### 잔여 과제 — 운영 필수/선택 구분
+
+| 구분 | 항목 | 블로커 여부 |
+|------|------|-----------|
+| **운영 필수(데이터)** | `ingest_config.yaml`에 `domain=mental_health` 문서 추가 및 `scripts/ingest_knowledge.py` 실행 | ★ 필수 — Plan #47 Phase 4 `articles_count ≥ 1` 검증의 선행 조건 |
+| **운영 선택(CLI)** | Task 5 `test_embedding.py` (KT Cloud 기반) | 선택 — 개발자 CLI |
+| **운영 선택(CLI)** | Task 6 `test_vector_roundtrip.py` (KT Cloud 기반) | 선택 — 개발자 CLI |
+| **운영 선택(문서)** | Task 9 `PINECONE_DEVELOPER_GUIDE.md` (KT Cloud 기준) | 선택 — 개발자 온보딩용 |
 
 ---
 
