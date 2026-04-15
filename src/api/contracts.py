@@ -10,7 +10,7 @@ API 모델은 변경될 수 있으므로 유연하게 설계한다.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 

@@ -11,7 +11,7 @@ total=False 설정으로 모든 필드는 선택적이며, 에이전트 노드�
 
 from __future__ import annotations
 
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal, Optional
 
 from typing_extensions import TypedDict
 

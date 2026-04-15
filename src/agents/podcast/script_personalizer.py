@@ -297,15 +297,17 @@ class ScriptPersonalizerAgent(BaseAgent):
             if host_title in PERSONA_STRATEGY_MAP:
                 persona_cfg = PERSONA_STRATEGY_MAP[host_title]
                 self.logger.info(f"[ScriptPersonalizer] Applying host persona: {host_title}")
-                
+
                 # 페르소나 설정으로 덮어쓰기 (우선순위 1등)
                 strategy["formality"] = persona_cfg.get("formality", strategy["formality"])
                 strategy["attitude"] = persona_cfg.get("attitude", strategy["attitude"])
-                
+
                 # 프롬프트 전달용 메타데이터 저장
                 strategy["host_info"] = {
                     "title": host_title,
-                    "description": stories_context.get("description", persona_cfg.get("description")),
+                    "description": stories_context.get(
+                        "description", persona_cfg.get("description")
+                    ),
                     "keywords": stories_context.get("keywords", persona_cfg.get("keywords")),
                 }
 
@@ -471,7 +473,8 @@ Emotional Journey:
 - Persona: {host_info['title']}
 - Description: {host_info['description']}
 - Style Keywords: {", ".join(host_info['keywords'])}
-- Instruction: 이야기할 때 위 호스트의 성격과 말투를 완벽하게 연기하세요. '친근한 존댓말'을 기본으로 하되, 호스트의 개성이 드러나야 합니다.
+- Instruction: 이야기할 때 위 호스트의 성격과 말투를 완벽하게 연기하세요.
+  '친근한 존댓말'을 기본으로 하되, 호스트의 개성이 드러나야 합니다.
 """
 
         user_prompt = self._prompt_loader.load_user_prompt("podcast", "script_personalizer")
