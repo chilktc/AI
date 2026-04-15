@@ -85,7 +85,11 @@ async def test_fan_out_emits_all_events() -> None:
 
 @pytest.mark.asyncio
 async def test_podcast_crisis_emits_crisis_event() -> None:
-    """CRISIS 시 crisis_detected + tier_end(status=crisis) 이벤트가 발행된다."""
+    """CRISIS 시 crisis_detected 이벤트 + tier_end(status=tier2) + next_step=tier2.
+
+    신규 아키텍처(2026-04-15): CRISIS도 TIER 2~4를 정상 진행한다.
+    cancel_event를 발행하지 않고 TIER 2~4 에이전트가 내부 CRISIS 폴백으로 처리.
+    """
     emitted: list[dict] = []
 
     def mock_writer(event: Any) -> None:
@@ -116,8 +120,8 @@ async def test_podcast_crisis_emits_crisis_event() -> None:
     assert crisis_events[0]["risk_level"] == 4
 
     tier_ends = [e for e in emitted if e.get("event") == "tier_end"]
-    assert tier_ends[0]["status"] == "crisis"
-    assert result["next_step"] == "crisis_response"
+    assert tier_ends[0]["status"] == "tier2"
+    assert result["next_step"] == "tier2"
 
 
 # === compile_graph 헬퍼 테스트 ===

@@ -44,6 +44,13 @@ class ScriptGeneratorAgent(BaseAgent):
         safety_status: str = str(safety_flags.get("status", "safe"))
         required_in_script: list[Any] = list(safety_flags.get("required_in_script", []))
 
+        # CRISIS 폴백 — LLM 미호출, CRISIS 하드코딩 script_draft 반환
+        if safety_status == "crisis":
+            from src.agents.shared.safety_constants import CRISIS_FALLBACK_VALUES
+
+            self.logger.info("[ScriptGenerator] CRISIS 폴백 — LLM 미호출")
+            return {"script_draft": CRISIS_FALLBACK_VALUES["script_draft"]}
+
         # 입력 데이터 추출 (content_analysis 등 이전 단계 결과 반영)
         content_analysis: dict[str, Any] = cast(dict[str, Any], state.get("content_analysis", {}))
         if not content_analysis:

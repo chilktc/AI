@@ -75,6 +75,13 @@ class BatchValidatorAgent(BaseAgent):
         emotion_vectors = state.get("emotion_vectors", {})
         iteration_count = state.get("iteration_count", 0)
 
+        # CRISIS 폴백 — LLM 미호출, auto-PASS 반환
+        if safety_flags.get("status") == "crisis":
+            from src.agents.shared.safety_constants import CRISIS_FALLBACK_VALUES
+
+            self.logger.info("[BatchValidator] CRISIS 폴백 — 자동 PASS")
+            return {"validation_result": CRISIS_FALLBACK_VALUES["validation_result"]}
+
         # 빈 스크립트 조기 반환 — LLM 호출 절약
         if not script_draft:
             self.logger.warning(

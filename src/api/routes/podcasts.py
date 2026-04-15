@@ -34,6 +34,7 @@ from src.api.external_schemas import (
     SafetyAlertData,
     SlimPodcastResponse,
 )
+from src.api.stories_store import stories_store
 from src.utils.logger import get_agent_logger
 
 logger = get_agent_logger("routes.podcasts")
@@ -313,6 +314,13 @@ async def create_podcast_episode(
     except Exception as e:
         logger.error("[Podcast] 파이프라인 오류", exc_info=True)
         raise e
+
+    # CRISIS 완료 후 StoriesStore 정리:
+    # TIER 4 (wait_for_stories_node)가 CRISIS 경로에서도 실행되지만,
+    # CRISIS 폴백은 stories 이벤트를 발행하지 않으므로 고아 엔트리가 남을 수 있다.
+    # 파이프라인 완료 후 멱등 삭제로 정리 (없으면 무시).
+    if final_state.get("safety_flags", {}).get("status") == "crisis":
+        stories_store.delete_session(request.session_id)
 
     elapsed_ms = int((time.monotonic() - start_time) * 1000)
 
