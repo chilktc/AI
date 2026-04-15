@@ -70,7 +70,7 @@
   # 결과: 529 커밋 (2026-04-15 기준, 계획 작성 시 441 → 88개 증가)
   ```
 
-- [ ] **Step 3: 로컬 백업 번들 생성** (force-push 실행 직전 생성)
+- [x] **Step 3: 로컬 백업 번들 생성** (2026-04-16 완료)
 
   ```bash
   cd <레포 상위 디렉토리>
@@ -79,7 +79,9 @@
   # Expected: 파일 크기 > 0
   ```
 
-- [ ] **Step 4: 제거 패턴 파일 생성 (expressions.txt)**
+  **결과**: `/tmp/mind-log-backup-20260416.bundle` (11MB) 생성 완료
+
+- [x] **Step 4: 제거 패턴 파일 생성 (expressions.txt)**
 
   작업 디렉토리(레포 외부)에 생성:
   ```bash
@@ -139,17 +141,17 @@
 
 > **별도 클린 클론에서 실행** — 기존 작업 디렉토리 오염 방지
 
-- [ ] **Step 1: 미러 클론 생성**
+- [x] **Step 1: 미러 클론 생성** (2026-04-16 완료)
 
   ```bash
   cd /tmp
-  git clone --mirror https://github.com/chilktc/AI mind-log-mirror
-  cd mind-log-mirror
-  ls
-  # Expected: HEAD, config, objects/, refs/ 등 bare repo 구조
+  git clone --mirror /tmp/mind-log-backup-20260416.bundle mind-log-mirror
   ```
 
-- [ ] **Step 2: filter-repo 실행**
+  > 백업 번들에서 클론 (GitHub 직접 클론 대신 번들 활용)
+  > 현재 상태: `/tmp/mind-log-mirror` 존재
+
+- [x] **Step 2: filter-repo 실행** (2026-04-16 완료, 2차 시도)
 
   ```bash
   cd /tmp/mind-log-mirror
@@ -159,37 +161,47 @@
   > `--force` 필수: mirror clone에는 remote가 설정되어 있어 생략하면 실행 거부됨
   > filter-repo 완료 후 origin remote가 자동 삭제됨 (정상)
 
-  Expected: 진행 상황 출력, 완료 메시지.
-  > 실행 시간: 441커밋 기준 수 분 소요 예상
+  **⚠️ 1차 시도 실패 사유 및 수정**: `expressions.txt`에 `#` 주석 줄이 포함되어 있었음.
+  git-filter-repo는 `--replace-text` 파일에서 `#`로 시작하는 줄을 주석으로 처리하지 않고
+  리터럴 패턴으로 인식. 빈 `#` 줄이 Python의 모든 `#` 주석을 `***REMOVED***`로 오염시킴.
+  **수정**: `expressions.txt`를 주석 없이 6개 패턴만 남기고 재작성 후 미러 재생성 → 재실행.
 
-- [ ] **Step 3: 결과 검증 — 패턴 잔존 여부 확인**
+  **실행 결과**: 529 커밋 파싱 → `Completely finished after 0.23 seconds.`
+
+- [x] **Step 3: 결과 검증 — 패턴 잔존 여부 확인** (2026-04-16 완료)
 
   ```bash
   cd /tmp/mind-log-mirror
-  # 각 패턴이 완전히 제거되었는지 확인
-  git log --all -S "kt_cctc5n6h10bzzwhdhrpsopw4tiwr0yvz59f270tuhy1tl54pwr18swmcvmzajsg8e" --oneline
-  # Expected: 출력 없음 (0 커밋)
-
-  git log --all -S "mindlog_pass" --oneline
-  # Expected: 출력 없음
-
-  git log --all -S "${BACKEND_HOST}" --oneline
-  # Expected: 출력 없음
+  git grep "kt_cctc5n6h10bzzwhdhrpsopw4tiwr0yvz59f270tuhy1tl54pwr18swmcvmzajsg8e" $(git rev-list --all)
+  # 결과: 0건
+  git grep "no753ozr79oq.proxy.aifoundry.ktcloud.com" $(git rev-list --all)
+  # 결과: 0건
+  git grep "t7-mindlog-prod-alb-1834710625" $(git rev-list --all)
+  # 결과: 0건
+  git grep "mindlog_pass" $(git rev-list --all)
+  # 결과: 0건
+  git grep "mindlog_root" $(git rev-list --all)
+  # 결과: 0건
+  git grep "mindlog_neo4j" $(git rev-list --all)
+  # 결과: 0건
   ```
 
-  패턴이 남아있으면 **Step 2로 돌아가서 재실행**.
+  **✅ 6개 패턴 전부 제거 확인. Python `#` 주석 정상 (safety_constants.py, workflow.py, base_agent.py 확인).**
 
-- [ ] **Step 4: 최신 커밋 내용 무결성 확인**
+- [x] **Step 4: 최신 커밋 내용 무결성 확인** (2026-04-16 완료)
 
   ```bash
   cd /tmp/mind-log-mirror
-  # main, develop 최신 커밋의 핵심 파일이 올바른지 확인
-  git show HEAD:src/api/client.py | grep -c "session_id"
-  # Expected: > 0 (파일 내용 정상)
-
+  git show HEAD:src/agents/shared/safety_constants.py | head -20
+  # 결과: Python # 주석 정상, 한글 주석 정상
+  git show HEAD:src/graph/workflow.py | head -15
+  # 결과: docstring 및 주석 정상
   git log --oneline -5
-  # Expected: 커밋 메시지가 정상 (영향받은 커밋의 해시는 변경됨)
   ```
+
+  **구 커밋(83e99d8) docker-compose.db.yml 확인**: `mindlog_pass` → `DB_PASS_REMOVED`, `mindlog_root` → `DB_ROOT_REMOVED`, `mindlog_neo4j` → `DB_NEO4J_REMOVED` ✅
+
+  **원격 등록**: `git remote add origin https://github.com/chilktc/AI.git` 완료
 
 ---
 
@@ -367,5 +379,5 @@ git push --force --tags
 ---
 
 *작성: 2026-04-13*
-*최종 점검: 2026-04-15 17:30 — 사전 조건 5/8 충족, 드라이런 완료, expressions.txt 준비됨. 미충족: 3인 합의, KT Cloud 토큰 로테이션, 팀 공지*
+*최종 점검: 2026-04-16 — Task 1/2 완료. 미러 `/tmp/mind-log-mirror` 준비 완료. force-push 대기 중 (3인 합의 + KT Cloud 토큰 로테이션 후 Task 3 진행)*
 *기반 문서: `docs/SECURITY_REMEDIATION_TRACKER.md`, `docs/_archive/plans/2026-04-06-aws-env-remediation.md` Phase 5*
