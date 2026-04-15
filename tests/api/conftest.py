@@ -122,3 +122,53 @@ def make_pipeline_result(**overrides: Any) -> dict[str, Any]:
     result = _make_default_pipeline_result()
     result.update(overrides)
     return result
+
+
+def make_crisis_pipeline_result(**overrides: Any) -> dict[str, Any]:
+    """CRISIS 판정 시 파이프라인이 반환하는 state 구조 (신규 아키텍처).
+
+    TIER 1 완료 후 TIER 2~4가 CRISIS 폴백으로 실행된 결과:
+    - final_output: 유효한 JSON (PersonalizedScript, ep_crisis_ prefix)
+    - safety_flags.status: "crisis"
+    - visual_data.image_url: non-empty placeholder URL
+    - validation_result.verdict: "PASS" (auto-pass)
+    """
+    import uuid as _uuid
+
+    from src.agents.shared.safety_constants import (
+        CRISIS_FALLBACK_VALUES,
+        SAFETY_MESSAGES,
+    )
+    from src.models.schemas import PersonalizationMeta, PersonalizedScript
+
+    crisis_episode_id = f"ep_crisis_{_uuid.uuid4().hex[:12]}"
+    crisis_script = PersonalizedScript(
+        episode_id=crisis_episode_id,
+        episode_title="마음 돌봄 안내",
+        total_duration=0,
+        script_text=SAFETY_MESSAGES["crisis"],
+        tts_markers=[],
+        key_insights=[],
+        themes=[],
+        personalization_meta=PersonalizationMeta(attitude_applied="crisis"),
+    )
+
+    result: dict[str, Any] = {
+        "final_output": crisis_script.model_dump_json(),
+        "safety_flags": {
+            "status": "crisis",
+            "risk_level": 4,
+            "risk_score": 0.95,
+            "required_in_script": [SAFETY_MESSAGES["crisis"]],
+        },
+        "risk_level": 4,
+        "risk_score": 0.95,
+        "next_step": "tier2",
+        "script_draft": CRISIS_FALLBACK_VALUES["script_draft"],
+        "visual_data": CRISIS_FALLBACK_VALUES["visual_data"],
+        "validation_result": CRISIS_FALLBACK_VALUES["validation_result"],
+        "intent": {"intent_type": "unknown", "complexity_score": 0.0},
+        "session_id": "sess_test123",
+    }
+    result.update(overrides)
+    return result

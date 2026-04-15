@@ -331,16 +331,12 @@ async def tier1_podcast_fan_out(state: AgentState) -> dict[str, Any]:
             elapsed_ms = int((time.monotonic() - tier_start) * 1000)
 
             if name == "safety" and result.get("safety_flags", {}).get("status") == "crisis":
-                cancel_reason["reason"] = "CRISIS 선점"
-                cancel_event.set()
-
-                # CRISIS 상태를 partial_results에 먼저 저장 (타임아웃 경합 방지)
-                # _safety_deep_crisis() 실행 중 타임아웃 발생 시에도
-                # partial_results에 next_step이 보존되어 crisis_response로 라우팅됨
-                partial_results["safety_flags"] = result.get("safety_flags", {})
-                partial_results["risk_level"] = result.get("risk_level", 4)
-                partial_results["risk_score"] = result.get("risk_score", 1.0)
-                partial_results["next_step"] = "crisis_response"
+                # CRISIS 감지 — 파이프라인 계속 진행 (cancel_event 미발행)
+                # emotion, content_analyzer, podcast_reasoning은 LLM 포함 정상 실행
+                # TIER 2~4는 safety_flags.status="crisis"를 감지해 LLM 미호출로 처리
+                cancel_reason["reason"] = "CRISIS 감지 — TIER 1 계속 실행"
+                partial_results.update(result)
+                partial_results["next_step"] = "tier2"  # crisis_response 아닌 tier2 진행
 
                 writer(
                     {
@@ -351,17 +347,16 @@ async def tier1_podcast_fan_out(state: AgentState) -> dict[str, Any]:
                         "elapsed_ms": elapsed_ms,
                     }
                 )
-                deep_result = await _safety_deep_crisis(result)
                 writer(
                     {
-                        "event": "tier_end",
+                        "event": "agent_complete",
                         "tier": 1,
-                        "mode": "podcast",
-                        "status": "crisis",
-                        "elapsed_ms": int((time.monotonic() - tier_start) * 1000),
+                        "agent": "safety",
+                        "elapsed_ms": elapsed_ms,
+                        "progress": f"{completed_count}/{len(agent_names)}",
                     }
                 )
-                return {**deep_result, "next_step": "crisis_response"}
+                continue  # 나머지 에이전트 완료 대기 (fall-through 방지)
 
             writer(
                 {
@@ -383,10 +378,10 @@ async def tier1_podcast_fan_out(state: AgentState) -> dict[str, Any]:
         cancel_event.set()
         merged = partial_results
 
-        if merged.get("next_step") == "crisis_response":
+        if merged.get("safety_flags", {}).get("status") == "crisis":
             logger.warning(
-                "[TIER 1] 타임아웃 (%ds) — CRISIS 감지 상태에서 타임아웃 발생,"
-                " 위기 응답 노드로 전환",
+                "[TIER 1] 타임아웃 (%ds) — CRISIS 감지 상태에서 타임아웃,"
+                " 부분 결과로 TIER 2~4 진행 (CRISIS 폴백 적용)",
                 _TIER1_TIMEOUT,
             )
         else:
@@ -471,13 +466,14 @@ def route_after_tier0(state: AgentState) -> str:
 
 def route_after_tier1(state: AgentState) -> str:
     """
-    TIER 1 이후 라우터: CRISIS 여부 확인.
+    TIER 1 이후 라우터: 항상 TIER 2로 진행.
+
+    CRISIS 판정 시에도 TIER 2→3→4를 통과하며, 각 에이전트 내부에서
+    safety_flags.status="crisis"를 감지해 LLM 미호출 + CRISIS 하드코딩 값을 반환.
 
     Returns:
-        "crisis_response" | "tier2"
+        "tier2" (항상)
     """
-    if state.get("next_step") == "crisis_response":
-        return "crisis_response"
     return "tier2"
 
 
@@ -554,8 +550,22 @@ async def wait_for_stories_node(state: AgentState) -> dict[str, Any]:
 
     _STORIES_WAIT_TIMEOUT(settings.stories.wait_timeout_seconds, 기본 300초) 동안 대기한다.
     타임아웃 시 next_step: 'stories_timeout'을 반환하여 에러 노드로 라우팅된다.
+
+    CRISIS 예외: safety_flags.status="crisis"이면 프론트가 Stories 데이터를 발행하지 않으므로
+    대기 없이 즉시 TIER 4로 진행한다. 이 경로는 ScriptPersonalizer의 CRISIS 폴백이 즉시
+    final_output(ep_crisis_xxx)을 생성하도록 한다.
     """
     session_id = state.get("session_id", "")
+
+    # CRISIS 바이패스 — stories 대기 없이 즉시 통과
+    if state.get("safety_flags", {}).get("status") == "crisis":
+        logger.info(
+            "[WaitForStories] CRISIS 바이패스 — session_id=%s (stories 대기 생략)",
+            session_id,
+        )
+        stories_store.delete_session(session_id)
+        return {"next_step": ""}
+
     logger.info(
         "[WaitForStories] 대기 시작 — session_id=%s, timeout=%ds",
         session_id,

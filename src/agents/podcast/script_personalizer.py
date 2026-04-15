@@ -84,6 +84,40 @@ class ScriptPersonalizerAgent(BaseAgent):
         """
         start_time = datetime.now()
 
+        # CRISIS 폴백 — 모든 LLM/프로필 호출 없이 CRISIS PersonalizedScript JSON 반환
+        # 이 반환값이 _build_episode_data()에서 json.loads()되어 episode_id="ep_crisis_xxx"로 파싱됨
+        safety_flags: dict = state.get("safety_flags", {})
+        if safety_flags.get("status") == "crisis":
+            from src.agents.shared.safety_constants import SAFETY_MESSAGES
+
+            crisis_episode_id = f"ep_crisis_{uuid.uuid4().hex[:12]}"
+            crisis_script = PersonalizedScript(
+                episode_id=crisis_episode_id,
+                episode_title="마음 돌봄 안내",
+                total_duration=0,
+                script_text=SAFETY_MESSAGES["crisis"],
+                tts_markers=[],
+                key_insights=[],
+                themes=[],
+                personalization_meta=PersonalizationMeta(
+                    applied_style={},
+                    adjusted_segments=[],
+                    attitude_applied="crisis",
+                ),
+            )
+            self.logger.info("[ScriptPersonalizer] CRISIS 폴백 — episode_id=%s", crisis_episode_id)
+            return {
+                "final_output": crisis_script.model_dump_json(),
+                "memory_write": False,
+                "memory_text": "",
+                "memory_metadata": {
+                    "user_id": state.get("user_id", ""),
+                    "session_id": state.get("session_id", ""),
+                    "episode_id": crisis_episode_id,
+                    "episode_title": "마음 돌봄 안내",
+                },
+            }
+
         try:
             user_id = state.get("user_id", "anonymous")
 

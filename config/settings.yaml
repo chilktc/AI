@@ -206,6 +206,13 @@ prompts:
     visualization: "1.19.0"      # JSON-only 응답 강제 지시 추가 (파싱 실패 대응)
 
 
+# CRISIS 폴백 설정
+# Visualization 이미지 미생성 시 episode 저장에 사용할 placeholder URL
+# 백엔드에서 image_url 필수 검증으로 인해 빈 값 불가
+crisis:
+  fallback_image_url: "https://mindlog-images.s3.amazonaws.com/vis/crisis_placeholder.png"
+
+
 # [보안] PII(개인식별정보) 정제 설정
 # [보안 담당자 참고] 프로덕션에서는 반드시 true 유지
 # 정제 패턴은 src/agents/shared/output_sanitizer.py에서 관리

@@ -131,6 +131,15 @@ class VisualizationAgent(BaseAgent):
         content = state.get("content_analysis", {})
         user_id = state.get("user_id", "anonymous")
 
+        # CRISIS 폴백 — LLM/이미지 생성 미호출, placeholder image_url 반환
+        # 백엔드 ingest_podcast_episodes()는 image_url 필수 → 빈 문자열 불가
+        safety_flags: dict = state.get("safety_flags", {})
+        if safety_flags.get("status") == "crisis":
+            from src.agents.shared.safety_constants import CRISIS_FALLBACK_VALUES
+
+            logger.info("[Visualization] CRISIS 폴백 — 이미지 생성 미호출")
+            return {"visual_data": CRISIS_FALLBACK_VALUES["visual_data"]}
+
         # 1. [기획] 이미지 프롬프트 생성 (settings.yaml의 visualization.model 사용)
         system_prompt = self.get_prompt("system_prompt")
         user_context = (

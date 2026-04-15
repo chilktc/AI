@@ -162,8 +162,16 @@ def mock_podcast_nodes(monkeypatch):
 
 @pytest.fixture
 def mock_crisis_nodes(monkeypatch):
-    """CRISIS 시나리오 노드 mock."""
+    """CRISIS 시나리오 노드 mock (신규 아키텍처 — TIER 2~4 CRISIS 폴백 반환).
+
+    기존 아키텍처에서는 CRISIS 시 TIER 2~4를 스킵했으나, 신규 아키텍처에서는
+    TIER 2~4가 전부 실행되고 내부에서 LLM 미호출 + CRISIS 하드코딩 값을 반환한다.
+    """
+    import json as _json
+    import uuid as _uuid
+
     import src.graph.workflow as wf
+    from src.agents.shared.safety_constants import CRISIS_FALLBACK_VALUES, SAFETY_MESSAGES
 
     monkeypatch.setattr(
         wf,
@@ -182,23 +190,51 @@ def mock_crisis_nodes(monkeypatch):
         "podcast_reasoning_node",
         AsyncMock(return_value=MOCK_REASONING_PODCAST),
     )
+    # TIER 2~4: 신규 아키텍처 — CRISIS 폴백 반환
     monkeypatch.setattr(
         wf,
         "script_generator_node",
-        AsyncMock(side_effect=AssertionError("CRISIS 시 TIER 2는 실행되면 안 됨")),
+        AsyncMock(return_value={"script_draft": CRISIS_FALLBACK_VALUES["script_draft"]}),
+    )
+    monkeypatch.setattr(
+        wf,
+        "visualization_node",
+        AsyncMock(return_value={"visual_data": CRISIS_FALLBACK_VALUES["visual_data"]}),
     )
     monkeypatch.setattr(
         wf,
         "batch_validator_node",
-        AsyncMock(side_effect=AssertionError("CRISIS 시 TIER 3는 실행되면 안 됨")),
+        AsyncMock(return_value={"validation_result": CRISIS_FALLBACK_VALUES["validation_result"]}),
+    )
+    # script_personalizer_node: CRISIS PersonalizedScript JSON 반환
+    crisis_final_output = _json.dumps(
+        {
+            "episode_id": f"ep_crisis_{_uuid.uuid4().hex[:12]}",
+            "episode_title": "마음 돌봄 안내",
+            "total_duration": 0,
+            "script_text": SAFETY_MESSAGES["crisis"],
+            "tts_markers": [],
+            "key_insights": [],
+            "themes": [],
+            "personalization_meta": {
+                "applied_style": {},
+                "adjusted_segments": [],
+                "attitude_applied": "crisis",
+            },
+        },
+        ensure_ascii=False,
     )
     monkeypatch.setattr(
         wf,
         "script_personalizer_node",
-        AsyncMock(side_effect=AssertionError("CRISIS 시 TIER 4는 실행되면 안 됨")),
+        AsyncMock(return_value={"final_output": crisis_final_output}),
     )
-    monkeypatch.setattr(wf, "visualization_node", AsyncMock(return_value=MOCK_VISUALIZATION))
     monkeypatch.setattr(wf, "learning_node", AsyncMock(return_value={}))
+    monkeypatch.setattr(
+        wf.stories_store,
+        "wait_for_stories",
+        AsyncMock(return_value={"keywords": [], "title": "mock", "description": "mock"}),
+    )
 
 
 # ====================================================================
@@ -270,16 +306,28 @@ async def test_podcast_e2e_full(mock_podcast_nodes, podcast_initial_state):
 
 @pytest.mark.asyncio
 async def test_crisis_e2e_full(mock_crisis_nodes, crisis_initial_state):
-    """CRISIS E2E: final_output 즉시 생성 + TIER 2~4 스킵 + safety_flags 통합 검증."""
+    """CRISIS E2E (신규 아키텍처): 전 파이프라인 실행 + TIER 2~4 CRISIS 폴백 + safety_flags 검증."""
+    import json as _json
+
     from src.graph.workflow import build_unified_graph
 
     final_state = await build_unified_graph().compile().ainvoke(crisis_initial_state)
 
-    # final_output 즉시 생성
-    assert final_state.get("final_output"), "CRISIS인데 final_output 없음"
+    # final_output은 유효한 PersonalizedScript JSON이며 ep_crisis_ 접두사 episode_id를 가진다
+    final_output = final_state.get("final_output", "")
+    assert final_output, "CRISIS인데 final_output 없음"
+    parsed = _json.loads(final_output)
+    assert parsed["episode_id"].startswith("ep_crisis_")
 
-    # TIER 2~4 스킵 (mock에 AssertionError 설정됨)
-    assert not final_state.get("script_draft"), "CRISIS인데 script_draft 존재"
+    # TIER 2~4 CRISIS 폴백 결과 보존
+    sd = final_state.get("script_draft", {})
+    assert sd.get("episode_title") == "마음 돌봄 안내"
+    vd = final_state.get("visual_data", {})
+    assert vd.get("status") == "crisis_fallback"
+    assert vd.get("image_url"), "CRISIS 폴백인데 image_url 빈 값"
+    vr = final_state.get("validation_result", {})
+    assert vr.get("verdict") == "PASS"
+    assert vr.get("forced_pass") is True
 
     # safety_flags에 crisis 상태 기록
     sf = final_state.get("safety_flags", {})
