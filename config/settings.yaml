@@ -86,6 +86,7 @@ agents:
   knowledge:
     model: sonnet
     max_tokens: 2048
+    pinecone_score_threshold: 0.7  # Pinecone 유사도 필터 임계값 (이전: 코드 하드코딩 0.7)
 
   # ──────────────────────────────────────
   # 비동기
