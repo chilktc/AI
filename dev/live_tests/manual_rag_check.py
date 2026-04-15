@@ -1,8 +1,13 @@
+"""수동 실행용 RAG 스모크 스크립트. pytest 비대상. 실 KT Cloud/Pinecone 호출 발생."""
+
 import asyncio
-import os
 import json
+import os
+
 from dotenv import load_dotenv
+
 from src.agents.podcast.knowledge import KnowledgeAgent
+
 
 async def test_rag_flow():
     load_dotenv()

@@ -112,7 +112,9 @@ class ScriptGeneratorAgent(BaseAgent):
                 }
             ]
 
-        knowledge_context: dict[str, Any] = cast(dict[str, Any], state.get("knowledge_context", {}))
+        # AgentState 정의 필드는 knowledge_results (Knowledge Agent 검색 결과).
+        # {"articles": [...], "guidelines": [...]} 구조로 Podcast Reasoning에서 주입된다.
+        knowledge_context: dict[str, Any] = cast(dict[str, Any], state.get("knowledge_results", {}))
 
         # [Change 7] FAIL 재시도 시 이전 검증 피드백 주입
         iteration_count = state.get("iteration_count", 0)
@@ -288,12 +290,39 @@ class ScriptGeneratorAgent(BaseAgent):
         duration_minutes = segment.get("duration_minutes", 2)
         word_count_target = duration_minutes * self.WORDS_PER_MINUTE
 
-        # 지식 요약
+        # 지식 요약 — Knowledge Agent search() 결과 구조 {"articles": [...], "guidelines": []}
+        # 에서 추출.
+        # 우선순위:
+        #   1) articles 중 id="_synthesis"인 합성 기사의 content (TextGen 종합 요약)
+        #   2) 상위 3개 기사의 title + content 발췌 조합
         knowledge_summary = "사용 가능한 전문 지식이 없습니다."
         if knowledge_context and isinstance(knowledge_context, dict):
-            synthesis = knowledge_context.get("knowledge_results", {}).get("synthesis")
-            if synthesis:
-                knowledge_summary = synthesis
+            articles = knowledge_context.get("articles", [])
+            if isinstance(articles, list) and articles:
+                synthesis_article = next(
+                    (a for a in articles if isinstance(a, dict) and a.get("id") == "_synthesis"),
+                    None,
+                )
+                if synthesis_article and synthesis_article.get("content"):
+                    knowledge_summary = str(synthesis_article["content"])
+                else:
+                    snippets: list[str] = []
+                    for a in articles[:3]:
+                        if not isinstance(a, dict):
+                            continue
+                        title = str(a.get("title") or "").strip()
+                        content = str(a.get("content") or "").strip()
+                        if not title and not content:
+                            continue
+                        snippet_body = content[:200] if content else ""
+                        if title and snippet_body:
+                            snippets.append(f"- [{title}] {snippet_body}")
+                        elif title:
+                            snippets.append(f"- [{title}]")
+                        elif snippet_body:
+                            snippets.append(f"- {snippet_body}")
+                    if snippets:
+                        knowledge_summary = "\n".join(snippets)
 
         key_points_text = "\n".join([f"- {kp}" for kp in segment.get("key_points", [])])
 

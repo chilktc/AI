@@ -40,7 +40,7 @@ llm:
       max_attempts: 3           # ThrottlingException/ServiceUnavailableException 재시도 상한
       initial_backoff_seconds: 1
       max_backoff_seconds: 8
-    concurrency_limit: 10       # 동시 Bedrock 호출 상한 (Semaphore)
+    concurrency_limit: 100      # 동시 Bedrock 호출 상한 (Semaphore)
 
   # Circuit Breaker — LLM 프로바이더 장애 시 cascading failure 방지
   circuit_breaker:
@@ -64,7 +64,7 @@ llm:
 agents:
   # TIER 0
   intent_classifier:
-    model: sonnet_37  # Phase 3 검증: c37-sonnet Q=0.910 (5 runs) — c35-sonnet-v2보다 우위
+    model: haiku  # 2026-04-14: sonnet_37 APAC 지연 급증(4.4x)으로 haiku 전환
     max_tokens: 1024
     temperature: 0.3
 
@@ -72,7 +72,7 @@ agents:
   # TIER 1 (병렬)
   # ──────────────────────────────────────
   safety:
-    model: sonnet_37  # Phase 3 최적: c37-sonnet (composite 0.845)
+    model: sonnet  # 2026-04-14: sonnet_37 APAC 지연 급증(16.3x)으로 sonnet 전환
     max_tokens: 2048
     temperature: 0.1
     crisis_threshold: 3  # risk_level >= 3 이면 CRISIS
@@ -86,6 +86,8 @@ agents:
   knowledge:
     model: sonnet
     max_tokens: 2048
+    pinecone_score_threshold: 0.7  # Pinecone 유사도 필터 임계값 (이전: 코드 하드코딩 0.7)
+    pinecone_top_k: 5              # Pinecone top_k (이전: 코드 하드코딩 5)
 
   # ──────────────────────────────────────
   # 비동기
@@ -111,7 +113,7 @@ agents:
     deep_threshold: 0.7      # complexity_score ≥ 이 값 → depth_level "deep"
     moderate_threshold: 0.4  # complexity_score ≥ 이 값 → depth_level "medium" (미만 → "shallow")
   podcast_reasoning:
-    model: sonnet_37  # haiku → sonnet_37: GoT group 6개 카테고리 분류 정확도 향상
+    model: sonnet  # 2026-04-14: sonnet_37 APAC 지연 급증(3.2x)으로 sonnet 전환
     max_tokens: 6000  # 4096 → 6000: group 필드 추가로 출력 증가 대비 (40%+ 마진)
     temperature: 0.3
     full_threshold: 0.0      # complexity ≥ 이 값 → full GoT/ToT/CoT 추론 (0.0=항상 full)
@@ -143,7 +145,7 @@ agents:
   # 팟캐스트모드 TIER 4
   # ──────────────────────────────────────
   script_personalizer:
-    model: sonnet_37  # Phase 3 최적: c37-sonnet (composite 0.745)
+    model: sonnet  # 2026-04-14: sonnet_37 APAC 지연 급증으로 sonnet 전환
     max_tokens: 4096
     deep_personalization: false  # [설정화] script_personalizer.py 하드코딩 대체
 
@@ -201,6 +203,7 @@ prompts:
     content_analyzer: "2.2.0"     # 4-키 emotional_journey (opening/development/climax/closing)
     podcast_reasoning: "3.2.0"    # v3.1.0 + Episode Memory 컨텍스트 주입 (tot/cot 참고 지침)
     batch_validator: "2.3.0"      # Round 4 최적 — 감점 규칙 (avg 0.863±0.006)
+    visualization: "1.19.0"      # JSON-only 응답 강제 지시 추가 (파싱 실패 대응)
 
 
 # [보안] PII(개인식별정보) 정제 설정

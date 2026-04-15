@@ -4,6 +4,11 @@ Knowledge Base PDF 적재 스크립트.
 PDF 문서를 읽어 청킹 → Embedding → Pinecone + Backend RDB에 적재한다.
 EpisodeMemoryAgent의 적재 패턴(Embedding → Pinecone upsert)을 재사용한다.
 
+실행 환경:
+    수동 실행용 스크립트. .env 또는 로컬 export로 환경변수를 주입한다.
+    컨테이너(mindlog-ai-service) 런타임에서는 사용하지 않지만, deploy.yml도
+    동일한 KT_CLOUD_KNOWLEDGE_PARSE_* 시크릿을 주입한다(Runtime·Ingest 공용 네이밍).
+
 사용법:
     # YAML 설정 파일 기반 (기본)
     python scripts/ingest_knowledge.py
@@ -12,14 +17,20 @@ EpisodeMemoryAgent의 적재 패턴(Embedding → Pinecone upsert)을 재사용�
     python scripts/ingest_knowledge.py --config scripts/ingest_config.yaml
 
     # 특정 파일만 적재
-    python scripts/ingest_knowledge.py --pdf scripts/pdfs/cbt_guide.pdf --domain mental_health --title "CBT 기법 가이드"
+    python scripts/ingest_knowledge.py --pdf scripts/pdfs/cbt_guide.pdf \
+        --domain mental_health --title "CBT 기법 가이드"
+
+    # 미리보기(DB/Pinecone 저장 없이 청크만 출력)
+    python scripts/ingest_knowledge.py --dry-run
 
 필요 환경변수 (.env):
-    KT_CLOUD_KNOWLEDGE_EMBEDDING_ENDPOINT  — KT Cloud Embedding API
-    KT_CLOUD_KNOWLEDGE_EMBEDDING_TOKEN     — 인증 토큰
-    PINECONE_API_KEY                       — Pinecone API 키
-    PINECONE_INDEX_KNOWLEDGE               — Pinecone 인덱스명 (기본: expert-knowledge)
-    BACKEND_API_URL                        — Backend API URL (기본: http://localhost:8080/api)
+    KT_CLOUD_KNOWLEDGE_PARSE_ENDPOINT             — Upstage Document Parse API (PDF→MD)
+    KT_CLOUD_KNOWLEDGE_PARSE_TOKEN                — Document Parse 인증 토큰
+    KT_CLOUD_KNOWLEDGE_EMBEDDING_PASSAGE_ENDPOINT — KT Cloud Embedding(Passage) API
+    KT_CLOUD_KNOWLEDGE_EMBEDDING_PASSAGE_TOKEN    — Embedding(Passage) 인증 토큰
+    PINECONE_API_KEY                              — Pinecone API 키
+    PINECONE_INDEX_KNOWLEDGE                      — Pinecone 인덱스명 (기본: expert-knowledge)
+    BACKEND_API_URL                               — Backend API URL (기본: http://localhost:8080/api)
 """
 
 from __future__ import annotations
@@ -55,6 +66,7 @@ DEFAULT_CHUNK_OVERLAP = 50
 # PDF 텍스트 추출
 # ============================================================
 
+
 async def extract_text_from_pdf(pdf_path: str, endpoint: str, token: str) -> list[dict]:
     """Upstage Document Parse API를 사용하여 PDF 텍스트를 마크다운 형태 등 구조화하여 추출한다.
 
@@ -69,10 +81,7 @@ async def extract_text_from_pdf(pdf_path: str, endpoint: str, token: str) -> lis
         with open(pdf_path, "rb") as f:
             # Document Parse 가이드라인에 따른 Request Body
             files = {"document": (Path(pdf_path).name, f, "application/pdf")}
-            data = {
-                "model": "document-parse",
-                "output_formats": '["markdown"]'
-            }
+            data = {"model": "document-parse", "output_formats": '["markdown"]'}
 
             async with httpx.AsyncClient(timeout=300.0) as client:
                 r = await client.post(
@@ -82,10 +91,10 @@ async def extract_text_from_pdf(pdf_path: str, endpoint: str, token: str) -> lis
                     files=files,
                 )
                 r.raise_for_status()
-                
+
                 result = r.json()
                 md_text = result.get("content", {}).get("markdown", "")
-                
+
                 if md_text:
                     return [{"page": 1, "text": md_text}]
                 return []
@@ -97,6 +106,7 @@ async def extract_text_from_pdf(pdf_path: str, endpoint: str, token: str) -> lis
 # ============================================================
 # 청킹
 # ============================================================
+
 
 def chunk_text(
     text: str,
@@ -124,6 +134,7 @@ def make_chunk_id(source: str, page: int, idx: int) -> str:
 # KT Cloud Embedding API
 # ============================================================
 
+
 async def embed_text(text: str, endpoint: str, token: str) -> list[float]:
     """KT Cloud Embedding API(Passage)로 텍스트를 벡터로 변환한다."""
     async with httpx.AsyncClient() as client:
@@ -143,6 +154,7 @@ async def embed_text(text: str, endpoint: str, token: str) -> list[float]:
 # ============================================================
 # Pinecone
 # ============================================================
+
 
 async def get_pinecone_host(index_name: str, api_key: str) -> str:
     """Pinecone 인덱스 호스트를 조회한다."""
@@ -180,6 +192,7 @@ async def upsert_pinecone(
 # Backend RDB 저장
 # ============================================================
 
+
 async def save_to_backend(
     backend_url: str,
     chunk_id: str,
@@ -214,6 +227,7 @@ async def save_to_backend(
 # 문서 1개 적재
 # ============================================================
 
+
 async def ingest_document(
     pdf_path: str,
     domain: str,
@@ -240,7 +254,7 @@ async def ingest_document(
     # 1. Document Parse API 텍스트 추출 (Markdown)
     pages = await extract_text_from_pdf(pdf_path, parse_endpoint, parse_token)
     if not pages:
-        print(f"  ⚠️  텍스트 추출 실패 또는 빈 PDF")
+        print("  ⚠️  텍스트 추출 실패 또는 빈 PDF")
         return {"total_chunks": 0, "success": 0, "failed": 0}
     print(f"  📖 {len(pages)}개 페이지에서 텍스트 추출 완료")
 
@@ -250,11 +264,13 @@ async def ingest_document(
         chunks = chunk_text(page_data["text"], chunk_size, chunk_overlap)
         for idx, chunk_text_str in enumerate(chunks):
             chunk_id = make_chunk_id(source, page_data["page"], idx)
-            all_chunks.append({
-                "chunk_id": chunk_id,
-                "text": chunk_text_str,
-                "page": page_data["page"],
-            })
+            all_chunks.append(
+                {
+                    "chunk_id": chunk_id,
+                    "text": chunk_text_str,
+                    "page": page_data["page"],
+                }
+            )
     print(f"  ✂️  {len(all_chunks)}개 청크 생성")
 
     if dry_run:
@@ -317,13 +333,18 @@ async def ingest_document(
 # 메인
 # ============================================================
 
+
 async def main() -> None:
     parser = argparse.ArgumentParser(description="Knowledge Base PDF 적재 스크립트")
     parser.add_argument("--config", default=DEFAULT_CONFIG, help="YAML 설정 파일 경로")
     parser.add_argument("--pdf", help="단일 PDF 파일 경로 (설정 파일 대신 사용)")
     parser.add_argument("--domain", help="단일 PDF의 domain")
     parser.add_argument("--title", help="단일 PDF의 title")
-    parser.add_argument("--dry-run", action="store_true", help="미리보기 모드 (DB에 저장하지 않고 생성된 청크만 터미널에 출력)")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="미리보기 모드 (DB에 저장하지 않고 생성된 청크만 터미널에 출력)",
+    )
     args = parser.parse_args()
 
     # 환경변수 로드
@@ -360,11 +381,13 @@ async def main() -> None:
         if not args.domain:
             print("❌ --pdf 사용 시 --domain이 필수입니다.")
             sys.exit(1)
-        documents = [{
-            "path": args.pdf,
-            "domain": args.domain,
-            "title": args.title or Path(args.pdf).stem,
-        }]
+        documents = [
+            {
+                "path": args.pdf,
+                "domain": args.domain,
+                "title": args.title or Path(args.pdf).stem,
+            }
+        ]
         chunk_size = DEFAULT_CHUNK_SIZE
         chunk_overlap = DEFAULT_CHUNK_OVERLAP
     else:
@@ -387,7 +410,7 @@ async def main() -> None:
 
     # 적재 실행
     print(f"\n{'='*50}")
-    print(f"📚 Knowledge Base 적재 시작")
+    print("📚 Knowledge Base 적재 시작")
     print(f"  문서 수: {len(documents)}")
     print(f"  청크 크기: {chunk_size}자, 오버랩: {chunk_overlap}자")
     print(f"  Pinecone 인덱스: {pinecone_index}")
@@ -431,7 +454,7 @@ async def main() -> None:
 
     # 결과 출력
     print(f"\n{'='*50}")
-    print(f"📊 적재 완료 요약")
+    print("📊 적재 완료 요약")
     print(f"  전체 청크: {total_stats['total_chunks']}")
     print(f"  성공: {total_stats['success']}")
     print(f"  실패: {total_stats['failed']}")

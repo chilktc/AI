@@ -24,11 +24,11 @@ from __future__ import annotations
 from typing import Any, Literal, cast
 
 from src.agents.shared.base_agent import BaseAgent
-from src.agents.shared.stubs import KnowledgeAgentStub
 from src.models.agent_state import AgentState
 
 # DI fallback — 실제 에이전트 (lazy import로 순환 참조 방지)
 _EpisodeMemoryAgent: type | None = None
+_KnowledgeAgent: type | None = None
 
 
 def _get_episode_memory_agent_class() -> type:
@@ -39,6 +39,16 @@ def _get_episode_memory_agent_class() -> type:
 
         _EpisodeMemoryAgent = EpisodeMemoryAgent
     return _EpisodeMemoryAgent
+
+
+def _get_knowledge_agent_class() -> type:
+    """KnowledgeAgent를 lazy import한다."""
+    global _KnowledgeAgent  # noqa: PLW0603
+    if _KnowledgeAgent is None:
+        from src.agents.podcast.knowledge import KnowledgeAgent
+
+        _KnowledgeAgent = KnowledgeAgent
+    return _KnowledgeAgent
 
 
 # 추론 깊이 타입 — complexity_score에 따라 결정
@@ -59,7 +69,7 @@ class PodcastReasoningAgent(BaseAgent):
 
     Args:
         episode_memory: Episode Memory 에이전트 (DI — 없으면 EpisodeMemoryAgent 사용)
-        knowledge_agent: Knowledge Agent (DI — 없으면 stub 사용)
+        knowledge_agent: Knowledge Agent (DI — 없으면 KnowledgeAgent 사용)
     """
 
     def __init__(
@@ -70,7 +80,7 @@ class PodcastReasoningAgent(BaseAgent):
         super().__init__(name="podcast_reasoning", tier=1)
         # 의존성 주입 — DI 미전달 시 실제 에이전트로 fallback
         self.episode_memory = episode_memory or _get_episode_memory_agent_class()()
-        self.knowledge_agent = knowledge_agent or KnowledgeAgentStub()
+        self.knowledge_agent = knowledge_agent or _get_knowledge_agent_class()()
         self._load_config()
 
     async def process(self, state: AgentState) -> dict[str, Any]:
@@ -463,8 +473,50 @@ class PodcastReasoningAgent(BaseAgent):
                     parts.append("\n".join(lines))
 
         if knowledge_result and knowledge_result.get("articles"):
-            article_count = len(knowledge_result["articles"])
-            parts.append(f"[관련 전문 지식]\n- {article_count}건 발견")
+            articles = knowledge_result["articles"]
+            article_count = len(articles)
+
+            if phase == "GoT":
+                # GoT: 건수만 — 그래프 노드 오염 방지 (memory와 동일 원칙)
+                parts.append(f"[관련 전문 지식]\n- {article_count}건 발견")
+
+            elif phase == "ToT":
+                # ToT: 제목 목록 — 구조 다양성 힌트 (상위 5건까지)
+                lines = ["[관련 전문 지식 — 제목 참고]"]
+                for a in articles[:5]:
+                    title = a.get("title") or "제목 없음"
+                    lines.append(f"- {title}")
+                lines.append(
+                    "→ 위 전문 자료에서 다루는 관점을 대안 생성 시 참고하되, "
+                    "구조 다양성을 유지하세요."
+                )
+                parts.append("\n".join(lines))
+
+            elif phase == "CoT":
+                # CoT: 근거 주입 — _synthesis 기사 우선, 없으면 상위 기사 요약 (상위 3건)
+                lines = ["[관련 전문 지식 — 근거]"]
+                synthesis_article = next(
+                    (a for a in articles if a.get("id") == "_synthesis"),
+                    None,
+                )
+                if synthesis_article:
+                    summary_text = str(synthesis_article.get("content", ""))[:500]
+                    if summary_text:
+                        lines.append(f"[종합 요약]\n{summary_text}")
+                else:
+                    for a in articles[:3]:
+                        title = a.get("title") or "제목 없음"
+                        content = str(a.get("content", ""))[:200]
+                        source = a.get("source") or "출처 불명"
+                        if content:
+                            lines.append(f"\n- [{title}] {content}... (출처: {source})")
+
+                # 헤더만 있고 실제 근거가 없으면 섹션 생략
+                if len(lines) > 1:
+                    lines.append(
+                        "→ 위 전문 자료에 기반하여 근거 있는 스크립트 핵심 메시지를 구성하세요."
+                    )
+                    parts.append("\n".join(lines))
 
         # 이전 phase 결과 — 누적 전달
         if got_result is not None:
@@ -554,10 +606,11 @@ class PodcastReasoningAgent(BaseAgent):
 
         if needs_knowledge or complexity >= 0.5:
             self.logger.info("Knowledge Agent 조건부 호출 (complexity=%.2f)", complexity)
-            return await self.knowledge_agent.search(
+            result = await self.knowledge_agent.search(
                 query=user_input,
                 domain="mental_health",
             )
+            return cast("dict[str, Any]", result)
 
         return None
 
@@ -659,8 +712,7 @@ class PodcastReasoningAgent(BaseAgent):
 async def podcast_reasoning_node(state: AgentState) -> dict[str, Any]:
     """LangGraph 노드 — Podcast Reasoning.
     요청마다 새 인스턴스를 생성하여 동시 요청 간 상태를 격리한다.
+    DI 미전달 시 __init__ 내부에서 실제 KnowledgeAgent/EpisodeMemoryAgent로 fallback 한다.
     """
-    from src.agents.podcast.knowledge import KnowledgeAgent
-
-    agent = PodcastReasoningAgent(knowledge_agent=KnowledgeAgent())
+    agent = PodcastReasoningAgent()
     return await agent(state)

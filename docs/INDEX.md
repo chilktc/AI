@@ -10,8 +10,8 @@ Mind-Log 프로젝트 문서 마스터 네비게이션입니다.
 
 | 문서 | 설명 |
 |------|------|
-| [WHY.md](WHY.md) | **설계 결정과 진화 이력** — 왜 이렇게 구현했는가, 왜 삭제되었는가 |
-| [SECURITY_REMEDIATION_TRACKER.md](SECURITY_REMEDIATION_TRACKER.md) | 보안 후속 조치 추적 (키 로테이션 등 미완료 항목) |
+| [WHY.md](architecture/WHY.md) | **설계 결정과 진화 이력** — 왜 이렇게 구현했는가, 왜 삭제되었는가 |
+| [SECURITY_REMEDIATION_TRACKER.md](reports/SECURITY_REMEDIATION_TRACKER.md) | 보안 후속 조치 추적 (키 로테이션, 미완료 항목) |
 
 ## 시작하기 (Getting Started)
 
@@ -32,6 +32,8 @@ Mind-Log 프로젝트 문서 마스터 네비게이션입니다.
 | [DATA_SCHEMA.md](architecture/DATA_SCHEMA.md) | DB 스키마 (MySQL 7테이블, Pinecone 2인덱스, Neo4j, S3) |
 | [NEO4J_INTEGRATION.md](architecture/NEO4J_INTEGRATION.md) | Neo4j 통합 명세 v1.3 |
 | [VECTOR_DB_RAG_GUIDE.md](architecture/VECTOR_DB_RAG_GUIDE.md) | Pinecone 벡터 DB + RAG 가이드 |
+| [AGENT_INPUT_OUTPUT.md](architecture/AGENT_INPUT_OUTPUT.md) | 에이전트별 입력/출력 예시 (AgentState 데이터 흐름) |
+| [WHY.md](architecture/WHY.md) | 설계 결정과 진화 이력 |
 
 ## 개발 가이드 (Guides)
 
@@ -47,6 +49,8 @@ Mind-Log 프로젝트 문서 마스터 네비게이션입니다.
 |------|------|
 | [PROJECT_DECISIONS.md](reports/PROJECT_DECISIONS.md) | 설계 결정 18개 ADR + 초기 계획 대비 변경사항 |
 | [REFACTORING_LOG.md](reports/REFACTORING_LOG.md) | 리팩토링 이력 (v18까지) |
+| [AGENT_OUTPUT_AUDIT.md](reports/AGENT_OUTPUT_AUDIT.md) | 에이전트 출력 감사 보고서 (12개 에이전트 정합성 검토) |
+| [SECURITY_REMEDIATION_TRACKER.md](reports/SECURITY_REMEDIATION_TRACKER.md) | 보안 후속 조치 추적 |
 
 ## 구현 계획 (Active Plans)
 
@@ -76,4 +80,4 @@ Mind-Log 프로젝트 문서 마스터 네비게이션입니다.
 
 ---
 
-*마지막 업데이트: 2026-04-08*
+*마지막 업데이트: 2026-04-15 10:50*

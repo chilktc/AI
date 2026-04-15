@@ -20,8 +20,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from src.agents.podcast.episode_memory import EpisodeMemoryAgent
+from src.agents.podcast.knowledge import KnowledgeAgent
 from src.agents.podcast.podcast_reasoning import PodcastReasoningAgent
-from src.agents.shared.stubs import KnowledgeAgentStub
 from src.models.agent_state import AgentState
 
 # === 공용 픽스처 ===
@@ -43,7 +43,7 @@ def mock_memory() -> AsyncMock:
 @pytest.fixture
 def mock_knowledge() -> AsyncMock:
     """모의 Knowledge Agent."""
-    mock = AsyncMock(spec=KnowledgeAgentStub)
+    mock = AsyncMock(spec=KnowledgeAgent)
     mock.search.return_value = {
         "articles": [{"id": "art_001", "title": "스트레스 관리 가이드"}],
         "guidelines": ["충분한 수면", "규칙적인 운동"],
@@ -62,7 +62,12 @@ def agent(mock_memory: AsyncMock, mock_knowledge: AsyncMock) -> PodcastReasoning
 
 @pytest.fixture
 def agent_with_stubs() -> PodcastReasoningAgent:
-    """Stub을 사용하는 기본 Podcast Reasoning 인스턴스."""
+    """기본 Podcast Reasoning 인스턴스.
+
+    DI fallback으로 실제 EpisodeMemoryAgent/KnowledgeAgent가 주입된다.
+    내부 헬퍼 메서드(_determine_reasoning_depth, _build_phase_context 등) 테스트 전용.
+    외부 호출이 없는 순수 로직 검증이므로 실제 에이전트 fallback이어도 안전하다.
+    """
     return PodcastReasoningAgent()
 
 
@@ -380,22 +385,22 @@ async def test_execution_plan_forces_di_call(
 
 
 @pytest.mark.parametrize(
-    "use_stubs",
+    "use_default",
     [
-        pytest.param(True, id="default_stubs"),
+        pytest.param(True, id="default_fallback"),
         pytest.param(False, id="custom_agents"),
     ],
 )
 def test_di_injection(
     mock_memory: AsyncMock,
     mock_knowledge: AsyncMock,
-    use_stubs: bool,
+    use_default: bool,
 ) -> None:
-    """DI 인자 없이 생성하면 stub, 있으면 커스텀 에이전트가 주입된다."""
-    if use_stubs:
+    """DI 인자 없이 생성하면 실제 에이전트로 fallback, 있으면 커스텀 에이전트가 주입된다."""
+    if use_default:
         agent = PodcastReasoningAgent()
         assert isinstance(agent.episode_memory, EpisodeMemoryAgent)
-        assert isinstance(agent.knowledge_agent, KnowledgeAgentStub)
+        assert isinstance(agent.knowledge_agent, KnowledgeAgent)
     else:
         agent = PodcastReasoningAgent(
             episode_memory=mock_memory,
@@ -1065,3 +1070,122 @@ def test_build_phase_context_cot_no_memory(
     )
     assert "[과거 에피소드 스타일 참고]" not in context
     assert "[과거 에피소드 기억]" not in context
+
+
+# === Knowledge Result — phase별 주입 ===
+
+
+def test_build_phase_context_got_knowledge_count_only(
+    agent_with_stubs: PodcastReasoningAgent,
+) -> None:
+    """GoT phase: knowledge_result가 있어도 건수만 포함되고 원문·제목은 포함되지 않는다."""
+    knowledge_result = {
+        "articles": [
+            {
+                "id": "doc1",
+                "title": "CBT 인지왜곡",
+                "content": "인지왜곡은 자동적 사고의 일종으로 ...",
+                "score": 0.88,
+                "source": "CBT Handbook",
+            }
+        ],
+        "guidelines": [],
+    }
+    context = agent_with_stubs._build_phase_context(
+        phase="GoT",
+        user_input="요즘 너무 힘들어요.",
+        intent={},
+        knowledge_result=knowledge_result,
+    )
+    assert "[관련 전문 지식]" in context
+    assert "1건 발견" in context
+    # GoT은 건수만 — 제목/본문 노출 금지 (노드 오염 방지)
+    assert "CBT 인지왜곡" not in context
+    assert "인지왜곡은 자동적 사고" not in context
+
+
+def test_build_phase_context_tot_knowledge_titles(
+    agent_with_stubs: PodcastReasoningAgent,
+) -> None:
+    """ToT phase: 기사 제목이 포함되지만 본문은 포함되지 않는다."""
+    knowledge_result = {
+        "articles": [
+            {"id": "doc1", "title": "CBT 인지왜곡", "content": "본문A", "source": "A"},
+            {"id": "doc2", "title": "DBT 감정조절", "content": "본문B", "source": "B"},
+        ],
+        "guidelines": [],
+    }
+    context = agent_with_stubs._build_phase_context(
+        phase="ToT",
+        user_input="요즘 너무 힘들어요.",
+        intent={},
+        knowledge_result=knowledge_result,
+    )
+    assert "[관련 전문 지식 — 제목 참고]" in context
+    assert "CBT 인지왜곡" in context
+    assert "DBT 감정조절" in context
+    # 본문은 ToT에 주입 금지
+    assert "본문A" not in context
+    assert "본문B" not in context
+
+
+def test_build_phase_context_cot_knowledge_with_synthesis(
+    agent_with_stubs: PodcastReasoningAgent,
+) -> None:
+    """CoT phase: _synthesis 기사가 있으면 그 content를 요약 근거로 사용한다."""
+    knowledge_result = {
+        "articles": [
+            {
+                "id": "_synthesis",
+                "title": "검색 결과 종합",
+                "content": "번아웃은 만성 스트레스 누적으로 발생하며 CBT가 효과적이다.",
+                "score": 1.0,
+                "source": "KT RAG Suite TextGen",
+            },
+            {"id": "doc1", "title": "CBT 인지왜곡", "content": "본문A", "source": "A"},
+        ],
+        "guidelines": [],
+    }
+    context = agent_with_stubs._build_phase_context(
+        phase="CoT",
+        user_input="요즘 너무 힘들어요.",
+        intent={},
+        knowledge_result=knowledge_result,
+    )
+    assert "[관련 전문 지식 — 근거]" in context
+    assert "번아웃은 만성 스트레스" in context  # synthesis content 주입
+
+
+def test_build_phase_context_cot_knowledge_fallback_to_top_articles(
+    agent_with_stubs: PodcastReasoningAgent,
+) -> None:
+    """CoT phase: _synthesis 없으면 상위 기사 title+content 일부를 근거로 주입한다."""
+    knowledge_result = {
+        "articles": [
+            {
+                "id": "doc1",
+                "title": "CBT 인지왜곡",
+                "content": "인지왜곡은 자동적 사고의 일종입니다. " * 30,  # 200자 넘김
+                "score": 0.88,
+                "source": "CBT Handbook",
+            },
+            {
+                "id": "doc2",
+                "title": "DBT 감정조절",
+                "content": "DBT는 변증법적 행동치료입니다.",
+                "score": 0.75,
+                "source": "DBT Manual",
+            },
+        ],
+        "guidelines": [],
+    }
+    context = agent_with_stubs._build_phase_context(
+        phase="CoT",
+        user_input="요즘 너무 힘들어요.",
+        intent={},
+        knowledge_result=knowledge_result,
+    )
+    assert "[관련 전문 지식 — 근거]" in context
+    assert "CBT 인지왜곡" in context
+    assert "CBT Handbook" in context
+    assert "DBT 감정조절" in context
