@@ -378,10 +378,10 @@ async def tier1_podcast_fan_out(state: AgentState) -> dict[str, Any]:
         cancel_event.set()
         merged = partial_results
 
-        if merged.get("next_step") == "crisis_response":
+        if merged.get("safety_flags", {}).get("status") == "crisis":
             logger.warning(
-                "[TIER 1] 타임아웃 (%ds) — CRISIS 감지 상태에서 타임아웃 발생,"
-                " 위기 응답 노드로 전환",
+                "[TIER 1] 타임아웃 (%ds) — CRISIS 감지 상태에서 타임아웃,"
+                " 부분 결과로 TIER 2~4 진행 (CRISIS 폴백 적용)",
                 _TIER1_TIMEOUT,
             )
         else:
@@ -550,8 +550,22 @@ async def wait_for_stories_node(state: AgentState) -> dict[str, Any]:
 
     _STORIES_WAIT_TIMEOUT(settings.stories.wait_timeout_seconds, 기본 300초) 동안 대기한다.
     타임아웃 시 next_step: 'stories_timeout'을 반환하여 에러 노드로 라우팅된다.
+
+    CRISIS 예외: safety_flags.status="crisis"이면 프론트가 Stories 데이터를 발행하지 않으므로
+    대기 없이 즉시 TIER 4로 진행한다. 이 경로는 ScriptPersonalizer의 CRISIS 폴백이 즉시
+    final_output(ep_crisis_xxx)을 생성하도록 한다.
     """
     session_id = state.get("session_id", "")
+
+    # CRISIS 바이패스 — stories 대기 없이 즉시 통과
+    if state.get("safety_flags", {}).get("status") == "crisis":
+        logger.info(
+            "[WaitForStories] CRISIS 바이패스 — session_id=%s (stories 대기 생략)",
+            session_id,
+        )
+        stories_store.delete_session(session_id)
+        return {"next_step": ""}
+
     logger.info(
         "[WaitForStories] 대기 시작 — session_id=%s, timeout=%ds",
         session_id,

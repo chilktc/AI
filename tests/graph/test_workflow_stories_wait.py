@@ -64,3 +64,32 @@ class TestWaitForStoriesNode:
 
         assert result["next_step"] == "stories_timeout"
         assert result.get("stories_context") is None
+
+    async def test_crisis_bypasses_stories_wait(self) -> None:
+        """CRISIS 상태에서는 stories 대기를 생략하고 즉시 TIER 4로 진행한다.
+
+        프론트가 CRISIS 사용자에 대해 Stories 데이터를 발행하지 않으므로,
+        대기하면 _STORIES_WAIT_TIMEOUT(최대 300초)가 소진된 후 stories_error
+        노드가 final_output을 덮어쓴다. CRISIS 시 즉시 통과시켜야 한다.
+        """
+        from src.graph.workflow import wait_for_stories_node
+
+        state: dict = {
+            "session_id": "sess_crisis_wait",
+            "safety_flags": {"status": "crisis"},
+        }
+
+        # wait_for_stories는 절대 호출되지 않아야 한다 (대기 방지).
+        mock_wait = AsyncMock()
+        with (
+            patch("src.graph.workflow.stories_store.wait_for_stories", new=mock_wait),
+            patch("src.graph.workflow.stories_store.delete_session") as mock_del,
+        ):
+            result = await wait_for_stories_node(state)
+
+        mock_wait.assert_not_called()
+        # CRISIS 경로에서도 세션은 정리되어야 한다.
+        mock_del.assert_called_once_with("sess_crisis_wait")
+
+        assert result.get("next_step") != "stories_timeout"
+        assert result.get("next_step") == ""

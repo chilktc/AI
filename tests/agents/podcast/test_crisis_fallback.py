@@ -87,19 +87,34 @@ class TestScriptGeneratorCrisisFallback:
         assert sd["tts_markers"] == []
 
     @pytest.mark.asyncio
-    async def test_normal_state_calls_llm(self) -> None:
-        """정상 상태에서는 LLM이 호출된다 (회귀 테스트)."""
+    async def test_safe_state_does_not_use_crisis_fallback(self) -> None:
+        """safe 상태에서는 CRISIS 폴백 대신 정상 LLM 경로가 호출된다 (회귀)."""
         from src.agents.podcast.script_generator import ScriptGeneratorAgent
+        from src.agents.shared.safety_constants import CRISIS_FALLBACK_VALUES
 
         agent = ScriptGeneratorAgent()
         state = _make_crisis_state(
             safety_flags={"status": "safe"},
         )
-        # content_analysis.main_theme이 없으면 조기 반환되므로 그냥 조기 반환 코드패스 확인
-        result = await agent.process(state)
-        # main_theme이 "정서적 위기" 이므로 LLM 호출 시도 — 연결 오류로 예외 가능
-        # 여기서는 CRISIS 폴백이 동작하지 않아야 한다는 것만 확인
-        assert "_error" not in result.get("script_draft", {}) or True  # 회귀 확인
+
+        # 정상 LLM 모킹 — CRISIS 폴백 분기를 타지 않는지 확인
+        dummy_script = {
+            "episode_title": "정상 에피소드",
+            "total_duration": 5,
+            "script_text": "정상 스크립트 본문",
+            "tts_markers": [],
+            "key_insights": [],
+            "themes": [],
+        }
+        with patch.object(
+            agent, "call_llm_json", new=AsyncMock(return_value=dummy_script)
+        ) as mock_llm_json:
+            result = await agent.process(state)
+
+        # LLM이 실제로 호출되어야 한다 (CRISIS 폴백이 아닌 경로)
+        mock_llm_json.assert_called()
+        # CRISIS 폴백 값이 반환되지 않아야 한다
+        assert result.get("script_draft") != CRISIS_FALLBACK_VALUES["script_draft"]
 
 
 class TestVisualizationCrisisFallback:
