@@ -117,11 +117,11 @@ jobs:
               "printf '"'"'%s\\n'"'"' '"'"'AI_SERVER_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-ai-server:sha-${{ github.sha }}'"'"' >> .env",
               "chmod 600 /home/ubuntu/app/.env",
               "echo ${{ secrets.GHCR_TOKEN }} | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin",
-              "PREV_IMAGE=$(sudo docker inspect $(sudo docker compose ps -q ai-server 2>/dev/null) --format='{{.Image}}' 2>/dev/null || echo ''); echo \"$PREV_IMAGE\" > /home/ubuntu/app/.prev_image",
+              "PREV_IMAGE=$(sudo docker inspect $(sudo docker compose ps -q ai-server 2>/dev/null) --format=\"{{.Image}}\" 2>/dev/null || echo ); echo \"$PREV_IMAGE\" > /home/ubuntu/app/.prev_image",
               "sudo docker compose pull ai-server",
               "sudo docker compose stop --timeout 30 ai-server 2>/dev/null || true",
               "sudo docker compose up -d --no-deps ai-server",
-              "for i in $(seq 1 12); do STATUS=$(sudo docker inspect --format='{{.State.Health.Status}}' $(sudo docker compose ps -q ai-server 2>/dev/null) 2>/dev/null || echo 'unknown'); if [ \"$STATUS\" = 'healthy' ]; then echo 'Container healthy'; break; fi; echo \"Waiting... attempt $i/12 (status: $STATUS)\"; sleep 10; if [ $i -eq 12 ]; then echo 'Healthcheck timeout after 120s'; exit 1; fi; done",
+              "for i in $(seq 1 12); do CNAME=$(sudo docker compose ps -q ai-server 2>/dev/null); STATUS=$(sudo docker inspect --format=\"{{.State.Health.Status}}\" \"$CNAME\" 2>/dev/null || echo unknown); if [ \"$STATUS\" = \"healthy\" ]; then echo \"Container healthy at attempt $i\"; break; fi; if [ \"$STATUS\" = \"unhealthy\" ]; then echo Container unhealthy - printing logs; sudo docker logs --tail 50 \"$CNAME\" 2>&1; exit 1; fi; echo \"Waiting... attempt $i/12 (status: $STATUS)\"; sleep 10; if [ $i -eq 12 ]; then echo \"Healthcheck timeout after 120s - final status: $STATUS\"; sudo docker logs --tail 50 \"$CNAME\" 2>&1; exit 1; fi; done",
               "sudo docker image prune -f --filter \"until=24h\""
             ]' \
             --region ${{ secrets.AWS_REGION }} \
@@ -130,7 +130,37 @@ jobs:
 
           echo "SSM Command ID: $CMD_ID"
 
-          aws ssm wait command-executed \
-            --command-id "$CMD_ID" \
-            --instance-id "${{ secrets.AWS_INSTANCE_ID }}" \
-            --region ${{ secrets.AWS_REGION }}
+          if [ -z "$CMD_ID" ]; then
+            echo "ERROR: SSM send-command failed (empty command ID)"
+            exit 1
+          fi
+
+          # aws ssm wait command-executed 기본 타임아웃은 100초로
+          # SSM timeout-seconds(600초)보다 짧아 false failure 가능.
+          # 15초 간격 × 40회 = 600초 폴링으로 교체한다.
+          DEPLOY_STATUS=""
+          for i in $(seq 1 40); do
+            DEPLOY_STATUS=$(aws ssm get-command-invocation \
+              --command-id "$CMD_ID" \
+              --instance-id "${{ secrets.AWS_INSTANCE_ID }}" \
+              --region ${{ secrets.AWS_REGION }} \
+              --query "Status" \
+              --output text 2>/dev/null || echo "InProgress")
+            echo "Deploy status ($i/40): $DEPLOY_STATUS"
+            if [ "$DEPLOY_STATUS" = "Success" ]; then
+              echo "Deployment succeeded"
+              exit 0
+            elif [ "$DEPLOY_STATUS" = "Failed" ] || [ "$DEPLOY_STATUS" = "TimedOut" ] || [ "$DEPLOY_STATUS" = "Cancelled" ]; then
+              echo "Deployment failed with status: $DEPLOY_STATUS"
+              aws ssm get-command-invocation \
+                --command-id "$CMD_ID" \
+                --instance-id "${{ secrets.AWS_INSTANCE_ID }}" \
+                --region ${{ secrets.AWS_REGION }} \
+                --query "StandardErrorContent" \
+                --output text
+              exit 1
+            fi
+            sleep 15
+          done
+          echo "ERROR: Deploy polling timed out after 600s (final status: $DEPLOY_STATUS)"
+          exit 1

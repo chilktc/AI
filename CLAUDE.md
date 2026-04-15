@@ -85,25 +85,11 @@ TIER 4: Script Personalizer
 
 Safety의 CRISIS 판정은 **병렬 실행을 중단시키는 선점(preemption)**이다.
 
-```
-1. Intent Classifier → risk_flag = true (1차 감지)
-2. TIER 1 병렬 시작: Safety, Emotion, Content Analyzer, Podcast Reasoning 동시 실행
+- **safe** → TIER 1~4 정상 완료
+- **warning** → TIER 1~4 정상 완료 → Personalization에서 톤 조정
+- **crisis** → TIER 1 중단 → Safety 심화 → 즉시 위기 응답 (CANCEL SIGNAL 발행)
 
-3. Safety Agent 판정:
-   ├── safe/warning → 정상 흐름 계속
-   └── CRISIS →
-       ■ CANCEL SIGNAL 발행
-       ■ Emotion, Content Analyzer, Podcast Reasoning 실행 취소
-       ■ Safety 심화 모드 진입
-       ■ Safety이 직접 위기 응답 생성
-       ■ Script Generator/Batch Validator/Script Personalizer 건너뜀
-       ■ 위기 응답 즉시 출력
-
-Safety 상태별 흐름:
-  safe    → TIER 1~4 정상 완료
-  warning → TIER 1~4 정상 완료 → Personalization에서 톤 조정
-  crisis  → ■ TIER 1 중단 → Safety 심화 → 즉시 위기 응답
-```
+> 상세 흐름: `docs/architecture/AGENT_ROLES.md` Safety Agent 섹션 참조
 
 ---
 
@@ -163,51 +149,9 @@ main ← PR 머지 (3명 전원 승인 필수)
 
 모든 에이전트는 하나의 `AgentState`를 읽고 쓴다. 각 에이전트는 **자기 담당 필드만 쓰고**, 다른 에이전트 필드는 읽기만 한다.
 
-```python
-class AgentState(TypedDict, total=False):
-    # total=False: 모든 필드가 선택적. 에이전트는 변경한 필드만 반환하고,
-    # LangGraph가 기존 상태에 병합(merge)한다.
-
-    # === 입력 (Intent Classifier가 설정) ===
-    user_input: str
-    user_id: str
-    session_id: str
-    mode: Literal["podcast"]
-
-    # === 분석 필드 ===
-    intent: dict              # Intent Classifier → 의도 분류 결과
-    emotion_vectors: dict     # Emotion → 감정 벡터
-    content_analysis: dict    # Content Analyzer → 팟캐스트 주제 분석
-
-    # === 추론/생성 필드 ===
-    memory_results: dict      # Episode Memory → 기억 검색 결과
-    knowledge_results: dict   # Knowledge → 전문 지식 검색 결과
-    reasoning_result: dict    # Podcast Reasoning → GoT/ToT/CoT 추론 결과
-    script_draft: dict        # Script Generator → 팟캐스트 스크립트
-
-    # === 검증/부가 필드 ===
-    risk_level: int           # Safety → 위험 레벨 (0-4)
-    risk_score: float         # Safety → Risk Score (0.0-1.0)
-    safety_flags: dict        # Safety → 안전 플래그
-    validation_result: dict   # Batch Validator → 검증 결과
-    final_output: str         # Script Personalizer → 최종 응답
-    visual_data: dict         # Visualization → 시각화 메타데이터
-
-    # === 외부 데이터 ===
-    stories_context: dict | None  # Stories 선택 데이터 (keywords, title, description)
-
-    # === 학습/메모리 내부 ===
-    structured_input: dict[str, Any]         # Intent Classifier가 정규화한 입력 구조체
-    learning_pattern: dict[str, Any] | None  # Learning Agent가 추출한 패턴 (비동기 후처리)
-    memory_text: str                          # Episode Memory 검색 쿼리 텍스트
-    memory_metadata: dict[str, Any]           # Episode Memory 검색 메타데이터 (필터 조건 등)
-
-    # === 제어 ===
-    next_step: str            # 워크플로우 라우팅 플래그
-    execution_plan: dict      # Intent Classifier가 결정한 실행 계획
-    iteration_count: int      # 피드백 루프 카운터 (최대 2회 재시도)
-    memory_write: bool        # True이면 async_post에서 에피소드 메모리 저장 실행
-```
+- 정의: `src/models/agent_state.py` (TypedDict, total=False — 26개 필드)
+- 전체 필드 명세: `docs/architecture/AGENT_OUTPUT_CONTRACT.md`
+- 입출력 예시: `docs/architecture/AGENT_INPUT_OUTPUT.md`
 
 ### 필드 접근 규칙
 
@@ -227,46 +171,13 @@ class AgentState(TypedDict, total=False):
 
 ### 에이전트 간 메시지 포맷 (v2.0)
 
-에이전트 간 통신은 **통합 메시지 엔벨로프 v2.0**을 사용한다:
+에이전트 간 통신은 **통합 메시지 엔벨로프 v2.0**을 사용한다. 정의: `src/models/message.py`
 
-```json
-{
-  "schema_version": "agents.protocol.v2",
-  "message_id": "msg_{uuid}",
-  "request_id": "req_{uuid}",
-  "timestamp": "2026-02-10T14:30:00.123Z",
+- **메시지 타입**: request / response / event / cancel / error
+- **priority**: 0=CRITICAL (Safety CRISIS), 1=HIGH (일반), 2=NORMAL (비동기), 3=LOW (학습)
+- 전체 스키마: 설계 원본 `AGENT_MESSAGE_PROTOCOL_v2.0.md` 참조
 
-  "sender": "{agent_name}",
-  "receiver": "{agent_name}",
-  "message_type": "request | response | event | cancel | error",
-
-  "payload": { },
-
-  "metadata": {
-    "session_id": "sess_{uuid}",
-    "correlation_id": "corr_{uuid}",
-    "trace_id": "trace_{uuid}",
-    "mode": "podcast",
-    "interaction_unit": "episode",
-    "tier": 0,
-    "priority": 1,
-    "retry_count": 0
-  },
-
-  "audit": {
-    "agent_version": "1.0.0",
-    "processing_time_ms": 120,
-    "llm_calls": 1,
-    "status": "ok | error | partial"
-  },
-
-  "errors": []
-}
-```
-
-**메시지 타입:** request(작업 요청), response(결과 전달), event(비동기 이벤트), cancel(CRISIS 취소), error(실패 알림)
-
-**priority 레벨:** 0=CRITICAL (Safety CRISIS), 1=HIGH (일반 파이프라인), 2=NORMAL (비동기), 3=LOW (학습/텔레메트리)
+> 현재 독립 에이전트 호출은 DI 패턴(직접 메서드 호출)으로 구현되어 엔벨로프 미사용 상태.
 
 ---
 
@@ -293,55 +204,12 @@ Frontend (app-4:3000) → Backend 서버 (app-3:8080) ↔ AI 서버 (app-2:8000)
 
 백엔드 서버와는 REST API + JSON으로 통신한다. API 스키마는 `src/api/contracts.py`에 정의되어 있으며, 리소스 경로/타입 상수는 `src/api/backend_resources.py`에서 관리한다.
 
-### 저장 API (Save)
+### API 엔드포인트
 
-```
-POST /greenroom/ingest/ai/{resource}
-Content-Type: application/json
-
-요청 예시:
-{
-  "user_id": "uuid",
-  "session_id": "uuid",
-  "type": "podcast_metadata | emotion_log | visualization | learning | content_analysis",
-  "data": { ... },
-  "timestamp": "2026-02-10T12:00:00Z"
-}
-
-응답:
-{
-  "success": true,
-  "id": "uuid",
-  "message": "saved"
-}
-```
-
-### 조회 API (Load)
-
-```
-GET /greenroom/ingest/ai/{resource}?user_id={uuid}&type={type}&limit={n}
-Content-Type: application/json
-
-응답:
-{
-  "success": true,
-  "data": [ ... ],
-  "total": 10,
-  "page": 1
-}
-```
-
-### 에러 응답 (공통)
-
-```json
-{
-  "success": false,
-  "error": {
-    "code": "NOT_FOUND | VALIDATION_ERROR | SERVER_ERROR",
-    "message": "상세 에러 메시지"
-  }
-}
-```
+- Save: `POST /greenroom/ingest/ai/{resource}` — 상세: `docs/architecture/API_ENDPOINTS_INTERNAL.md`
+- Load: `GET /greenroom/ingest/ai/{resource}?user_id={uuid}&type={type}&limit={n}`
+- 에러/재시도: `docs/architecture/API_COMMON.md`
+- 전체 API 명세: `docs/architecture/API_SPEC.md` (v2.0, 5개 문서 모음)
 
 ### API 연동 원칙
 
@@ -363,39 +231,8 @@ Content-Type: application/json
 
 ### 노드 등록 규칙
 
-각 개발자가 만든 에이전트는 LangGraph의 노드로 등록된다. 노드 등록은 `src/graph/workflow.py`에서 통합한다.
-
-```python
-# 각 개발자는 자기 에이전트를 함수로 구현
-# src/agents/podcast/intent_classifier.py → intent_classifier_node(state) -> dict[str, Any]
-# src/agents/podcast/safety.py → safety_node(state) -> dict[str, Any]
-
-# workflow.py에서 통합 (3인 합의 영역)
-# v4.0: TIER 기반 + 모드별 확장 (UnifiedStateGraph)
-graph = StateGraph(AgentState)
-
-# TIER 0
-graph.add_node("intent_classifier", intent_classifier_node)  # 개발자1
-
-# TIER 1 (병렬 Fan-out)
-graph.add_node("safety", safety_node)                        # 개발자2
-graph.add_node("emotion", emotion_node)                      # 개발자2
-graph.add_node("content_analyzer", content_analyzer_node)    # 개발자3
-graph.add_node("podcast_reasoning", podcast_reasoning_node)  # 개발자3
-# Episode Memory/Knowledge는 독립 에이전트 — Podcast Reasoning 내부에서 조건부 호출
-
-# TIER 2
-graph.add_node("script_generator", script_generator_node)    # 개발자1
-graph.add_node("visualization", visualization_node)          # 개발자2
-
-# TIER 3
-graph.add_node("batch_validator", batch_validator_node)      # 개발자3
-
-# TIER 4
-graph.add_node("script_personalizer", script_personalizer_node)  # 개발자1
-
-# ... 팟캐스트모드 노드, 조건부 엣지, 병렬 그룹 설정
-```
+- 노드 등록: `src/graph/workflow.py`에서 통합 (3인 합의 영역, Protected File)
+- 에이전트별 노드 매핑: `docs/architecture/AGENT_ROLES.md` 참조
 
 ### 노드 인터페이스 규칙
 
@@ -412,31 +249,8 @@ async def agent_node(state: AgentState) -> dict[str, Any]:
 
 ### Memory/Knowledge 독립 에이전트 패턴
 
-Memory와 Knowledge는 StateGraph 노드가 아닌 **독립 에이전트**로, Reasoning Agent가 조건부로 호출한다:
-
-```python
-class ReasoningAgent:
-    def __init__(self, memory_agent: MemoryAgent, knowledge_agent: KnowledgeAgent):
-        self.memory_agent = memory_agent      # 의존성 주입
-        self.knowledge_agent = knowledge_agent
-
-    async def run(self, user_input, intent_metadata, complexity_score):
-        # 1단계: 추론 그래프 구축 (사용자 발화만으로)
-        graph = await self.build_reasoning_graph(user_input, complexity_score)
-
-        # 2단계: 필요 판단 후 독립 에이전트 호출
-        memory_result = None
-        knowledge_result = None
-
-        if graph.needs_personal_context:
-            memory_result = await self.memory_agent.search(query=graph.memory_query)
-
-        if graph.needs_expert_knowledge:
-            knowledge_result = await self.knowledge_agent.search(query=graph.knowledge_query)
-
-        # 3단계: 통합 추론
-        return await self.synthesize_reasoning(graph, memory_result, knowledge_result)
-```
+Memory와 Knowledge는 StateGraph 노드가 아닌 **독립 에이전트**로, Reasoning Agent가 조건부로 DI 호출한다.
+구현: `src/agents/podcast/podcast_reasoning.py` / 가이드: `docs/guides/AGENT_DEV_GUIDE.md`
 
 ---
 
@@ -490,7 +304,7 @@ class ReasoningAgent:
 > 현재 독립 에이전트 호출은 DI 패턴(직접 메서드 호출)으로 구현되어 엔벨로프가 미사용 상태이다.
 > 백엔드 통신 확장 시 활성화를 검토한다.
 
-### 인프라 강화 (PR #52~#118)
+### 인프라 강화 (PR #52~#142)
 
 | 구분 | 내용 | PR |
 |------|------|-----|
@@ -507,6 +321,13 @@ class ReasoningAgent:
 | CRISIS-타임아웃 수정 | 로그 구분, 경합 방지, TIER 1 타임아웃 240s | #114 |
 | TIER 타임아웃 확장 | TIER 0/4/비동기 타임아웃 2배 확장, Bedrock throttling 로그 | #116 |
 | S3 ACL 추가 | Visualization put_object에 ACL="public-read" 추가 | #117 |
+| Bedrock 지연 추적 | LLM 호출 구간별 타이밍 로깅, LangSmith 메타데이터 연동 | #131, #135, #136 |
+| BV score 보정 | Batch Validator score/decision LLM hallucination 방지 | #132 |
+| Visualization 안정화 | Titan 콘텐츠 차단 방어, JSON 파싱 fallback, ContentBlockedError 전환 | #133, #138, #139 |
+| 모델 다운그레이드 | sonnet_37 APAC 지연 급증 대응, Haiku/Sonnet 전환 | #137 |
+| Episode Memory 개선 | phase별 컨텍스트 주입 (GoT/ToT/CoT 분리) | #134 |
+| CancelledError 수정 | HTTP 연결 종료 시 스택 트레이스 제거 | #140 |
+| 구조적 취약점 수정 | CI/CD Job 의존성, lint 순서, SHA 태깅, 롤백 스크립트, 한국어 인젝션 패턴, 취소 태스크 정리 등 16건 | #142 |
 
 ### 테스트 현황
 
@@ -525,7 +346,7 @@ class ReasoningAgent:
 - `docs/architecture/NEO4J_INTEGRATION.md` — Neo4j 그래프 DB 통합 명세 (v1.3)
 - `docs/architecture/VECTOR_DB_RAG_GUIDE.md` — Pinecone 벡터 DB + RAG 가이드
 - `docs/guides/PROMPT_VERSIONING.md` — 프롬프트 멀티버전 관리 가이드
-- `docs/SECURITY_REMEDIATION_TRACKER.md` — 보안 후속조치 추적 (키 로테이션, Secrets)
+- `docs/reports/SECURITY_REMEDIATION_TRACKER.md` — 보안 후속조치 추적 (키 로테이션, Secrets)
 
 ### 설계 원본 (저장소 외부 — 임의 수정 금지)
 
@@ -539,4 +360,4 @@ class ReasoningAgent:
 
 ---
 
-*마지막 업데이트: 2026-04-14 14:30*
+*마지막 업데이트: 2026-04-15 10:30*
