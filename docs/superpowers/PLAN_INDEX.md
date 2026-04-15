@@ -252,7 +252,8 @@
 | #139 | *(인라인)* | Titan ValidationException → ContentBlockedError 전환 누락 수정 |
 | #140 | *(인라인)* | HTTP 연결 종료 시 CancelledError 스택 트레이스 제거 |
 | #142 | feature/validation-structural-fix | 구조적 취약점 16개 수정 (CI/CD·동시성·보안·의존성·문서) — Plan #45 |
+| #143 | *(인라인)* | deploy.yml SSM 배포 신뢰성 강화 — 싱글쿼트 파싱 오류 수정, 15초×40회 폴링 교체, unhealthy 즉시 실패 감지 |
 
 ---
 
-*마스터 인덱스 v40 — 2026-04-15 10:30 (Plan #44 프로덕션 핫픽스 10건 + Plan #45 구조적 취약점 수정 추가, STRUCTURAL_FIX_PLAN plans/ 이동, PR #131~#142 반영)*
+*마스터 인덱스 v41 — 2026-04-15 11:00 (PR #143 deploy.yml SSM 배포 신뢰성 강화 반영)*
