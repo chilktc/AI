@@ -639,5 +639,67 @@ GET /api/internal/knowledge?ids=cbt_chunk_042,stress_chunk_015
 
 ---
 
+# 17. 지식 문서 단일 청크 적재 (Internal)
+
+| 속성 | 값 |
+|------|---|
+| 상태 | 명세 완료 (백엔드 구현 필요) |
+| 엔드포인트 | /api/internal/knowledge |
+| 카테고리 | Internal |
+| 타입 | `POST` |
+| 방향 | AI Server (Script) → Backend Server |
+
+**EndPoint** : `POST /api/internal/knowledge`
+
+**설명** : AI 스크립트(`ingest_knowledge.py`)에서 PDF 원문을 청킹한 후 백엔드 RDB에 개별 청크 원문을 저장하기 위해 호출하는 API입니다. Pinecone에는 벡터를, Backend에는 텍스트 원본을 저장하여 향후 ID 조회를 통해 가져올 수 있도록 합니다.
+
+**호출 시점** : 문서 적재 스크립트 실행 시 (`save_to_backend()`)
+
+---
+
+### Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | String | true | 청크 고유 ID (Pinecone `_id`와 정확히 동일해야 함) |
+| `title` | String | true | 사람이 읽을 수 있는 문서의 제목 |
+| `content` | String | true | 청킹된 약 400자 분량의 실제 문서 텍스트 원본 |
+| `page` | Integer | true | 원본 문서에서의 추출된 페이지 번호 |
+| `source` | String | true | 원본 파일명 (예: `cbt_guide.pdf`) |
+| `domain` | String | true | 챗봇 검색 필터에 사용될 도메인 카테고리 기호 (예: `mental_health`) |
+
+**요청 예시**:
+```json
+{
+  "id": "cbt_chunk_042",
+  "title": "CBT 기법 가이드",
+  "content": "인지행동치료에서 인지 왜곡이란 현실을 왜곡하여 지각하는 사고 패턴을 말한다...",
+  "page": 42,
+  "source": "cbt_guide.pdf",
+  "domain": "mental_health"
+}
+```
+
+### Response Body
+
+> 공통 형태 대신 상황에 맞춘 간단한 성공 응답 권장.
+
+```json
+{
+  "success": true,
+  "message": "청크 저장 성공"
+}
+```
+
+### Status Code
+
+| Status | Code | Description |
+|--------|------|-------------|
+| 200/201 OK | - | 정상 적재 완료 |
+| 400 Bad Request | VALIDATION_ERROR | 필수 필드 누락 |
+| 500 Internal Server Error | SERVER_ERROR | Backend DB 저장 실패 등 내부 에러 |
+
+---
+
 *[← 수신 API](API_ENDPOINTS_RECEIVING.md) · [API_SPEC.md (인덱스)](API_SPEC.md) · [공통 →](API_COMMON.md)*
 

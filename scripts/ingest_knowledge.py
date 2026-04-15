@@ -55,27 +55,43 @@ DEFAULT_CHUNK_OVERLAP = 50
 # PDF 텍스트 추출
 # ============================================================
 
-def extract_text_from_pdf(pdf_path: str) -> list[dict]:
-    """PDF에서 페이지별 텍스트를 추출한다.
+async def extract_text_from_pdf(pdf_path: str, endpoint: str, token: str) -> list[dict]:
+    """Upstage Document Parse API를 사용하여 PDF 텍스트를 마크다운 형태 등 구조화하여 추출한다.
 
     Returns:
-        [{"page": 1, "text": "..."}, ...]
+        [{"page": 1, "text": "마크다운 전체 텍스트..."}]
     """
+    if not endpoint or not token:
+        print("❌ KT_CLOUD_KNOWLEDGE_PARSE_ENDPOINT 설정이 비어있습니다.")
+        return []
+
     try:
-        import pdfplumber
-    except ImportError:
-        print("❌ pdfplumber가 설치되어 있지 않습니다: pip install pdfplumber")
-        sys.exit(1)
+        with open(pdf_path, "rb") as f:
+            # Document Parse 가이드라인에 따른 Request Body
+            files = {"document": (Path(pdf_path).name, f, "application/pdf")}
+            data = {
+                "model": "document-parse",
+                "output_formats": '["markdown"]'
+            }
 
-    pages = []
-    with pdfplumber.open(pdf_path) as pdf:
-        for i, page in enumerate(pdf.pages, start=1):
-            text = page.extract_text() or ""
-            text = text.strip()
-            if text:
-                pages.append({"page": i, "text": text})
-
-    return pages
+            async with httpx.AsyncClient(timeout=300.0) as client:
+                r = await client.post(
+                    endpoint,
+                    headers={"Authorization": f"Bearer {token}"},
+                    data=data,
+                    files=files,
+                )
+                r.raise_for_status()
+                
+                result = r.json()
+                md_text = result.get("content", {}).get("markdown", "")
+                
+                if md_text:
+                    return [{"page": 1, "text": md_text}]
+                return []
+    except Exception as e:
+        print(f"❌ Document Parse API 실패: {e}")
+        return []
 
 
 # ============================================================
@@ -97,10 +113,11 @@ def chunk_text(
 
 
 def make_chunk_id(source: str, page: int, idx: int) -> str:
-    """Pinecone/RDB에서 사용할 chunk_id를 생성한다."""
-    base = hashlib.md5(f"{source}_{page}_{idx}".encode()).hexdigest()[:10]
-    stem = Path(source).stem
-    return f"{stem}_p{page}_{base}"
+    """Pinecone/RDB에서 사용할 chunk_id를 생성한다 (ASCII 전용)."""
+    # 파일명에 한글이 있을 수 있으므로 파일명을 해싱하여 접두어로 사용
+    source_hash = hashlib.md5(source.encode()).hexdigest()[:8]
+    chunk_hash = hashlib.md5(f"{source}_{page}_{idx}".encode()).hexdigest()[:10]
+    return f"kb_{source_hash}_p{page}_{chunk_hash}"
 
 
 # ============================================================
@@ -108,12 +125,12 @@ def make_chunk_id(source: str, page: int, idx: int) -> str:
 # ============================================================
 
 async def embed_text(text: str, endpoint: str, token: str) -> list[float]:
-    """KT Cloud Embedding API로 텍스트를 벡터로 변환한다."""
+    """KT Cloud Embedding API(Passage)로 텍스트를 벡터로 변환한다."""
     async with httpx.AsyncClient() as client:
         r = await client.post(
             endpoint,
             headers={"Authorization": f"Bearer {token}"},
-            json={"input": text},
+            json={"model": "embedding-passage", "input": text},
             timeout=15.0,
         )
         r.raise_for_status()
@@ -205,9 +222,12 @@ async def ingest_document(
     chunk_overlap: int,
     embedding_endpoint: str,
     embedding_token: str,
+    parse_endpoint: str,
+    parse_token: str,
     pinecone_host: str,
     pinecone_api_key: str,
     backend_url: str,
+    dry_run: bool = False,
 ) -> dict:
     """PDF 1개를 적재한다.
 
@@ -217,8 +237,8 @@ async def ingest_document(
     source = Path(pdf_path).name
     print(f"\n📄 {source} ({title}) — domain: {domain}")
 
-    # 1. PDF 텍스트 추출
-    pages = extract_text_from_pdf(pdf_path)
+    # 1. Document Parse API 텍스트 추출 (Markdown)
+    pages = await extract_text_from_pdf(pdf_path, parse_endpoint, parse_token)
     if not pages:
         print(f"  ⚠️  텍스트 추출 실패 또는 빈 PDF")
         return {"total_chunks": 0, "success": 0, "failed": 0}
@@ -236,6 +256,14 @@ async def ingest_document(
                 "page": page_data["page"],
             })
     print(f"  ✂️  {len(all_chunks)}개 청크 생성")
+
+    if dry_run:
+        print(f"\n{'='*50}\n🔍 [미리보기 모드] 생성된 청크 확인\n{'='*50}")
+        for chunk in all_chunks:
+            print(f"\n[Page {chunk['page']} | ID: {chunk['chunk_id'][:15]}...]")
+            print(f"내용:\n{chunk['text']}")
+            print("-" * 50)
+        return {"total_chunks": len(all_chunks), "success": 0, "failed": 0}
 
     # 3. 각 청크 처리
     success = 0
@@ -295,17 +323,23 @@ async def main() -> None:
     parser.add_argument("--pdf", help="단일 PDF 파일 경로 (설정 파일 대신 사용)")
     parser.add_argument("--domain", help="단일 PDF의 domain")
     parser.add_argument("--title", help="단일 PDF의 title")
+    parser.add_argument("--dry-run", action="store_true", help="미리보기 모드 (DB에 저장하지 않고 생성된 청크만 터미널에 출력)")
     args = parser.parse_args()
 
     # 환경변수 로드
-    embedding_endpoint = os.getenv("KT_CLOUD_KNOWLEDGE_EMBEDDING_ENDPOINT", "")
-    embedding_token = os.getenv("KT_CLOUD_KNOWLEDGE_EMBEDDING_TOKEN", "")
+    parse_endpoint = os.getenv("KT_CLOUD_KNOWLEDGE_PARSE_ENDPOINT", "")
+    parse_token = os.getenv("KT_CLOUD_KNOWLEDGE_PARSE_TOKEN", "")
+    embedding_endpoint = os.getenv("KT_CLOUD_KNOWLEDGE_EMBEDDING_PASSAGE_ENDPOINT", "")
+    embedding_token = os.getenv("KT_CLOUD_KNOWLEDGE_EMBEDDING_PASSAGE_TOKEN", "")
     pinecone_api_key = os.getenv("PINECONE_API_KEY", "")
     pinecone_index = os.getenv("PINECONE_INDEX_KNOWLEDGE", "expert-knowledge")
     backend_url = os.getenv("BACKEND_API_URL", "http://localhost:8080/api")
 
+    if not parse_endpoint or not parse_token:
+        print("❌ KT_CLOUD_KNOWLEDGE_PARSE_ENDPOINT / TOKEN 환경변수가 필요합니다.")
+        sys.exit(1)
     if not embedding_endpoint or not embedding_token:
-        print("❌ KT_CLOUD_KNOWLEDGE_EMBEDDING_ENDPOINT / TOKEN 환경변수가 필요합니다.")
+        print("❌ KT_CLOUD_KNOWLEDGE_EMBEDDING_PASSAGE_ENDPOINT / TOKEN 환경변수가 필요합니다.")
         sys.exit(1)
     if not pinecone_api_key:
         print("❌ PINECONE_API_KEY 환경변수가 필요합니다.")
@@ -383,9 +417,12 @@ async def main() -> None:
             chunk_overlap=chunk_overlap,
             embedding_endpoint=embedding_endpoint,
             embedding_token=embedding_token,
+            parse_endpoint=parse_endpoint,
+            parse_token=parse_token,
             pinecone_host=pinecone_host,
             pinecone_api_key=pinecone_api_key,
             backend_url=backend_url,
+            dry_run=args.dry_run,
         )
 
         total_stats["total_chunks"] += stats["total_chunks"]

@@ -41,10 +41,10 @@ class KnowledgeAgent(BaseAgent):
         # Parser: 쿼리 전처리/정제
         self.parser_endpoint = os.getenv("KT_CLOUD_KNOWLEDGE_PARSER_ENDPOINT", "")
         self.parser_token = os.getenv("KT_CLOUD_KNOWLEDGE_PARSER_TOKEN", "")
-        # Embedding: 벡터 변환
-        self.kt_embedding_endpoint = os.getenv("KT_CLOUD_KNOWLEDGE_EMBEDDING_ENDPOINT", "")
-        self.kt_embedding_token = os.getenv("KT_CLOUD_KNOWLEDGE_EMBEDDING_TOKEN", "")
-        # TextGen: 검색 결과 요약/합성
+        # Embedding (Query): 벡터 분산 변환
+        self.kt_embedding_endpoint = os.getenv("KT_CLOUD_KNOWLEDGE_EMBEDDING_QUERY_ENDPOINT", "")
+        self.kt_embedding_token = os.getenv("KT_CLOUD_KNOWLEDGE_EMBEDDING_QUERY_TOKEN", "")
+        # TextGen (Qwen3): 검색 결과 요약/합성
         self.kt_textgen_endpoint = os.getenv("KT_CLOUD_KNOWLEDGE_TEXTGEN_ENDPOINT", "")
         self.kt_textgen_token = os.getenv("KT_CLOUD_KNOWLEDGE_TEXTGEN_TOKEN", "")
         # Pinecone: 벡터 DB
@@ -418,7 +418,7 @@ class KnowledgeAgent(BaseAgent):
                 r = await client.post(
                     self.kt_embedding_endpoint,
                     headers={"Authorization": f"Bearer {self.kt_embedding_token}"},
-                    json={"input": text},
+                    json={"model": "embedding-query", "input": text},
                     timeout=10.0,
                 )
                 r.raise_for_status()
@@ -479,6 +479,8 @@ class KnowledgeAgent(BaseAgent):
                 )
                 r.raise_for_status()
                 matches = r.json().get("matches", [])
+                
+                # 유사도 0.7 이상의 결과만 필터링하여 반환
                 return [m for m in matches if m.get("score", 0.0) >= 0.7]
         except Exception as e:
             self.logger.error("[KnowledgeAgent] Pinecone query 실패: %s", e)
@@ -511,7 +513,8 @@ class KnowledgeAgent(BaseAgent):
                     self.kt_textgen_endpoint,
                     headers={"Authorization": f"Bearer {self.kt_textgen_token}"},
                     json={
-                        "model": "solar-mini",
+                        "model": "Qwen/Qwen3-32B",
+                        "chat_template_kwargs": {"enable_thinking": False},
                         "messages": [{"role": "user", "content": prompt}],
                     },
                     timeout=15.0,
