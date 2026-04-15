@@ -14,7 +14,7 @@
 |---|--------|----------|------|------|----------|
 | 1 | **KT Cloud API 토큰** | git history (커밋 `1d099b6` 이전) | 개발자2 | KT Cloud 콘솔에서 즉시 새 토큰 발급 → `.env`의 `KT_CLOUD_API_TOKEN` 업데이트 | [ ] |
 | 2 | **OpenAI API 키** (`sk-proj-...`) | 로컬 `.env` (비추적) | AI팀 | ⚠️ **배포 환경(Bedrock)에서는 불필요**. 로컬 개발에서만 사용 시 로테이션 불필요. OpenAI 프로바이더 전환 시에만 조치 필요. | [N/A] |
-| 3 | **LangSmith API 키** (`lsv2_pt_...`) | **git history 노출** (커밋 `ffa54f8` — `306176b`에서 파일 제거, history에 잔존) + 로컬 `.env` (비추적) | AI팀 | LangSmith 설정에서 새 키 발급 → `.env`의 `LANGCHAIN_API_KEY` 업데이트 → GitHub Secrets `LANGCHAIN_API_KEY` 업데이트. ※ 현재 GitHub Secret에 구 키가 존재하여 추적은 정상 동작 중이나, git history 노출로 인해 로테이션 필요. | [ ] |
+| 3 | **LangSmith API 키** (`lsv2_pt_...`) | ~~git history 노출~~ → **2026-04-15 재확인: 실제 값 미노출** (커밋 `ffa54f8` 검사 결과, 마스킹 예시 텍스트만 기재됨. filter-repo 불필요) + 로컬 `.env` (비추적) | AI팀 | git history 조치 불필요. 필요 시 `.env`의 `LANGCHAIN_API_KEY` 로테이션. | [확인완료] |
 | 4 | **Grafana/OpenSearch 비밀번호** | 문서에서 제거됨, 실서버 변경 필요 | 인프라팀 | app-1 SSM 접속 → Grafana/OpenSearch admin 비밀번호 변경 | [ ] |
 | 5 | **로컬 DB 비밀번호** | `docker-compose.db.yml`에서 제거됨 | 각 개발자 | 로컬 `.env.db` 재설정 (`dev/local_db/.env.db.example` 참조) | [ ] |
 
@@ -32,7 +32,7 @@
 | 4 | `AWS_REGION` | ❌ 불필요 | 비밀정보 아님 |
 | 5 | `AWS_INSTANCE_ID` | ❌ 불필요 | 미노출 |
 | 6 | `LANGCHAIN_TRACING_V2` | ❌ 불필요 | 비밀정보 아님 |
-| 7 | **`LANGCHAIN_API_KEY`** | **✅ 변경 필수** | git history에 실제 키 노출 (커밋 `ffa54f8`). 현재 Secret에 구 키가 저장되어 있어 추적은 동작 중이나 로테이션 후 반드시 업데이트 필요. |
+| 7 | **`LANGCHAIN_API_KEY`** | ⚠️ 확인 완료 (변경 선택) | 2026-04-15 재확인: git history에 실제 값 미노출 (예시 텍스트만). 현재 Secret은 정상 동작 중. 로테이션은 선택사항. |
 | 8 | `LANGCHAIN_PROJECT` | ❌ 불필요 | 비밀정보 아님 |
 | 9 | `AWS_S3_BUCKET` | ⚠️ 확인 필요 | 버킷명 설정파일 노출. 버킷명 변경 시 업데이트 |
 | 10 | `APP_ENV` | ❌ 불필요 | 비밀정보 아님 |
@@ -137,4 +137,4 @@ KT Cloud 토큰이 git history에 잔존한다. 완전 제거 절차:
 
 ---
 
-*마지막 업데이트: 2026-04-14 11:00*
+*마지막 업데이트: 2026-04-15 17:30*

@@ -38,12 +38,12 @@
 
 실행 전 **3인 모두** 완료 확인:
 
-- [ ] 팀원 전원 현재 작업 브랜치 push 완료
-- [ ] GitHub에 열린 PR 전체 닫기 — filter-repo 후 커밋 해시가 전면 변경되어 기존 PR 무효화
+- [x] 팀원 전원 현재 작업 브랜치 push 완료 (2026-04-15: 원격 브랜치 develop/main 2개만 남음. 열린 PR 0개)
+- [x] GitHub에 열린 PR 전체 닫기 (2026-04-15: PR #158, #159 머지 완료. 열린 PR 없음)
 - [ ] 팀원 전원 동의 서명 (Slack 또는 PR 코멘트)
-- [ ] GitHub main 브랜치 보호 규칙 일시 해제 확인 (현재 규칙 없음 — 2026-04-13 확인)
+- [x] GitHub main 브랜치 보호 규칙 일시 해제 확인 (현재 규칙 없음 — 2026-04-13 확인)
 - [ ] KT Cloud 토큰 로테이션 완료 (기존 토큰 폐기 — 이미 노출된 것으로 간주)
-- [ ] 작업 담당자 로컬에 `git-filter-repo` 설치 확인
+- [x] 작업 담당자 로컬에 `git-filter-repo` 설치 완료 (2026-04-15: v2.47.0 설치됨)
 - [x] 문서 내 하드코딩 IP를 환경변수(`${BACKEND_HOST}` 등)로 교체 완료 (2026-04-13) — filter-repo 실행 시 현재 문서 파괴 방지
 - [ ] PLAN_INDEX 등 docs의 커밋 해시 참조는 filter-repo 후 전면 무효화됨을 팀 공지
 
@@ -55,22 +55,22 @@
 - Read: `docs/SECURITY_REMEDIATION_TRACKER.md`
 - Create: `expressions.txt` (임시, 실행 후 삭제)
 
-- [ ] **Step 1: git-filter-repo 설치 확인 및 설치**
+- [x] **Step 1: git-filter-repo 설치 확인 및 설치** (2026-04-15 완료)
 
   ```bash
   pip install git-filter-repo
   git filter-repo --version
-  # Expected: git-filter-repo 2.x.x
+  # 설치됨: git-filter-repo 2.47.0
   ```
 
-- [ ] **Step 2: 전체 커밋 수 및 히스토리 확인**
+- [x] **Step 2: 전체 커밋 수 및 히스토리 확인** (2026-04-15 완료)
 
   ```bash
   git log --all --oneline | wc -l
-  # 현재: 441 커밋 (2026-04-13 기준)
+  # 결과: 529 커밋 (2026-04-15 기준, 계획 작성 시 441 → 88개 증가)
   ```
 
-- [ ] **Step 3: 로컬 백업 번들 생성**
+- [ ] **Step 3: 로컬 백업 번들 생성** (force-push 실행 직전 생성)
 
   ```bash
   cd <레포 상위 디렉토리>
@@ -101,16 +101,37 @@
   > ⚠️ `expressions.txt`를 레포 내부에 저장하지 말 것 — git history에 기록됨
   > ⚠️ `${BACKEND_HOST}` 등 환경변수 자리에 **실제 IP 값**을 대입하여 작성할 것. 문서 보안을 위해 리터럴 IP를 기재하지 않음.
 
-- [ ] **Step 5: 드라이런으로 영향 범위 확인**
+  **2026-04-15 준비 완료**: `/tmp/expressions.txt` 작성됨. 6개 패턴 포함:
+  ```
+  kt_cctc5n6h10bzzwhdhrpsopw4tiwr0yvz59f270tuhy1tl54pwr18swmcvmzajsg8e==>***KT_TOKEN_REMOVED***
+  no753ozr79oq.proxy.aifoundry.ktcloud.com==>KT_ENDPOINT_REMOVED
+  t7-mindlog-prod-alb-1834710625.ap-northeast-2.elb.amazonaws.com==>ALB_DOMAIN_REMOVED
+  mindlog_pass==>DB_PASS_REMOVED
+  mindlog_root==>DB_ROOT_REMOVED
+  mindlog_neo4j==>DB_NEO4J_REMOVED
+  ```
+  > **LangSmith 키 (`lsv2_pt_...`) — 실제 값 미노출 확인 (2026-04-15)**: `ffa54f8` 커밋 검사 결과, 키 값이 아닌 마스킹 예시(`lsv2_pt_...`)만 문서에 기재됨. filter-repo 패턴 불필요. TRACKER의 "노출" 기재는 예방적 기록이었음.
+
+- [x] **Step 5: 드라이런으로 영향 범위 확인 (2026-04-15 완료)**
 
   ```bash
   # 현재 레포에서 각 패턴이 몇 개의 커밋에 있는지 확인
   git log --all -S "kt_cctc5n6h10bzzwhdhrpsopw4tiwr0yvz59f270tuhy1tl54pwr18swmcvmzajsg8e" --oneline
   git log --all -S "mindlog_pass" --oneline
-  git log --all -S "${BACKEND_HOST}" --oneline
   ```
 
-  각 패턴에 해당하는 커밋 수 기록. 예상: 각 1~5개.
+  **2026-04-15 드라이런 결과** (전체 커밋 수: 529개, 계획 작성 시 441개에서 88개 증가):
+
+  | 패턴 | 잔존 커밋 수 | 주요 커밋 |
+  |------|------------|----------|
+  | KT Cloud API 토큰 | 4개 | `ca309d1`, `1d099b6`, `306176b`, `4f9b030` |
+  | KT Cloud 엔드포인트 | 3개 | `ca309d1`, `1d099b6`, `4f9b030` |
+  | ALB 도메인 | 5개 | `e8024ed`, `64a7c15`, `306176b`, `732edd0`, `4f9b030` |
+  | mindlog_pass | 5개 | `d403e61`, `306176b`, `732edd0`, `5e5b5af`, `4f9b030` |
+  | mindlog_root | 4개 | `d403e61`, `306176b`, `732edd0`, `4f9b030` |
+  | mindlog_neo4j | 5개 | `d403e61`, `306176b`, `732edd0`, `5e5b5af`, `4f9b030` |
+
+  > `4f9b030`이 모든 패턴에 포함: Plan #28 계획서 자체에 마스킹 없이 원본 값 기재됨 — filter-repo가 계획서 내용도 치환 처리함 (정상)
 
 ---
 
@@ -346,4 +367,5 @@ git push --force --tags
 ---
 
 *작성: 2026-04-13*
+*최종 점검: 2026-04-15 17:30 — 사전 조건 5/8 충족, 드라이런 완료, expressions.txt 준비됨. 미충족: 3인 합의, KT Cloud 토큰 로테이션, 팀 공지*
 *기반 문서: `docs/SECURITY_REMEDIATION_TRACKER.md`, `docs/_archive/plans/2026-04-06-aws-env-remediation.md` Phase 5*
