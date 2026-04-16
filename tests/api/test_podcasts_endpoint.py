@@ -259,3 +259,40 @@ class TestCrisisPodcastEndpoint:
                 json=self._valid_request(),
             )
             mock_store.delete_session.assert_called_once_with("sess_test123")
+
+    def test_crisis_response_includes_crisis_message(
+        self,
+        test_client,
+        mock_compiled_graph,
+    ) -> None:
+        """CRISIS 응답에 crisis_message 필드가 포함되고 required_in_script 내용을 담는다."""
+        from src.agents.shared.safety_constants import SAFETY_MESSAGES
+        from tests.api.conftest import make_crisis_pipeline_result
+
+        mock_compiled_graph.ainvoke = AsyncMock(return_value=make_crisis_pipeline_result())
+        response = test_client.post(
+            "/api/podcasts/episodes",
+            json=self._valid_request(),
+        )
+
+        data = response.json()
+        assert data["crisis_message"] is not None, "CRISIS 시 crisis_message는 None이면 안 됨"
+        assert len(data["crisis_message"]) > 0
+        assert SAFETY_MESSAGES["crisis"][:20] in data["crisis_message"]
+
+    def test_non_crisis_response_has_null_crisis_message(
+        self,
+        test_client,
+        mock_compiled_graph,
+    ) -> None:
+        """정상(비CRISIS) 응답에서 crisis_message는 None이다."""
+        from tests.api.conftest import make_pipeline_result
+
+        mock_compiled_graph.ainvoke = AsyncMock(return_value=make_pipeline_result())
+        response = test_client.post(
+            "/api/podcasts/episodes",
+            json=self._valid_request(),
+        )
+
+        data = response.json()
+        assert data["crisis_message"] is None

@@ -504,17 +504,27 @@ class SlimPodcastResponse(BaseModel):
 
     파이프라인 실행 + DB 저장 완료 후 반환하는 최소 응답.
     모든 데이터는 DB에 저장되므로 Backend가 GET API로 조회 가능.
-    safety_alert만 직접 포함 (CRISIS 시 에피소드 미생성 → DB 미저장).
+
+    CRISIS 시 에피소드는 ep_crisis_xxx ID로 정상 저장되며,
+    safety_alert와 crisis_message가 응답에 직접 포함된다.
 
     Endpoint 응답: POST /api/podcasts/episodes
     """
 
     success: Literal[True] = True
-    episode_id: str = Field(description="생성된 에피소드 고유 ID")
+    episode_id: str = Field(description="생성된 에피소드 고유 ID (CRISIS 시 ep_crisis_xxx)")
     session_id: str = Field(description="세션 ID")
     safety_alert: SafetyAlertData | None = Field(
         default=None,
-        description="안전 경고 (CRISIS 시 에피소드 미생성, 응답에 직접 포함)",
+        description="안전 경고 (warning/crisis 시 설정)",
+    )
+    crisis_message: str | None = Field(
+        default=None,
+        description=(
+            "CRISIS 판정 시 safety_flags.required_in_script 전체 (줄바꿈 구분). "
+            "법적 고지, 헬프라인, LLM이 감지한 위험 사유를 포함. "
+            "safety_alert.status == 'crisis'일 때만 설정."
+        ),
     )
     tracing: RequestTracing = Field(description="추적 컨텍스트")
 

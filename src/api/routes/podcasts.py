@@ -119,6 +119,25 @@ def _extract_safety_alert(state: dict[str, Any]) -> SafetyAlertData | None:
     return None
 
 
+def _extract_crisis_message(state: dict[str, Any]) -> str | None:
+    """CRISIS 판정 시 safety_flags.required_in_script에서 위기 메시지를 추출한다.
+
+    Args:
+        state: 파이프라인 최종 상태.
+
+    Returns:
+        CRISIS 시 required_in_script 항목을 줄바꿈으로 연결한 문자열.
+        CRISIS 아니거나 required_in_script 없으면 None.
+    """
+    safety_flags = state.get("safety_flags", {})
+    if safety_flags.get("status") != "crisis":
+        return None
+    required = safety_flags.get("required_in_script", [])
+    if not required:
+        return None
+    return "\n".join(str(r) for r in required)
+
+
 async def _save_core_data(
     user_id: str,
     session_id: str,
@@ -362,6 +381,7 @@ async def create_podcast_episode(
         episode_id=episode_data.episode_id,
         session_id=request.session_id,
         safety_alert=safety_alert,
+        crisis_message=_extract_crisis_message(final_state),
         tracing=request.tracing,
     )
 
@@ -504,6 +524,7 @@ async def stream_podcast_episode(
                 episode_id=episode_data.episode_id,
                 session_id=request.session_id,
                 safety_alert=safety_alert,
+                crisis_message=_extract_crisis_message(final_state),
                 tracing=request.tracing,
             )
             yield _sse_format(

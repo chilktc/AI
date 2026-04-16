@@ -56,3 +56,9 @@ TYPE_CONTENT_ANALYSIS = "content_analysis"
 # --- 누적 그래프 리소스 (Mode A) ---
 RESOURCE_GRAPH_NODES = "graph_nodes"  # GET(조회)/PUT(갱신) 공통 엔드포인트
 TYPE_GRAPH_CUMULATIVE = "graph_cumulative"  # PUT 전송 시 SaveRequest.type 필드
+
+# --- Safety 이벤트 — 백엔드팀 협의 후 활성화 예정 ---
+# TODO(backend-team): POST /greenroom/ingest/ai/safety_events 엔드포인트 생성 필요
+# 협의 문서: docs/architecture/API_ENDPOINTS_INTERNAL.md
+RESOURCE_SAFETY_EVENT = "safety_events"
+TYPE_SAFETY_EVENT = "safety_event"
